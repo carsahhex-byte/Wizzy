@@ -6,8 +6,8 @@ import { OPTIMIZED_ART } from '../src/optimized-art.js';
 
 const webOnly = process.argv.includes('--web');
 // Dependencies precede their importers in both the hosted and standalone builds.
-const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'assets.js', 'hub.js', 'main.js'];
-const styleNames = ['style.css', 'hub.css'];
+const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'assets.js', 'hub.js', 'multiplayer.js', 'main.js'];
+const styleNames = ['style.css', 'hub.css', 'multiplayer.css'];
 for (const filename of moduleNames) execFileSync(process.execPath, ['--check', `src/${filename}`], { stdio: 'inherit' });
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist');
@@ -68,7 +68,7 @@ if (webOnly) {
     .replace('name="wizzy-build" content="development"', `name="wizzy-build" content="${id}"`)
     .replace('Development · portrait layout', `Build ${id} · portrait layout`);
   await writeFile('dist/index.html', html);
-  await writeFile('dist/build-info.json', JSON.stringify({ id, layout: 'portrait-1024x1536', screens: ['title', 'home', 'character', 'friends', 'decks', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
+  await writeFile('dist/build-info.json', JSON.stringify({ id, layout: 'portrait-1024x1536', screens: ['title', 'home', 'character', 'friends', 'decks', 'online', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
   console.log(`Built hosted game ${id} with content-hashed modules, styles, and artwork.`);
   process.exit(0);
 }

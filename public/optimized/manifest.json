@@ -49,6 +49,56 @@
     "width": 1312,
     "height": 1199
   },
+  "fireSpellArt": {
+    "file": "fireSpellArt-eb1eaef4ff59.webp",
+    "source": "Wizzy Fire Spell Illustrations.png",
+    "sourceSha256": "5840da8f28b502895be27f410e01c7c6a984d119c47e552bcf89a290cdf22100",
+    "optimizedSha256": "eb1eaef4ff593f350097a79f6be8fb5687917f7d1b8821db3d844b1137e17b92",
+    "bytes": 2173312,
+    "sourceBytes": 2362611,
+    "width": 1448,
+    "height": 1086
+  },
+  "waterSpellArt": {
+    "file": "waterSpellArt-93cf42e522fe.webp",
+    "source": "Wizzy Water Spell Illustrations.png",
+    "sourceSha256": "66b852f525501af79987d62a1518af5521c01872baff3bccb328539500ce34a3",
+    "optimizedSha256": "93cf42e522fe045d8b0e7b154856f495ce3b1801bb5e3b8ac899b08829945968",
+    "bytes": 2501168,
+    "sourceBytes": 2914869,
+    "width": 1448,
+    "height": 1086
+  },
+  "neutralSpellArt": {
+    "file": "neutralSpellArt-dce98e00ddef.webp",
+    "source": "Wizzy Neutral Spell Illustrations.png",
+    "sourceSha256": "bc01d4b68bbefe539cf90d5da93be2097412b202a835dd61f58c9db7f7db96bd",
+    "optimizedSha256": "dce98e00ddef028e718275795cb0df9f087b55ee1821117bada836af9cec52ec",
+    "bytes": 1987348,
+    "sourceBytes": 2376275,
+    "width": 1254,
+    "height": 1254
+  },
+  "fateSpellArt": {
+    "file": "fateSpellArt-96536cac218c.webp",
+    "source": "Wizzy Fate Spell Illustrations.png",
+    "sourceSha256": "1d32689fda2c110809db75f3ffe53e1a39a5b8a87bfa7e79eecd5681fd90c580",
+    "optimizedSha256": "96536cac218cf80ca55283b563e6872e6566eead7170cbdb356b860d745692ad",
+    "bytes": 1851152,
+    "sourceBytes": 2082963,
+    "width": 2172,
+    "height": 724
+  },
+  "sunsetterArt": {
+    "file": "sunsetterArt-25bac1567823.webp",
+    "source": "Wizzy Sunsetter Illustration.png",
+    "sourceSha256": "fe24d418bd63b8859d1e9dda91ea3d1ac9353be6415bb27bb20bc3729abd9aaa",
+    "optimizedSha256": "25bac156782368681ea1c660b71a1eaa91054d072857c630ae3abf3ec4d07ec2",
+    "bytes": 1984072,
+    "sourceBytes": 2134227,
+    "width": 1536,
+    "height": 1024
+  },
   "forest": {
     "file": "forest-ee3f83c2132f.webp",
     "source": "Forest Background.png",

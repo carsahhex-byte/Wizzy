@@ -7,6 +7,11 @@ export const ASSET_FILES = Object.freeze({
   iconAtlas: 'Wizzy Interface Icons.png',
   appIcon: 'Wizzy App Icon.png',
   storybookIcon: 'Wizzy Storybook Icon.png',
+  fireSpellArt: 'Wizzy Fire Spell Illustrations.png',
+  waterSpellArt: 'Wizzy Water Spell Illustrations.png',
+  neutralSpellArt: 'Wizzy Neutral Spell Illustrations.png',
+  fateSpellArt: 'Wizzy Fate Spell Illustrations.png',
+  sunsetterArt: 'Wizzy Sunsetter Illustration.png',
   forest: 'Forest Background.png',
   fireFrame: 'Fire Stat Frame.png',
   waterFrame: 'Water Frame.png',
@@ -56,6 +61,24 @@ export const ASSETS = Object.freeze(Object.fromEntries(
     )];
   }),
 ));
+
+/** Each spell has its own illustration; shared atlases keep downloads small. */
+export const SPELL_ART = Object.freeze(Object.fromEntries([
+  ...Array.from({ length: 12 }, (_, index) => [`FIR-${String(index + 1).padStart(3, '0')}`, Object.freeze({ asset: 'fireSpellArt', columns: 4, rows: 3, index })]),
+  ...Array.from({ length: 10 }, (_, index) => [`WAT-${String(index + 1).padStart(3, '0')}`, Object.freeze({ asset: 'waterSpellArt', columns: 4, rows: 3, index })]),
+  ...Array.from({ length: 4 }, (_, index) => [`NEU-${String(index + 1).padStart(3, '0')}`, Object.freeze({ asset: 'neutralSpellArt', columns: 2, rows: 2, index })]),
+  ...Array.from({ length: 3 }, (_, index) => [`FAT-${String(index + 1).padStart(3, '0')}`, Object.freeze({ asset: 'fateSpellArt', columns: 3, rows: 1, index })]),
+  ['FIR-012', Object.freeze({ asset: 'sunsetterArt', columns: 1, rows: 1, index: 0 })],
+]));
+
+export function spellArtMarkup(spellId, className = '') {
+  const illustration = SPELL_ART[spellId];
+  if (!illustration) return '';
+  const { asset, columns, rows, index } = illustration;
+  const x = columns > 1 ? index % columns / (columns - 1) * 100 : 0;
+  const y = rows > 1 ? Math.floor(index / columns) / (rows - 1) * 100 : 0;
+  return `<span aria-hidden="true" class="spell-illustration ${className}" data-spell-art="${spellId}" style="position:absolute;left:9%;top:15%;width:82%;height:44%;background-color:#101626;background-image:url('${ASSETS[asset]}');background-size:${columns * 100}% ${rows * 100}%;background-position:${x}% ${y}%;background-repeat:no-repeat;image-rendering:pixelated;pointer-events:none;overflow:hidden;border-radius:2px"></span>`;
+}
 
 export const ASSET_CROPS = Object.freeze({
   forest: { width: 1024, height: 1536, x: 0, y: 0, w: 1024, h: 1536 },

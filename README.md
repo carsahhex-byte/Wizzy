@@ -1,10 +1,10 @@
 # Wizzy · Seattle spell slab prototype
 
-A mobile-first pixel-art game prototype with a title screen, a Seattle map preview, Character and Friends screens, a deck builder, and a local two-player battle arena. Fire and Water take turns on the same screen, with separate hands, spell towers, and discard piles. The supplied **30-slab decklists** are starter presets; custom decks use the same master spellbook definitions and executable effects.
+A mobile-first pixel-art game prototype with a title screen, a Seattle map preview, Character and Friends screens, a deck builder, and a two-player battle arena. Fire and Water can share one screen or use separate browsers connected to the room server. The supplied **30-slab decklists** are starter presets; custom decks use the same master spellbook definitions and executable effects.
 
 ## Run
 
-Requires Node.js 22 or later. There are no packages to install and no credentials or external services to configure.
+Requires Node.js 22 or later; Node.js 24 is recommended for hosting. There are no npm dependencies to install. Shared-screen play needs no credentials or external services. Two-screen play needs the included room server running locally or on an HTTPS host.
 
 ```sh
 cd /workspace/Wizzy
@@ -18,19 +18,22 @@ npm test          # game-engine, deck-building, and spell-effect tests
 npm run build    # syntax validation and a static release in dist/
 npm run build:web # smaller hosted release, with separate optimized artwork
 npm run preview  # serve the built release on port 5173
+npm run multiplayer # serve the built app and room API on port 8787
 ```
 
-The release can be hosted on any static web server, including a project subpath such as `/Wizzy/`. Game saves use this browser's local storage; no player data is sent to a backend.
+The frontend release can be hosted on any static web server, including a project subpath such as `/Wizzy/`. Shared-screen saves and saved decks use this browser's local storage. Two-screen play sends the selected deck and game actions to the room server and stores a private player token on the device for reconnecting.
+
+For two phones on the same Wi-Fi, run `npm run build:web` followed by `npm run multiplayer`, then open the computer's local IP address with port 8787 on each phone. For remote players, deploy that server to an HTTPS host and enter its address in **Two Screens**. See [the complete multiplayer setup guide](docs/multiplayer.md) for the commands, hosting resources, room-code flow, and troubleshooting. GitHub Pages cannot run the room API.
 
 ## Screens and deck building
 
-The title screen opens a Home map showing a rough pixel-art Seattle, with Northgate, Rainier Beach, Magnolia, Magnuson Park, greyed-out West Seattle, and a Pike Place marker. The map starts enlarged around South Lake Union and supports mouse or touch dragging to explore the surrounding city. Its red blinking location dot marks a preview position; GPS navigation and arrival unlocks are not connected. Home links to Character, Deck, Friends, and the temporary Battle shortcut. A Storybook graphic and placeholder button sit above Character; photo capture and uploads are a later step. The Character screen keeps a local wizard name and Fire/Water choice. Friends is a navigable preview screen; accounts, invitations, online battles, and messaging are not connected in this release.
+The title screen opens a Home map showing a rough pixel-art Seattle, with Northgate, Rainier Beach, Magnolia, Magnuson Park, greyed-out West Seattle, and a Pike Place marker. The map supports mouse or touch dragging and an enlarged South Lake Union view. **Whole map** fits the complete Seattle illustration inside a clear viewport; the header, zoom toolbar, and navigation dock sit outside the map so they do not cover the city. Its red blinking location dot marks a preview position; GPS navigation and arrival unlocks are not connected. Home links to Character, Deck, Friends, and Battle. A Storybook graphic and placeholder button sit above Character; photo capture and uploads are a later step. The Character screen keeps a local wizard name and Fire/Water choice. Friends provides access to room-code battles; persistent friend accounts, invitations, and messaging remain later additions.
 
 The deck builder places a scrollable selected-deck list in the upper half and a slab collection in the lower half, with four cards per collection row. Check a slab to add its first copy, use the quantity controls to add or remove further copies, and uncheck it to remove all copies. Filters cover All, Fire, Water, Neutral, Fate, and slabs currently in the deck. All 29 imported spells can be inspected; only slabs eligible for the chosen main element can be added.
 
 A saved deck must contain **exactly 30 slabs**, with **at most 3 copies of any spell**, and choose **one main element: Fire or Water**. Neutral and Fate slabs are allowed with either element. The starter decks' 21 Elemental / 2 Neutral / 7 Fate split is a preset composition, not a construction requirement. Incomplete drafts may be edited, but only valid full decks can be saved for battle. Fire and Water drafts and saved decks are retained separately in local browser storage. Saving a deck does not alter an ongoing duel; starting a fresh duel uses the saved compositions.
 
-The Battle shortcut opens the playable shared-screen arena and provides a route back to Home. Native iPhone packaging, signing, and TestFlight distribution remain a later step.
+The Battle shortcut offers shared-screen or two-screen play and provides a route back to Home. Two-screen matches use each device's saved deck and private hand, with server-validated actions, server-side shuffling and dice, and reconnecting by player token. The first room prototype pairs Fire against Water and keeps matches in server memory; a process restart or sleeping free instance can erase a room. Native iPhone packaging, signing, and TestFlight distribution remain a later step.
 
 ## Hosting on GitHub Pages
 
@@ -44,7 +47,7 @@ Enable hosting once in the repository's **Settings → Pages**:
 
 GitHub displays the live site address on that page. The anticipated project URL is `https://carsahhex-byte.github.io/Wizzy/`; it is not live merely because a deployment branch exists. The chat environment's network policy currently blocks the GitHub Pages settings API, so enabling hosting must be done in GitHub. Keep the repository's existing visibility unchanged.
 
-Later `npm run deploy:pages` uploads update the same site. No extra hosting account, image service, custom domain, or application API key is needed for this static game. GitHub account/plan eligibility for Pages is determined by GitHub's settings page.
+Later `npm run deploy:pages` uploads update the same site. Shared-screen play needs no extra hosting account, image service, custom domain, or application API key. Two-screen play also requires a running room server; its separate deployment is described in [docs/multiplayer.md](docs/multiplayer.md). GitHub account/plan eligibility for Pages is determined by GitHub's settings page.
 
 Hosted CSS and every JavaScript module use filenames hashed from their final content, including rewritten dependency imports. This prevents a newly loaded page from mixing a new release with old cached game modules. `build-info.json`, the `wizzy-build` HTML metadata, and the build number in game Settings identify the exact release. If a page is still cached after deployment, opening the site with `?v=<build-id>` requests a fresh HTML URL without changing saved duels.
 
@@ -56,7 +59,7 @@ The uploaded PNGs remain unmodified in `public/graphics/`, including graphics re
 
 The hosted build uses the required images from `public/optimized/`, encoded as lossless WebP with content-hashed filenames for caching. Their decoded RGBA pixels are byte-for-byte identical to the originals, and they load separately rather than being embedded in the HTML. Original and unused artwork and the large standalone download are excluded from the hosted release.
 
-Elemental **Fire** slabs use the fiery-comet graphic and elemental **Water** slabs use the cresting-wave graphic. Shared **Neutral** slabs use the white graphic, and **Fate** slabs use the purple graphic. Each slab displays its own master ID, name, printed mana cost, and rules text; different spells reuse the appropriate category's artwork. The color identifies the slab type without an extra element label. Selecting an eligible Fate slab uses the supplied **Cast Fate** button artwork.
+All **29 imported spells** have individual pixel-art illustrations arranged in four category atlases. Fire, Water, Neutral, and Fate retain their category-colored slab frames, with names, costs, and rules text rendered from the master metadata. Sunsetter depicts a dramatic sun/fireball impacting the ocean with mountains in the foreground; Poseidon's Rift depicts a golden trident in a pounding whirlpool. The atlas mapping in `src/assets.js` selects the illustration for each spell, so future text and balance changes do not require repainting the card. Selecting an eligible Fate slab uses the supplied **Cast Fate** button artwork.
 
 After replacing source PNGs, regenerate their optimized copies with `npm run optimize:art`. That optional authoring command requires Python and Pillow with WebP support; running, testing, building, and deploying the retained files require only Node.js and Git. The web build verifies source and optimized SHA-256 hashes and rejects stale or damaged copies.
 
@@ -105,7 +108,7 @@ See [the exact decklists and source references](docs/decklists.md) for master ID
 
 ## Current limits
 
-If the tower runs out, drawing stops, so automatic draws and hand refresh can produce fewer than five cards. No reshuffle or fatigue rule is invented. There is no AI or online multiplayer.
+If the tower runs out, drawing stops, so automatic draws and hand refresh can produce fewer than five cards. No reshuffle or fatigue rule is invented. There is no AI opponent. Online rooms currently support Fire versus Water, use in-memory storage, and do not add a turn-timeout rule, full Friends accounts, chat, or photo uploads.
 
 The in-game settings/handbook describes the active rules and local two-player flow.
 
@@ -115,7 +118,9 @@ The in-game settings/handbook describes the active rules and local two-player fl
 - `src/decks.js` — deck construction, validation, starter presets, and copy limits.
 - `src/effects.js` — executable Fire, Water, and Neutral effects, roll requirements, and Ember-spending choices.
 - `src/game.js` — pure game-state transitions, fate/refresh phases, slab instances, save validation and migration.
-- `src/main.js` — battle rendering, interactions, browser persistence, and hub integration.
+- `src/main.js` — battle rendering, local/remote interactions, browser persistence, and hub integration.
+- `src/multiplayer.js` — room lobby, private player session, server actions, polling, and reconnecting.
+- `src/multiplayer.css` — mobile two-screen lobby layout.
 - `src/hub.js` — title, Home, Character, Friends, and deck-builder screens with local profile/deck persistence.
 - `src/hub.css` — mobile hub layout, pixel-styled controls, and independently scrolling deck panels.
 - `src/style.css` — responsive arena and card styling.
@@ -127,6 +132,9 @@ The in-game settings/handbook describes the active rules and local two-player fl
 - `test/game.test.js` — phase locks, refresh, conservation, drawing, damage, victory, and save tests.
 - `test/decks.test.js` — full-deck and draft validation, element restrictions, quantities, and copy limits.
 - `docs/decklists.md` — reviewable deck composition and metadata source documentation.
+- `docs/multiplayer.md` — two-device local setup, remote hosting resources, room flow, and troubleshooting.
+- `server/` — authoritative room server, private player views, validation, and built-frontend serving.
+- `Dockerfile` — optional Node 24 container build for a room-server host.
 - `scripts/` — Node server, static build, GitHub Pages deployment, and optional artwork optimizer.
 
 Engine tests cover deck quantities and metadata, printed costs, spell thresholds, Shield and self-damage, healing, Ember spending, Flow, Fate eligibility, batch selection and order, one primary per turn, Loaded timing, phase locks, refresh confirmation and passing, card conservation, drawing, victory, and save migration. Browser checks cover artwork loading, slab selection and inspection, Fate/resolution controls, hand refresh, counters, turn passing, save/resume, hosted resource versioning, and the portrait layout.

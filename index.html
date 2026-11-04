@@ -12,14 +12,24 @@
     <link rel="icon" type="image/svg+xml" href="./public/art/favicon.svg" />
     <link rel="stylesheet" href="./src/style.css" />
     <link rel="stylesheet" href="./src/hub.css" />
+    <link rel="stylesheet" href="./src/multiplayer.css" />
     <script type="module" src="./src/main.js"></script>
   </head>
   <body>
     <main id="hub" class="hub-root" aria-label="Wizzy"></main>
+    <section id="online-view" aria-label="Two-screen battles" hidden></section>
     <section id="battle-view" aria-label="Wizzy Battle Simulator" hidden>
-      <nav class="battle-navigation" aria-label="Battle navigation"><button id="battle-home">← Home</button><span>LOCAL DUEL · FIRE / WATER</span><button id="battle-new">New duel</button></nav>
+      <nav class="battle-navigation" aria-label="Battle navigation"><button id="battle-home">← Home</button><div class="battle-session"><span id="battle-session-label">LOCAL DUEL · FIRE / WATER</span><small id="battle-connection" role="status" hidden></small></div><button id="battle-new">New duel</button><button id="battle-online-lobby" hidden>Lobby</button></nav>
       <div id="app" aria-label="Battle board"></div>
     </section>
+    <dialog id="battle-mode" class="game-dialog" aria-labelledby="battle-mode-title">
+      <button class="close-dialog" aria-label="Close battle options" data-close="battle-mode">×</button>
+      <p class="eyebrow">CHOOSE YOUR DUEL</p>
+      <h2 id="battle-mode-title">How will you battle?</h2>
+      <button class="battle-mode-option" id="choose-local"><strong>Share this screen</strong><span>Take turns on this device with your saved Fire and Water decks.</span></button>
+      <button class="battle-mode-option" id="choose-online"><strong>Play on two screens</strong><span>Create or join a room. Each wizard keeps a private hand.</span></button>
+      <button class="battle-mode-option" id="resume-online" hidden><strong>Resume your online battle</strong><span>Return to your current room.</span></button>
+    </dialog>
     <dialog id="handoff" class="game-dialog" aria-labelledby="handoff-title">
       <div class="dialog-portrait" id="handoff-portrait" aria-hidden="true"></div>
       <p class="eyebrow">THE BATTLE CONTINUES</p>
@@ -32,7 +42,7 @@
       <button class="close-dialog" aria-label="Close settings" data-close="settings">×</button>
       <p class="eyebrow">THE WIZARD’S HANDBOOK</p>
       <h2 id="settings-title">Fire meets Water</h2>
-      <p>A duel for <strong>two players sharing a screen</strong>, using your original pixel art. Each wizard has their own hand, spell tower, and discard pile.</p>
+      <p>Share one screen locally, or choose <strong>Play on two screens</strong> to create or join a hosted room. Each wizard has their own hand, spell tower, and discard pile.</p>
       <ul class="rules-list">
         <li>Start with <strong>30 HP, 3 mana, and 4 spell slabs</strong>. Each deck has 30 slabs, leaving 26 in the opening tower. Shield, Embers/Flow, and loaded dice start at zero.</li>
         <li>Both wizards take one turn per round. Each gains <strong>2 mana at the start of their own turn after their opening turn</strong>. Unspent mana carries over.</li>
@@ -47,7 +57,7 @@
         <li><strong>End Turn</strong> turns red and reveals Hand Refresh. Click the red End Turn to pass without refreshing.</li>
         <li>Click <strong>Hand Refresh</strong> to turn it red and select any number of slabs (including zero). Click it again to discard those selections, draw up to five, and <strong>pass immediately</strong>. Or click the red End Turn to pass without applying the refresh selections.</li>
       </ul>
-      <div class="prototype-note"><strong>Playtest Fate sequence: attacker → defender → roll.</strong> Screen handoffs make both sides playable on this device. Next-turn Loaded bonuses do not affect spells cast during the turn they were earned.</div>
+      <div class="prototype-note"><strong>Playtest Fate sequence: attacker → defender → roll.</strong> Shared-screen games use handoffs. Two-screen games let each player respond on their own device; the server rolls and resolves after both Fate windows finish. Next-turn Loaded bonuses do not affect spells cast during the turn they were earned.</div>
       <p class="small-copy">Build decks from Home: exactly 30 slabs, up to 3 copies per spell, and one main element plus Neutral and Fate. There are no category quotas. Rules text and mana costs come from the uploaded master spellbook. Select a slab and choose Read slab for full text. Click Spell Tower to review this battle’s actual composition.</p>
       <p class="build-version" id="build-version">Development · portrait layout</p>
       <button class="secondary-button" id="settings-deck">View spell slab decks</button>
@@ -82,7 +92,7 @@
       <p class="eyebrow">DUEL COMPLETE</p>
       <h2 id="victory-title"></h2>
       <p id="victory-description"></p>
-      <div class="dialog-actions"><button class="secondary-button" data-close="victory">View result</button><button class="gold-button" id="victory-restart">New duel</button></div>
+      <div class="dialog-actions"><button class="secondary-button" data-close="victory">View result</button><button class="gold-button" id="victory-restart">New duel</button><button class="gold-button" id="victory-online" hidden>New online room</button></div>
     </dialog>
     <dialog id="restart" class="game-dialog" aria-labelledby="restart-title">
       <p class="eyebrow">A FRESH START</p>
