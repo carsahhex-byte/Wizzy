@@ -46,7 +46,11 @@ The hosted build uses only 17 required images from `public/optimized/`, encoded 
 
 After replacing source PNGs, regenerate their optimized copies with `npm run optimize:art`. That optional authoring command requires Python and Pillow with WebP support; running, testing, building, and deploying the retained files require only Node.js and Git. The web build verifies source and optimized SHA-256 hashes and rejects stale or damaged copies.
 
-Desktop mode fits the board to the available screen, including Mac laptop screens. Use **Larger view** for a larger, scrollable board and **Fit screen** to return. Phone layouts use normal scrolling so cards and controls remain readable.
+The entire game uses the forest's original **1024 × 1536 (2:3 portrait)** canvas. One uniform scale fits it to the available screen; the forest is never stretched or cropped to widen the board. On Mac screens, its top and bottom meet the viewport edges, with side gutters. Narrower screens fit the width and center the board vertically.
+
+Wizards stand on the grass around logical y450. Stat panels begin at y480, with the hand and turn controls on the stone-and-dirt area below. Four opening cards occupy the upper hand row; the fifth card is centered in the lower row, with the discard and tower signs at its sides. The refresh drawer keeps its existing behavior, and the combat log opens over the board without changing the forest dimensions.
+
+Use **Larger view** for a larger, scrollable portrait board and **Fit screen** to return. Dialogs remain at normal browser size for readability.
 
 ## Implemented rules
 
