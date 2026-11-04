@@ -49,7 +49,7 @@ function phaseHint(active) {
     case 'fate': return 'Fate window · cards are unavailable. Click Skip Fate to resolve your spell.';
     case 'resolving': return 'Resolving your spell…';
     case 'end': return 'Refresh your hand, or click End Turn again to pass.';
-    case 'refresh': return `Choose any cards to discard (${state.refreshCardIds.length} selected), then click Hand Refresh again.`;
+    case 'refresh': return `Select discards (${state.refreshCardIds.length}), then Hand Refresh again.`;
     case 'ready-to-pass': return 'Hand refreshed. Click End Turn to pass to the next wizard.';
     default: return `${active.name} wizard · select a card, then Cast Spell.`;
   }
@@ -92,21 +92,16 @@ function render() {
   scheduleResolution();
   fitBoard();
 }
-// Keep every control visible on laptop screens without cropping any artwork.
-// The larger view and phone layout retain normal scrolling for readability.
+// The forest and every game element share one undistorted 1024 × 1536 canvas.
+// Only this outer scale changes with the viewport; log expansion never resizes it.
 function fitBoard() {
-  const shell=app.querySelector('.game-shell');
-  if(!shell)return;
-  shell.style.zoom='1';
-  if(!fitScreen||innerWidth<=760)return;
-  let scale=1;
-  for(let pass=0;pass<4;pass++){
-    const openLogHeight=logOpen?(app.querySelector('.combat-log ol')?.getBoundingClientRect().height||0)+5*scale:0;
-    const height=shell.getBoundingClientRect().height-openLogHeight;
-    if(height<=innerHeight-8)break;
-    scale*=(innerHeight-8)/height;
-    shell.style.zoom=String(scale);
-  }
+  const width=document.documentElement.clientWidth;
+  const height=innerHeight;
+  const scale=fitScreen?Math.min(width/1024,height/1536):Math.min(1,width/1024);
+  app.style.setProperty('--board-scale',String(scale));
+  app.style.width=`${1024*scale}px`;
+  app.style.height=`${1536*scale}px`;
+  app.style.marginTop=fitScreen?`${Math.max(0,(height-1536*scale)/2)}px`:'0px';
 }
 window.addEventListener('resize',fitBoard);
 function update(next,message) {
