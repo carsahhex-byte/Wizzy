@@ -2,17 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#11172a" />
     <meta name="wizzy-build" content="development" />
-    <meta name="description" content="Wizzy — a pixel art spell slab battle between Fire and Water. Cast a spell, face fate, refresh your hand, and pass the turn." />
-    <title>Wizzy · Battle Simulator</title>
+    <meta name="description" content="Explore a pixel Seattle, build your spell slab deck, and battle in Wizzy." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Wizzy · Seattle Awaits</title>
     <link rel="icon" type="image/svg+xml" href="./public/art/favicon.svg" />
     <link rel="stylesheet" href="./src/style.css" />
+    <link rel="stylesheet" href="./src/hub.css" />
     <script type="module" src="./src/main.js"></script>
   </head>
   <body>
-    <main id="app" aria-label="Wizzy Battle Simulator"></main>
+    <main id="hub" class="hub-root" aria-label="Wizzy"></main>
+    <section id="battle-view" aria-label="Wizzy Battle Simulator" hidden>
+      <nav class="battle-navigation" aria-label="Battle navigation"><button id="battle-home">← Home</button><span>LOCAL DUEL · FIRE / WATER</span><button id="battle-new">New duel</button></nav>
+      <div id="app" aria-label="Battle board"></div>
+    </section>
     <dialog id="handoff" class="game-dialog" aria-labelledby="handoff-title">
       <div class="dialog-portrait" id="handoff-portrait" aria-hidden="true"></div>
       <p class="eyebrow">THE BATTLE CONTINUES</p>
@@ -40,7 +47,7 @@
         <li>Click <strong>Hand Refresh</strong> to turn it red and select any number of slabs (including zero). Click it again to discard those selections, draw up to five, and <strong>pass immediately</strong>. Or click the red End Turn to pass without applying the refresh selections.</li>
       </ul>
       <div class="prototype-note"><strong>Playtest Fate sequence: attacker → defender → roll.</strong> Screen handoffs make both sides playable on this device. Next-turn Loaded bonuses do not affect spells cast during the turn they were earned.</div>
-      <p class="small-copy">The Fire v2.2 and Water v1.0 lists each contain 21 elemental, 2 Neutral, and 7 Fate slabs. Slab colors identify their type. Rules text and mana costs come from the uploaded master spellbook. Select a slab and choose Read slab for full text. Click Spell Tower to review composition without revealing draw order.</p>
+      <p class="small-copy">Build decks from Home: exactly 30 slabs, up to 3 copies per spell, and one main element plus Neutral and Fate. There are no category quotas. Rules text and mana costs come from the uploaded master spellbook. Select a slab and choose Read slab for full text. Click Spell Tower to review this battle’s actual composition.</p>
       <p class="build-version" id="build-version">Development · portrait layout</p>
       <button class="secondary-button" id="settings-deck">View spell slab decks</button>
       <button class="secondary-button" id="request-restart">Start a new duel</button>
@@ -79,7 +86,7 @@
     <dialog id="restart" class="game-dialog" aria-labelledby="restart-title">
       <p class="eyebrow">A FRESH START</p>
       <h2 id="restart-title">Begin a new duel?</h2>
-      <p>This resets both wizards and their decks. Your current duel will be replaced.</p>
+      <p>This starts with your saved Fire and Water decks. Both wizards reset, and your current duel will be replaced.</p>
       <div class="dialog-actions"><button class="secondary-button" data-close="restart">Keep playing</button><button class="gold-button" id="confirm-restart">New duel</button></div>
     </dialog>
     <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>

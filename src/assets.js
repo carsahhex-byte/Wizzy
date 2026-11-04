@@ -2,6 +2,10 @@
 import { OPTIMIZED_ART } from './optimized-art.js';
 
 export const ASSET_FILES = Object.freeze({
+  titleScene: 'Wizzy Seattle Title.png',
+  seattleMap: 'Wizzy Seattle Map.png',
+  iconAtlas: 'Wizzy Interface Icons.png',
+  appIcon: 'Wizzy App Icon.png',
   forest: 'Forest Background.png',
   fireFrame: 'Fire Stat Frame.png',
   waterFrame: 'Water Frame.png',

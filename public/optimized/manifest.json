@@ -1,4 +1,44 @@
 {
+  "titleScene": {
+    "file": "titleScene-6ff812c639b6.webp",
+    "source": "Wizzy Seattle Title.png",
+    "sourceSha256": "0d3320a47ce8bcf1370d55cf927de88175b67e9a2f4842d151082ca8e3992bbd",
+    "optimizedSha256": "6ff812c639b654d493c3b7cbb193541cfbe2605c6de834f7a5138e49d170a677",
+    "bytes": 1395128,
+    "sourceBytes": 1720888,
+    "width": 1024,
+    "height": 1536
+  },
+  "seattleMap": {
+    "file": "seattleMap-550c4d2c80db.webp",
+    "source": "Wizzy Seattle Map.png",
+    "sourceSha256": "b0fc7738d331c06a25ca53b6f0118c820b8ffd365030b8b75004704ba96b240c",
+    "optimizedSha256": "550c4d2c80dbb390243f42bfdf6c6c61914520e50eeac165e45f379f9201e37b",
+    "bytes": 2398770,
+    "sourceBytes": 2843514,
+    "width": 1024,
+    "height": 1536
+  },
+  "iconAtlas": {
+    "file": "iconAtlas-b50d0616369c.webp",
+    "source": "Wizzy Interface Icons.png",
+    "sourceSha256": "318ea01449ccb5480e8258c056f87216392bd567dc32813e3e87541436e82bf6",
+    "optimizedSha256": "b50d0616369cc01c3115d83dd5f3ef56f37742a8e708cf3298982d47dcb85658",
+    "bytes": 1486504,
+    "sourceBytes": 1973699,
+    "width": 1536,
+    "height": 1024
+  },
+  "appIcon": {
+    "file": "appIcon-1147b996c4d9.webp",
+    "source": "Wizzy App Icon.png",
+    "sourceSha256": "8aeccd7d55099243451e625a65253c3af0dc57d0137ab116dee6523db58c9233",
+    "optimizedSha256": "1147b996c4d951ffbf88381da561c698a64f264cacf759d2e19c40ebfd8092e6",
+    "bytes": 963524,
+    "sourceBytes": 1379956,
+    "width": 1254,
+    "height": 1254
+  },
   "forest": {
     "file": "forest-ee3f83c2132f.webp",
     "source": "Forest Background.png",

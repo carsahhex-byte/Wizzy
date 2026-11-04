@@ -1,6 +1,6 @@
-# Wizzy · Battle Simulator
+# Wizzy · Seattle spell slab prototype
 
-A responsive, local two-player wizard card game. Fire and Water take turns on the same screen, with separate hands, spell towers, and discard piles. Their decks use the supplied **30-slab decklists** and master spellbook definitions. The arena uses the supplied pixel-art graphics, including the forest, mages, frames, buttons, dice pair, and spell slabs.
+A mobile-first pixel-art game prototype with a title screen, a Seattle map preview, Character and Friends screens, a deck builder, and a local two-player battle arena. Fire and Water take turns on the same screen, with separate hands, spell towers, and discard piles. The supplied **30-slab decklists** are starter presets; custom decks use the same master spellbook definitions and executable effects.
 
 ## Run
 
@@ -14,13 +14,23 @@ npm start
 The server listens on port **5173**. Set `PORT` to use another port. `npm run dev` starts the same development server; refresh the browser after editing files.
 
 ```sh
-npm test          # game-engine and decklist tests
+npm test          # game-engine, deck-building, and spell-effect tests
 npm run build    # syntax validation and a static release in dist/
 npm run build:web # smaller hosted release, with separate optimized artwork
 npm run preview  # serve the built release on port 5173
 ```
 
 The release can be hosted on any static web server, including a project subpath such as `/Wizzy/`. Game saves use this browser's local storage; no player data is sent to a backend.
+
+## Screens and deck building
+
+The title screen opens a Home map showing a rough pixel-art Seattle, with Northgate, Rainier Beach, Magnolia, Magnuson Park, greyed-out West Seattle, and a Pike Place marker. It is a visual preview rather than GPS navigation or a location unlock system. Home links to Character, Deck, Friends, and the temporary Battle shortcut. The Character screen keeps a local wizard name and Fire/Water choice. Friends is a navigable preview screen; accounts, invitations, online battles, and messaging are not connected in this release.
+
+The deck builder places a scrollable selected-deck list in the upper half and a slab collection in the lower half. Check a slab to add its first copy, use the quantity controls to add or remove further copies, and uncheck it to remove all copies. Filters cover All, Fire, Water, Neutral, Fate, and slabs currently in the deck. All 29 imported spells can be inspected; only slabs eligible for the chosen main element can be added.
+
+A saved deck must contain **exactly 30 slabs**, with **at most 3 copies of any spell**, and choose **one main element: Fire or Water**. Neutral and Fate slabs are allowed with either element. The starter decks' 21 Elemental / 2 Neutral / 7 Fate split is a preset composition, not a construction requirement. Incomplete drafts may be edited, but only valid full decks can be saved for battle. Fire and Water drafts and saved decks are retained separately in local browser storage. Saving a deck does not alter an ongoing duel; starting a fresh duel uses the saved compositions.
+
+The Battle shortcut opens the playable shared-screen arena and provides a route back to Home. Native iPhone packaging, signing, and TestFlight distribution remain a later step.
 
 ## Hosting on GitHub Pages
 
@@ -42,7 +52,7 @@ For a no-install version, build the project and open **`dist/wizzy.html`** direc
 
 ## Artwork and layout
 
-The uploaded PNGs remain unmodified in `public/graphics/`, including graphics reserved for later updates. `src/assets.js` maps the graphics used by this version and records crop metadata that hides transparent export margins at rendering time. Pixel rendering keeps the art crisp. The hand frame uses nine-slice layout so its corners remain intact as the card area changes size.
+The uploaded PNGs remain unmodified in `public/graphics/`, including graphics reserved for later updates. New AI-generated title, Seattle map, icon, and app artwork provide the mobile preview. `src/assets.js` maps the graphics used by this version and records crop metadata that hides transparent export margins at rendering time. Pixel rendering keeps the art crisp. The hand frame uses nine-slice layout so its corners remain intact as the card area changes size.
 
 The hosted build uses the required images from `public/optimized/`, encoded as lossless WebP with content-hashed filenames for caching. Their decoded RGBA pixels are byte-for-byte identical to the originals, and they load separately rather than being embedded in the HTML. Original and unused artwork and the large standalone download are excluded from the hosted release.
 
@@ -50,7 +60,7 @@ Elemental **Fire** slabs use the fiery-comet graphic and elemental **Water** sla
 
 After replacing source PNGs, regenerate their optimized copies with `npm run optimize:art`. That optional authoring command requires Python and Pillow with WebP support; running, testing, building, and deploying the retained files require only Node.js and Git. The web build verifies source and optimized SHA-256 hashes and rejects stale or damaged copies.
 
-The entire game uses the forest's original **1024 × 1536 (2:3 portrait)** canvas. One uniform scale fits it to the available screen; the forest is never stretched or cropped to widen the board. On Mac screens, its top and bottom meet the viewport edges, with side gutters. Narrower screens fit the width and center the board vertically.
+The battle arena uses the forest's original **1024 × 1536 (2:3 portrait)** canvas. One uniform scale fits it to the available screen; the forest is never stretched or cropped to widen the board. On Mac screens, its top and bottom meet the viewport edges, with side gutters. Narrower screens fit the width and center the board vertically. The other screens use a mobile layout that adapts to the viewport, with independently scrolling deck panels.
 
 Wizards stand on the grass around logical y450. Stat panels begin at y480, with the hand and turn controls on the stone-and-dirt area below. The hand has three slabs in the top row and up to two centered in the bottom row, with the discard and tower signs at its sides. The refresh drawer keeps its existing behavior, and the combat log opens over the board without changing the forest dimensions.
 
@@ -76,7 +86,7 @@ Use **Larger view** for a larger, scrollable portrait board and **Fit screen** t
 - Passing shows a handoff dialog before the next wizard begins; Fate decisions also use local handoffs when control changes.
 - Spell tower and discard counts follow the active wizard and update with card movement.
 - Select a slab and use **Read Slab** to inspect its complete printed rules. Clicking the **Spell Tower** or using the deck option in Settings opens that wizard's full composition and quantities; it does not reveal the hidden draw order.
-- Combat log, new-duel confirmation, and validated browser save/resume are included. Save version 6 preserves current duels, including the primary-spell allowance, selected Fate batches, paid pending spells, dice results, and refresh progress. Valid version 5 saves retain all progress while capping any stored Water Flow above 5. Version 4 saves retain stats, resources, queued Loaded, card zones, and pending Fate/dice progress; a selected Fate slab becomes a batch selection, and current-turn pending spells or cast log entries determine whether the primary allowance is already spent. Valid version 3 preview saves retain stats, turn progress, and card zones; any unfinished unpaid preview spell is cancelled without retroactive costs, discarded slabs, or effects. Older valid 24-card sample saves first gain six slabs in each Spell Tower to reach the actual decklists. Every older-save upgrade also caps stored Water Flow at 5. The combat log records upgrades.
+- Combat log, new-duel confirmation, and validated browser save/resume are included. Save version 7 records each wizard's complete starting deck definition alongside current zones, primary-spell allowance, selected Fate batches, paid pending spells, dice results, and refresh progress. Valid version 6 saves retain progress and gain their original starter deck definitions. Version 5 upgrades retain progress while capping any stored Water Flow above 5. Version 4 upgrades also preserve paid spell, Fate, dice, and queued Loaded progress; a selected Fate slab becomes a batch selection, and current-turn pending spells or cast log entries determine whether the primary allowance is already spent. Valid version 3 preview saves retain stats, turn progress, and card zones; any unfinished unpaid preview spell is cancelled without retroactive costs, discarded slabs, or effects. Older valid 24-card sample saves first gain six slabs in each Spell Tower to reach the actual decklists. Every older-save upgrade also caps stored Water Flow at 5. The combat log records upgrades.
 
 ## Spell slabs and decklists
 
@@ -86,7 +96,7 @@ The source documents define the deck composition and printed spell metadata:
 - **Water v1.0**: 15 distinct spells, 30 slabs.
 - Each deck contains **21 Elemental, 2 Neutral, and 7 Fate** slabs.
 
-`src/spells.js` contains 29 catalog definitions within the current scope: 12 Fire, 10 Water, 4 Neutral, and 3 Fate. All 26 Fire, Water, and Neutral effects and all 3 Fate effects are implemented. Exactly 25 distinct spells appear across the two playable decks; unused definitions remain executable for later decks. Earth and Air have not been imported or given effect logic. Water's zero-copy Ward and Legacy Shield reference rows create no playable slabs.
+`src/spells.js` contains 29 catalog definitions within the current scope: 12 Fire, 10 Water, 4 Neutral, and 3 Fate. All 26 Fire, Water, and Neutral effects and all 3 Fate effects are implemented. Exactly 25 distinct spells appear across the two starter decks; the deck builder makes all imported definitions available subject to element and copy rules. Earth and Air have not been imported or given effect logic. Water's zero-copy Ward and Legacy Shield reference rows create no starter copies, but those Neutral spells can be added in the builder.
 
 Printed names, mana costs, and complete effect text come from the uploaded master spellbook PDF, which identifies `MASTER_SPELLBOOK.xlsx` as its source. No spreadsheet file was uploaded. Card descriptions retain that master text verbatim; rules such as next-turn Loaded and post-resolution Flow gains are implemented separately.
 
@@ -101,9 +111,12 @@ The in-game settings/handbook describes the active rules and local two-player fl
 ## Project structure
 
 - `src/spells.js` — master spell metadata, exact Fire/Water deck quantities, and PDF source references.
+- `src/decks.js` — deck construction, validation, starter presets, and copy limits.
 - `src/effects.js` — executable Fire, Water, and Neutral effects, roll requirements, and Ember-spending choices.
 - `src/game.js` — pure game-state transitions, fate/refresh phases, slab instances, save validation and migration.
-- `src/main.js` — interface rendering, interactions, browser persistence.
+- `src/main.js` — battle rendering, interactions, browser persistence, and hub integration.
+- `src/hub.js` — title, Home, Character, Friends, and deck-builder screens with local profile/deck persistence.
+- `src/hub.css` — mobile hub layout, pixel-styled controls, and independently scrolling deck panels.
 - `src/style.css` — responsive arena and card styling.
 - `src/assets.js` — uploaded graphic mapping and rendering crop metadata.
 - `src/optimized-art.js` — generated filenames and integrity hashes for hosted artwork.
@@ -111,6 +124,7 @@ The in-game settings/handbook describes the active rules and local two-player fl
 - `public/optimized/` — pixel-identical, hashed WebP copies and generation manifest.
 - `public/art/` — earlier prototype art and the application favicon.
 - `test/game.test.js` — phase locks, refresh, conservation, drawing, damage, victory, and save tests.
+- `test/decks.test.js` — full-deck and draft validation, element restrictions, quantities, and copy limits.
 - `docs/decklists.md` — reviewable deck composition and metadata source documentation.
 - `scripts/` — Node server, static build, GitHub Pages deployment, and optional artwork optimizer.
 

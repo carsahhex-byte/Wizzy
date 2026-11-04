@@ -5,7 +5,10 @@ import { ASSET_FILES } from '../src/assets.js';
 import { OPTIMIZED_ART } from '../src/optimized-art.js';
 
 const webOnly = process.argv.includes('--web');
-for (const file of ['src/optimized-art.js', 'src/assets.js', 'src/spells.js', 'src/effects.js', 'src/game.js', 'src/main.js']) execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
+// Dependencies precede their importers in both the hosted and standalone builds.
+const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'assets.js', 'hub.js', 'main.js'];
+const styleNames = ['style.css', 'hub.css'];
+for (const filename of moduleNames) execFileSync(process.execPath, ['--check', `src/${filename}`], { stdio: 'inherit' });
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist');
 for (const file of ['index.html', 'src']) await cp(file, `dist/${file}`, { recursive: true });
@@ -36,7 +39,7 @@ if (webOnly) {
   // Hash every module after rewriting its dependency paths. Hashing only the
   // entry point would still let a browser reuse stale imported modules.
   const emitted = new Map();
-  for (const filename of ['optimized-art.js', 'spells.js', 'effects.js', 'game.js', 'assets.js', 'main.js']) {
+  for (const filename of moduleNames) {
     const original = await readFile(`src/${filename}`, 'utf8');
     const code = original.replace(/(from\s+)(['"])(\.\/[^'"]+)\2/g, (match, prefix, quote, specifier) => {
       const dependency = emitted.get(specifier.slice(2));
@@ -48,34 +51,61 @@ if (webOnly) {
     await writeFile(`dist/src/${outputName}`, code);
     emitted.set(filename, outputName);
   }
-  const css = await readFile('src/style.css', 'utf8');
-  const cssHash = createHash('sha256').update(css).digest('hex').slice(0, 12);
-  const stylesheet = `./src/style.${cssHash}.css`;
+  const stylesheets = [];
+  for (const filename of styleNames) {
+    const css = await readFile(`src/${filename}`, 'utf8');
+    const cssHash = createHash('sha256').update(css).digest('hex').slice(0, 12);
+    const outputName = filename.replace(/\.css$/, `.${cssHash}.css`);
+    await writeFile(`dist/src/${outputName}`, css);
+    stylesheets.push(`./src/${outputName}`);
+  }
+  const stylesheet = stylesheets[0];
   const entry = `./src/${emitted.get('main.js')}`;
-  await writeFile(`dist/src/style.${cssHash}.css`, css);
   let html = await readFile('index.html', 'utf8');
-  const id = createHash('sha256').update(html).update(entry).update(stylesheet).digest('hex').slice(0, 12);
-  html = html.replace('href="./src/style.css"', `href="${stylesheet}"`)
-    .replace('src="./src/main.js"', `src="${entry}"`)
+  const id = createHash('sha256').update(html).update(entry).update(stylesheets.join('\n')).digest('hex').slice(0, 12);
+  styleNames.forEach((filename, index) => { html = html.replace(`href="./src/${filename}"`, `href="${stylesheets[index]}"`); });
+  html = html.replace('src="./src/main.js"', `src="${entry}"`)
     .replace('name="wizzy-build" content="development"', `name="wizzy-build" content="${id}"`)
     .replace('Development · portrait layout', `Build ${id} · portrait layout`);
   await writeFile('dist/index.html', html);
-  await writeFile('dist/build-info.json', JSON.stringify({ id, layout: 'portrait-1024x1536', entry, stylesheet }, null, 2) + '\n');
+  await writeFile('dist/build-info.json', JSON.stringify({ id, layout: 'portrait-1024x1536', screens: ['title', 'home', 'character', 'friends', 'decks', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
   console.log(`Built hosted game ${id} with content-hashed modules, styles, and artwork.`);
   process.exit(0);
 }
 
 // A self-contained edition lets players open the prototype without a server.
 let html = await readFile('index.html', 'utf8');
-const css = await readFile('src/style.css', 'utf8');
 const standaloneAssets = {};
 for (const [key, filename] of Object.entries(ASSET_FILES)) {
   standaloneAssets[key] = `data:image/png;base64,${(await readFile(`public/graphics/${filename}`)).toString('base64')}`;
 }
-const stripModuleSyntax = (source) => source
-  .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];?\s*/gm, '')
-  .replace(/^export\s+/gm, '');
-const code = (await Promise.all(['src/optimized-art.js', 'src/assets.js', 'src/spells.js', 'src/effects.js', 'src/game.js', 'src/main.js'].map(async file => stripModuleSyntax(await readFile(file, 'utf8'))))).join('\n');
+// Keep each module's scope intact so private helpers in the hub, deck builder,
+// and battle engine can share names. The project uses only local named imports
+// and named exports; reject unsupported forms rather than silently misbundle.
+const bundleModule = (filename, source) => {
+  const names = new Set();
+  let body = source.replace(/^import\s+(\{[\s\S]*?\})\s+from\s+(['"])(\.\/[^'"]+)\2;?\s*/gm, (match, bindings, quote, specifier) => {
+    const dependency = specifier.slice(2);
+    if (moduleNames.indexOf(dependency) >= moduleNames.indexOf(filename) || !moduleNames.includes(dependency)) {
+      throw new Error(`Emit dependency ${specifier} before ${filename}`);
+    }
+    return `const ${bindings.replace(/\bas\b/g, ':')} = __wizzyModules[${JSON.stringify(dependency)}];\n`;
+  });
+  body = body.replace(/^export\s*\{([^}]+)\};?\s*/gm, (match, exports) => {
+    for (const item of exports.split(',')) {
+      const name = item.trim();
+      if (!/^[A-Za-z_$][\w$]*$/.test(name)) throw new Error(`Unsupported export in ${filename}: ${name}`);
+      names.add(name);
+    }
+    return '';
+  }).replace(/^export\s+(const|let|function)\s+([A-Za-z_$][\w$]*)/gm, (match, kind, name) => {
+    names.add(name);
+    return `${kind} ${name}`;
+  });
+  if (/^\s*(?:import|export)\s/m.test(body)) throw new Error(`Unsupported module syntax in ${filename}`);
+  return `__wizzyModules[${JSON.stringify(filename)}] = (() => {\n${body}\nreturn { ${[...names].join(', ')} };\n})();`;
+};
+const code = 'const __wizzyModules = Object.create(null);\n' + (await Promise.all(moduleNames.map(async filename => bundleModule(filename, await readFile(`src/${filename}`, 'utf8'))))).join('\n');
 await writeFile('dist/.standalone-check.mjs', code);
 try {
   execFileSync(process.execPath, ['--check', 'dist/.standalone-check.mjs'], { stdio: 'inherit' });
@@ -84,7 +114,10 @@ try {
 }
 const favicon = `data:image/svg+xml;base64,${(await readFile('public/art/favicon.svg')).toString('base64')}`;
 html = html.replace('./public/art/favicon.svg', favicon);
-html = html.replace(/<link\s+rel="stylesheet"\s+href="\.\/src\/style\.css"\s*\/>/, () => `<style>${css}</style>`);
+for (const filename of styleNames) {
+  const css = await readFile(`src/${filename}`, 'utf8');
+  html = html.replace(`<link rel="stylesheet" href="./src/${filename}" />`, () => `<style>${css}</style>`);
+}
 const safeScript = (source) => source.replace(/<\/script/gi, '<\\/script');
 html = html.replace(/<script\s+type="module"\s+src="\.\/src\/main\.js"><\/script>/, () => `<script>globalThis.WIZZY_ASSET_URLS=${JSON.stringify(standaloneAssets)};</script>\n<script type="module">${safeScript(code)}</script>`);
 await writeFile('dist/wizzy.html', html);

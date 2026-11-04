@@ -1,6 +1,6 @@
 # Fire and Water spell slab decklists
 
-These tables reproduce the supplied initial-test deck compositions. Each physical copy receives its own game instance ID while retaining the canonical master spell ID below.
+These tables reproduce the supplied initial-test starter deck compositions. Each physical copy receives its own game instance ID while retaining the canonical master spell ID below. They remain available as presets in the deck builder.
 
 ## Source documents
 
@@ -8,7 +8,13 @@ These tables reproduce the supplied initial-test deck compositions. Each physica
 - **Fire composition:** `Wizzy Fire Decklist Nov3.pdf`, version **2.2**, revised **November 3, 2026**.
 - **Water composition:** `Wizzy_Water_Deck_v1_0_Final.pdf`, version **1.0**, finalized composition.
 
-Only Fire, Water, Neutral, and Fate definitions are imported. The active-scope catalog contains **29** spells: Fire 12, Water 10, Neutral 4, and Fate 3. All **26 Fire/Water/Neutral effects** and **3 Fate effects** are implemented, including catalog spells with no copies in these decks. The playable decks use **25 distinct spells** in total. Earth and Air are outside this update and have no new effect logic.
+Only Fire, Water, Neutral, and Fate definitions are imported. The active-scope catalog contains **29** spells: Fire 12, Water 10, Neutral 4, and Fate 3. All **26 Fire/Water/Neutral effects** and **3 Fate effects** are implemented, including catalog spells with no copies in these decks. The starter decks use **25 distinct spells** in total. All 29 imported definitions are available in the deck builder subject to the construction rules below. Earth and Air are outside this update and have no new effect logic.
+
+## Custom deck construction
+
+Every saved deck contains **exactly 30 slabs**, with **at most 3 copies of one spell**. Choose **Fire or Water** as its main element; it may include that element's spells plus any Neutral and Fate spells. Fire and Water elemental spells cannot be mixed. There is no required category split: **21 Elemental / 2 Neutral / 7 Fate** describes the supplied starter presets only.
+
+The builder keeps the selected list and quantities in the upper half and selectable slab collection in the lower half. It supports element/category filters and an **In Deck** filter. Checking a slab adds its first copy; quantity controls handle further copies, and unchecking removes all copies. Valid saved Fire and Water decks and incomplete editor drafts are retained separately on the current device. Starting a new battle uses the saved decks; editing a deck does not change an existing duel.
 
 ## Card categories and artwork
 
@@ -80,7 +86,7 @@ Every slab uses its own name, printed mana cost, and verbatim `effectText` from 
 | Fate | 7 |
 | **Total** | **30** |
 
-Ward (`NEU-001`) and Legacy Shield (`NEU-003`) have **zero copies** in the Water PDF. They remain catalog definitions but are not instantiated in the Water deck.
+Ward (`NEU-001`) and Legacy Shield (`NEU-003`) have **zero copies** in the Water PDF. They are not instantiated in the Water starter deck, but both are available as Neutral choices in the deck builder.
 
 ## Playable rules
 
@@ -95,10 +101,10 @@ Ward (`NEU-001`) and Legacy Shield (`NEU-003`) have **zero copies** in the Water
 - New Loaded bonuses queue for the caster's **next own turn**, stack, and are consumed by the first roll on that turn. If no roll uses them, they expire at that turn's end. New bonuses cannot affect rolls on the turn when they are gained.
 - After spell resolution, clicking **End Turn** reveals **Hand Refresh** and turns **End Turn** red. Clicking **End Turn** again passes without refreshing. Clicking **Hand Refresh** enters selection and also turns it red; select any number of slabs, including zero, then click **Hand Refresh** again to discard them, draw up to five, and immediately pass. **End Turn** during refresh selection instead passes without refreshing or discarding staged selections. A turn cannot end while a spell or Fate decisions are pending.
 - **Read Slab** exposes the full text of a selected slab. The Spell Tower composition view lists the entire deck and quantities without revealing draw order.
-- Version **6** saves resume current duels, including the primary-spell allowance and selected Fate batches. Version 5 upgrades preserve all progress and cap any stored Water Flow above 5. Version 4 upgrades retain stats, resources, queued Loaded, card zones, pending paid spells, and Fate/dice progress. A selected Fate slab becomes a batch selection; pending spells or the current turn's cast log determine whether its primary allowance has already been spent. Valid version 3 preview saves retain stats, turn progress, and their card zones. Any unfinished unpaid preview spell is safely cancelled without retroactive charges, card movement, or effects. Valid older 24-card sample saves first receive six additional slabs in each tower and actual decklist identities. Every older-save upgrade also caps Water Flow at 5; the log records upgrades.
+- Version **7** saves retain each wizard's complete starting deck definition alongside the current card zones, primary-spell allowance, and selected Fate batches. Version 6 upgrades retain progress and add the original starter definitions. Version 5 upgrades preserve progress and cap any stored Water Flow above 5. Version 4 upgrades retain stats, resources, queued Loaded, card zones, pending paid spells, and Fate/dice progress. A selected Fate slab becomes a batch selection; pending spells or the current turn's cast log determine whether its primary allowance has already been spent. Valid version 3 preview saves retain stats, turn progress, and their card zones. Any unfinished unpaid preview spell is safely cancelled without retroactive charges, card movement, or effects. Valid older 24-card sample saves first receive six additional slabs in each tower and actual decklist identities. Every older-save upgrade also caps Water Flow at 5; the log records upgrades.
 
 ## Verification
 
 `src/spells.js` was compared programmatically against the text extracted from the supplied PDFs. All 29 imported spell names, elements, categories, mana costs, and complete effect texts matched the master spellbook. Both playable ID-to-copy maps matched their decklists exactly. Zero-copy Water reference rows are intentionally excluded from playable copies.
 
-Automated coverage includes printed costs, threshold branches, Shield and self-damage, healing limits, Ember-spending choices, Flow timing, replacement gains and its five-point cap, Fate roles and batch order, the one-primary-per-turn limit, next-turn Loaded use and expiry, refresh confirmation and passing, card conservation, and save migration. The effect implementation does not change the deck quantities above.
+Automated coverage includes full and draft deck validation, element restrictions, three-copy limits, custom-deck card conservation, printed costs, threshold branches, Shield and self-damage, healing limits, Ember-spending choices, Flow timing, replacement gains and its five-point cap, Fate roles and batch order, the one-primary-per-turn limit, next-turn Loaded use and expiry, refresh confirmation and passing, and save migration. Custom construction leaves the starter preset quantities above unchanged.

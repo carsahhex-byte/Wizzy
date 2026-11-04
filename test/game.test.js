@@ -92,7 +92,7 @@ function previewPhases(base) {
 
 test('opening stats, four-card hands and exact 30-slab deck quantities match the PDF lists', () => {
   const state = createGame(7);
-  assert.deepEqual([state.round, state.activePlayer, state.phase, SAVE_VERSION, DECK_SIZE], [1, 0, 'main', 6, 30]);
+  assert.deepEqual([state.round, state.activePlayer, state.phase, SAVE_VERSION, DECK_SIZE], [1, 0, 'main', 7, 30]);
   assert.deepEqual([state.primaryUsed, state.selectedFateCardIds], [false, []]);
   const expectedCounts = {
     fire: { 'FIR-001': 1, 'FIR-002': 2, 'FIR-004': 2, 'FIR-005': 3, 'FIR-006': 3, 'FIR-007': 2, 'FIR-010': 2, 'FIR-011': 3, 'FIR-012': 3, 'FAT-001': 3, 'FAT-002': 2, 'FAT-003': 2, 'NEU-004': 1, 'NEU-003': 1 },
@@ -649,11 +649,11 @@ test('v5 Flow upgrade preserves every phase, selection, slab and resource while 
   for (const current of [main, attacking, defending, selected, rolling, resolving, resolved, ending, refreshing, finished]) {
     const source = structuredClone(current); source.version = 5; source.players[1].element = 9;
     const original = structuredClone(source); const upgraded = migrateSavedGame(source);
-    assertGame(upgraded); assert.equal(upgraded.version, 6); assert.equal(upgraded.players[1].element, 5);
+    assertGame(upgraded); assert.equal(upgraded.version, SAVE_VERSION); assert.equal(upgraded.players[1].element, 5);
     const expected = structuredClone(source); expected.players[1].element = 5;
     for (const key of ['round', 'activePlayer', 'status', 'winner', 'phase', 'primaryUsed', 'selectedCardId', 'selectedFateCardIds', 'pendingCardId', 'pendingSpell', 'fatePlayer', 'lastRoll', 'refreshCardIds', 'players']) assert.deepEqual(upgraded[key], expected[key], key);
     assert.deepEqual(upgraded.log.slice(0, source.log.length), source.log);
-    assert.match(upgraded.log.at(-1).message, /capped from 9 to 5/);
+    assert.ok(upgraded.log.some((entry) => /capped from 9 to 5/.test(entry.message)));
     assert.deepEqual(source, original, 'migration never mutates the previous saved game');
     assert.equal(migrateSavedGame(upgraded), upgraded, 'reloading does not award more Flow');
   }
@@ -684,5 +684,140 @@ test('older v3 and v4 saves also cap Flow without reducing Fire Embers or other 
     const migrated = migrateSavedGame(source); assertGame(migrated);
     assert.deepEqual(migrated.players.map((p) => p.element), [source.players[0].element, 5]);
     assert.deepEqual(migrated.players.map((p) => p.hp), source.players.map((p) => p.hp));
+  }
+});
+
+// Custom lists deliberately use a different Elemental/Neutral/Fate split.
+function customDeck(element) {
+  const elemental = element === 'fire'
+    ? ['FIR-001', 'FIR-002', 'FIR-003', 'FIR-004', 'FIR-005']
+    : ['WAT-001', 'WAT-002', 'WAT-003', 'WAT-004', 'WAT-006'];
+  const shared = element === 'fire'
+    ? ['NEU-001', 'NEU-002', 'NEU-004', 'FAT-001', 'FAT-003']
+    : ['NEU-001', 'NEU-002', 'NEU-004', 'FAT-002', 'FAT-003'];
+  return { element, entries: [...elemental, ...shared].map((spellId) => ({ spellId, quantity: 3 })) };
+}
+
+test('custom Fire and Water compositions deal exactly the chosen 30 slabs without composition quotas', () => {
+  const configs = { fire: customDeck('fire'), water: customDeck('water') };
+  const original = structuredClone(configs);
+  const state = createGame(31, configs);
+  assertGame(state); assert.deepEqual(configs, original);
+  for (const player of state.players) {
+    assert.deepEqual([player.hand.length, player.deck.length, player.discard.length], [4, 26, 0]);
+    assert.deepEqual([player.hp, player.mana, player.element, player.loaded], [30, 3, 0, 0]);
+    assert.deepEqual(['Elemental', 'Neutral', 'Fate'].map((category) => allCards(player).filter((card) => card.category === category).length), [15, 9, 6]);
+    for (const { spellId, quantity } of configs[player.id].entries) {
+      assert.equal(allCards(player).filter((card) => card.spellId === spellId).length, quantity);
+    }
+    assert.equal(new Set(allCards(player).map((card) => card.id)).size, 30);
+    assert.notEqual(player.deckDefinition, configs[player.id]);
+    assert.notEqual(player.deckDefinition.entries, configs[player.id].entries);
+  }
+  configs.fire.entries[0].quantity = 1;
+  assert.equal(state.players[0].deckDefinition.entries.find((entry) => entry.spellId === 'FIR-001').quantity, 3);
+});
+
+test('custom deck shuffles are deterministic independently of editor entry order and optional defaults remain starters', () => {
+  const fire = customDeck('fire');
+  const left = createGame(32, { fire });
+  const right = createGame(32, { fire: { ...fire, entries: fire.entries.toReversed() } });
+  assert.deepEqual(left, right);
+  assert.deepEqual(left.players[1], createGame(32, { fire }).players[1]);
+  assert.deepEqual(Object.fromEntries(left.players[1].deckDefinition.entries.map(({ spellId, quantity }) => [spellId, quantity])),
+    Object.fromEntries(DECK_LISTS.water.map(({ spellId, quantity }) => [spellId, quantity])));
+  assert.notDeepEqual(allCards(left.players[0]).map((card) => card.id), allCards(createGame(33, { fire }).players[0]).map((card) => card.id));
+});
+
+test('custom-deck spells, Fate, dice, resource timing and reloads work through all combat and refresh phases', () => {
+  const base = handOf(createGame(34, { fire: customDeck('fire'), water: customDeck('water') }), 0, ['NEU-001', 'FIR-003', 'FIR-004', 'FAT-001', 'FAT-003']);
+  handOf(base, 1, ['WAT-001', 'FAT-002', 'FAT-003', 'NEU-004']);
+  base.players[0].mana = 10;
+  let state = cast(base, 'NEU-001');
+  assert.deepEqual([state.players[0].shield, state.players[0].loadedPending, state.players[0].discard.length, state.primaryUsed], [3, 2, 1, true]);
+  state = pass(state); state = pass(cast(state, 'WAT-001'));
+  assert.deepEqual([state.players[0].shield, state.players[0].loaded, state.players[1].element], [2, 2, 1]);
+  const attacking = cast(state, 'FIR-004');
+  const selected = selectCard(selectCard(attacking, attacking.players[0].hand.find((card) => card.spellId === 'FAT-001').id), attacking.players[0].hand.find((card) => card.spellId === 'FAT-003').id);
+  const defending = castFateSelected(selected);
+  const defenderSelected = selectCard(selectCard(defending, defending.players[1].hand.find((card) => card.spellId === 'FAT-002').id), defending.players[1].hand.find((card) => card.spellId === 'FAT-003').id);
+  const rolling = castFateSelected(defenderSelected);
+  const resolving = rollDice(rolling, () => .5);
+  const resolved = resolveSpell(resolving);
+  assert.deepEqual([resolved.lastRoll.total, resolved.players[1].hp, resolved.players[0].element], [10, 27, 2]);
+  const ending = endTurn(resolved);
+  const refreshing = toggleRefreshCard(beginRefresh(ending), resolved.players[0].hand[0].id);
+  for (const current of [base, state, attacking, selected, defending, defenderSelected, rolling, resolving, resolved, ending, refreshing, confirmRefresh(refreshing)]) {
+    assertGame(current);
+    const saved = JSON.parse(JSON.stringify(current));
+    assert.equal(validateSavedGame(saved), true, current.phase);
+    assert.equal(migrateSavedGame(saved), saved);
+    assert.deepEqual(saved.players.map((player) => player.deckDefinition), base.players.map((player) => player.deckDefinition));
+    for (const player of saved.players) assert.equal(allCards(player).length, 30);
+  }
+});
+
+test('creation rejects incomplete, over-copy, mixed-element and mismatched custom decks', () => {
+  const incomplete = customDeck('fire'); incomplete.entries[0].quantity = 2;
+  const overCopy = customDeck('fire'); overCopy.entries[0].quantity = 4; overCopy.entries[1].quantity = 2;
+  const mixed = customDeck('fire'); mixed.entries[0].spellId = 'WAT-001';
+  const unknown = customDeck('fire'); unknown.entries[0].spellId = '???';
+  for (const fire of [incomplete, overCopy, mixed, unknown, customDeck('water'), null, undefined]) {
+    assert.throws(() => createGame(35, { fire }));
+  }
+  for (const configs of [null, [], new Date(), { earth: customDeck('fire') }]) assert.throws(() => createGame(35, configs));
+});
+
+test('custom save validation checks deck identity and exact owned quantities after cards move zones', () => {
+  const base = createGame(36, { fire: customDeck('fire'), water: customDeck('water') });
+  const mutations = [
+    (s) => { delete s.players[0].deckDefinition; },
+    (s) => { s.players[0].deckDefinition = customDeck('water'); },
+    (s) => { s.players[0].deckDefinition.entries[0].quantity = 4; s.players[0].deckDefinition.entries[1].quantity = 2; },
+    (s) => { s.players[0].deckDefinition.entries[0].spellId = 'WAT-001'; },
+    (s) => { s.players[0].deckDefinition.entries[0].quantity = 2; },
+    (s) => { s.players[0].deckDefinition.entries[0].quantity = 2; s.players[0].deckDefinition.entries.push({ spellId: 'FIR-006', quantity: 1 }); },
+    (s) => { s.players[0].deckDefinition.entries.push(s.players[0].deckDefinition.entries[0]); },
+  ];
+  for (const mutate of mutations) {
+    const source = structuredClone(base); mutate(source);
+    assert.equal(validateSavedGame(source), false);
+    assert.equal(migrateSavedGame(source), null);
+  }
+});
+
+test('v6 starter duels migrate every phase without replacing cards, resources or paid pending decisions', () => {
+  const base = handOf(createGame(37), 0, ['FIR-004', 'FIR-002', 'FAT-001', 'FAT-003']);
+  handOf(base, 1, ['FAT-002', 'FAT-003', 'WAT-001']);
+  base.players[0].mana = 10; base.players[1].element = 4;
+  const attacking = cast(base, 'FIR-004');
+  const selected = selectCard(selectCard(attacking, base.players[0].hand[2].id), base.players[0].hand[3].id);
+  const defending = castFateSelected(selected);
+  const rolling = skipFate(defending); const resolving = rollDice(rolling, () => .5); const resolved = resolveSpell(resolving);
+  const ended = endTurn(resolved); const refresh = toggleRefreshCard(beginRefresh(ended), resolved.players[0].hand[0].id);
+  for (const current of [base, attacking, selected, defending, rolling, resolving, resolved, ended, refresh, confirmRefresh(refresh), applyDamage(resolved, 1, 100)]) {
+    const previous = structuredClone(current); previous.version = 6;
+    for (const player of previous.players) delete player.deckDefinition;
+    const original = structuredClone(previous);
+    const upgraded = migrateSavedGame(previous); assertGame(upgraded);
+    assert.equal(upgraded.version, 7);
+    for (const key of ['round', 'activePlayer', 'phase', 'status', 'winner', 'primaryUsed', 'selectedCardId', 'selectedFateCardIds', 'pendingCardId', 'pendingSpell', 'fatePlayer', 'lastRoll', 'refreshCardIds']) assert.deepEqual(upgraded[key], previous[key], key);
+    upgraded.players.forEach((player, index) => {
+      const { deckDefinition, ...progress } = player;
+      assert.deepEqual(progress, previous.players[index]);
+      assert.equal(deckDefinition.element, player.id);
+      assert.deepEqual(Object.fromEntries(deckDefinition.entries.map(({ spellId, quantity }) => [spellId, quantity])), Object.fromEntries(DECK_LISTS[player.id].map(({ spellId, quantity }) => [spellId, quantity])));
+    });
+    assert.deepEqual(upgraded.log.slice(0, previous.log.length), previous.log);
+    assert.deepEqual(previous, original);
+  }
+  for (const mutate of [
+    (s) => { s.players[1].element = 6; },
+    (s) => { s.players[0].hand[0].name = 'Forged spell'; },
+    (s) => { s.selectedFateCardIds = [s.players[0].hand[1].id]; },
+  ]) {
+    const previous = structuredClone(selected); previous.version = 6;
+    for (const player of previous.players) delete player.deckDefinition;
+    mutate(previous); assert.equal(migrateSavedGame(previous), null);
   }
 });
