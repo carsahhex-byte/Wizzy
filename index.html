@@ -4,11 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#11172a" />
+    <meta name="wizzy-build" content="843c3f934d62" />
     <meta name="description" content="Wizzy — a pixel art card battle between Fire and Water. Cast a spell, face fate, refresh your hand, and pass the turn." />
     <title>Wizzy · Battle Simulator</title>
     <link rel="icon" type="image/svg+xml" href="./public/art/favicon.svg" />
-    <link rel="stylesheet" href="./src/style.css" />
-    <script type="module" src="./src/main.js"></script>
+    <link rel="stylesheet" href="./src/style.a276857a9692.css" />
+    <script type="module" src="./src/main.a076b82d8c3b.js"></script>
   </head>
   <body>
     <main id="app" aria-label="Wizzy Battle Simulator"></main>
@@ -36,6 +37,7 @@
       </ul>
       <div class="prototype-note"><strong>Card effects, fate cards, and dice rules are coming next.</strong> No costs, damage, or random dice outcomes are invented. Skip Fate currently resolves the card flow only. Dice display the supplied artwork.</div>
       <p class="small-copy">Each wizard has a temporary 24-card deck: Fiery Comet for Fire and Cresting Wave for Water. If a tower runs out, drawing stops. Browser saves resume your current phase; older duels are upgraded to Water automatically.</p>
+      <p class="build-version" id="build-version">Build 843c3f934d62 · portrait layout</p>
       <button class="secondary-button" id="request-restart">Start a new duel</button>
     </dialog>
     <dialog id="restart" class="game-dialog" aria-labelledby="restart-title">
