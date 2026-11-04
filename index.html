@@ -28,15 +28,18 @@
       <p>A duel for <strong>two players sharing a screen</strong>, using your original pixel art. Each wizard has their own hand, spell tower, and discard pile.</p>
       <ul class="rules-list">
         <li>Start with <strong>30 HP, 3 mana, and 4 spell slabs</strong>. Each deck has 30 slabs, leaving 26 in the opening tower. Shield, Embers/Flow, and loaded dice start at zero.</li>
-        <li>Both wizards take one turn per round. At the beginning of every round after the first, both gain <strong>2 mana</strong>. Unspent mana carries over.</li>
+        <li>Both wizards take one turn per round. Each gains <strong>2 mana at the start of their own turn after their opening turn</strong>. Unspent mana carries over.</li>
         <li>After each wizard’s opening turn, draw up to <strong>5 slabs at the beginning of their turn</strong>.</li>
-        <li>Select a slab, then click <strong>Cast Spell</strong>. The button becomes <strong>Skip Fate</strong> and all hand slabs are greyed out.</li>
-        <li>Click <strong>Skip Fate</strong> to resolve the spell. After resolution, the slab moves to discard and End Turn becomes available again. You may cast another spell before ending.</li>
+        <li>Select a spell and click <strong>Cast Spell</strong> to pay its printed mana cost. A spell without a roll condition resolves immediately. Ember spending choices are made before casting.</li>
+        <li>A spell with a roll threshold opens Fate. Only eligible Fate slabs can be selected. Click <strong>Cast Fate</strong> to play one, then repeat as often as desired.</li>
+        <li>The attacker may use Fortune (+4) and Twist (+2). <strong>Skip Fate</strong> passes to the defender, who may use Misfortune (−4) and Twist (−2). The defender skips when finished; then roll two dice and add both sides’ Fate and the caster’s eligible Loaded bonus.</li>
+        <li>Incoming damage, including self-damage, consumes Shield before HP. Healing stops at 30 HP. Reaching 0 HP ends the duel.</li>
+        <li>A Loaded bonus earned this turn is queued for <strong>your next own turn</strong>. It applies once to your first roll in that turn; if unused, it expires when that turn ends.</li>
         <li><strong>End Turn</strong> reveals Hand Refresh. To skip refreshing, click End Turn again to pass.</li>
         <li>Click <strong>Hand Refresh</strong>, select any number of slabs (including zero), then click Hand Refresh again. Selected slabs are greyed out, discarded, and replaced by drawing up to five. Click <strong>End Turn</strong> to pass. Refresh is available once per turn.</li>
       </ul>
-      <div class="prototype-note"><strong>Spell slabs are connected to the supplied spellbook.</strong> Names, mana costs, and rules text are displayed as reference. Casting does not yet spend mana or execute effects. Fate timing, dice, damage, and other effect rules will be implemented next; all slabs still grey out during the fate window.</div>
-      <p class="small-copy">The Fire v2.2 and Water v1.0 lists each contain 21 elemental, 2 Neutral, and 7 Fate slabs. Fire and Water use their elemental artwork; Neutral slabs use white and Fate slabs use purple. Select a slab and choose Read slab to inspect its full text. Click Spell Tower to review quantities, without revealing draw order. Older sample decks upgrade to 30 slabs while preserving duel progress.</p>
+      <div class="prototype-note"><strong>Playtest Fate sequence: attacker → defender → roll.</strong> Screen handoffs make both sides playable on this device. Next-turn Loaded bonuses do not affect spells cast during the turn they were earned.</div>
+      <p class="small-copy">The Fire v2.2 and Water v1.0 lists each contain 21 elemental, 2 Neutral, and 7 Fate slabs. Slab colors identify their type. Rules text and mana costs come from the uploaded master spellbook. Select a slab and choose Read slab for full text. Click Spell Tower to review composition without revealing draw order.</p>
       <p class="build-version" id="build-version">Development · portrait layout</p>
       <button class="secondary-button" id="settings-deck">View spell slab decks</button>
       <button class="secondary-button" id="request-restart">Start a new duel</button>
@@ -47,7 +50,7 @@
       <h2 id="slab-heading"></h2>
       <p id="slab-definition" class="slab-definition"></p>
       <div class="large-slab" id="slab-face"></div>
-      <p class="small-copy">Spellbook rules text · effect execution is not active yet.</p>
+      <p class="small-copy" id="slab-behavior"></p>
     </dialog>
     <dialog id="deck-inspector" class="game-dialog deck-dialog" aria-labelledby="deck-heading">
       <button class="close-dialog" aria-label="Close decklist" data-close="deck-inspector">×</button>
@@ -56,7 +59,21 @@
       <p id="deck-summary" class="small-copy"></p>
       <div class="deck-tabs" aria-label="Choose a deck to inspect"><button class="secondary-button" data-deck-player="fire">Fire</button><button class="secondary-button" data-deck-player="water">Water</button></div>
       <div id="deck-entries"></div>
-      <p class="small-copy">Full deck composition, not draw order. Click a spell slab to read its full rules. Effects are not active yet.</p>
+      <p class="small-copy">Full deck composition, not draw order. Click a spell slab to read its full rules.</p>
+    </dialog>
+    <dialog id="ember-choice" class="game-dialog" aria-labelledby="ember-title">
+      <p class="eyebrow">PREPARE YOUR SPELL</p>
+      <h2 id="ember-title">Spend Embers?</h2>
+      <p id="ember-description"></p>
+      <label class="ember-input" for="ember-amount">Embers to spend <input id="ember-amount" type="number" min="0" step="1" value="0" required /></label>
+      <p class="input-error" id="ember-error" role="alert"></p>
+      <div class="dialog-actions"><button class="secondary-button" data-close="ember-choice">Keep slab</button><button class="gold-button" id="confirm-embers">Cast Spell</button></div>
+    </dialog>
+    <dialog id="victory" class="game-dialog" aria-labelledby="victory-title">
+      <p class="eyebrow">DUEL COMPLETE</p>
+      <h2 id="victory-title"></h2>
+      <p id="victory-description"></p>
+      <div class="dialog-actions"><button class="secondary-button" data-close="victory">View result</button><button class="gold-button" id="victory-restart">New duel</button></div>
     </dialog>
     <dialog id="restart" class="game-dialog" aria-labelledby="restart-title">
       <p class="eyebrow">A FRESH START</p>

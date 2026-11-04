@@ -89,6 +89,16 @@
     "width": 2172,
     "height": 724
   },
+  "castFate": {
+    "file": "castFate-117013e14b72.webp",
+    "source": "Cast Fate Button.png",
+    "sourceSha256": "40a485d4115e375feb7196d842fedbc952e50f351501937aae2eb7b57930b0da",
+    "optimizedSha256": "117013e14b7292263312b22269183bce4816ebc7c31058b138865b6bcea3aa9a",
+    "bytes": 891852,
+    "sourceBytes": 1309709,
+    "width": 2172,
+    "height": 724
+  },
   "endTurn": {
     "file": "endTurn-9e0357f1eda0.webp",
     "source": "End Turn Button.png",

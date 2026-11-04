@@ -5,7 +5,7 @@ import { ASSET_FILES } from '../src/assets.js';
 import { OPTIMIZED_ART } from '../src/optimized-art.js';
 
 const webOnly = process.argv.includes('--web');
-for (const file of ['src/optimized-art.js', 'src/assets.js', 'src/spells.js', 'src/game.js', 'src/main.js']) execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
+for (const file of ['src/optimized-art.js', 'src/assets.js', 'src/spells.js', 'src/effects.js', 'src/game.js', 'src/main.js']) execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist');
 for (const file of ['index.html', 'src']) await cp(file, `dist/${file}`, { recursive: true });
@@ -36,7 +36,7 @@ if (webOnly) {
   // Hash every module after rewriting its dependency paths. Hashing only the
   // entry point would still let a browser reuse stale imported modules.
   const emitted = new Map();
-  for (const filename of ['optimized-art.js', 'spells.js', 'game.js', 'assets.js', 'main.js']) {
+  for (const filename of ['optimized-art.js', 'spells.js', 'effects.js', 'game.js', 'assets.js', 'main.js']) {
     const original = await readFile(`src/${filename}`, 'utf8');
     const code = original.replace(/(from\s+)(['"])(\.\/[^'"]+)\2/g, (match, prefix, quote, specifier) => {
       const dependency = emitted.get(specifier.slice(2));
@@ -75,7 +75,7 @@ for (const [key, filename] of Object.entries(ASSET_FILES)) {
 const stripModuleSyntax = (source) => source
   .replace(/^import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];?\s*/gm, '')
   .replace(/^export\s+/gm, '');
-const code = (await Promise.all(['src/optimized-art.js', 'src/assets.js', 'src/spells.js', 'src/game.js', 'src/main.js'].map(async file => stripModuleSyntax(await readFile(file, 'utf8'))))).join('\n');
+const code = (await Promise.all(['src/optimized-art.js', 'src/assets.js', 'src/spells.js', 'src/effects.js', 'src/game.js', 'src/main.js'].map(async file => stripModuleSyntax(await readFile(file, 'utf8'))))).join('\n');
 await writeFile('dist/.standalone-check.mjs', code);
 try {
   execFileSync(process.execPath, ['--check', 'dist/.standalone-check.mjs'], { stdio: 'inherit' });

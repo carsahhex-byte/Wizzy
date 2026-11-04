@@ -1,14 +1,15 @@
-import { createGame, selectCard, castSelected, skipFate, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame } from './game.js';
+import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.js';
 import { ASSETS, ASSET_CROPS } from './assets.js';
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SOURCE_INFO } from './spells.js';
 
-const SAVE_KEY = 'wizzy.duel.v3';
+const SAVE_KEY = 'wizzy.duel.v4';
 const app = document.querySelector('#app');
 const handoff = document.querySelector('#handoff');
 let storageAvailable = true;
 let logOpen = false;
 let fitScreen = true;
 let resolutionTimer;
+let diceAnimationTimer;
 let state = loadGame();
 
 function loadGame() {
@@ -18,7 +19,7 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  for(const key of ['wizzy.duel.v2','wizzy.duel.v1']){
+  for(const key of ['wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
   }
@@ -43,13 +44,14 @@ function playerPanel(player, index) {
     ${art(player.id === 'fire' ? 'fireFrame' : 'waterFrame','stat-frame')}
     <div class="stat-heading"><span class="element-symbol" aria-hidden="true">${player.id === 'fire' ? '♨' : '◈'}</span><h2>${player.name}</h2><span class="player-label">P${index+1}</span>${state.activePlayer === index ? '<span class="active-dot" aria-label="Active wizard"></span>' : ''}</div>
     <div class="stat-body"><div class="health-row"><span>HP</span><strong data-stat="${player.id}-hp">${player.hp}<small> / ${player.maxHp}</small></strong></div><div class="health-track" role="progressbar" aria-label="${player.name} HP" aria-valuemin="0" aria-valuemax="${player.maxHp}" aria-valuenow="${player.hp}"><span style="width:${player.hp/player.maxHp*100}%"></span></div>
-    <div class="resource-grid"><div class="resource mana"><i aria-hidden="true">◆</i><span>Mana</span><strong data-stat="${player.id}-mana">${player.mana}</strong></div><div class="resource shield"><i aria-hidden="true">⬟</i><span>Shield</span><strong>${player.shield}</strong></div><div class="resource element"><i aria-hidden="true">${player.id === 'fire' ? '♨' : '≈'}</i><span>${player.elementName}</span><strong>${player.element}</strong></div><div class="resource loaded"><i aria-hidden="true">⚄</i><span>Loaded</span><strong>+${player.loaded}</strong></div></div></div>
+    <div class="resource-grid"><div class="resource mana"><i aria-hidden="true">◆</i><span>Mana</span><strong data-stat="${player.id}-mana">${player.mana}</strong></div><div class="resource shield"><i aria-hidden="true">⬟</i><span>Shield</span><strong>${player.shield}</strong></div><div class="resource element"><i aria-hidden="true">${player.id === 'fire' ? '♨' : '≈'}</i><span>${player.elementName}</span><strong>${player.element}</strong></div><div class="resource loaded"><i aria-hidden="true">⚄</i><span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
   </section>`;
 }
 function phaseHint(active) {
   if (state.status === 'finished') return `${state.players[state.winner].name} wins the duel!`;
   switch(state.phase) {
-    case 'fate': return 'Fate window · slabs are unavailable. Click Skip Fate to resolve your spell.';
+    case 'fate': return `${state.players[state.fatePlayer].name} · ${state.fatePlayer===state.activePlayer?'Attacking':'Defending'} Fate. Choose Fate slabs or Skip Fate.`;
+    case 'rolling': return 'Rolling two dice…';
     case 'resolving': return 'Resolving your spell…';
     case 'end': return 'Refresh your hand, or click End Turn again to pass.';
     case 'refresh': return `Select discards (${state.refreshCardIds.length}), then Hand Refresh again.`;
@@ -58,44 +60,72 @@ function phaseHint(active) {
   }
 }
 function slabFace(card) {
-  return `${art(card.art,'card-image')}<span class="card-name" style="--name-size:${card.name.length>12?18:21}px">${escape(card.name)}</span><span class="slab-type">${escape(card.type)}</span><span class="card-copy"><strong class="mana-cost">${card.manaCost} Mana</strong><span class="card-effect">${escape(card.effectText)}</span></span>`;
+  return `${art(card.art,'card-image')}<span class="card-name" style="--name-size:${card.name.length>12?18:21}px">${escape(card.name)}</span><span class="card-copy"><strong class="mana-cost">${card.manaCost} Mana</strong><span class="card-effect">${escape(card.effectText)}</span></span>`;
 }
 function cardView(card, active, finished) {
   const selected = state.selectedCardId === card.id;
   const refreshSelected = state.refreshCardIds.includes(card.id);
   const pending = state.pendingCardId === card.id;
-  const unavailable = !['main','refresh'].includes(state.phase) || finished;
-  return `<button class="spell-card slab-${card.type.toLowerCase()} ${selected ? 'selected' : ''} ${refreshSelected ? 'discard-selected' : ''} ${['fate','resolving'].includes(state.phase) ? 'fate-muted' : ''} ${pending ? 'pending-card' : ''}" data-card-id="${escape(card.id)}" data-spell-id="${card.spellId}" data-slab-type="${card.type}" data-focus="${escape(card.id)}" aria-pressed="${state.phase === 'refresh' ? refreshSelected : selected}" aria-label="${escape(card.name)}. ${card.type}. ${card.manaCost} Mana. ${escape(card.effectText)} ${state.phase === 'refresh' ? (refreshSelected ? 'Selected for discard.' : 'Select to discard.') : 'Rules text only; effect execution pending.'}" title="${escape(card.name)} · ${card.manaCost} Mana. ${escape(card.effectText)}" ${unavailable ? 'disabled' : ''}>
+  const eligible=canSelectCard(state,card.id);
+  const unavailable = finished || (state.phase!=='refresh'&&!eligible);
+  const muted=state.phase==='fate'&&card.category!=='Fate';
+  const inactiveFate=state.phase==='fate'&&card.category==='Fate'&&!eligible;
+  return `<button class="spell-card slab-${card.type.toLowerCase()} ${selected ? 'selected' : ''} ${refreshSelected ? 'discard-selected' : ''} ${muted ? 'fate-muted' : ''} ${inactiveFate?'fate-unavailable':''} ${pending ? 'pending-card' : ''}" data-card-id="${escape(card.id)}" data-spell-id="${card.spellId}" data-slab-type="${card.type}" data-focus="${escape(card.id)}" aria-pressed="${state.phase === 'refresh' ? refreshSelected : selected}" aria-label="${escape(card.name)}. ${card.type}. ${card.manaCost} Mana. ${escape(card.effectText)} ${state.phase === 'refresh' ? (refreshSelected ? 'Selected for discard.' : 'Select to discard.') : ''}" title="${escape(card.name)} · ${card.manaCost} Mana. ${escape(card.effectText)}" ${unavailable ? 'disabled' : ''}>
     ${slabFace(card)}
     ${selected ? '<span class="card-badge">SELECTED</span>' : ''}${refreshSelected ? '<span class="card-badge discard-badge">✓ DISCARD</span>' : ''}${pending ? '<span class="card-badge pending-badge">CASTING</span>' : ''}
   </button>`;
 }
+const pipPositions={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function pips(value) {
+  return value?Array.from({length:9},(_,i)=>`<i class="die-pip ${pipPositions[value].includes(i)?'visible':''}"></i>`).join(''):'<span class="unrolled-mark">?</span>';
+}
+function diceFace(value,index) {
+  return `<span class="die-face" data-die-index="${index}" data-die-value="${value??''}">${art('dicePair','die-border',ASSET_CROPS[index===0?'diceLeft':'diceRight'])}<span class="die-surface">${pips(value)}</span></span>`;
+}
+const signed=value=>`${value>=0?'+':''}${value}`;
+function diceView() {
+  const pending=['fate','rolling'].includes(state.phase);
+  const last=pending?null:state.lastRoll;
+  const title=state.phase==='fate'?'Fate window':state.phase==='rolling'?'Rolling…':last?`Total: ${last.total}`:'Ready to roll';
+  const equation=last?`${last.dice[0]} + ${last.dice[1]} ${signed(last.loadedBonus)} Loaded ${signed(last.attackingFate)} Fate ${signed(last.defendingFate)} Fate`:state.pendingSpell?`Loaded ${signed(state.pendingSpell.loadedBonus)} · Attack ${signed(state.pendingSpell.attackingFate)} · Defend ${signed(state.pendingSpell.defendingFate)}`:'Two six-sided dice';
+  return `<section class="dice-area ${state.phase==='rolling'?'dice-rolling':''}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. Modified total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · LAST ROLL`:state.phase==='fate'?'PLAY FATE, THEN SKIP TO CONTINUE':'ROLLS ONLY WHEN A SPELL REQUIRES THEM'}</span></section>`;
+}
+function hintView(active,selected) {
+  if(selected&&['main','fate'].includes(state.phase)){
+    const short=state.phase==='fate'?(state.fatePlayer===state.activePlayer?'Attacking Fate':'Defending Fate'):`${selected.manaCost} Mana${active.mana<selected.manaCost?' · Not enough mana':''}`;
+    return `<span>${escape(selected.name)} · ${short}</span><div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button>${state.phase==='fate'?'<button class="text-button" id="skip-fate">Skip Fate</button>':''}</div>`;
+  }
+  return `${phaseHint(active)}${state.phase==='refresh'?'<button class="text-button" id="cancel-refresh">Cancel refresh</button>':''}`;
+}
 function render() {
   const active = state.players[state.activePlayer];
+  const displayPlayer=state.players[getActingPlayerIndex(state)];
   const finished = state.status !== 'playing';
   const isFate = state.phase === 'fate';
-  const resolving = state.phase === 'resolving';
+  const resolving = ['rolling','resolving'].includes(state.phase);
   const ending = ['end','refresh','ready-to-pass'].includes(state.phase);
   const showRefresh = ['end','refresh'].includes(state.phase) && !finished;
-  const selected=active.hand.find(card=>card.id===state.selectedCardId);
+  const selected=displayPlayer.hand.find(card=>card.id===state.selectedCardId);
+  const castLabel=isFate?(selected?'Cast Fate':'Skip Fate'):resolving?'Resolving spell':'Cast Spell';
+  const castArt=isFate?(selected?'castFate':'skipFate'):'cast';
   const focusKey = document.activeElement?.dataset.focus;
   app.innerHTML = `<div class="game-shell">
     <header class="topbar"><span class="wordmark">WIZZY <small>BATTLE SIMULATOR</small></span><span class="save-state">${storageAvailable ? '✦ DUEL SAVED' : 'SAVING UNAVAILABLE'}</span><button class="view-toggle" id="toggle-fit" aria-label="${fitScreen?'Switch to larger view':'Fit game to screen'}">${fitScreen?'Larger view ↗':'Fit screen ↙'}</button><button class="settings-button" id="open-settings" aria-label="Open settings and game rules">⚙</button></header>
     <div class="game-board ${active.id} phase-${state.phase}" style="--forest:url('${ASSETS.forest}')">
     <section class="battle-scene" aria-label="Fire and Water wizards in the forest ruins"><div class="game-title"><span class="title-stars" aria-hidden="true">✦ ◆ ✦</span><h1>Wizzy</h1><p>Battle Simulator</p></div><div class="combatant fire-combatant ${state.activePlayer===0?'active-combatant':''}">${art('fireMage','mage-art')}<span class="mage-shadow"></span></div><span class="versus" aria-hidden="true">VS</span><div class="combatant water-combatant ${state.activePlayer===1?'active-combatant':''}">${art('waterMage','mage-art')}<span class="mage-shadow"></span></div></section>
-    <div class="battle-hud">${playerPanel(state.players[0],0)}<section class="dice-area ${resolving?'spell-resolving':''}" aria-label="Dice display; dice effects await slab rules">${art('diceFrame','dice-frame')}${art('dicePair','dice-pair')}<span class="dice-caption">${resolving?'SPELL RESOLVING':'DICE · RULES PENDING'}</span></section>${playerPanel(state.players[1],1)}</div>
-    <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${active.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${active.name.toUpperCase()} WIZARD’S SPELLBOOK</span><span data-testid="hand-count">${active.hand.length} / 5 SLABS</span></div>
-    <div class="cards ${active.id} cards-${active.hand.length}" aria-label="${active.name} wizard’s spell slabs">${active.hand.map(card=>cardView(card,active,finished)).join('')||'<div class="empty-hand"><span>✧</span><p>No spells in hand.<br>Refresh your hand or draw on your next turn.</p></div>'}</div>
-    <div class="hand-bottomline"><div class="pile" aria-label="${active.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${active.discard.length} <small>${active.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${active.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${active.deck.length} <small>${active.deck.length===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
-    <div class="turn-controls"><div class="phase-hint" role="status">${state.phase==='main'&&selected?`<span>${escape(selected.name)} · ${selected.manaCost} Mana</span><button class="text-button" id="inspect-selected">Read slab</button>`:phaseHint(active)}${state.phase==='refresh'?'<button class="text-button" id="cancel-refresh">Cancel refresh</button>':''}</div>
+    <div class="battle-hud">${playerPanel(state.players[0],0)}${diceView()}${playerPanel(state.players[1],1)}</div>
+    <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${displayPlayer.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${displayPlayer.name.toUpperCase()} · ${isFate?(state.fatePlayer===state.activePlayer?'ATTACKING FATE':'DEFENDING FATE'):'SPELLBOOK'}</span><span data-testid="hand-count">${displayPlayer.hand.length} / 5 SLABS</span></div>
+    <div class="cards ${displayPlayer.id} cards-${displayPlayer.hand.length}" aria-label="${displayPlayer.name} wizard’s spell slabs">${displayPlayer.hand.map(card=>cardView(card,displayPlayer,finished)).join('')||'<div class="empty-hand"><span>✧</span><p>No spells in hand.<br>Refresh your hand or draw on your next turn.</p></div>'}</div>
+    <div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${displayPlayer.discard.length} <small>${displayPlayer.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${displayPlayer.deck.length} <small>${displayPlayer.deck.length===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
+    <div class="turn-controls"><div class="phase-hint" role="status">${hintView(active,selected)}</div>
     <div class="action-bar"><div class="round-plaque" aria-label="Round ${state.round}, ${active.name} wizard’s turn">${art('round','round-art')}<span class="round-cover"><strong>Round <span data-testid="round-number">${state.round}</span></strong><span>${finished?'Duel complete':`${active.name}’s Turn`}</span></span></div>
-    <button class="art-button cast-button" id="cast-spell" data-focus="cast" aria-label="${isFate?'Skip Fate':resolving?'Resolving spell':'Cast Spell'}" ${finished||resolving||(!isFate&&(state.phase!=='main'||!state.selectedCardId))?'disabled':''}>${art(isFate||resolving?'skipFate':'cast','button-art')}</button>
-    <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button" id="end-turn" data-focus="end" aria-label="${['end','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||['fate','resolving','refresh'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
+    <button class="art-button cast-button" id="cast-spell" data-focus="cast" aria-label="${castLabel}" ${finished||resolving||(!isFate&&!canCastSelected(state))?'disabled':''}>${art(castArt,'button-art')}</button>
+    <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button" id="end-turn" data-focus="end" aria-label="${['end','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||['fate','rolling','resolving','refresh'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
     <details class="combat-log" ${logOpen?'open':''}><summary aria-label="View combat log">${art('combatLog','log-button')}<span class="log-count">${state.log.length}</span><span class="chevron" aria-hidden="true">⌄</span></summary><ol>${state.log.slice().reverse().map(entry=>`<li><span class="log-round">R${entry.round}</span><span>${escape(entry.message)}</span></li>`).join('')}</ol></details>
-    <footer class="game-footer"><span>LOCAL DUEL · TWO WIZARDS, ONE SCREEN</span><span>Spell effects coming next</span></footer></div></div>`;
+    <footer class="game-footer"><span>LOCAL DUEL · TWO WIZARDS, ONE SCREEN</span><span>FIRE · WATER · FATE</span></footer></div></div>`;
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
-  scheduleResolution();
+  scheduleCombat();
   fitBoard();
 }
 // The forest and every game element share one undistorted 1024 × 1536 canvas.
@@ -112,24 +142,80 @@ function fitBoard() {
 window.addEventListener('resize',fitBoard);
 function update(next,message) {
   if(next===state)return;
+  const wasPlaying=state.status==='playing';
   state=next;saveGame();render();
-  if(message) document.querySelector('#announcement').textContent=message;
-}
-function scheduleResolution() {
-  clearTimeout(resolutionTimer);
-  if(state.phase==='resolving'&&state.status==='playing') {
-    resolutionTimer=setTimeout(()=>{
-      update(resolveSpell(state),'Spell resolved and moved to the discard pile. Effects are pending your next rules.');
-      app.querySelector('#end-turn')?.focus({preventScroll:true});
-    },650);
+  document.querySelector('#announcement').textContent=message||state.log.at(-1)?.message||'';
+  if(wasPlaying&&state.status==='finished'){
+    document.querySelector('#victory-title').textContent=`${state.players[state.winner].name} wins!`;
+    document.querySelector('#victory-description').textContent=`The opposing wizard has reached 0 HP. The duel is complete after ${state.round} ${state.round===1?'round':'rounds'}.`;
+    document.querySelector('#victory').showModal();
   }
 }
-function showHandoff() {
-  const player=state.players[state.activePlayer];
-  document.querySelector('#handoff-title').textContent=`${player.name}’s turn`;
-  document.querySelector('#handoff-description').textContent=`Round ${state.round}. Pass the screen to the ${player.name} wizard. Your hand is ready.`;
+function clearCombatTimers() {
+  clearTimeout(resolutionTimer);
+  clearInterval(diceAnimationTimer);
+}
+function scheduleCombat() {
+  clearCombatTimers();
+  if(handoff.open||state.status!=='playing')return;
+  if(state.phase==='rolling'){
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+      diceAnimationTimer=setInterval(()=>{
+        app.querySelectorAll('.die-face').forEach(face=>{
+          const value=1+Math.floor(Math.random()*6);
+          face.dataset.dieValue=String(value);
+          face.querySelector('.die-surface').innerHTML=pips(value);
+        });
+      },90);
+    }
+    resolutionTimer=setTimeout(()=>update(rollDice(state)),650);
+  }else if(state.phase==='resolving') {
+    resolutionTimer=setTimeout(()=>{
+      update(resolveSpell(state));
+      app.querySelector('#end-turn')?.focus({preventScroll:true});
+    },450);
+  }
+}
+function showHandoff(playerIndex=state.activePlayer,kind='turn') {
+  clearCombatTimers();
+  const player=state.players[playerIndex];
+  document.querySelector('#handoff-title').textContent=kind==='fate'?`${player.name} · defending Fate`:kind==='roll'?`${player.name} · roll the dice`:`${player.name}’s turn`;
+  document.querySelector('#handoff-description').textContent=kind==='fate'?'Pass the screen to the defender. Play any number of Misfortune or Twist slabs, then Skip Fate.':kind==='roll'?'Both Fate windows are complete. Return the screen to the caster to roll and resolve the spell.':`Round ${state.round}. Pass the screen to the ${player.name} wizard. Your hand is ready.`;
   document.querySelector('#handoff-portrait').innerHTML=art(player.id==='fire'?'fireMage':'waterMage');
+  document.querySelector('#begin-turn').innerHTML=`${kind==='fate'?'Choose Fate':kind==='roll'?'Roll dice':'Begin turn'} <span aria-hidden="true">→</span>`;
   handoff.showModal();
+}
+function finishFateWindow() {
+  const previous=state;
+  const next=skipFate(state);
+  if(next===state)return;
+  update(next);
+  if(state.phase==='fate'&&state.fatePlayer!==previous.fatePlayer)showHandoff(state.fatePlayer,'fate');
+  else if(state.phase==='rolling')showHandoff(state.activePlayer,'roll');
+}
+function commitSpell(emberSpend=0) {
+  update(castSelected(state,{emberSpend}));
+  app.querySelector(state.phase==='fate'?'#cast-spell':'.spell-card:not(:disabled)')?.focus({preventScroll:true});
+}
+function requestCast() {
+  if(state.phase==='fate'){
+    if(state.selectedCardId){update(castFateSelected(state));app.querySelector('#cast-spell')?.focus({preventScroll:true});}
+    else finishFateWindow();
+    return;
+  }
+  if(!canCastSelected(state))return;
+  const player=state.players[state.activePlayer];
+  const card=player.hand.find(card=>card.id===state.selectedCardId);
+  const range=getEmberSpendRange(card.spellId,player.element);
+  if(!range.mandatory&&range.max>0){
+    document.querySelector('#ember-title').textContent=`${card.name}: spend Embers?`;
+    document.querySelector('#ember-description').textContent=`Choose 0–${range.max} Embers before casting. The spell costs ${card.manaCost} mana. ${card.effectText}`;
+    const input=document.querySelector('#ember-amount');
+    input.min=String(range.min);input.max=String(range.max);input.value='0';
+    document.querySelector('#ember-error').textContent='';
+    document.querySelector('#ember-choice').showModal();
+    input.focus();
+  }else commitSpell(range.mandatory?range.max:0);
 }
 function showSlab(spellId) {
   const spell=SPELL_CATALOG[spellId];
@@ -139,9 +225,10 @@ function showSlab(spellId) {
   document.querySelector('#slab-definition').textContent=`${spell.spellId} · ${spell.category}${spell.category==='Elemental'?` · ${spell.element}`:''}`;
   document.querySelector('#slab-face').innerHTML=slabFace(spell);
   document.querySelector('#slab-face').dataset.slabType=spell.type;
+  document.querySelector('#slab-behavior').textContent=spell.category==='Fate'?'Play during the appropriate attacking or defending Fate window.':SPELL_RULES[spellId].requiresRoll?'Roll two dice after the attacker and defender finish their Fate choices.':'Resolves immediately, without a dice roll or Fate window.';
   if(!dialog.open)dialog.showModal();
 }
-function showDeck(playerId=state.players[state.activePlayer].id) {
+function showDeck(playerId=state.players[getActingPlayerIndex(state)].id) {
   const player=state.players.find(player=>player.id===playerId);
   if(!player)return;
   const groups=['Elemental','Neutral','Fate'].map(category=>{
@@ -174,14 +261,13 @@ app.addEventListener('click',event=>{
     case 'open-settings':document.querySelector('#settings').showModal();break;
     case 'view-deck':showDeck();break;
     case 'inspect-selected':{
-      const selected=state.players[state.activePlayer].hand.find(card=>card.id===state.selectedCardId);
+      const selected=state.players[getActingPlayerIndex(state)].hand.find(card=>card.id===state.selectedCardId);
       if(selected)showSlab(selected.spellId);
       break;
     }
     case 'cast-spell':
-      update(state.phase==='fate'?skipFate(state):castSelected(state));
-      if(state.phase==='fate')app.querySelector('#cast-spell')?.focus({preventScroll:true});
-      break;
+      requestCast();break;
+    case 'skip-fate':finishFateWindow();break;
     case 'end-turn':{
       const previous=state.activePlayer;update(endTurn(state));
       if(state.activePlayer!==previous)showHandoff();
@@ -196,11 +282,27 @@ app.addEventListener('click',event=>{
   }
 });
 
-document.querySelector('#begin-turn').addEventListener('click',()=>{handoff.close();app.querySelector('[data-card-id]')?.focus({preventScroll:true});});
+document.querySelector('#begin-turn').addEventListener('click',()=>{handoff.close();scheduleCombat();app.querySelector('.spell-card:not(:disabled)')?.focus({preventScroll:true});});
 // Avoid revealing the next hand accidentally by dismissing a pass-screen dialog.
 handoff.addEventListener('cancel',event=>event.preventDefault());
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.close).close()));
 document.querySelector('#request-restart').addEventListener('click',()=>{document.querySelector('#settings').close();document.querySelector('#restart').showModal();});
 document.querySelector('#settings-deck').addEventListener('click',()=>{document.querySelector('#settings').close();showDeck();});
-document.querySelector('#confirm-restart').addEventListener('click',()=>{clearTimeout(resolutionTimer);update(createGame(),'A new duel has begun. Fire goes first.');document.querySelector('#restart').close();});
+function restartGame() {
+  clearCombatTimers();
+  for(const id of ['victory','restart','ember-choice'])document.getElementById(id).close();
+  update(createGame(),'A new duel has begun. Fire goes first.');
+}
+document.querySelector('#confirm-restart').addEventListener('click',restartGame);
+document.querySelector('#victory-restart').addEventListener('click',restartGame);
+document.querySelector('#confirm-embers').addEventListener('click',()=>{
+  const input=document.querySelector('#ember-amount');
+  const amount=Number(input.value);
+  if(!input.reportValidity()||!Number.isSafeInteger(amount)||amount<Number(input.min)||amount>Number(input.max)){
+    document.querySelector('#ember-error').textContent=`Choose a whole number from ${input.min} to ${input.max}.`;
+    return;
+  }
+  document.querySelector('#ember-choice').close();
+  commitSpell(amount);
+});
 saveGame();render();

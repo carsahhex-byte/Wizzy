@@ -4,11 +4,11 @@ These tables reproduce the supplied initial-test deck compositions. Each physica
 
 ## Source documents
 
-- **Spell definitions:** `Wizzy_Complete_Master_Spellbook_WAT001_to_FAT003.pdf`, *Wizzy / Master Spellbook*, sourced from `MASTER_SPELLBOOK.xlsx`. Its mana costs and full effect text are canonical for the imported metadata.
+- **Spell definitions:** the uploaded `Wizzy_Complete_Master_Spellbook_WAT001_to_FAT003.pdf`, *Wizzy / Master Spellbook*, which identifies `MASTER_SPELLBOOK.xlsx` as its source. The spreadsheet itself was not uploaded. The PDF's mana costs and full effect text are canonical for the imported metadata.
 - **Fire composition:** `Wizzy Fire Decklist Nov3.pdf`, version **2.2**, revised **November 3, 2026**.
 - **Water composition:** `Wizzy_Water_Deck_v1_0_Final.pdf`, version **1.0**, finalized composition.
 
-Only Fire, Water, Neutral, and Fate definitions are imported. The active-scope catalog contains **29** spells: Fire 12, Water 10, Neutral 4, and Fate 3. The playable decks use **25 distinct spells** in total. Earth and Air are outside this update.
+Only Fire, Water, Neutral, and Fate definitions are imported. The active-scope catalog contains **29** spells: Fire 12, Water 10, Neutral 4, and Fate 3. All **26 Fire/Water/Neutral effects** and **3 Fate effects** are implemented, including catalog spells with no copies in these decks. The playable decks use **25 distinct spells** in total. Earth and Air are outside this update and have no new effect logic.
 
 ## Card categories and artwork
 
@@ -19,7 +19,7 @@ Only Fire, Water, Neutral, and Fate definitions are imported. The active-scope c
 | Neutral | Neutral | White Neutral card |
 | Fate | Fate | Purple Galaxy Vortex Card Frame |
 
-Every slab uses its own name, printed mana cost, and rules text from the master spellbook. The same artwork is reused for all slabs of the corresponding type.
+Every slab uses its own name, printed mana cost, and verbatim `effectText` from the master spellbook. The same artwork is reused for all slabs of the corresponding type. Slab colors identify the types without extra element labels; the hand places three slabs in the top row and up to two in the bottom row.
 
 ## Fire v2.2
 
@@ -82,14 +82,20 @@ Every slab uses its own name, printed mana cost, and rules text from the master 
 
 Ward (`NEU-001`) and Legacy Shield (`NEU-003`) have **zero copies** in the Water PDF. They remain catalog definitions but are not instantiated in the Water deck.
 
-## Current preview behavior
+## Playable rules
 
 - Each wizard shuffles its own 30-slab deck, draws four opening slabs, and begins with **26** in the Spell Tower. Later turn-start drawing and optional hand refresh retain the existing five-slab hand limit.
-- Printed mana costs and effects are visible metadata only. The executable engine `cost` stays **0** for this preview; casting does not spend the printed cost or execute the printed effect.
-- Fate behavior has not been added. During the existing fate window, all slabs, including purple Fate slabs, remain greyed out and unavailable; **Skip Fate** continues the existing placeholder resolution flow.
+- Each wizard starts with **3 mana** and gains **2 mana at the beginning of each own turn after their opening turn**. Printed mana costs are enforced when casting, with unspent mana carried forward.
+- All imported Fire, Water, and Neutral effects execute their printed damage, Shield, healing, resource gains, Ember spending, and threshold effects. Both enemy damage and self-damage consume Shield first; healing cannot exceed 30 HP. Spending choices are made before committing the spell, and Sunsetter spends all available Embers.
+- Only spells with roll thresholds open Fate decisions and use **2d6**. Other spells resolve immediately, without Fate decisions, dice, or consuming Loaded.
+- The attacker first plays any number of **Fortune** (+4) or **Twist** (+2) slabs, then clicks **Skip Fate**. A local handoff then gives the defender a window for any number of **Misfortune** (−4) or **Twist** (−2) slabs before skipping. Selecting an eligible Fate slab changes the action to the supplied **Cast Fate** graphic; non-Fate and ineligible Fate slabs are greyed out. Fate slabs are discarded as they are used.
+- After both windows close, the dice roll is displayed and the modified total resolves the spell. The total is **raw 2d6 + eligible Loaded + attacking Fate + defending Fate**; it can be negative. The players do not alternate Fate responses within these two successive windows.
+- New Loaded bonuses queue for the caster's **next own turn**, stack, and are consumed by the first roll on that turn. If no roll uses them, they expire at that turn's end. New bonuses cannot affect rolls on the turn when they are gained.
 - **Read Slab** exposes the full text of a selected slab. The Spell Tower composition view lists the entire deck and quantities without revealing draw order.
-- Valid older 24-card sample saves upgrade to save version 3. Stats, turn progress, phase, and card-zone counts are retained, and six new slabs are added to each tower. Their old placeholder slab identities are replaced with actual decklist entries, and the log records the upgrade.
+- Version **4** saves resume current duels, including pending paid spells and Fate/dice progress. Valid version 3 preview saves retain stats, turn progress, and their card zones. Any unfinished unpaid preview spell is safely cancelled without retroactive charges, card movement, or effects. Valid older 24-card sample saves first receive six additional slabs in each tower and actual decklist identities; the log records upgrades.
 
 ## Verification
 
 `src/spells.js` was compared programmatically against the text extracted from the supplied PDFs. All 29 imported spell names, elements, categories, mana costs, and complete effect texts matched the master spellbook. Both playable ID-to-copy maps matched their decklists exactly. Zero-copy Water reference rows are intentionally excluded from playable copies.
+
+Automated coverage includes printed costs, threshold branches, Shield and self-damage, healing limits, Ember-spending choices, Flow, Fate roles and order, next-turn Loaded use and expiry, card conservation, and save migration. The effect implementation does not change the deck quantities above.

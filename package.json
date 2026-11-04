@@ -12,7 +12,7 @@
     "optimize:art": "python scripts/optimize-art.py",
     "deploy:pages": "npm test && npm run build:web && node scripts/deploy-pages.js --publish",
     "preview": "node scripts/serve.js dist",
-    "test": "node --test --test-isolation=none test/game.test.js"
+    "test": "node --test --test-isolation=none test/*.test.js"
   },
   "engines": { "node": ">=22" }
 }

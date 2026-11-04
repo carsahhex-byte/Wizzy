@@ -1,6 +1,6 @@
 /**
  * Spell slab metadata transcribed from the supplied master spellbook.
- * Rules text and mana costs are display data; effect execution is a later step.
+ * Verbatim rules text and printed mana costs; executable rules live in effects.js.
  * Earth and Air are intentionally outside this initial Fire/Water test.
  */
 export const DECK_SIZE = 30;
