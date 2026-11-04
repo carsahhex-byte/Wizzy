@@ -2,7 +2,7 @@ import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollD
 import { ASSETS, ASSET_CROPS } from './assets.js';
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SOURCE_INFO } from './spells.js';
 
-const SAVE_KEY = 'wizzy.duel.v5';
+const SAVE_KEY = 'wizzy.duel.v6';
 const app = document.querySelector('#app');
 const handoff = document.querySelector('#handoff');
 let storageAvailable = true;
@@ -19,7 +19,7 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  for(const key of ['wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
+  for(const key of ['wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
   }

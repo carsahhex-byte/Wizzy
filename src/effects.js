@@ -1,5 +1,7 @@
 import { SPELL_CATALOG } from './spells.js';
 
+export const MAX_FLOW = 5;
+
 const rule = (requiresRoll = false, emberSpend = 'none', maxEmbers) => Object.freeze({
   requiresRoll,
   emberSpend,
@@ -60,6 +62,8 @@ export function getEmberSpendRange(spellId, availableEmbers) {
  * Mana and chosen Embers are paid by the engine before calling this function.
  * New Loaded bonuses are queued for the caster's next own turn; they never
  * modify this spell's roll. The engine owns victory, piles, and phase changes.
+ * Water effects use existing Flow. Afterward, gain one Flow or the spell's
+ * printed replacement gain, up to the five-Flow maximum.
  */
 export function applySpellEffect(state, {
   casterIndex,
@@ -85,6 +89,10 @@ export function applySpellEffect(state, {
 
   const caster = state.players[casterIndex];
   const opponent = state.players[1 - casterIndex];
+  const waterSpell = definition.element === 'Water';
+  const flowBeforeSpell = waterSpell ? Math.min(MAX_FLOW, caster.element) : null;
+  if (waterSpell) caster.element = flowBeforeSpell;
+  let flowGain = 1;
   const events = [];
   const name = player => player.name ?? player.id ?? 'Wizard';
   const record = (type, player, message, detail = {}) => {
@@ -104,11 +112,12 @@ export function applySpellEffect(state, {
     record('shield', caster, `${name(caster)} gains ${amount} Shield.`, { amount });
   };
   const gainElement = amount => {
-    caster.element += amount;
+    const gained = waterSpell ? Math.min(amount, MAX_FLOW - caster.element) : amount;
+    caster.element += gained;
     const resource = caster.id === 'fire' || definition.element === 'Fire' ? 'Ember' : 'Flow';
     record('resource', caster,
-      `${name(caster)} gains ${amount} ${resource}${resource === 'Ember' && amount !== 1 ? 's' : ''}.`,
-      { amount, resource: 'element' });
+      `${name(caster)} gains ${gained} ${resource}${resource === 'Ember' && gained !== 1 ? 's' : ''}${waterSpell && caster.element === MAX_FLOW ? ` (maximum ${MAX_FLOW})` : ''}.`,
+      { amount: gained, resource: 'element' });
   };
   const gainLoaded = amount => {
     caster.loadedPending = (caster.loadedPending ?? 0) + amount;
@@ -170,42 +179,42 @@ export function applySpellEffect(state, {
       damage(opponent, 3 + (rollTotal >= 9 ? 5 : 4) * emberSpent);
       break;
     case 'WAT-001': // Ripple
-      damage(opponent, 1 + caster.element);
+      damage(opponent, 1 + flowBeforeSpell);
       break;
     case 'WAT-002': // Pacific
-      gainElement(rollTotal >= 11 ? 3 : 2);
+      flowGain = rollTotal >= 11 ? 3 : 2;
       break;
     case 'WAT-003': // Stillwater
       gainShield(3);
       gainLoaded(2);
       break;
     case 'WAT-004': // Undertow uses existing Flow for damage, then raises the floor.
-      damage(opponent, 3 + caster.element);
+      damage(opponent, 3 + flowBeforeSpell);
       if (rollTotal >= 7 && caster.element < 2) gainElement(2 - caster.element);
       break;
     case 'WAT-005': // Restoration
       heal(9);
       break;
     case 'WAT-006': // Water Jet
-      damage(opponent, 2 + caster.element);
+      damage(opponent, 2 + flowBeforeSpell);
       gainLoaded(2);
       break;
     case 'WAT-007': // Sea Surge
-      damage(opponent, 2 + caster.element);
+      damage(opponent, 2 + flowBeforeSpell);
       if (rollTotal >= 7) {
         heal(5);
         gainLoaded(1);
       }
       break;
     case 'WAT-008': // Riptide replaces total damage, including with high Flow.
-      damage(opponent, rollTotal >= 9 ? 8 : 2 + caster.element);
+      damage(opponent, rollTotal >= 9 ? 8 : 2 + flowBeforeSpell);
       if (rollTotal >= 9) gainLoaded(1);
       break;
     case 'WAT-009': // Tsunami
-      damage(opponent, 2 + caster.element + (rollTotal >= 10 ? 9 : 0));
+      damage(opponent, 2 + flowBeforeSpell + (rollTotal >= 10 ? 9 : 0));
       break;
     case 'WAT-010': // Poseidon's Rift
-      damage(opponent, (rollTotal >= 8 ? 3 : 2) * caster.element);
+      damage(opponent, (rollTotal >= 8 ? 3 : 2) * flowBeforeSpell);
       break;
     case 'NEU-001': // Ward
       gainShield(3);
@@ -223,5 +232,6 @@ export function applySpellEffect(state, {
       record('resource', caster, `${name(caster)} gains 1 Mana.`, { amount: 1, resource: 'mana' });
       break;
   }
+  if (waterSpell) gainElement(flowGain);
   return events;
 }
