@@ -1,5 +1,5 @@
 {
-  "id": "324fae12e5f1",
+  "id": "aceb1ac2ab80",
   "layout": "portrait-1024x1536",
   "screens": [
     "title",
@@ -9,10 +9,10 @@
     "decks",
     "battle"
   ],
-  "entry": "./src/main.d95118368ced.js",
+  "entry": "./src/main.25902da78652.js",
   "stylesheet": "./src/style.1ba807610ded.css",
   "stylesheets": [
     "./src/style.1ba807610ded.css",
-    "./src/hub.b4a070273832.css"
+    "./src/hub.22f698662f67.css"
   ]
 }

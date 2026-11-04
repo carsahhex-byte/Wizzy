@@ -1,11 +1,11 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.js';
 import { normalizeDeck, createStarterDeck } from './decks.js';
-import { MAX_FLOW, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
+import { MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed rolling spell stays in hand until both Fate windows and its roll finish. */
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 export const PHASES = Object.freeze(['main', 'fate', 'rolling', 'resolving', 'end', 'refresh', 'ready-to-pass']);
 const PREVIEW_PHASES = PHASES.filter((phase) => phase !== 'rolling');
 const PENDING_PHASES = ['fate', 'rolling', 'resolving'];
@@ -401,6 +401,7 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
   const current = version === SAVE_VERSION;
   const realRules = version >= 4;
   const primaryRules = version >= 5;
+  const customDeckRules = version >= 7;
   requireValue(state !== null && typeof state === 'object' && state.version === version, 'unsupported save');
   requireValue(Number.isSafeInteger(state.round) && state.round >= 1, 'round');
   requireValue([0, 1].includes(state.activePlayer), 'active player');
@@ -417,12 +418,13 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
     requireValue(player.maxHp === 30 && Number.isSafeInteger(player.hp) && player.hp >= 0 && player.hp <= player.maxHp, 'HP');
     for (const key of ['mana', 'shield', 'element', 'loaded', 'turnsStarted', ...(realRules ? ['loadedPending'] : [])]) requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
     if (version >= 6 && player.id === 'water') requireValue(player.element <= MAX_FLOW, 'Flow cap');
+    if (current && player.id === 'fire') requireValue(player.element <= MAX_EMBERS, 'Ember cap');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
     requireValue(player.hand.length <= 5, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
     requireValue(cards.length === deckSize, 'card conservation');
-    const deckDefinition = current ? normalizeDeck(player.deckDefinition) : null;
-    if (current) requireValue(deckDefinition.element === expectedId, 'deck element');
+    const deckDefinition = customDeckRules ? normalizeDeck(player.deckDefinition) : null;
+    if (customDeckRules) requireValue(deckDefinition.element === expectedId, 'deck element');
     const definitions = new Map(expectedDeck(expectedId, false, deckDefinition).map((card) => [card.id, card]));
     for (const card of cards) {
       requireValue(card && typeof card.id === 'string' && !allIds.has(card.id), 'unique cards');
@@ -608,6 +610,7 @@ function upgradePreviewRules(preview) {
   next.selectedFateCardIds = [];
   if (wasPending || (next.selectedCardId && !canSelectCard(next, next.selectedCardId))) next.selectedCardId = null;
   applyFlowUpgrade(next);
+  applyEmberUpgrade(next);
   addLog(next, 'Spell effects, printed mana costs and two-player Fate are now active. Existing Loaded is available on the current turn or queued for its owner’s next turn.');
   if (wasPending) addLog(next, 'The unfinished preview spell was cancelled without charging mana, spending Embers, discarding it or applying effects.');
   assertGame(next);
@@ -650,17 +653,34 @@ function upgradeFlowRules(previous) {
 function upgradeCustomDeckRules(previous) {
   assertSavedState(previous, 6, DECK_SIZE, makeDeckCards);
   const next = structuredClone(previous);
-  next.version = SAVE_VERSION;
+  next.version = 7;
   for (const player of next.players) player.deckDefinition = normalizeDeck(createStarterDeck(player.id));
   addLog(next, 'Custom 30-slab decks are now supported. This duel keeps its original starter decks.');
+  return upgradeEmberRules(next);
+}
+
+function applyEmberUpgrade(next) {
+  const fire = next.players[0];
+  const previousEmbers = fire.element;
+  fire.element = Math.min(previousEmbers, MAX_EMBERS);
+  addLog(next, `Fire Embers are now capped at ${MAX_EMBERS}.${previousEmbers > MAX_EMBERS ? ` Fire's saved Embers were capped from ${previousEmbers} to ${MAX_EMBERS}.` : ''}`);
+}
+
+/** Keep custom decks and committed spells while capping the remaining Fire store. */
+function upgradeEmberRules(previous) {
+  assertSavedState(previous, 7, DECK_SIZE, makeDeckCards);
+  const next = structuredClone(previous);
+  next.version = SAVE_VERSION;
+  applyEmberUpgrade(next);
   assertGame(next);
   return next;
 }
 
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![1, 2, 3, 4, 5, 6].includes(value.version)) return null;
+  if (!value || ![1, 2, 3, 4, 5, 6, 7].includes(value.version)) return null;
   try {
+    if (value.version === 7) return upgradeEmberRules(value);
     if (value.version === 6) return upgradeCustomDeckRules(value);
     if (value.version === 5) return upgradeFlowRules(value);
     if (value.version === 4) return upgradePrimaryTurns(value);

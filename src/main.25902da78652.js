@@ -1,9 +1,9 @@
-import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.d9daf94a6e10.js';
-import { ASSETS, ASSET_CROPS } from './assets.40ea6034db7c.js';
+import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.2905fe981db7.js';
+import { ASSETS, ASSET_CROPS } from './assets.0e1cae43a874.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.60141befac6b.js';
-import { createHub } from './hub.d841dbdbdb25.js';
+import { createHub } from './hub.77ad26fa671b.js';
 
-const SAVE_KEY = 'wizzy.duel.v7';
+const SAVE_KEY = 'wizzy.duel.v8';
 const app = document.querySelector('#app');
 const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
@@ -23,7 +23,7 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  for(const key of ['wizzy.duel.v6','wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
+  for(const key of ['wizzy.duel.v7','wizzy.duel.v6','wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
   }

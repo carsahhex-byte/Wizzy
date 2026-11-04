@@ -3,7 +3,7 @@ import { ASSETS, ASSET_CROPS } from './assets.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.js';
 import { createHub } from './hub.js';
 
-const SAVE_KEY = 'wizzy.duel.v7';
+const SAVE_KEY = 'wizzy.duel.v8';
 const app = document.querySelector('#app');
 const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
@@ -23,7 +23,7 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  for(const key of ['wizzy.duel.v6','wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
+  for(const key of ['wizzy.duel.v7','wizzy.duel.v6','wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
   }

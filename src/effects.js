@@ -1,6 +1,7 @@
 import { SPELL_CATALOG } from './spells.js';
 
 export const MAX_FLOW = 5;
+export const MAX_EMBERS = 5;
 
 const rule = (requiresRoll = false, emberSpend = 'none', maxEmbers) => Object.freeze({
   requiresRoll,
@@ -90,8 +91,10 @@ export function applySpellEffect(state, {
   const caster = state.players[casterIndex];
   const opponent = state.players[1 - casterIndex];
   const waterSpell = definition.element === 'Water';
+  const fireSpell = definition.element === 'Fire';
   const flowBeforeSpell = waterSpell ? Math.min(MAX_FLOW, caster.element) : null;
   if (waterSpell) caster.element = flowBeforeSpell;
+  if (fireSpell) caster.element = Math.min(MAX_EMBERS, caster.element);
   let flowGain = 1;
   const events = [];
   const name = player => player.name ?? player.id ?? 'Wizard';
@@ -112,11 +115,12 @@ export function applySpellEffect(state, {
     record('shield', caster, `${name(caster)} gains ${amount} Shield.`, { amount });
   };
   const gainElement = amount => {
-    const gained = waterSpell ? Math.min(amount, MAX_FLOW - caster.element) : amount;
+    const maximum = waterSpell ? MAX_FLOW : MAX_EMBERS;
+    const gained = Math.min(amount, Math.max(0, maximum - caster.element));
     caster.element += gained;
     const resource = caster.id === 'fire' || definition.element === 'Fire' ? 'Ember' : 'Flow';
     record('resource', caster,
-      `${name(caster)} gains ${gained} ${resource}${resource === 'Ember' && gained !== 1 ? 's' : ''}${waterSpell && caster.element === MAX_FLOW ? ` (maximum ${MAX_FLOW})` : ''}.`,
+      `${name(caster)} gains ${gained} ${resource}${resource === 'Ember' && gained !== 1 ? 's' : ''}${caster.element === maximum ? ` (maximum ${maximum})` : ''}.`,
       { amount: gained, resource: 'element' });
   };
   const gainLoaded = amount => {

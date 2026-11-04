@@ -4,15 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#11172a" />
-    <meta name="wizzy-build" content="324fae12e5f1" />
+    <meta name="wizzy-build" content="aceb1ac2ab80" />
     <meta name="description" content="Explore a pixel Seattle, build your spell slab deck, and battle in Wizzy." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Wizzy · Seattle Awaits</title>
     <link rel="icon" type="image/svg+xml" href="./public/art/favicon.svg" />
     <link rel="stylesheet" href="./src/style.1ba807610ded.css" />
-    <link rel="stylesheet" href="./src/hub.b4a070273832.css" />
-    <script type="module" src="./src/main.d95118368ced.js"></script>
+    <link rel="stylesheet" href="./src/hub.22f698662f67.css" />
+    <script type="module" src="./src/main.25902da78652.js"></script>
   </head>
   <body>
     <main id="hub" class="hub-root" aria-label="Wizzy"></main>
@@ -41,6 +41,7 @@
         <li>A spell with a roll threshold opens Fate. Select any number of eligible Fate slabs, then <strong>Cast Fate</strong> plays the whole batch and advances immediately. <strong>Skip Fate</strong> advances without playing selected slabs. Fate does not count as another primary spell.</li>
         <li>The attacker may use Fortune (+4) and Twist (+2). Their Cast Fate or Skip Fate passes to the defender, who may use Misfortune (−4) and Twist (−2). The defender’s Cast Fate or Skip Fate advances to the roll. Add both sides’ Fate and the caster’s eligible Loaded bonus to two dice.</li>
         <li>Incoming damage, including self-damage, consumes Shield before HP. Healing stops at 30 HP. Reaching 0 HP ends the duel.</li>
+        <li>Fire Embers are capped at <strong>5</strong>. Only printed spell effects grant Embers; casting a Fire slab does not grant an automatic Ember. Spending removes the chosen Embers before resolution.</li>
         <li>Water spells use their existing Flow for effects and damage. After resolving, gain <strong>1 Flow</strong>, or the printed Flow gain instead. These gains do not stack. Flow is capped at <strong>5</strong>; Neutral and Fate slabs do not grant the automatic gain.</li>
         <li>A Loaded bonus earned this turn is queued for <strong>your next own turn</strong>. It applies once to your first roll in that turn; if unused, it expires when that turn ends.</li>
         <li><strong>End Turn</strong> turns red and reveals Hand Refresh. Click the red End Turn to pass without refreshing.</li>
@@ -48,7 +49,7 @@
       </ul>
       <div class="prototype-note"><strong>Playtest Fate sequence: attacker → defender → roll.</strong> Screen handoffs make both sides playable on this device. Next-turn Loaded bonuses do not affect spells cast during the turn they were earned.</div>
       <p class="small-copy">Build decks from Home: exactly 30 slabs, up to 3 copies per spell, and one main element plus Neutral and Fate. There are no category quotas. Rules text and mana costs come from the uploaded master spellbook. Select a slab and choose Read slab for full text. Click Spell Tower to review this battle’s actual composition.</p>
-      <p class="build-version" id="build-version">Build 324fae12e5f1 · portrait layout</p>
+      <p class="build-version" id="build-version">Build aceb1ac2ab80 · portrait layout</p>
       <button class="secondary-button" id="settings-deck">View spell slab decks</button>
       <button class="secondary-button" id="request-restart">Start a new duel</button>
     </dialog>

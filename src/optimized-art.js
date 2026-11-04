@@ -20,6 +20,11 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "8aeccd7d55099243451e625a65253c3af0dc57d0137ab116dee6523db58c9233",
     "optimizedSha256": "1147b996c4d951ffbf88381da561c698a64f264cacf759d2e19c40ebfd8092e6"
   },
+  "storybookIcon": {
+    "file": "storybookIcon-3faa800db3a0.webp",
+    "sourceSha256": "649157e98eb95c1e510e82c936643400bd4fd9566a64385cbd7b15f7ca9cf54e",
+    "optimizedSha256": "3faa800db3a0408489419b92801fedccead78769c1ec3e8c680c55098ff6cc14"
+  },
   "forest": {
     "file": "forest-ee3f83c2132f.webp",
     "sourceSha256": "9660cdca7c31b259e17b20e736793d190aa6abbb7dd3d63d29e673213f053a5c",
