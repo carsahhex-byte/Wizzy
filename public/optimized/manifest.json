@@ -159,6 +159,26 @@
     "width": 1086,
     "height": 1448
   },
+  "fateCard": {
+    "file": "fateCard-a940bacef354.webp",
+    "source": "Purple Galaxy Vortex Card Frame.png",
+    "sourceSha256": "11eae3746d6d9696841901f70acb9ce995fef505f77ac28050a5993470ad7df4",
+    "optimizedSha256": "a940bacef354e354612e7fcd878076140ca026e980fb2290e9d8de974d5aed78",
+    "bytes": 922182,
+    "sourceBytes": 1339734,
+    "width": 1086,
+    "height": 1448
+  },
+  "neutralCard": {
+    "file": "neutralCard-404066d8d17d.webp",
+    "source": "Neutral card.png",
+    "sourceSha256": "94158ebca9404f21ed80f0dc5ba09f638f0b9c5c78348dba97d035139b5cb58a",
+    "optimizedSha256": "404066d8d17d26c4027c19412f8f504b586cba7f02d1fbd7e34b5f71f65eddf1",
+    "bytes": 841390,
+    "sourceBytes": 1224430,
+    "width": 1086,
+    "height": 1448
+  },
   "stoneSign": {
     "file": "stoneSign-aff5a770935f.webp",
     "source": "Mossy Pixel Stone Sign.png",

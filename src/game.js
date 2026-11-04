@@ -1,16 +1,24 @@
-/** Turn phases and card-zone rules. Card costs/effects and dice rules are pending. */
-export const DECK_SIZE = 24;
-export const SAVE_VERSION = 2;
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.js';
+
+export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE };
+
+/** Turn phases and card-zone rules. Printed costs/effects are metadata until implemented. */
+export const SAVE_VERSION = 3;
 export const PHASES = Object.freeze(['main', 'fate', 'resolving', 'end', 'refresh', 'ready-to-pass']);
 
-const pendingSpell = (spellId, name, art) => Object.freeze({
-  spellId, name, art, cost: 0, effectPending: true,
-  description: 'Spell effect coming soon.',
+export const CARD_CATALOG = Object.freeze({
+  fire: Object.freeze(DECK_LISTS.fire.map(({ spellId }) => SPELL_CATALOG[spellId])),
+  water: Object.freeze(DECK_LISTS.water.map(({ spellId }) => SPELL_CATALOG[spellId])),
 });
 
-export const CARD_CATALOG = Object.freeze({
-  fire: Object.freeze([pendingSpell('fiery-comet', 'Fiery Comet', 'comet')]),
-  water: Object.freeze([pendingSpell('cresting-wave', 'Cresting Wave', 'wave')]),
+const LEGACY_DECK_SIZE = 24;
+const LEGACY_SPELLS = Object.freeze({
+  fire: Object.freeze({ spellId: 'fiery-comet', name: 'Fiery Comet', art: 'comet' }),
+  water: Object.freeze({ spellId: 'cresting-wave', name: 'Cresting Wave', art: 'wave' }),
+});
+const VERSION_ONE_SPELL_IDS = Object.freeze({
+  fire: ['spark-shot', 'kindle', 'fortune', 'heatbox', 'mana-shield', 'sunsetter'],
+  earth: ['stone-shot', 'rootbound', 'earth-fortune', 'runestone', 'earth-mana-shield', 'mountain-call'],
 });
 
 function randomGenerator(seed) {
@@ -24,13 +32,27 @@ function randomGenerator(seed) {
   };
 }
 
-function makeCard(element, copy) {
-  const spell = CARD_CATALOG[element][0];
-  return { ...spell, id: `${element}-${spell.spellId}-${copy}` };
+function makeDeckCards(owner) {
+  return DECK_LISTS[owner].flatMap(({ spellId, quantity }) => {
+    const spell = SPELL_CATALOG[spellId];
+    return Array.from({ length: quantity }, (_, copy) => ({
+      ...spell, id: `${owner}-${spellId}-${copy}`,
+      // Do not charge printed mana or execute spell text before the rules are implemented.
+      cost: 0, effectPending: true, description: spell.effectText,
+    }));
+  });
 }
 
-function makeDeck(element, random) {
-  const deck = Array.from({ length: DECK_SIZE }, (_, copy) => makeCard(element, copy));
+function makeLegacyDeck(owner) {
+  const spell = LEGACY_SPELLS[owner];
+  return Array.from({ length: LEGACY_DECK_SIZE }, (_, copy) => ({
+    ...spell, id: `${owner}-${spell.spellId}-${copy}`,
+    cost: 0, effectPending: true, description: 'Spell effect coming soon.',
+  }));
+}
+
+function makeDeck(owner, random) {
+  const deck = makeDeckCards(owner);
   for (let index = deck.length - 1; index > 0; index -= 1) {
     const other = Math.floor(random() * (index + 1));
     [deck[index], deck[other]] = [deck[other], deck[index]];
@@ -69,7 +91,7 @@ export function createGame(seed = Date.now()) {
     phase: 'main', selectedCardId: null, pendingCardId: null, refreshCardIds: [],
     status: 'playing', winner: null, players, log: [],
   };
-  addLog(state, 'The duel begins. Both wizards receive 30 HP, 3 mana, and 4 cards.');
+  addLog(state, 'The duel begins. Both wizards receive 30 HP, 3 mana, and 4 spell slabs.');
   addLog(state, 'Fire takes the first turn.', 'turn', 'fire');
   return state;
 }
@@ -141,11 +163,11 @@ export function endTurn(state) {
   const isOpeningTurn = player.turnsStarted === 0;
   player.turnsStarted += 1;
   if (isOpeningTurn) {
-    addLog(next, `${player.name} takes their opening turn with 4 cards.`, 'turn', player.id);
+    addLog(next, `${player.name} takes their opening turn with 4 spell slabs.`, 'turn', player.id);
   } else {
     const count = drawToFive(player);
     const emptyNote = player.deck.length === 0 && player.hand.length < 5 ? ' Spell Tower is empty.' : '';
-    addLog(next, `${player.name}'s turn. Drew ${count} ${count === 1 ? 'card' : 'cards'}; ${player.hand.length} in hand.${emptyNote}`, 'turn', player.id);
+    addLog(next, `${player.name}'s turn. Drew ${count} ${count === 1 ? 'slab' : 'slabs'}; ${player.hand.length} in hand.${emptyNote}`, 'turn', player.id);
   }
   return next;
 }
@@ -212,9 +234,8 @@ function requireValue(condition, message) {
   if (!condition) throw new Error(`Invalid game: ${message}`);
 }
 
-/** Validate local saves, including in-progress fate and refresh phases. */
-export function assertGame(state) {
-  requireValue(state !== null && typeof state === 'object' && state.version === SAVE_VERSION, 'unsupported save');
+function assertSavedState(state, version, deckSize, expectedDeck) {
+  requireValue(state !== null && typeof state === 'object' && state.version === version, 'unsupported save');
   requireValue(Number.isSafeInteger(state.round) && state.round >= 1, 'round');
   requireValue([0, 1].includes(state.activePlayer), 'active player');
   requireValue(['playing', 'finished'].includes(state.status), 'status');
@@ -231,14 +252,14 @@ export function assertGame(state) {
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
     requireValue(player.hand.length <= 5, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
-    requireValue(cards.length === DECK_SIZE, 'card conservation');
-    const spell = CARD_CATALOG[expectedId][0];
-    const validIds = new Set(Array.from({ length: DECK_SIZE }, (_, copy) => `${expectedId}-${spell.spellId}-${copy}`));
+    requireValue(cards.length === deckSize, 'card conservation');
+    const definitions = new Map(expectedDeck(expectedId).map((card) => [card.id, card]));
     for (const card of cards) {
       requireValue(card && typeof card.id === 'string' && !allIds.has(card.id), 'unique cards');
       allIds.add(card.id);
-      requireValue(validIds.has(card.id), 'card identity');
-      for (const key of ['spellId', 'name', 'art', 'cost', 'description', 'effectPending']) requireValue(card[key] === spell[key], 'spell definition');
+      const expected = definitions.get(card.id);
+      requireValue(expected !== undefined, 'card identity');
+      for (const [key, value] of Object.entries(expected)) requireValue(card[key] === value, 'spell definition');
     }
   });
   const hand = state.players[state.activePlayer].hand;
@@ -261,51 +282,87 @@ export function assertGame(state) {
   }
 }
 
+/** Validate exact deck quantities and definitions, including in-progress fate/refresh saves. */
+export function assertGame(state) {
+  assertSavedState(state, SAVE_VERSION, DECK_SIZE, makeDeckCards);
+}
+
 export function validateSavedGame(value) {
   try { assertGame(value); return true; } catch { return false; }
 }
 
-/** Preserve v1 progress while replacing its Earth wizard and old placeholder catalog. */
+/** Keep the previous v1 zone-order mapping before upgrading its sample deck. */
+function migrateVersionOne(value) {
+  requireValue(Array.isArray(value.players) && value.players.length === 2, 'legacy players');
+  const oldIds = new Set();
+  let selectedCardId = null;
+  const players = value.players.map((old, index) => {
+    const oldId = index === 0 ? 'fire' : 'earth';
+    const id = index === 0 ? 'fire' : 'water';
+    requireValue(old && old.id === oldId && old.name === (index === 0 ? 'Fire' : 'Earth'), 'legacy player');
+    requireValue(old.elementName === (index === 0 ? 'Embers' : 'Runes'), 'legacy element');
+    const validIds = new Set(VERSION_ONE_SPELL_IDS[oldId].flatMap((spellId) =>
+      Array.from({ length: 4 }, (_, copy) => `${oldId}-${spellId}-${copy}`)));
+    const sampleDeck = makeLegacyDeck(id);
+    let copy = 0;
+    const zones = {};
+    for (const zone of ['hand', 'deck', 'discard']) {
+      requireValue(Array.isArray(old[zone]), 'legacy zone');
+      zones[zone] = old[zone].map((oldCard) => {
+        requireValue(oldCard && validIds.has(oldCard.id) && !oldIds.has(oldCard.id), 'legacy card');
+        oldIds.add(oldCard.id);
+        const card = sampleDeck[copy++];
+        requireValue(card !== undefined, 'legacy card count');
+        if (oldCard.id === value.selectedCardId && index === value.activePlayer && zone === 'hand') selectedCardId = card.id;
+        return card;
+      });
+    }
+    requireValue(copy === LEGACY_DECK_SIZE, 'legacy card count');
+    return {
+      id, name: index === 0 ? 'Fire' : 'Water', elementName: index === 0 ? 'Embers' : 'Flow',
+      hp: old.hp, maxHp: old.maxHp, mana: old.mana, shield: old.shield, element: old.element,
+      loaded: old.loaded, turnsStarted: old.turnsStarted, ...zones,
+    };
+  });
+  requireValue(value.selectedCardId === null || selectedCardId !== null, 'legacy selection');
+  requireValue(Array.isArray(value.log), 'legacy log');
+  return {
+    version: 2, round: value.round, activePlayer: value.activePlayer,
+    phase: 'main', selectedCardId, pendingCardId: null, refreshCardIds: [],
+    status: value.status, winner: value.winner, players,
+    log: value.log.map((entry) => ({
+      ...entry, playerId: entry.playerId === 'earth' ? 'water' : entry.playerId,
+      message: entry.message.replaceAll('Earth', 'Water').replaceAll('earth', 'water').replaceAll('Runes', 'Flow'),
+    })),
+  };
+}
+
+/** Replace 24-card samples with the 30-slab decklists without changing turn progress. */
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || value.version !== 1 || !Array.isArray(value.players) || value.players.length !== 2) return null;
+  if (!value || ![1, 2].includes(value.version)) return null;
   try {
-    const oldIds = new Set();
-    let selectedCardId = null;
-    const players = value.players.map((old, index) => {
-      const oldId = index === 0 ? 'fire' : 'earth';
-      const id = index === 0 ? 'fire' : 'water';
-      requireValue(old.id === oldId && old.name === (index === 0 ? 'Fire' : 'Earth'), 'legacy player');
-      requireValue(old.elementName === (index === 0 ? 'Embers' : 'Runes'), 'legacy element');
-      let copy = 0;
-      const zones = {};
-      for (const zone of ['hand', 'deck', 'discard']) {
-        requireValue(Array.isArray(old[zone]), 'legacy zone');
-        zones[zone] = old[zone].map((oldCard) => {
-          requireValue(oldCard && typeof oldCard.id === 'string' && oldCard.id.startsWith(`${oldId}-`) && !oldIds.has(oldCard.id), 'legacy card');
-          oldIds.add(oldCard.id);
-          const card = makeCard(id, copy++);
-          if (oldCard.id === value.selectedCardId && index === value.activePlayer && zone === 'hand') selectedCardId = card.id;
-          return card;
-        });
-      }
-      requireValue(copy === DECK_SIZE, 'legacy card count');
-      return {
-        id, name: index === 0 ? 'Fire' : 'Water', elementName: index === 0 ? 'Embers' : 'Flow',
-        hp: old.hp, maxHp: old.maxHp, mana: old.mana, shield: old.shield, element: old.element,
-        loaded: old.loaded, turnsStarted: old.turnsStarted, ...zones,
-      };
+    const legacy = value.version === 1 ? migrateVersionOne(value) : value;
+    assertSavedState(legacy, 2, LEGACY_DECK_SIZE, makeLegacyDeck);
+    const replacements = new Map();
+    const players = legacy.players.map((player) => {
+      const deck = makeDeckCards(player.id);
+      makeLegacyDeck(player.id).forEach((card, copy) => replacements.set(card.id, deck[copy]));
+      const zones = Object.fromEntries(['hand', 'deck', 'discard'].map((zone) => [
+        zone, player[zone].map((card) => replacements.get(card.id)),
+      ]));
+      zones.deck.push(...deck.slice(LEGACY_DECK_SIZE));
+      return { ...player, ...zones };
     });
-    requireValue(value.selectedCardId === null || selectedCardId !== null, 'legacy selection');
+    const replaceId = (id) => id === null ? null : replacements.get(id).id;
     const migrated = {
-      version: SAVE_VERSION, round: value.round, activePlayer: value.activePlayer,
-      phase: 'main', selectedCardId, pendingCardId: null, refreshCardIds: [],
-      status: value.status, winner: value.winner, players,
-      log: value.log.map((entry) => ({
-        ...entry, playerId: entry.playerId === 'earth' ? 'water' : entry.playerId,
-        message: entry.message.replaceAll('Earth', 'Water').replaceAll('earth', 'water').replaceAll('Runes', 'Flow'),
-      })),
+      ...legacy, version: SAVE_VERSION, players,
+      selectedCardId: replaceId(legacy.selectedCardId),
+      pendingCardId: replaceId(legacy.pendingCardId),
+      refreshCardIds: legacy.refreshCardIds.map(replaceId),
+      log: structuredClone(legacy.log),
     };
+    addLog(migrated, 'Sample decks upgraded to the 30-slab Fire and Water decklists. Each Spell Tower received 6 additional slabs; printed spell effects and mana costs are still pending.');
     assertGame(migrated);
     return migrated;
   } catch { return null; }

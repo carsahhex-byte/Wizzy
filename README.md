@@ -1,6 +1,6 @@
 # Wizzy · Battle Simulator
 
-A responsive, local two-player wizard card game. Fire and Water take turns on the same screen, with separate hands, spell towers, and discard piles. The arena uses the supplied pixel-art graphics, including the forest, mages, frames, buttons, dice pair, and spell cards.
+A responsive, local two-player wizard card game. Fire and Water take turns on the same screen, with separate hands, spell towers, and discard piles. Their decks use the supplied **30-slab decklists** and master spellbook definitions. The arena uses the supplied pixel-art graphics, including the forest, mages, frames, buttons, dice pair, and spell slabs.
 
 ## Run
 
@@ -14,7 +14,7 @@ npm start
 The server listens on port **5173**. Set `PORT` to use another port. `npm run dev` starts the same development server; refresh the browser after editing files.
 
 ```sh
-npm test          # 14 game-engine tests
+npm test          # game-engine and decklist tests
 npm run build    # syntax validation and a static release in dist/
 npm run build:web # smaller hosted release, with separate optimized artwork
 npm run preview  # serve the built release on port 5173
@@ -38,13 +38,15 @@ Later `npm run deploy:pages` uploads update the same site. No extra hosting acco
 
 Hosted CSS and every JavaScript module use filenames hashed from their final content, including rewritten dependency imports. This prevents a newly loaded page from mixing a new release with old cached game modules. `build-info.json`, the `wizzy-build` HTML metadata, and the build number in game Settings identify the exact release. If a page is still cached after deployment, opening the site with `?v=<build-id>` requests a fresh HTML URL without changing saved duels.
 
-For a no-install version, build the project and open **`dist/wizzy.html`** directly in a browser. This approximately **25 MB** single-file version includes all scripts, styles, and the supplied artwork. Browser saves are separate for each hosted URL or downloaded copy, and file-based storage support depends on the browser.
+For a no-install version, build the project and open **`dist/wizzy.html`** directly in a browser. This single-file version includes all scripts, styles, and the supplied artwork. Browser saves are separate for each hosted URL or downloaded copy, and file-based storage support depends on the browser.
 
 ## Artwork and layout
 
 The uploaded PNGs remain unmodified in `public/graphics/`, including graphics reserved for later updates. `src/assets.js` maps the graphics used by this version and records crop metadata that hides transparent export margins at rendering time. Pixel rendering keeps the art crisp. The hand frame uses nine-slice layout so its corners remain intact as the card area changes size.
 
-The hosted build uses only 17 required images from `public/optimized/`, encoded as lossless WebP with content-hashed filenames for caching. Their decoded RGBA pixels are byte-for-byte identical to the originals. The images total **13,399,496 bytes**, down from **19,323,096 bytes** (30.7% smaller), and load separately rather than being embedded in the HTML. Original and unused artwork and the large standalone download are excluded from the hosted release.
+The hosted build uses the required images from `public/optimized/`, encoded as lossless WebP with content-hashed filenames for caching. Their decoded RGBA pixels are byte-for-byte identical to the originals, and they load separately rather than being embedded in the HTML. Original and unused artwork and the large standalone download are excluded from the hosted release.
+
+Elemental **Fire** slabs use the fiery-comet graphic and elemental **Water** slabs use the cresting-wave graphic. Shared **Neutral** slabs use the white graphic, and **Fate** slabs use the purple graphic. Each slab displays its own master ID, name, printed mana cost, and rules text; different spells reuse the appropriate category's artwork.
 
 After replacing source PNGs, regenerate their optimized copies with `npm run optimize:art`. That optional authoring command requires Python and Pillow with WebP support; running, testing, building, and deploying the retained files require only Node.js and Git. The web build verifies source and optimized SHA-256 hashes and rejects stale or damaged copies.
 
@@ -57,7 +59,7 @@ Use **Larger view** for a larger, scrollable portrait board and **Fit screen** t
 ## Implemented rules
 
 - Both wizards start at 30 HP, with 3 mana, 0 shield, 0 elemental points (**Embers** for Fire, **Flow** for Water), and +0 loaded dice.
-- Each wizard starts with 4 cards, including Water's opening turn.
+- Each wizard starts with 4 spell slabs, including Water's opening turn. Each 30-slab deck therefore has 26 slabs left in its Spell Tower after the opening deal.
 - A round is one turn per wizard, Fire then Water. At the beginning of every subsequent round, both wizards gain 2 mana. Unspent mana carries over.
 - On a wizard's turns after their opening turn, automatically draw up to 5 cards. Drawing happens at the beginning of the turn, not after casting.
 - Click a card to highlight it, then click **Cast Spell**. The button becomes **Skip Fate**, and all cards are greyed out and unavailable during the fate window.
@@ -67,13 +69,26 @@ Use **Larger view** for a larger, scrollable portrait board and **Fit screen** t
 - To refresh, click **Hand Refresh**, select any number of cards (including zero or the entire hand), and click **Hand Refresh** again to confirm. Selected cards turn grey, then move to the discard pile; replacement cards are drawn from the tower up to a five-card hand. This stays on the same wizard's turn so the refreshed hand can be reviewed. Click **End Turn** to pass. Refresh is available only once per turn, and selections can be cancelled before confirmation.
 - Passing shows a handoff dialog before the next wizard begins.
 - Spell tower and discard counts follow the active wizard and update with card movement.
-- Combat log, new-duel confirmation, and validated browser save/resume are included. Valid version-one saves are migrated to Fire/Water and the updated sample cards while preserving game progress.
+- Select a slab and use **Read Slab** to inspect its complete printed rules. Clicking the **Spell Tower** or using the deck option in Settings opens that wizard's full composition and quantities; it does not reveal the hidden draw order.
+- Combat log, new-duel confirmation, and validated browser save/resume are included. Save version 3 upgrades valid older 24-card sample duels to the actual 30-slab decklists, preserving stats, turn progress, phase, and zone counts while adding the six extra slabs to each Spell Tower. The combat log records the upgrade.
+
+## Spell slabs and decklists
+
+The source documents define the deck composition and printed spell metadata:
+
+- **Fire v2.2**, revised November 3, 2026: 14 distinct spells, 30 slabs.
+- **Water v1.0**: 15 distinct spells, 30 slabs.
+- Each deck contains **21 Elemental, 2 Neutral, and 7 Fate** slabs.
+
+`src/spells.js` contains 29 catalog definitions within the current scope: 12 Fire, 10 Water, 4 Neutral, and 3 Fate. Exactly 25 distinct spells appear across the two playable decks. Unused Fire/Water-scope definitions remain in the catalog for later decks; Earth and Air have not been imported. Water's zero-copy Ward and Legacy Shield reference rows create no playable slabs.
+
+See [the exact decklists and source references](docs/decklists.md) for master IDs, spell names, categories, printed mana costs, and copy quantities.
 
 ## Deliberately pending
 
-The next rules pass will define **card costs and effects**, dice behavior, deck composition, and discard recycling. The prototype does not interpret the example card effects in the reference image as final rules.
+Deck quantities, spell identities, printed mana costs, and rules text now come from the supplied PDFs. **Executing those costs and effects is deliberately pending the next implementation step.** The displayed text is reference data, not active effect logic.
 
-For now each wizard has a **24-card sample deck** (20 left in the tower after the opening deal): Fire uses copies of **Fiery Comet**, and Water uses copies of **Cresting Wave**. Other supplied card graphics are reserved for later rules. Sample spells have no cost or effect: casting demonstrates the fate and resolution flow without changing mana or HP. The supplied dice pair is displayed in its frame, but no rolls or dice effects are invented. All cards remain unavailable during the fate window until fate-card rules are provided.
+For this preview, the engine's executable `cost` remains zero even though each slab displays its real `manaCost`. Casting demonstrates the existing fate and resolution flow without spending mana or applying damage, healing, Shield, Embers, Flow, or roll modifiers. The supplied dice pair is displayed in its frame, but no rolls or dice effects are invented. All slabs—including Fate slabs—remain greyed out and unavailable during the fate window until the later fate-card behavior is implemented.
 
 If the tower runs out, drawing stops, so automatic draws and hand refresh can produce fewer than five cards. No reshuffle or fatigue rule is invented. There is no AI or online multiplayer.
 
@@ -83,7 +98,8 @@ These provisional interpretations are also available through the in-game setting
 
 ## Project structure
 
-- `src/game.js` — pure game-state transitions, fate/refresh phases, card catalog, save validation and migration.
+- `src/spells.js` — master spell metadata, exact Fire/Water deck quantities, and PDF source references.
+- `src/game.js` — pure game-state transitions, fate/refresh phases, slab instances, save validation and migration.
 - `src/main.js` — interface rendering, interactions, browser persistence.
 - `src/style.css` — responsive arena and card styling.
 - `src/assets.js` — uploaded graphic mapping and rendering crop metadata.
@@ -92,6 +108,7 @@ These provisional interpretations are also available through the in-game setting
 - `public/optimized/` — pixel-identical, hashed WebP copies and generation manifest.
 - `public/art/` — earlier prototype art and the application favicon.
 - `test/game.test.js` — phase locks, refresh, conservation, drawing, damage, victory, and save tests.
+- `docs/decklists.md` — reviewable deck composition and metadata source documentation.
 - `scripts/` — Node server, static build, GitHub Pages deployment, and optional artwork optimizer.
 
-The 14 engine tests pass. Chromium browser checks also pass for the initial updated build, covering artwork loading, card selection, fate/resolution locks, hand refresh, counters, turn passing, save/resume, and desktop and phone layouts.
+Engine tests cover deck quantities and metadata, phase locks, refresh, card conservation, drawing, damage, victory, and save migration. Browser validation covers artwork loading, slab selection and inspection, fate/resolution locks, hand refresh, counters, turn passing, save/resume, hosted resource versioning, and the portrait layout.
