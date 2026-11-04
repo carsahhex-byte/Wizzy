@@ -1,5 +1,5 @@
 {
-  "id": "c1360810a132",
+  "id": "72c417c43b43",
   "layout": "portrait-1024x1536",
   "screens": [
     "title",
@@ -11,11 +11,11 @@
     "account",
     "battle"
   ],
-  "entry": "./src/main.604f9e0c72ad.js",
-  "stylesheet": "./src/style.24a231b69a7a.css",
+  "entry": "./src/main.43910e967101.js",
+  "stylesheet": "./src/style.c2748aa41acc.css",
   "stylesheets": [
-    "./src/style.24a231b69a7a.css",
-    "./src/hub.6c7cc5405749.css",
+    "./src/style.c2748aa41acc.css",
+    "./src/hub.728d1b8383e4.css",
     "./src/multiplayer.d9e93cc388fa.css",
     "./src/accounts.5e8dfb99140d.css"
   ]

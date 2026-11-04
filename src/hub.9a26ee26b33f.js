@@ -1,9 +1,13 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.99bc679d8c97.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.265088dc6fbe.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.60141befac6b.js';
 import { MAX_COPIES, createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount } from './decks.8ef89a458653.js';
 
 const HUB_SAVE_KEY = 'wizzy.hub.v1';
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck']);
+// The square artwork includes ocean around the city. Its artwork and labels
+// share one coordinate system, so the coast moves with every pan and zoom.
+const MAP_SIZE = 2048;
+const mapScale = (width, height, zoom) => Math.max(width, height) / MAP_SIZE * zoom;
 const escapeHub = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const cloneHub = value => structuredClone(value);
 const elementName = value => value === 'water' ? 'Water' : 'Fire';
@@ -51,12 +55,11 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   root.classList.add('wz-hub-root');
   root.hidden = true;
   const scene = assets.titleScene || ASSETS.titleScene || ASSETS.forest;
-  const map = assets.seattleMap || ASSETS.seattleMap;
+  const map = assets.seattleExpanded || ASSETS.seattleExpanded;
   const atlas = assets.iconAtlas || ASSETS.iconAtlas;
   const storybook = assets.storybookIcon || ASSETS.storybookIcon;
   if (scene) root.style.setProperty('--wz-title-scene', `url("${scene}")`);
   if (map) root.style.setProperty('--wz-map-scene', `url("${map}")`);
-  if (assets.mapSurround || ASSETS.mapSurround) root.style.setProperty('--wz-map-surround', `url("${assets.mapSurround || ASSETS.mapSurround}")`);
   if (atlas) {
     root.style.setProperty('--wz-icon-atlas', `url("${atlas}")`);
     root.classList.add('wz-has-atlas');
@@ -69,7 +72,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   let filter = 'All';
   let inDeckOnly = false;
   let placeOpen = false;
-  const mapStart = { zoom: 4, cx: .53, cy: .49 };
+  const mapStart = { zoom: 4, cx: .5, cy: .51 };
   let mapView = { ...mapStart };
   let mapDrag = null;
   let suppressMapClickUntil = 0;
@@ -153,6 +156,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
       <div class="wz-map-viewport" tabindex="0" role="region" aria-label="Seattle map preview, drag to explore" aria-describedby="wz-map-instructions">
         <div class="wz-map-world">
           <div class="wz-map-art" aria-hidden="true"></div>
+          <div class="wz-map-city">
           <div class="wz-map-label wz-northgate">NORTHGATE</div>
           <div class="wz-map-label wz-magnolia">MAGNOLIA</div>
           <div class="wz-map-label wz-magnuson">MAGNUSON<br>PARK</div>
@@ -162,6 +166,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
           <div class="wz-locked-district" aria-label="West Seattle, locked"><div class="wz-locked-copy"><span aria-hidden="true">▧</span><strong>WEST<br>SEATTLE</strong><small>LOCKED</small></div></div>
           <div class="wz-you-marker" role="img" aria-label="Your location, preview position"><span class="wz-location-dot" aria-hidden="true"></span></div>
           <button class="wz-market-marker ${placeOpen ? 'wz-open' : ''}" data-wz-action="market" aria-label="View Pike Place Market starting location">${hubIcon('pin')}<span>PIKE PLACE<small>START HERE</small></span></button>
+          </div>
         </div>
       </div>
       <p id="wz-map-instructions" class="sr-only">Drag the map with a mouse or finger. Fit shows the complete city. With the map focused, use arrow keys to explore, plus and minus to zoom, or Home to center South Lake Union.</p>
@@ -213,9 +218,9 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     if (!viewport || !world || !viewport.clientWidth || !viewport.clientHeight) return;
     const width = viewport.clientWidth;
     const height = viewport.clientHeight;
-    const scale = Math.min(width / 1024, height / 1536) * mapView.zoom;
-    const worldWidth = 1024 * scale;
-    const worldHeight = 1536 * scale;
+    const scale = mapScale(width, height, mapView.zoom);
+    const worldWidth = MAP_SIZE * scale;
+    const worldHeight = MAP_SIZE * scale;
     const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
     mapView.cx = worldWidth <= width ? .5 : clamp(mapView.cx, width / (2 * worldWidth), 1 - width / (2 * worldWidth));
     mapView.cy = worldHeight <= height ? .5 : clamp(mapView.cy, height / (2 * worldHeight), 1 - height / (2 * worldHeight));
@@ -261,9 +266,9 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
       mapDrag.viewport.classList.add('wz-dragging');
     }
     event.preventDefault();
-    const scale = Math.min(mapDrag.viewport.clientWidth / 1024, mapDrag.viewport.clientHeight / 1536) * mapView.zoom;
-    mapView.cx = mapDrag.cx - dx / (1024 * scale);
-    mapView.cy = mapDrag.cy - dy / (1536 * scale);
+    const scale = mapScale(mapDrag.viewport.clientWidth, mapDrag.viewport.clientHeight, mapView.zoom);
+    mapView.cx = mapDrag.cx - dx / (MAP_SIZE * scale);
+    mapView.cy = mapDrag.cy - dy / (MAP_SIZE * scale);
     applyMapView();
   });
   root.addEventListener('pointerup', finishMapDrag);
@@ -277,12 +282,12 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   root.addEventListener('keydown', event => {
     if (!event.target.matches('.wz-map-viewport')) return;
     const viewport = event.target;
-    const scale = Math.min(viewport.clientWidth / 1024, viewport.clientHeight / 1536) * mapView.zoom;
+    const scale = mapScale(viewport.clientWidth, viewport.clientHeight, mapView.zoom);
     const step = event.shiftKey ? 120 : 45;
-    if (event.key === 'ArrowLeft') mapView.cx -= step / (1024 * scale);
-    else if (event.key === 'ArrowRight') mapView.cx += step / (1024 * scale);
-    else if (event.key === 'ArrowUp') mapView.cy -= step / (1536 * scale);
-    else if (event.key === 'ArrowDown') mapView.cy += step / (1536 * scale);
+    if (event.key === 'ArrowLeft') mapView.cx -= step / (MAP_SIZE * scale);
+    else if (event.key === 'ArrowRight') mapView.cx += step / (MAP_SIZE * scale);
+    else if (event.key === 'ArrowUp') mapView.cy -= step / (MAP_SIZE * scale);
+    else if (event.key === 'ArrowDown') mapView.cy += step / (MAP_SIZE * scale);
     else if (event.key === '+' || event.key === '=') zoomMap(1.25);
     else if (event.key === '-') zoomMap(1 / 1.25);
     else if (event.key === 'Home' || event.key === '0') mapView = { ...mapStart };
