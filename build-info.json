@@ -1,6 +1,18 @@
 {
-  "id": "01e0243d9277",
+  "id": "324fae12e5f1",
   "layout": "portrait-1024x1536",
-  "entry": "./src/main.9e7d8993c137.js",
-  "stylesheet": "./src/style.c3ed12c2d3af.css"
+  "screens": [
+    "title",
+    "home",
+    "character",
+    "friends",
+    "decks",
+    "battle"
+  ],
+  "entry": "./src/main.d95118368ced.js",
+  "stylesheet": "./src/style.1ba807610ded.css",
+  "stylesheets": [
+    "./src/style.1ba807610ded.css",
+    "./src/hub.b4a070273832.css"
+  ]
 }

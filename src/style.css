@@ -20,6 +20,10 @@ button, summary { -webkit-user-select: none; user-select: none; }
 /* Every position belongs to the original 1024 × 1536 forest canvas.
    fitBoard scales this complete canvas once, preserving its 2:3 proportions. */
 #app { position: relative; margin-inline: auto; }
+#battle-view[hidden] { display: none; }
+.battle-navigation { min-height: 48px; padding: max(6px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left)); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #101329; border-bottom: 2px solid #4c4274; }
+.battle-navigation button { min-height: 36px; padding: 5px 12px; background: #26224a; border: 2px solid #a790d3; box-shadow: inset 0 -3px #17132e; font-weight: 800; }
+.battle-navigation span { color: #b7adcc; font: 10px monospace; text-align: center; }
 .game-shell { position: absolute; top: 0; left: 0; width: 1024px; height: 1536px; transform: scale(var(--board-scale, 1)); transform-origin: top left; }
 .game-board { position: absolute; inset: 0; isolation: isolate; background: var(--forest) center top / contain no-repeat; image-rendering: pixelated; }
 .topbar { position: absolute; top: 18px; left: 18px; right: 18px; height: 72px; display: flex; align-items: flex-start; justify-content: space-between; z-index: 8; pointer-events: none; }

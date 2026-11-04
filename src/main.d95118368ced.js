@@ -1,15 +1,19 @@
-import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.d00cb03749fe.js';
-import { ASSETS, ASSET_CROPS } from './assets.0db7bcf37e8f.js';
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SOURCE_INFO } from './spells.60141befac6b.js';
+import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.d9daf94a6e10.js';
+import { ASSETS, ASSET_CROPS } from './assets.40ea6034db7c.js';
+import { SPELL_CATALOG, DECK_SIZE } from './spells.60141befac6b.js';
+import { createHub } from './hub.d841dbdbdb25.js';
 
-const SAVE_KEY = 'wizzy.duel.v6';
+const SAVE_KEY = 'wizzy.duel.v7';
 const app = document.querySelector('#app');
+const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
 let storageAvailable = true;
 let logOpen = false;
 let fitScreen = true;
 let resolutionTimer;
 let diceAnimationTimer;
+let pendingBattleDecks = null;
+let shouldEnterAfterRestart = false;
 let state = loadGame();
 
 function loadGame() {
@@ -19,7 +23,7 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  for(const key of ['wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
+  for(const key of ['wizzy.duel.v6','wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
   }
@@ -134,7 +138,7 @@ function render() {
 // Only this outer scale changes with the viewport; log expansion never resizes it.
 function fitBoard() {
   const width=document.documentElement.clientWidth;
-  const height=innerHeight;
+  const height=Math.max(1,innerHeight-(document.querySelector('.battle-navigation')?.offsetHeight||0));
   const scale=fitScreen?Math.min(width/1024,height/1536):Math.min(1,width/1024);
   app.style.setProperty('--board-scale',String(scale));
   app.style.width=`${1024*scale}px`;
@@ -159,7 +163,7 @@ function clearCombatTimers() {
 }
 function scheduleCombat() {
   clearCombatTimers();
-  if(handoff.open||state.status!=='playing')return;
+  if(battleView.hidden||handoff.open||document.querySelector('#restart').open||state.status!=='playing')return;
   if(state.phase==='rolling'){
     if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
       diceAnimationTimer=setInterval(()=>{
@@ -236,7 +240,7 @@ function showDeck(playerId=state.players[getActingPlayerIndex(state)].id) {
   const player=state.players.find(player=>player.id===playerId);
   if(!player)return;
   const groups=['Elemental','Neutral','Fate'].map(category=>{
-    const entries=DECK_LISTS[playerId].filter(entry=>SPELL_CATALOG[entry.spellId].category===category);
+    const entries=player.deckDefinition.entries.filter(entry=>SPELL_CATALOG[entry.spellId].category===category);
     const quantity=entries.reduce((sum,entry)=>sum+entry.quantity,0);
     return `<section class="deck-group"><h3>${category}<span>${quantity} slabs</span></h3>${entries.map(entry=>{
       const spell=SPELL_CATALOG[entry.spellId];
@@ -244,7 +248,7 @@ function showDeck(playerId=state.players[getActingPlayerIndex(state)].id) {
     }).join('')}</section>`;
   }).join('');
   document.querySelector('#deck-heading').textContent=`${player.name} deck · ${DECK_SIZE} spell slabs`;
-  document.querySelector('#deck-summary').textContent=`${player.deck.length} in tower · ${player.hand.length} in hand · ${player.discard.length} discarded. Decklist v${SOURCE_INFO[playerId].version}.`;
+  document.querySelector('#deck-summary').textContent=`${player.deck.length} in tower · ${player.hand.length} in hand · ${player.discard.length} discarded. Current battle deck · ${player.deckDefinition.entries.length} distinct spells.`;
   document.querySelector('#deck-entries').innerHTML=groups;
   document.querySelectorAll('[data-deck-player]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.deckPlayer===playerId)));
   const dialog=document.querySelector('#deck-inspector');
@@ -293,12 +297,15 @@ document.querySelector('#begin-turn').addEventListener('click',()=>{handoff.clos
 // Avoid revealing the next hand accidentally by dismissing a pass-screen dialog.
 handoff.addEventListener('cancel',event=>event.preventDefault());
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.close).close()));
-document.querySelector('#request-restart').addEventListener('click',()=>{document.querySelector('#settings').close();document.querySelector('#restart').showModal();});
+document.querySelector('#request-restart').addEventListener('click',()=>{document.querySelector('#settings').close();requestNewBattle();});
 document.querySelector('#settings-deck').addEventListener('click',()=>{document.querySelector('#settings').close();showDeck();});
 function restartGame() {
   clearCombatTimers();
   for(const id of ['victory','restart','ember-choice'])document.getElementById(id).close();
-  update(createGame(),'A new duel has begun. Fire goes first.');
+  const decks=pendingBattleDecks||hub.getSavedDecks();
+  pendingBattleDecks=null;
+  if(shouldEnterAfterRestart){shouldEnterAfterRestart=false;enterBattle();}
+  update(createGame(Date.now(),decks),'A new duel has begun with your saved decks. Fire goes first.');
 }
 document.querySelector('#confirm-restart').addEventListener('click',restartGame);
 document.querySelector('#victory-restart').addEventListener('click',restartGame);
@@ -312,4 +319,41 @@ document.querySelector('#confirm-embers').addEventListener('click',()=>{
   document.querySelector('#ember-choice').close();
   commitSpell(amount);
 });
-saveGame();render();
+const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspectSpell:showSlab,onBattle:({decks,forceNew=false}={})=>{
+  if(forceNew){requestNewBattle(decks,true);return;}
+  if(isUntouchedBattle())update(createGame(Date.now(),decks||hub.getSavedDecks()));
+  enterBattle();
+}});
+function isUntouchedBattle(){
+  return state.status==='playing'&&state.phase==='main'&&state.round===1&&state.activePlayer===0&&!state.primaryUsed&&!state.selectedCardId&&state.players.every(player=>player.hp===30&&player.mana===3&&player.shield===0&&player.element===0&&player.loaded===0&&player.loadedPending===0&&player.discard.length===0&&player.hand.length===4&&player.deck.length===26)&&!state.log.some(entry=>entry.type==='cast');
+}
+function enterBattle(){
+  hub.hide();battleView.hidden=false;
+  if(location.hash!=='#battle')history.pushState(null,'','#battle');
+  render();document.querySelector('#battle-home').focus({preventScroll:true});
+}
+function leaveBattle(screen='home'){
+  clearCombatTimers();
+  pendingBattleDecks=null;shouldEnterAfterRestart=false;
+  document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
+  battleView.hidden=true;hub.show(screen);
+}
+function requestNewBattle(decks=hub.getSavedDecks(),enterAfter=false){
+  clearCombatTimers();
+  pendingBattleDecks=decks;shouldEnterAfterRestart=enterAfter;
+  document.querySelector('#restart').showModal();
+}
+document.querySelector('#battle-home').addEventListener('click',()=>leaveBattle());
+document.querySelector('#battle-new').addEventListener('click',()=>requestNewBattle());
+document.querySelector('[data-close="restart"]').addEventListener('click',()=>{pendingBattleDecks=null;shouldEnterAfterRestart=false;});
+document.querySelector('#restart').addEventListener('cancel',()=>{pendingBattleDecks=null;shouldEnterAfterRestart=false;});
+document.querySelector('#restart').addEventListener('close',scheduleCombat);
+function syncAppRoute(){
+  const screen=location.hash.slice(1);
+  if(screen==='battle'){enterBattle();return;}
+  leaveBattle(['title','home','character','friends','deck'].includes(screen)?screen:'title');
+}
+window.addEventListener('hashchange',syncAppRoute);
+window.addEventListener('popstate',syncAppRoute);
+const touchIcon=document.createElement('link');touchIcon.rel='apple-touch-icon';touchIcon.href=ASSETS.appIcon;document.head.append(touchIcon);
+saveGame();render();syncAppRoute();

@@ -1,10 +1,11 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.js';
+import { normalizeDeck, createStarterDeck } from './decks.js';
 import { MAX_FLOW, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed rolling spell stays in hand until both Fate windows and its roll finish. */
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 export const PHASES = Object.freeze(['main', 'fate', 'rolling', 'resolving', 'end', 'refresh', 'ready-to-pass']);
 const PREVIEW_PHASES = PHASES.filter((phase) => phase !== 'rolling');
 const PENDING_PHASES = ['fate', 'rolling', 'resolving'];
@@ -36,8 +37,8 @@ function randomGenerator(seed) {
   };
 }
 
-function makeDeckCards(owner, preview = false) {
-  return DECK_LISTS[owner].flatMap(({ spellId, quantity }) => {
+function makeDeckCards(owner, preview = false, deckDefinition = null) {
+  return (deckDefinition?.entries ?? DECK_LISTS[owner]).flatMap(({ spellId, quantity }) => {
     const spell = SPELL_CATALOG[spellId];
     return Array.from({ length: quantity }, (_, copy) => ({
       ...spell, id: `${owner}-${spellId}-${copy}`,
@@ -54,8 +55,8 @@ function makeLegacyDeck(owner) {
   }));
 }
 
-function makeDeck(owner, random) {
-  const deck = makeDeckCards(owner);
+function makeDeck(owner, random, deckDefinition = null) {
+  const deck = makeDeckCards(owner, false, deckDefinition);
   for (let index = deck.length - 1; index > 0; index -= 1) {
     const other = Math.floor(random() * (index + 1));
     [deck[index], deck[other]] = [deck[other], deck[index]];
@@ -77,15 +78,24 @@ function drawToFive(player) {
   return drawCount;
 }
 
-export function createGame(seed = Date.now()) {
+export function createGame(seed = Date.now(), deckConfigs = {}) {
+  if (!deckConfigs || typeof deckConfigs !== 'object' || Array.isArray(deckConfigs)
+    || ![Object.prototype, null].includes(Object.getPrototypeOf(deckConfigs))
+    || Object.keys(deckConfigs).some((key) => !['fire', 'water'].includes(key))) {
+    throw new Error('Deck configurations must be keyed by fire or water.');
+  }
   const random = randomGenerator(seed);
   const players = ['fire', 'water'].map((id) => {
-    const deck = makeDeck(id, random);
+    const configured = Object.hasOwn(deckConfigs, id);
+    const deckDefinition = normalizeDeck(configured ? deckConfigs[id] : createStarterDeck(id));
+    if (deckDefinition.element !== id) throw new Error(`The ${id} wizard requires a ${id} deck.`);
+    // Preserve the published starter shuffle and legacy zone mapping by default.
+    const deck = makeDeck(id, random, configured ? deckDefinition : null);
     return {
       id, name: id === 'fire' ? 'Fire' : 'Water',
       elementName: id === 'fire' ? 'Embers' : 'Flow',
       hp: 30, maxHp: 30, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
-      turnsStarted: id === 'fire' ? 1 : 0,
+      turnsStarted: id === 'fire' ? 1 : 0, deckDefinition,
       hand: deck.splice(0, 4), deck, discard: [],
     };
   });
@@ -406,12 +416,14 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
     requireValue(player.elementName === (index === 0 ? 'Embers' : 'Flow'), 'element name');
     requireValue(player.maxHp === 30 && Number.isSafeInteger(player.hp) && player.hp >= 0 && player.hp <= player.maxHp, 'HP');
     for (const key of ['mana', 'shield', 'element', 'loaded', 'turnsStarted', ...(realRules ? ['loadedPending'] : [])]) requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
-    if (current && player.id === 'water') requireValue(player.element <= MAX_FLOW, 'Flow cap');
+    if (version >= 6 && player.id === 'water') requireValue(player.element <= MAX_FLOW, 'Flow cap');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
     requireValue(player.hand.length <= 5, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
     requireValue(cards.length === deckSize, 'card conservation');
-    const definitions = new Map(expectedDeck(expectedId).map((card) => [card.id, card]));
+    const deckDefinition = current ? normalizeDeck(player.deckDefinition) : null;
+    if (current) requireValue(deckDefinition.element === expectedId, 'deck element');
+    const definitions = new Map(expectedDeck(expectedId, false, deckDefinition).map((card) => [card.id, card]));
     for (const card of cards) {
       requireValue(card && typeof card.id === 'string' && !allIds.has(card.id), 'unique cards');
       allIds.add(card.id);
@@ -581,6 +593,7 @@ function upgradePreviewRules(preview) {
   const wasPending = ['fate', 'resolving'].includes(next.phase);
   if (wasPending) next.phase = 'main';
   next.players.forEach((player, index) => {
+    player.deckDefinition = normalizeDeck(createStarterDeck(player.id));
     const eligibleNow = index === next.activePlayer && next.phase === 'main';
     player.loadedPending = eligibleNow ? 0 : player.loaded;
     if (!eligibleNow) player.loaded = 0;
@@ -628,16 +641,27 @@ function applyFlowUpgrade(next) {
 function upgradeFlowRules(previous) {
   assertSavedState(previous, 5, DECK_SIZE, makeDeckCards);
   const next = structuredClone(previous);
-  next.version = SAVE_VERSION;
+  next.version = 6;
   applyFlowUpgrade(next);
+  return upgradeCustomDeckRules(next);
+}
+
+/** Existing duels retain their exact starter slabs while new duels may use saved decks. */
+function upgradeCustomDeckRules(previous) {
+  assertSavedState(previous, 6, DECK_SIZE, makeDeckCards);
+  const next = structuredClone(previous);
+  next.version = SAVE_VERSION;
+  for (const player of next.players) player.deckDefinition = normalizeDeck(createStarterDeck(player.id));
+  addLog(next, 'Custom 30-slab decks are now supported. This duel keeps its original starter decks.');
   assertGame(next);
   return next;
 }
 
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![1, 2, 3, 4, 5].includes(value.version)) return null;
+  if (!value || ![1, 2, 3, 4, 5, 6].includes(value.version)) return null;
   try {
+    if (value.version === 6) return upgradeCustomDeckRules(value);
     if (value.version === 5) return upgradeFlowRules(value);
     if (value.version === 4) return upgradePrimaryTurns(value);
     const source = value.version === 1 ? migrateVersionOne(value) : value;

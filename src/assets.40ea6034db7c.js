@@ -1,7 +1,11 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { OPTIMIZED_ART } from './optimized-art.390d7e04e87f.js';
+import { OPTIMIZED_ART } from './optimized-art.799d2e225100.js';
 
 export const ASSET_FILES = Object.freeze({
+  titleScene: 'Wizzy Seattle Title.png',
+  seattleMap: 'Wizzy Seattle Map.png',
+  iconAtlas: 'Wizzy Interface Icons.png',
+  appIcon: 'Wizzy App Icon.png',
   forest: 'Forest Background.png',
   fireFrame: 'Fire Stat Frame.png',
   waterFrame: 'Water Frame.png',
