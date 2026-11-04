@@ -1,10 +1,10 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.js';
-import { SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
+import { MAX_FLOW, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed rolling spell stays in hand until both Fate windows and its roll finish. */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const PHASES = Object.freeze(['main', 'fate', 'rolling', 'resolving', 'end', 'refresh', 'ready-to-pass']);
 const PREVIEW_PHASES = PHASES.filter((phase) => phase !== 'rolling');
 const PENDING_PHASES = ['fate', 'rolling', 'resolving'];
@@ -390,12 +390,13 @@ function requireValue(condition, message) {
 function assertSavedState(state, version, deckSize, expectedDeck) {
   const current = version === SAVE_VERSION;
   const realRules = version >= 4;
+  const primaryRules = version >= 5;
   requireValue(state !== null && typeof state === 'object' && state.version === version, 'unsupported save');
   requireValue(Number.isSafeInteger(state.round) && state.round >= 1, 'round');
   requireValue([0, 1].includes(state.activePlayer), 'active player');
   requireValue(['playing', 'finished'].includes(state.status), 'status');
   requireValue((realRules ? PHASES : PREVIEW_PHASES).includes(state.phase), 'phase');
-  if (current) requireValue(typeof state.primaryUsed === 'boolean', 'primary spell used');
+  if (primaryRules) requireValue(typeof state.primaryUsed === 'boolean', 'primary spell used');
   requireValue(Array.isArray(state.players) && state.players.length === 2, 'players');
   const allIds = new Set();
   state.players.forEach((player, index) => {
@@ -405,6 +406,7 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
     requireValue(player.elementName === (index === 0 ? 'Embers' : 'Flow'), 'element name');
     requireValue(player.maxHp === 30 && Number.isSafeInteger(player.hp) && player.hp >= 0 && player.hp <= player.maxHp, 'HP');
     for (const key of ['mana', 'shield', 'element', 'loaded', 'turnsStarted', ...(realRules ? ['loadedPending'] : [])]) requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
+    if (current && player.id === 'water') requireValue(player.element <= MAX_FLOW, 'Flow cap');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
     requireValue(player.hand.length <= 5, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
@@ -423,7 +425,7 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
   if (realRules) {
     requireValue(state.phase === 'fate' ? [0, 1].includes(state.fatePlayer) : state.fatePlayer === null, 'Fate player');
     requireValue(state.selectedCardId === null || canSelectCard(state, state.selectedCardId), 'selected card');
-    if (current) {
+    if (primaryRules) {
       const ids = state.selectedFateCardIds;
       requireValue(Array.isArray(ids) && new Set(ids).size === ids.length, 'selected Fate slabs');
       requireValue(state.phase === 'fate'
@@ -431,7 +433,7 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
         : ids.length === 0, 'selected Fate ownership and role');
     }
     if (PENDING_PHASES.includes(state.phase)) {
-      if (current) requireValue(state.primaryUsed === true, 'committed primary spell');
+      if (primaryRules) requireValue(state.primaryUsed === true, 'committed primary spell');
       const pending = state.pendingSpell;
       requireValue(pending && isOwnCard(state.pendingCardId) && pending.cardId === state.pendingCardId && pending.casterIndex === state.activePlayer, 'pending spell');
       const card = hand.find((entry) => entry.id === pending.cardId);
@@ -592,6 +594,7 @@ function upgradePreviewRules(preview) {
   next.primaryUsed = false;
   next.selectedFateCardIds = [];
   if (wasPending || (next.selectedCardId && !canSelectCard(next, next.selectedCardId))) next.selectedCardId = null;
+  applyFlowUpgrade(next);
   addLog(next, 'Spell effects, printed mana costs and two-player Fate are now active. Existing Loaded is available on the current turn or queued for its owner’s next turn.');
   if (wasPending) addLog(next, 'The unfinished preview spell was cancelled without charging mana, spending Embers, discarding it or applying effects.');
   assertGame(next);
@@ -602,7 +605,7 @@ function upgradePreviewRules(preview) {
 function upgradePrimaryTurns(previous) {
   assertSavedState(previous, 4, DECK_SIZE, makeDeckCards);
   const next = structuredClone(previous);
-  next.version = SAVE_VERSION;
+  next.version = 5;
   const turnStart = next.log.findLastIndex((entry) => entry.type === 'turn');
   const active = next.players[next.activePlayer];
   next.primaryUsed = next.pendingSpell !== null || next.log.slice(turnStart + 1)
@@ -611,14 +614,31 @@ function upgradePrimaryTurns(previous) {
       && / for \d+ mana(?: and \d+ Embers)?\.$/.test(entry.message));
   next.selectedFateCardIds = next.phase === 'fate' && next.selectedCardId ? [next.selectedCardId] : [];
   addLog(next, 'One primary spell per turn is now active. Select all desired Fate slabs before casting them together; casting advances to the next response or roll.');
+  return upgradeFlowRules(next);
+}
+
+function applyFlowUpgrade(next) {
+  const water = next.players[1];
+  const previousFlow = water.element;
+  water.element = Math.min(previousFlow, MAX_FLOW);
+  addLog(next, `Water spells now gain Flow after resolving: printed gains replace the default +1, and Flow is capped at 5.${previousFlow > 5 ? ` Water's saved Flow was capped from ${previousFlow} to 5.` : ''}`);
+}
+
+/** Preserve published v5 progress while enforcing the newly clarified Flow cap. */
+function upgradeFlowRules(previous) {
+  assertSavedState(previous, 5, DECK_SIZE, makeDeckCards);
+  const next = structuredClone(previous);
+  next.version = SAVE_VERSION;
+  applyFlowUpgrade(next);
   assertGame(next);
   return next;
 }
 
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![1, 2, 3, 4].includes(value.version)) return null;
+  if (!value || ![1, 2, 3, 4, 5].includes(value.version)) return null;
   try {
+    if (value.version === 5) return upgradeFlowRules(value);
     if (value.version === 4) return upgradePrimaryTurns(value);
     const source = value.version === 1 ? migrateVersionOne(value) : value;
     const preview = source.version === 2 ? upgradeSampleDeck(source) : source;

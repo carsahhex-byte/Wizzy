@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applySpellEffect, getEmberSpendRange, SPELL_RULES } from '../src/effects.js';
+import { applySpellEffect, getEmberSpendRange, SPELL_RULES, MAX_FLOW } from '../src/effects.js';
 import { SPELL_CATALOG } from '../src/spells.js';
 
 const player = (id, overrides = {}) => ({
@@ -47,29 +47,29 @@ const cases = [
   ['Sunsetter below nine uses four per Ember', 'FIR-012', { roll: 8, spent: 3 }, {}, { hp: 15 }],
   ['Sunsetter at nine replaces multiplier with five', 'FIR-012', { roll: 9, spent: 3 }, {}, { hp: 12 }],
   ['Sunsetter high roll with zero Embers keeps base damage', 'FIR-012', { roll: 20 }, {}, { hp: 27 }],
-  ['Ripple uses persistent Flow', 'WAT-001', { caster: { element: 3 } }, { element: 3 }, { hp: 26 }],
+  ['Ripple deals damage using existing Flow, then gains one', 'WAT-001', { caster: { element: 3 } }, { element: 4 }, { hp: 26 }],
   ['Pacific below eleven gains two Flow', 'WAT-002', { roll: 10, caster: { element: 3 } }, { element: 5 }, {}],
-  ['Pacific at eleven gains three Flow', 'WAT-002', { roll: 11, caster: { element: 3 } }, { element: 6 }, {}],
-  ['Stillwater shields and queues Loaded', 'WAT-003', {}, { shield: 3, loadedPending: 2 }, {}],
-  ['Undertow below seven leaves Flow unchanged', 'WAT-004', { roll: 6 }, { element: 0 }, { hp: 27 }],
-  ['Undertow at seven raises Flow after dealing damage', 'WAT-004', { roll: 7 }, { element: 2 }, { hp: 27 }],
-  ['Undertow uses one existing Flow before raising its floor', 'WAT-004', { roll: 7, caster: { element: 1 } }, { element: 2 }, { hp: 26 }],
-  ['Undertow preserves Flow above two', 'WAT-004', { roll: 7, caster: { element: 4 } }, { element: 4 }, { hp: 23 }],
-  ['Restoration heals nine', 'WAT-005', { caster: { hp: 17 } }, { hp: 26 }, {}],
-  ['Restoration stops at maximum HP', 'WAT-005', { caster: { hp: 27 } }, { hp: 30 }, {}],
-  ['Water Jet uses persistent Flow and queues Loaded without a roll', 'WAT-006', { caster: { element: 3 } }, { element: 3, loadedPending: 2 }, { hp: 25 }],
-  ['Sea Surge below seven only attacks', 'WAT-007', { roll: 6, caster: { hp: 17, element: 3 } }, { hp: 17, element: 3, loadedPending: 0 }, { hp: 25 }],
-  ['Sea Surge at seven heals and queues Loaded', 'WAT-007', { roll: 7, caster: { hp: 17, element: 3 } }, { hp: 22, element: 3, loadedPending: 1 }, { hp: 25 }],
-  ['Sea Surge healing stops at maximum HP', 'WAT-007', { roll: 7, caster: { hp: 29 } }, { hp: 30, loadedPending: 1 }, { hp: 28 }],
-  ['Riptide below nine uses Flow with no Loaded bonus', 'WAT-008', { roll: 8, caster: { element: 1 } }, { element: 1, loadedPending: 0 }, { hp: 27 }],
-  ['Riptide at nine deals eight and queues Loaded', 'WAT-008', { roll: 9, caster: { element: 1 } }, { element: 1, loadedPending: 1 }, { hp: 22 }],
-  ['Riptide below nine can deal more than eight with high Flow', 'WAT-008', { roll: 8, caster: { element: 10 } }, { element: 10, loadedPending: 0 }, { hp: 18 }],
-  ['Riptide at nine replaces even high Flow damage with exactly eight', 'WAT-008', { roll: 9, caster: { element: 10 } }, { element: 10, loadedPending: 1 }, { hp: 22 }],
-  ['Tsunami below ten', 'WAT-009', { roll: 9, caster: { element: 2 } }, { element: 2 }, { hp: 26 }],
-  ['Tsunami at ten adds nine damage', 'WAT-009', { roll: 10, caster: { element: 2 } }, { element: 2 }, { hp: 17 }],
-  ["Poseidon's Rift below eight doubles Flow", 'WAT-010', { roll: 7, caster: { element: 3 } }, { element: 3 }, { hp: 24 }],
-  ["Poseidon's Rift at eight triples Flow", 'WAT-010', { roll: 8, caster: { element: 3 } }, { element: 3 }, { hp: 21 }],
-  ["Poseidon's Rift cannot create damage without Flow", 'WAT-010', { roll: 20 }, { element: 0 }, { hp: 30 }],
+  ['Pacific at eleven gains three Flow capped at five', 'WAT-002', { roll: 11, caster: { element: 3 } }, { element: 5 }, {}],
+  ['Stillwater shields and queues Loaded, then gains Flow', 'WAT-003', {}, { shield: 3, loadedPending: 2, element: 1 }, {}],
+  ['Undertow below seven gains default Flow after damage', 'WAT-004', { roll: 6 }, { element: 1 }, { hp: 27 }],
+  ['Undertow at seven applies its Flow floor, then default gain', 'WAT-004', { roll: 7 }, { element: 3 }, { hp: 27 }],
+  ['Undertow uses one existing Flow before its floor and default gain', 'WAT-004', { roll: 7, caster: { element: 1 } }, { element: 3 }, { hp: 26 }],
+  ['Undertow preserves Flow above two before gaining one', 'WAT-004', { roll: 7, caster: { element: 4 } }, { element: 5 }, { hp: 23 }],
+  ['Restoration heals nine and gains default Flow', 'WAT-005', { caster: { hp: 17 } }, { hp: 26, element: 1 }, {}],
+  ['Restoration stops at maximum HP and still gains Flow', 'WAT-005', { caster: { hp: 27 } }, { hp: 30, element: 1 }, {}],
+  ['Water Jet uses existing Flow and queues Loaded before gaining Flow', 'WAT-006', { caster: { element: 3 } }, { element: 4, loadedPending: 2 }, { hp: 25 }],
+  ['Sea Surge below seven only attacks', 'WAT-007', { roll: 6, caster: { hp: 17, element: 3 } }, { hp: 17, element: 4, loadedPending: 0 }, { hp: 25 }],
+  ['Sea Surge at seven heals and queues Loaded', 'WAT-007', { roll: 7, caster: { hp: 17, element: 3 } }, { hp: 22, element: 4, loadedPending: 1 }, { hp: 25 }],
+  ['Sea Surge healing stops at maximum HP', 'WAT-007', { roll: 7, caster: { hp: 29 } }, { hp: 30, loadedPending: 1, element: 1 }, { hp: 28 }],
+  ['Riptide below nine uses Flow with no Loaded bonus', 'WAT-008', { roll: 8, caster: { element: 1 } }, { element: 2, loadedPending: 0 }, { hp: 27 }],
+  ['Riptide at nine deals eight and queues Loaded', 'WAT-008', { roll: 9, caster: { element: 1 } }, { element: 2, loadedPending: 1 }, { hp: 22 }],
+  ['Riptide below nine respects the five-Flow cap', 'WAT-008', { roll: 8, caster: { element: 5 } }, { element: 5, loadedPending: 0 }, { hp: 23 }],
+  ['Riptide at nine replaces Flow damage with exactly eight', 'WAT-008', { roll: 9, caster: { element: 5 } }, { element: 5, loadedPending: 1 }, { hp: 22 }],
+  ['Tsunami below ten', 'WAT-009', { roll: 9, caster: { element: 2 } }, { element: 3 }, { hp: 26 }],
+  ['Tsunami at ten adds nine damage', 'WAT-009', { roll: 10, caster: { element: 2 } }, { element: 3 }, { hp: 17 }],
+  ["Poseidon's Rift below eight doubles existing Flow", 'WAT-010', { roll: 7, caster: { element: 3 } }, { element: 4 }, { hp: 24 }],
+  ["Poseidon's Rift at eight triples existing Flow", 'WAT-010', { roll: 8, caster: { element: 3 } }, { element: 4 }, { hp: 21 }],
+  ["Poseidon's Rift at zero Flow deals no damage before gaining one", 'WAT-010', { roll: 20 }, { element: 1 }, { hp: 30 }],
   ['Ward shields and queues Loaded without rolling', 'NEU-001', {}, { shield: 3, loadedPending: 2 }, {}],
   ['Meditate queues Loaded without rolling', 'NEU-002', {}, { loadedPending: 3 }, {}],
   ['Legacy Shield gains seven Shield', 'NEU-003', {}, { shield: 7 }, {}],
@@ -91,6 +91,59 @@ for (const [description, spellId, options, expectedCaster, expectedOpponent] of 
     assert.ok(result.events.every(event => event.message && event.spellId === spellId));
   });
 }
+
+test('every Water spell gains Flow after its other effects, with Pacific replacing the default', () => {
+  for (const spell of Object.values(SPELL_CATALOG).filter(spell => spell.element === 'Water')) {
+    for (const roll of [2, 12]) {
+      const result = resolve(spell.id, { roll, caster: { element: 2, hp: 10 } });
+      const gain = spell.id === 'WAT-002' ? (roll >= 11 ? 3 : 2) : 1;
+      assert.equal(result.caster.element, 2 + gain, `${spell.name} Flow at roll ${roll}`);
+      const final = result.events.at(-1);
+      assert.deepEqual([final.type, final.playerId, final.resource, final.amount], ['resource', 'water', 'element', gain]);
+      assert.ok(result.events.slice(0, -1).every(event => event.resource !== 'element'));
+    }
+  }
+});
+
+test('Pacific gains two or three instead of stacking either gain with the default', () => {
+  for (const [roll, expected] of [[10, 2], [11, 3]]) {
+    const result = resolve('WAT-002', { roll });
+    assert.equal(result.caster.element, expected);
+    assert.equal(result.events.length, 1);
+    assert.equal(result.events[0].amount, expected);
+  }
+});
+
+test('all Water spells remain at five Flow, including threshold and replacement gains', () => {
+  assert.equal(MAX_FLOW, 5);
+  for (const spell of Object.values(SPELL_CATALOG).filter(spell => spell.element === 'Water')) {
+    for (const roll of [2, 12]) {
+      const result = resolve(spell.id, { roll, caster: { element: MAX_FLOW } });
+      assert.equal(result.caster.element, MAX_FLOW, `${spell.name} at roll ${roll}`);
+      assert.equal(result.events.at(-1).amount, 0);
+      assert.match(result.events.at(-1).message, /maximum 5/);
+    }
+  }
+  const nearCap = resolve('WAT-002', { roll: 12, caster: { element: 4 } });
+  assert.equal(nearCap.caster.element, 5);
+  assert.equal(nearCap.events.at(-1).amount, 1, 'log reports only the Flow actually gained');
+});
+
+test('legacy excessive Flow cannot inflate Water damage or survive resolution', () => {
+  const result = resolve('WAT-010', { roll: 12, caster: { element: 9 } });
+  assert.equal(result.opponent.hp, 15, 'three times the five-Flow maximum');
+  assert.equal(result.caster.element, 5);
+});
+
+test('Water casting Neutral spells does not gain Flow, and Fire Embers have no Flow cap', () => {
+  for (const spellId of ['NEU-001', 'NEU-002', 'NEU-003', 'NEU-004']) {
+    const state = { players: [player('fire'), player('water', { element: 4 })] };
+    const events = applySpellEffect(state, { casterIndex: 1, spellId });
+    assert.equal(state.players[1].element, 4, spellId);
+    assert.ok(events.every(event => event.resource !== 'element'));
+  }
+  assert.equal(resolve('FIR-002', { caster: { element: 5 } }).caster.element, 7);
+});
 
 test('incoming damage consumes Shield before HP and reports both amounts', () => {
   const { opponent, events } = resolve('WAT-009', { roll: 10, caster: { element: 2 }, opponent: { shield: 5 } });

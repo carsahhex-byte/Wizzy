@@ -92,7 +92,7 @@ function previewPhases(base) {
 
 test('opening stats, four-card hands and exact 30-slab deck quantities match the PDF lists', () => {
   const state = createGame(7);
-  assert.deepEqual([state.round, state.activePlayer, state.phase, SAVE_VERSION, DECK_SIZE], [1, 0, 'main', 5, 30]);
+  assert.deepEqual([state.round, state.activePlayer, state.phase, SAVE_VERSION, DECK_SIZE], [1, 0, 'main', 6, 30]);
   assert.deepEqual([state.primaryUsed, state.selectedFateCardIds], [false, []]);
   const expectedCounts = {
     fire: { 'FIR-001': 1, 'FIR-002': 2, 'FIR-004': 2, 'FIR-005': 3, 'FIR-006': 3, 'FIR-007': 2, 'FIR-010': 2, 'FIR-011': 3, 'FIR-012': 3, 'FAT-001': 3, 'FAT-002': 2, 'FAT-003': 2, 'NEU-004': 1, 'NEU-003': 1 },
@@ -563,4 +563,126 @@ test('migration rejects corrupt legacy quantities, ownership, definitions and pr
   const preview = previewSave(); preview.players[0].hand[0].cost = 9; assert.equal(migrateSavedGame(preview), null);
   const current = createGame(6); current.players[0].deck.pop(); assert.equal(migrateSavedGame(current), null);
   assert.equal(migrateSavedGame({ version: 99 }), null);
+});
+
+test('Water instant spells use existing Flow, award it once after effects and preserve it through reload', () => {
+  let state = pass(handOf(createGame(17), 1, ['WAT-001', 'WAT-006', 'NEU-004', 'FAT-001']));
+  state.players[1].element = 3;
+  state = cast(state, 'WAT-001');
+  assert.deepEqual([state.players[0].hp, state.players[1].element, state.players[1].mana, state.phase, state.primaryUsed], [26, 4, 2, 'main', true]);
+  const damageIndex = state.log.findLastIndex((entry) => entry.type === 'damage');
+  const gainIndex = state.log.findLastIndex((entry) => entry.type === 'resource' && entry.message.includes('Flow'));
+  assert.ok(damageIndex < gainIndex, 'damage precedes the post-resolution Flow gain');
+  const restored = migrateSavedGame(JSON.parse(JSON.stringify(state)));
+  assert.deepEqual(restored, state);
+  assert.equal(resolveSpell(restored), restored, 'a resolved saved spell cannot grant Flow twice');
+  state = pass(pass(restored));
+  assert.equal(state.players[1].element, 4, 'passing turns does not award Flow');
+  state = cast(state, 'WAT-006');
+  assert.deepEqual([state.players[0].hp, state.players[1].element], [20, 5]);
+  assertGame(state);
+});
+
+test('Water Flow stays unchanged through both Fate batches and rolling until the spell resolves', () => {
+  const initial = handOf(createGame(18), 1, ['WAT-009', 'FAT-001', 'FAT-003', 'WAT-001']);
+  handOf(initial, 0, ['FAT-002', 'FAT-003']);
+  let state = pass(initial); state.players[1].element = 2;
+  state = cast(state, 'WAT-009');
+  assert.equal(state.players[1].element, 2);
+  state = fate(state, ['FAT-001', 'FAT-003']);
+  assert.equal(state.players[1].element, 2, 'attacking Fate does not award Flow');
+  state = fate(state, ['FAT-002', 'FAT-003']);
+  assert.equal(state.players[1].element, 2, 'defending Fate does not award Flow');
+  state = rollDice(state, () => 0.99);
+  assert.deepEqual([state.phase, state.lastRoll.total, state.players[1].element], ['resolving', 12, 2]);
+  state = resolveSpell(state);
+  assert.deepEqual([state.players[0].hp, state.players[1].element], [17, 3], 'Tsunami deals 2 + old Flow + 9, then gains 1 Flow');
+  const ending = endTurn(state); assert.equal(ending.players[1].element, 3);
+  const refreshing = beginRefresh(ending); assert.equal(refreshing.players[1].element, 3);
+  const passed = confirmRefresh(refreshing); assert.equal(passed.players[1].element, 3);
+  assertGame(passed);
+});
+
+test('Pacific replaces the default gain and all Water spells respect the Flow cap', () => {
+  for (const [flow, dice, expected] of [[0, [1, 1], 2], [0, [6, 6], 3], [3, [1, 1], 5], [4, [6, 6], 5], [5, [6, 6], 5]]) {
+    let state = pass(handOf(createGame(19), 1, ['WAT-002'])); state.players[1].element = flow;
+    state = finishRoll(cast(state, 'WAT-002'), dice);
+    assert.equal(state.players[1].element, expected, `Pacific from ${flow} on ${dice}`);
+    assertGame(state);
+  }
+  let capped = pass(handOf(createGame(20), 1, ['WAT-006'])); capped.players[1].element = 5;
+  capped = cast(capped, 'WAT-006');
+  assert.deepEqual([capped.players[0].hp, capped.players[1].element], [23, 5]); assertGame(capped);
+});
+
+test('Water casting Neutral or defending with Fate does not gain Flow', () => {
+  let state = pass(handOf(createGame(21), 1, ['NEU-004', 'FAT-002', 'WAT-001'])); state.players[1].element = 3;
+  state = cast(state, 'NEU-004'); assert.equal(state.players[1].element, 3);
+  state = pass(state);
+  // Bring an actual Fire rolling slab into hand while preserving all quantities.
+  handOf(state, 0, ['FIR-004']);
+  state = skipFate(cast(state, 'FIR-004'));
+  state = fate(state, 'FAT-002'); assert.equal(state.players[1].element, 3);
+  state = resolveSpell(rollDice(state, () => 0)); assert.equal(state.players[1].element, 3); assertGame(state);
+});
+
+test('current save validation caps Water Flow while leaving Fire Embers unbounded', () => {
+  const state = createGame(22); state.players[0].element = 99; state.players[1].element = 5;
+  assertGame(state);
+  state.players[1].element = 6; assert.equal(validateSavedGame(state), false);
+  state.players[1].element = -1; assert.equal(validateSavedGame(state), false);
+});
+
+test('v5 Flow upgrade preserves every phase, selection, slab and resource while capping saved Water Flow', () => {
+  const base = handOf(createGame(23), 1, ['WAT-009', 'WAT-001', 'FAT-001', 'FAT-003']);
+  handOf(base, 0, ['FAT-002', 'FAT-003']);
+  let main = pass(base); Object.assign(main.players[1], { element: 4, mana: 12, loaded: 2, loadedPending: 3 });
+  const attacking = selectCard(selectCard(cast(main, 'WAT-009'), main.players[1].hand[2].id), main.players[1].hand[3].id);
+  const defending = castFateSelected(attacking);
+  const selected = selectCard(selectCard(defending, base.players[0].hand[0].id), base.players[0].hand[1].id);
+  const rolling = castFateSelected(selected);
+  const resolving = rollDice(rolling, () => 0.5);
+  const resolved = resolveSpell(resolving);
+  const ending = endTurn(resolved);
+  const refreshing = toggleRefreshCard(beginRefresh(ending), resolved.players[1].hand[0].id);
+  const finished = applyDamage(resolved, 0, 100);
+  for (const current of [main, attacking, defending, selected, rolling, resolving, resolved, ending, refreshing, finished]) {
+    const source = structuredClone(current); source.version = 5; source.players[1].element = 9;
+    const original = structuredClone(source); const upgraded = migrateSavedGame(source);
+    assertGame(upgraded); assert.equal(upgraded.version, 6); assert.equal(upgraded.players[1].element, 5);
+    const expected = structuredClone(source); expected.players[1].element = 5;
+    for (const key of ['round', 'activePlayer', 'status', 'winner', 'phase', 'primaryUsed', 'selectedCardId', 'selectedFateCardIds', 'pendingCardId', 'pendingSpell', 'fatePlayer', 'lastRoll', 'refreshCardIds', 'players']) assert.deepEqual(upgraded[key], expected[key], key);
+    assert.deepEqual(upgraded.log.slice(0, source.log.length), source.log);
+    assert.match(upgraded.log.at(-1).message, /capped from 9 to 5/);
+    assert.deepEqual(source, original, 'migration never mutates the previous saved game');
+    assert.equal(migrateSavedGame(upgraded), upgraded, 'reloading does not award more Flow');
+  }
+});
+
+test('v5 Flow upgrade validates its primary allowance and selected Fate before migration', () => {
+  const base = handOf(createGame(24), 1, ['WAT-009', 'FAT-001', 'FAT-003']);
+  const main = pass(base); const pending = cast(main, 'WAT-009');
+  const selected = selectCard(pending, main.players[1].hand[1].id);
+  for (const mutate of [
+    (s) => { delete s.primaryUsed; },
+    (s) => { s.primaryUsed = false; },
+    (s) => { delete s.selectedFateCardIds; },
+    (s) => { s.selectedFateCardIds.push(s.selectedFateCardIds[0]); },
+    (s) => { s.selectedFateCardIds = [s.players[0].hand[0].id]; s.selectedCardId = s.selectedFateCardIds[0]; },
+    (s) => { s.selectedCardId = null; },
+    (s) => { s.players[1].element = -1; },
+  ]) {
+    const source = structuredClone(selected); source.version = 5; mutate(source);
+    assert.equal(migrateSavedGame(source), null);
+  }
+});
+
+test('older v3 and v4 saves also cap Flow without reducing Fire Embers or other progress', () => {
+  const preview = previewSave(); preview.players[0].element = 11; preview.players[1].element = 8;
+  const older = versionFourSave(createGame(25)); older.players[0].element = 12; older.players[1].element = 7;
+  for (const source of [preview, older]) {
+    const migrated = migrateSavedGame(source); assertGame(migrated);
+    assert.deepEqual(migrated.players.map((p) => p.element), [source.players[0].element, 5]);
+    assert.deepEqual(migrated.players.map((p) => p.hp), source.players.map((p) => p.hp));
+  }
 });
