@@ -101,9 +101,11 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .card-image { width: 100%; height: 100%; }
 .spell-card:hover:not(:disabled):not(.discard-selected) { transform: translateY(-5px); filter: brightness(1.1); }
 .spell-card.selected { transform: translateY(-5px); box-shadow: 0 0 0 3px #fff6b4, 0 0 0 6px #ffcc3e, 0 0 20px #ffd94c66; }
-.card-name { position: absolute; top: 6.5%; left: 10%; right: 10%; font: 900 21px 'Trebuchet MS', sans-serif; color: white; text-shadow: 2px 2px #120c1e, -1px -1px #120c1e, 1px -1px #120c1e, -1px 1px #120c1e; line-height: 1.1; }
-.card-copy { position: absolute; top: 62%; bottom: 9%; left: 12%; right: 12%; display: flex; flex-direction: column; justify-content: center; gap: 5px; color: #291d19; font-size: 18px; line-height: 1.15; text-shadow: none; }
-.card-copy strong { font-size: 18px; }.card-copy>span { opacity: .75; font-size: 14px; }
+.card-name { position: absolute; top: 6.5%; left: 10%; right: 10%; font: 900 var(--name-size,21px) 'Trebuchet MS', sans-serif; color: white; text-shadow: 2px 2px #120c1e, -1px -1px #120c1e, 1px -1px #120c1e, -1px 1px #120c1e; line-height: 1.1; }
+.slab-type { position: absolute; top: 18%; left: 50%; transform: translateX(-50%); padding: 2px 6px; border: 1px solid #fff4cd6e; border-radius: 3px; background: #151629c9; color: #fff3ce; font: bold 11px monospace; text-transform: uppercase; letter-spacing: .6px; }
+.card-copy { position: absolute; top: 62%; bottom: 9%; left: 12%; right: 12%; display: flex; flex-direction: column; justify-content: center; gap: 4px; color: #291d19; line-height: 1.1; text-shadow: none; }
+.card-copy .mana-cost { font-size: 18px; flex-shrink: 0; }
+.card-copy .card-effect { font-size: 12px; line-height: 1.1; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .card-badge { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); background: #ffe18a; border: 2px solid #fff4b4; color: #38220b; padding: 3px 6px; white-space: nowrap; font: bold 11px monospace; letter-spacing: .5px; box-shadow: 0 2px 2px #090c20; border-radius: 2px; z-index: 2; }
 .spell-card.fate-muted { filter: grayscale(1) brightness(.62); }
 .spell-card.pending-card { box-shadow: 0 0 0 3px #c4b886; }
@@ -114,6 +116,8 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .hand-bottomline { position: absolute; inset: 0; pointer-events: none; }
 .pile { position: absolute; left: 30px; top: 315px; width: 170px; height: 164px; text-align: center; }
 .tower-pile { left: auto; right: 30px; }
+button.tower-pile { border: 0; padding: 0; background: none; pointer-events: auto; }
+button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .pile-sign { position: absolute; inset: 0; width: 100%; height: 100%; }
 .pile-copy { position: relative; display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 20px 14px; font-size: 26px; font-weight: 900; color: #fff5b4; text-shadow: 2px 3px #080c1b,-1px -1px #080c1b,1px -1px #080c1b; line-height: 1.05; }
 .pile-copy strong { display: block; font-size: 34px; margin-top: 6px; color: white; }.pile-copy small { font-size: 20px; }
@@ -164,6 +168,34 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .prototype-note { background: #4b3b283f; border: 1px solid #8d6f3c; padding: 12px; font-size: 12px; line-height: 1.7; border-radius: 3px; color: #e4d3ba; }.prototype-note strong { display: block; }
 .game-dialog .small-copy { font-size: 11px; color: #afa4bb; line-height: 1.8; }.secondary-button { background: #2f2a45; border: 1px solid #b39456; padding: 11px 18px; font-weight: bold; border-radius: 3px; font-size: 12px; }.secondary-button:hover { background: #473653; }.dialog-actions { display: flex; gap: 12px; margin-top: 22px; }.dialog-actions button { flex: 1; }
 .game-dialog .build-version { color: #c8ac70; font: 11px monospace; margin: 18px 0; }
+.rules-dialog>#settings-deck { margin: 0 8px 10px 0; }
+.phase-hint { z-index: 5; }
+.slab-dialog { max-width: min(510px,calc(100% - 24px)); padding: 25px; }
+.slab-dialog h2 { margin-bottom: 6px; font-size: 27px; }
+.slab-dialog .slab-definition { font: 11px monospace; color: #d1bd96; margin: 6px 0 17px; }
+.large-slab { position: relative; width: min(336px,100%); aspect-ratio: 947/1250; margin: 0 auto; }
+.large-slab .card-image { position: absolute; inset: 0; }
+.large-slab .card-name { font-size: clamp(22px,6vw,32px); }
+.large-slab .slab-type { font-size: 12px; padding: 4px 10px; }
+.large-slab .card-copy { top: 62%; bottom: 8%; gap: 5px; }
+.large-slab .mana-cost { font-size: 20px; color: #291d19; }
+.large-slab .card-effect { display: block; overflow: visible; font-size: clamp(10px,2.8vw,13px); line-height: 1.15; -webkit-line-clamp: unset; }
+.deck-dialog { text-align: left; max-width: min(620px,calc(100% - 24px)); }
+.deck-dialog h2 { font-size: 25px; margin-bottom: 6px; }
+.deck-tabs { display: flex; gap: 9px; margin: 15px 0 20px; }
+.deck-tabs button { flex: 1; }
+.deck-tabs [aria-pressed=true] { border-color: #ffe191; background: #51402c; color: #ffeab1; }
+.deck-group { margin-top: 18px; }
+.deck-group h3 { display: flex; justify-content: space-between; color: #ead6a8; margin: 0 0 9px; font-size: 13px; }
+.deck-group h3>span { color: #ada1b6; font-size: 11px; font-weight: normal; }
+.deck-row { display: grid; grid-template-columns: 34px 1fr 38px 30px; align-items: center; gap: 11px; width: 100%; border: 0; border-top: 1px solid #403a4e; padding: 8px 3px; background: none; text-align: left; }
+.deck-row:hover { background: #ffffff08; }
+.deck-thumbnail { display: block; width: 34px; }
+.deck-spell-name { color: #f3e6ce; font-size: 14px; font-weight: bold; }
+.deck-spell-name>small { display: block; color: #ab9db6; font: 9px monospace; margin-top: 5px; }
+.deck-mana { color: #85d7ed; font-size: 15px; text-align: center; }
+.deck-mana small { display: block; color: #a7a1b2; font-size: 8px; margin-top: 1px; }
+.deck-quantity { color: #f5d791; font-size: 18px; text-align: right; }
 @keyframes resolve-pulse { from{filter:brightness(1)}to{filter:brightness(1.35);transform:scale(1.03)} }
 @keyframes refresh-reveal { from{transform:translateY(0) scale(.96);opacity:0}to{transform:translateY(calc(-100% - 8px)) scale(.96);opacity:1} }
 .phase-end .refresh-button.is-revealed { animation: refresh-reveal .35s cubic-bezier(.2,.8,.2,1) both; }

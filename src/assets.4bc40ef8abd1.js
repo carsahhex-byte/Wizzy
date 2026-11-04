@@ -1,5 +1,5 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { OPTIMIZED_ART } from './optimized-art.e58e4a2fdbbc.js';
+import { OPTIMIZED_ART } from './optimized-art.2387f0592029.js';
 
 export const ASSET_FILES = Object.freeze({
   forest: 'Forest Background.png',
@@ -18,6 +18,8 @@ export const ASSET_FILES = Object.freeze({
   waterMage: 'Water Wizzy Pixel Mage.png',
   fireCard: 'Pixel-Art Fiery Comet Spell Card 2.png',
   waterCard: 'Pixel Art Cresting Wave Card.png',
+  fateCard: 'Purple Galaxy Vortex Card Frame.png',
+  neutralCard: 'Neutral card.png',
   stoneSign: 'Mossy Pixel Stone Sign.png',
 });
 
@@ -55,5 +57,7 @@ export const ASSET_CROPS = Object.freeze({
   fireCard: { width: 1086, height: 1448, x: 69, y: 72, w: 947, h: 1250 },
   // Faint alpha extends to this export's canvas; align to the visible card border.
   waterCard: { width: 1086, height: 1448, x: 69, y: 72, w: 948, h: 1250 },
+  fateCard: { width: 1086, height: 1448, x: 68, y: 69, w: 952, h: 1253 },
+  neutralCard: { width: 1086, height: 1448, x: 68, y: 70, w: 952, h: 1252 },
   stoneSign: { width: 1199, height: 1312, x: 61, y: 88, w: 1073, h: 1032 },
 });

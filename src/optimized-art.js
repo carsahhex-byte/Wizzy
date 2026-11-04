@@ -80,6 +80,16 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "4717cee9bae463c4a5de680d6addb784872411b228f50757dd4573fbfa05e470",
     "optimizedSha256": "250adede37235b546cd1449c9e6dee9c70ee73dc30bf024f3795df3f7dd350c0"
   },
+  "fateCard": {
+    "file": "fateCard-a940bacef354.webp",
+    "sourceSha256": "11eae3746d6d9696841901f70acb9ce995fef505f77ac28050a5993470ad7df4",
+    "optimizedSha256": "a940bacef354e354612e7fcd878076140ca026e980fb2290e9d8de974d5aed78"
+  },
+  "neutralCard": {
+    "file": "neutralCard-404066d8d17d.webp",
+    "sourceSha256": "94158ebca9404f21ed80f0dc5ba09f638f0b9c5c78348dba97d035139b5cb58a",
+    "optimizedSha256": "404066d8d17d26c4027c19412f8f504b586cba7f02d1fbd7e34b5f71f65eddf1"
+  },
   "stoneSign": {
     "file": "stoneSign-aff5a770935f.webp",
     "sourceSha256": "e3d6e7a0a91b36077d42f2cbfe6672fec4355c0e33d3df096d5ed0d57b0b48d6",
