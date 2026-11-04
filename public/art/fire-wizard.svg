@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="420" viewBox="0 0 400 420">
+<defs>
+ <linearGradient id="cape" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff632e"/><stop offset=".45" stop-color="#c32922"/><stop offset="1" stop-color="#691929"/></linearGradient>
+ <linearGradient id="hat" x1="0" y1="0" x2=".4" y2="1"><stop stop-color="#ff572b"/><stop offset="1" stop-color="#a91d28"/></linearGradient>
+ <linearGradient id="fire" x1="0" y1="1" x2=".6" y2="0"><stop stop-color="#fff6a6"/><stop offset=".4" stop-color="#ffcb32"/><stop offset=".7" stop-color="#ff6d1f"/><stop offset="1" stop-color="#f5371d"/></linearGradient>
+ <radialGradient id="aura"><stop stop-color="#ffb52c" stop-opacity=".32"/><stop offset="1" stop-color="#ffb52c" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="188" cy="399" rx="141" ry="15" fill="#052c32" opacity=".32"/>
+<circle cx="326" cy="153" r="75" fill="url(#aura)"/>
+<g stroke="#241426" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+<!-- windblown cloak -->
+<path d="M173 212 136 223 113 266 64 284 33 313 52 338 95 350 146 338 173 308 232 302 229 245Z" fill="url(#cape)"/>
+<path d="m144 238-22 49-45 32-25 2 29 14 57-18 28-33" fill="#ff6933" stroke="none"/>
+<path d="m146 271-26 47-25 32 37-10 38-34" fill="#8a1d2c" stroke="none"/>
+<path d="M157 285 139 377 178 380 201 324 214 377 248 376 239 289Z" fill="#48223d"/>
+<path d="m140 366-15 23 3 13 50 0 8-14-8-22" fill="#4b3038"/>
+<path d="m215 365-3 23 10 13 44 0 2-14-20-19" fill="#4b3038"/>
+<path d="m130 391 48 0m45 0 37 0" fill="none" stroke="#b36a3c" stroke-width="6"/>
+<!-- body robe -->
+<path d="m166 207-20 33-5 70 40 19 28-10 27 7 8-28-14-65-25-25Z" fill="url(#cape)"/>
+<path d="m192 218-9 83 15 14 15-94" fill="#ffb52c" stroke-width="5"/>
+<path d="m147 287 91 0 1 17-95 0Z" fill="#5b2533" stroke-width="5"/>
+<path d="m185 281 22 0 0 28-22 0Z" fill="#ffd75c" stroke-width="5"/>
+<path d="m192 288 8 0 0 13-8 0Z" fill="#e15927" stroke="none"/>
+<!-- extended sleeve and hand -->
+<path d="m223 227 28 14 23-13 13 30-32 16-27-13" fill="#d93527"/>
+<path d="m268 233 13-10 16 4 8 13-5 17-18 2-13-9Z" fill="#ffd19a"/>
+<path d="m287 227 0 25m-8-20 1 15" fill="none" stroke="#b77758" stroke-width="4"/>
+<!-- staff -->
+<path d="m278 386 35-175 17-32" fill="none" stroke-width="15"/>
+<path d="m278 386 35-175 17-32" fill="none" stroke="#c78235" stroke-width="7"/>
+<path d="m309 228 16 4m-12-15 14 4" fill="none" stroke="#ffcc59" stroke-width="5"/>
+<!-- head -->
+<path d="m151 141 75-4 16 29-7 37-23 25-44-9-24-32Z" fill="#ffd7a1"/>
+<path d="m152 147 25 4-8 43-16-9Z" fill="#472133" stroke-width="4"/>
+<path d="m215 146 16 0 3 47-13-1Z" fill="#472133" stroke-width="4"/>
+<path d="m177 183 0 15m39-15 0 15" fill="none" stroke-width="7"/>
+<path d="m185 211 19 0" fill="none" stroke="#ab5d43" stroke-width="4"/>
+<!-- collar -->
+<path d="m153 205 40 18-11 22-42-24Zm40 18 28-20 17 20-31 20Z" fill="#ffba36" stroke-width="6"/>
+<!-- crooked hat -->
+<path d="m126 143 23-56-16-23-28 1 18-24 36-3 28 24 24 37 23 44Z" fill="url(#hat)"/>
+<path d="m145 88 16-17-18-17-17 5 15-2 19 9-7 19" fill="#ff8a36" stroke="none"/>
+<path d="m137 121 72-13 18 28-101 19Z" fill="#ffca45" stroke-width="5"/>
+<path d="m83 155 36-21 92-8 51 15 16 17-21 15-83 10-75-10Z" fill="#b82328"/>
+<path d="m91 155 47-10 74-7 51 12" fill="none" stroke="#ffb732" stroke-width="6"/>
+<path d="m130 165 78-9 40 5" fill="none" stroke="#e8512c" stroke-width="5"/>
+</g>
+<!-- free, angular flame -->
+<path d="m315 215-25-15-9-24 11-25 9 10 1-31 20-31 3 29 10 12 14-17 5-33 18 29-3 30-13 23 4 17-20 24Z" fill="#e9441e" stroke="#7c2a26" stroke-width="5" stroke-linejoin="round"/>
+<path d="m317 207-19-17-3-17 17-28 7 14 9-30 12 15-8 23 13-9 6-13-3 31-15 25Z" fill="url(#fire)"/>
+<path d="m317 204-7-14 8-22 8 9 5-12 4 19-7 17Z" fill="#fffac7"/>
+<g fill="#ffce48"><path d="m285 124 5-10 2 13-5 5Z"/><path d="m353 80 5-13 1 13-4 7Z"/><path d="m327 92 2-13 4 7-1 9Z"/><path d="m371 144 3-9 2 9-3 5Z"/></g>
+</svg>

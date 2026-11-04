@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="0 0 420 420">
+<defs>
+ <linearGradient id="stone" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#d4c8a4"/><stop offset=".45" stop-color="#928c7c"/><stop offset="1" stop-color="#565b59"/></linearGradient>
+ <linearGradient id="stoneLight" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#f0dcab"/><stop offset=".4" stop-color="#aea38c"/><stop offset="1" stop-color="#77766c"/></linearGradient>
+ <linearGradient id="moss" x1="0" y1="0" x2=".4" y2="1"><stop stop-color="#c1da4a"/><stop offset=".4" stop-color="#5b9c37"/><stop offset="1" stop-color="#226346"/></linearGradient>
+</defs>
+<ellipse cx="218" cy="399" rx="151" ry="16" fill="#052c32" opacity=".32"/>
+<g stroke="#253032" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+<!-- legs -->
+<path d="m142 296 56-3 12 53-19 35-57 0-12-29Z" fill="url(#stone)"/>
+<path d="m241 297 56 1 13 49-6 30-59 4-20-33Z" fill="url(#stone)"/>
+<path d="m129 361 57 2 16 23-8 15-84 0-4-14Z" fill="url(#stoneLight)"/>
+<path d="m249 364 50-3 28 24-3 16-84 0-10-16Z" fill="url(#stoneLight)"/>
+<path d="m129 386 0 13m22-15 0 17m105-17 0 16m24-18 0 18" fill="none" stroke="#646963" stroke-width="5"/>
+<!-- broad torso -->
+<path d="m137 182 70-21 83 21 21 57-18 72-34 24-68-8-56-35-22-56Z" fill="url(#stone)"/>
+<path d="m144 188 61-16 67 17-10 41-71 14-42-18Z" fill="#c5b89a" stroke-width="6"/>
+<path d="m155 239 38 7 7 38-38 15-22-27Z" fill="#8d8c7d" stroke-width="6"/>
+<path d="m207 246 55-13 23 27-23 38-53-13Z" fill="#a8a18b" stroke-width="6"/>
+<path d="m181 304 31-14 35 10 6 21-47 10Z" fill="#686f69" stroke-width="5"/>
+<!-- left arm -->
+<path d="m128 177-32 11-22 43 9 38 32 15 33-28 13-43Z" fill="url(#stoneLight)"/>
+<path d="m87 250-23 29 1 45 29 22 39-7 23-38-15-37Z" fill="url(#stone)"/>
+<path d="m74 293 14-17 18 4 3 42-14 10-19-10Z" fill="#d2bd96" stroke-width="6"/>
+<path d="m111 282 17 0 15 17-13 28-17-5Z" fill="#a89d84" stroke-width="5"/>
+<!-- right arm -->
+<path d="m290 178 40 13 25 45-8 38-36 15-30-23-12-50Z" fill="url(#stoneLight)"/>
+<path d="m320 258 31 17 15 41-17 29-46-1-26-35 13-39Z" fill="url(#stone)"/>
+<path d="m305 284 18-4 12 17-6 32-19 2-13-24Z" fill="#c6b595" stroke-width="6"/>
+<path d="m338 283 16 12 1 23-15 14-8-13Z" fill="#a59a82" stroke-width="5"/>
+<!-- shoulders -->
+<path d="m110 154-27 20-8 36 21 27 40 3 25-31-11-41Z" fill="url(#stoneLight)"/>
+<path d="m281 157-23 19 1 36 27 28 38-6 16-32-12-35Z" fill="url(#stoneLight)"/>
+<path d="m91 174 15-17 30 8 12 18-9 18-16-6-6 14-19-11-15 4Z" fill="url(#moss)" stroke-width="5"/>
+<path d="m275 174 10-15 30 6 13 14 1 25-16-5-7 17-13-12-13 4Z" fill="url(#moss)" stroke-width="5"/>
+<!-- head neck and helmet -->
+<path d="m175 176-2 36 36 19 48-13 10-39Z" fill="#656e68"/>
+<path d="m168 116 29-23 48 5 28 29-3 53-26 28-51-5-30-31Z" fill="url(#stoneLight)"/>
+<path d="m169 121 16-28 34-13 34 12 20 25-9 24-36-1-18 13-42-8Z" fill="#c9ba9c"/>
+<path d="m192 95 7 24-9 21m32-54-4 24 17 12 3 15m18-39-15 12" fill="none" stroke="#777a6c" stroke-width="5"/>
+<!-- eyes dark sockets -->
+<path d="m169 151 31-2 2 19-31-1Z" fill="#293235" stroke-width="4"/>
+<path d="m219 149 30 0-2 17-28 3Z" fill="#293235" stroke-width="4"/>
+<path d="m178 156 15 0m35-1 13 0" fill="none" stroke="#f9d76c" stroke-width="5"/>
+<path d="m205 164-7 17 15 2" fill="none" stroke="#77786b" stroke-width="5"/>
+<path d="m184 187 45 1-8 11-27-2Z" fill="#293235" stroke-width="3"/>
+<!-- stone cracks -->
+<path d="m151 205 16 9 14-4m90 51-16 7-1 18m-118-41-12 7-1 16m198-38-17 3-8 12m-130 78-9 18 6 12m99-37 8 15-8 14" fill="none" stroke="#626d66" stroke-width="4"/>
+</g>
+<g fill="#e5d3aa"><path d="m176 105 17-10-5 11-13 10Z"/><path d="m104 211 10-5 9 8-12 3Z"/><path d="m292 215 10-5 9 8-12 3Z"/><path d="m176 254 10 4 1 10-10-3Z"/><path d="m245 251 9-4 3 9-11 3Z"/></g>
+<g fill="#b2d453"><path d="m99 169 5-8 8 6-4 8Z"/><path d="m121 179 10-7 5 8-9 5Z"/><path d="m288 170 6-7 6 9-6 7Z"/><path d="m312 179 6-5 5 7-7 8Z"/></g>
+</svg>

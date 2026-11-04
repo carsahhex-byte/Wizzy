@@ -1,0 +1,18 @@
+{
+  "name": "wizzy-battle-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A two-player, turn-based wizard card game prototype.",
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "start": "node scripts/serve.js",
+    "build": "node scripts/build.js",
+    "build:web": "node scripts/build.js --web",
+    "optimize:art": "python scripts/optimize-art.py",
+    "deploy:pages": "npm test && npm run build:web && node scripts/deploy-pages.js --publish",
+    "preview": "node scripts/serve.js dist",
+    "test": "node --test --test-isolation=none test/game.test.js"
+  },
+  "engines": { "node": ">=22" }
+}

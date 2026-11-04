@@ -1,0 +1,55 @@
+/** Publish only the static build, preserving the source checkout and its index. */
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+const root = path.resolve(import.meta.dirname, '..');
+const output = path.join(root, 'dist');
+const publish = process.argv.includes('--publish');
+const git = (args, options = {}) => {
+  const result = execFileSync('git', args, { cwd: root, encoding: 'utf8', ...options });
+  return typeof result === 'string' ? result.trim() : '';
+};
+
+const origin = new URL(git(['remote', 'get-url', 'origin']));
+if (origin.hostname !== 'github.com' || origin.pathname.replace(/\.git$/, '').toLowerCase() !== '/carsahhex-byte/wizzy') {
+  throw new Error('Refusing to publish to an unexpected repository. Check origin.');
+}
+await stat(path.join(output, 'index.html'));
+await stat(path.join(output, '.nojekyll'));
+const files = await readdir(output);
+if (files.includes('wizzy.html')) throw new Error('Use npm run build:web before deployment.');
+
+const remoteLine = git(['ls-remote', '--heads', 'origin', 'refs/heads/gh-pages']);
+const parent = remoteLine ? remoteLine.split(/\s/)[0] : null;
+if (parent) git(['fetch', '--no-tags', 'origin', 'refs/heads/gh-pages']);
+
+const temporary = await mkdtemp(path.join(tmpdir(), 'wizzy-pages-'));
+try {
+  const gitDir = git(['rev-parse', '--absolute-git-dir']);
+  const env = { ...process.env, GIT_INDEX_FILE: path.join(temporary, 'index') };
+  const buildGit = args => git([`--git-dir=${gitDir}`, `--work-tree=${output}`, ...args], { cwd: output, env });
+  buildGit(['read-tree', '--empty']);
+  buildGit(['add', '--all', '--force', '.']);
+  const tree = buildGit(['write-tree']);
+  if (parent && git(['rev-parse', `${parent}^{tree}`]) === tree) {
+    console.log('The published branch already contains this exact build.');
+    process.exitCode = 0;
+  } else {
+    const source = git(['rev-parse', '--short', 'HEAD']);
+    const args = ['-c', 'user.name=Wizzy Deployment', '-c', 'user.email=noreply@openai.com', 'commit-tree', tree];
+    if (parent) args.push('-p', parent);
+    const commit = git(args, { input: `Publish Wizzy web build from ${source}\n` });
+    git(['update-ref', 'refs/wizzy/prepared-pages', commit]);
+    console.log(`Prepared static deployment ${commit}. Source branch and index are unchanged.`);
+    if (publish) {
+      git(['push', 'origin', `${commit}:refs/heads/gh-pages`], { stdio: ['ignore', 'inherit', 'inherit'] });
+      console.log('Uploaded static game to the gh-pages branch. GitHub Pages must be enabled separately.');
+    } else {
+      console.log('No remote changes made. Add --publish to upload this build.');
+    }
+  }
+} finally {
+  await rm(temporary, { recursive: true, force: true });
+}

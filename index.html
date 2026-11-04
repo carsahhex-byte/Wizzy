@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#11172a" />
+    <meta name="description" content="Wizzy — a pixel art card battle between Fire and Water. Cast a spell, face fate, refresh your hand, and pass the turn." />
+    <title>Wizzy · Battle Simulator</title>
+    <link rel="icon" type="image/svg+xml" href="./public/art/favicon.svg" />
+    <link rel="stylesheet" href="./src/style.css" />
+    <script type="module" src="./src/main.js"></script>
+  </head>
+  <body>
+    <main id="app" aria-label="Wizzy Battle Simulator"></main>
+    <dialog id="handoff" class="game-dialog" aria-labelledby="handoff-title">
+      <div class="dialog-portrait" id="handoff-portrait" aria-hidden="true"></div>
+      <p class="eyebrow">THE BATTLE CONTINUES</p>
+      <h2 id="handoff-title">Water’s turn</h2>
+      <p id="handoff-description">Pass the screen to the next wizard.</p>
+      <button class="dialog-primary" id="begin-turn">Begin turn <span aria-hidden="true">→</span></button>
+      <p class="dialog-footnote">Two wizards. One screen. A little friendly rivalry.</p>
+    </dialog>
+    <dialog id="settings" class="game-dialog rules-dialog" aria-labelledby="settings-title">
+      <button class="close-dialog" aria-label="Close settings" data-close="settings">×</button>
+      <p class="eyebrow">THE WIZARD’S HANDBOOK</p>
+      <h2 id="settings-title">Fire meets Water</h2>
+      <p>A duel for <strong>two players sharing a screen</strong>, using your original pixel art. Each wizard has their own hand, spell tower, and discard pile.</p>
+      <ul class="rules-list">
+        <li>Start with <strong>30 HP, 3 mana, and 4 cards</strong>. Shield, Embers/Flow, and loaded dice start at zero.</li>
+        <li>Both wizards take one turn per round. At the beginning of every round after the first, both gain <strong>2 mana</strong>. Unspent mana carries over.</li>
+        <li>After each wizard’s opening turn, draw up to <strong>5 cards at the beginning of their turn</strong>.</li>
+        <li>Select a card, then click <strong>Cast Spell</strong>. The button becomes <strong>Skip Fate</strong> and all hand cards are greyed out.</li>
+        <li>Click <strong>Skip Fate</strong> to resolve the spell. After resolution, the card moves to discard and End Turn becomes available again. You may cast another spell before ending.</li>
+        <li><strong>End Turn</strong> reveals Hand Refresh. To skip refreshing, click End Turn again to pass.</li>
+        <li>Click <strong>Hand Refresh</strong>, select any number of cards (including zero), then click Hand Refresh again. Selected cards are greyed out, discarded, and replaced by drawing up to five. Click <strong>End Turn</strong> to pass. Refresh is available once per turn.</li>
+      </ul>
+      <div class="prototype-note"><strong>Card effects, fate cards, and dice rules are coming next.</strong> No costs, damage, or random dice outcomes are invented. Skip Fate currently resolves the card flow only. Dice display the supplied artwork.</div>
+      <p class="small-copy">Each wizard has a temporary 24-card deck: Fiery Comet for Fire and Cresting Wave for Water. If a tower runs out, drawing stops. Browser saves resume your current phase; older duels are upgraded to Water automatically.</p>
+      <button class="secondary-button" id="request-restart">Start a new duel</button>
+    </dialog>
+    <dialog id="restart" class="game-dialog" aria-labelledby="restart-title">
+      <p class="eyebrow">A FRESH START</p>
+      <h2 id="restart-title">Begin a new duel?</h2>
+      <p>This resets both wizards and their decks. Your current duel will be replaced.</p>
+      <div class="dialog-actions"><button class="secondary-button" data-close="restart">Keep playing</button><button class="gold-button" id="confirm-restart">New duel</button></div>
+    </dialog>
+    <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+    <noscript>This game needs JavaScript enabled to play.</noscript>
+  </body>
+</html>
