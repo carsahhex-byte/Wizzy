@@ -5,9 +5,10 @@ import { MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed rolling spell stays in hand until both Fate windows and its roll finish. */
-export const SAVE_VERSION = 8;
-export const PHASES = Object.freeze(['main', 'fate', 'rolling', 'resolving', 'end', 'refresh', 'ready-to-pass']);
-const PREVIEW_PHASES = PHASES.filter((phase) => phase !== 'rolling');
+export const SAVE_VERSION = 9;
+export const PHASES = Object.freeze(['initiative', 'main', 'fate', 'rolling', 'resolving', 'end', 'refresh', 'ready-to-pass']);
+const PRE_INITIATIVE_PHASES = PHASES.filter((phase) => phase !== 'initiative');
+const PREVIEW_PHASES = PRE_INITIATIVE_PHASES.filter((phase) => phase !== 'rolling');
 const PENDING_PHASES = ['fate', 'rolling', 'resolving'];
 const LOG_TYPES = ['info', 'turn', 'round', 'cast', 'fate', 'resolve', 'refresh', 'damage', 'victory', 'dice', 'resource', 'heal', 'shield', 'loaded'];
 
@@ -95,19 +96,51 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
       id, name: id === 'fire' ? 'Fire' : 'Water',
       elementName: id === 'fire' ? 'Embers' : 'Flow',
       hp: 30, maxHp: 30, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
-      turnsStarted: id === 'fire' ? 1 : 0, deckDefinition,
+      turnsStarted: 0, deckDefinition,
       hand: deck.splice(0, 4), deck, discard: [],
     };
   });
   const state = {
     version: SAVE_VERSION, round: 1, activePlayer: 0,
-    phase: 'main', primaryUsed: false, selectedCardId: null, selectedFateCardIds: [], pendingCardId: null, pendingSpell: null,
+    phase: 'initiative', primaryUsed: false, selectedCardId: null, selectedFateCardIds: [], pendingCardId: null, pendingSpell: null,
     fatePlayer: null, lastRoll: null, refreshCardIds: [],
+    startingPlayer: null, secondPlayerOpeningDrawPending: true,
+    initiative: { round: 1, rolls: [null, null], history: [], winner: null, legacy: false },
     status: 'playing', winner: null, players, log: [],
   };
   addLog(state, 'The duel begins. Both wizards receive 30 HP, 3 mana, and 4 spell slabs.');
-  addLog(state, 'Fire takes the first turn.', 'turn', 'fire');
+  addLog(state, 'Each wizard rolls one die to decide who starts. Ties are rerolled.');
   return state;
+}
+
+/** Opening dice are independent of spell rolls, Fate and Loaded bonuses. */
+export function rollInitiative(state, playerIndex, random = Math.random) {
+  if (!inPhase(state, 'initiative') || ![0, 1].includes(playerIndex)
+    || state.initiative.rolls[playerIndex] !== null) return state;
+  const sample = random();
+  if (!Number.isFinite(sample) || sample < 0 || sample >= 1) return state;
+  const next = structuredClone(state);
+  const value = Math.floor(sample * 6) + 1;
+  next.initiative.rolls[playerIndex] = value;
+  const player = next.players[playerIndex];
+  addLog(next, `${player.name} rolls ${value} for the opening turn.`, 'dice', player.id);
+  const [fire, water] = next.initiative.rolls;
+  if (fire === null || water === null) return next;
+  if (fire === water) {
+    next.initiative.history.push({ round: next.initiative.round, rolls: [fire, water] });
+    next.initiative.round += 1;
+    next.initiative.rolls = [null, null];
+    addLog(next, `Opening dice tie at ${fire}. Both wizards roll again.`, 'dice');
+    return next;
+  }
+  const winner = fire > water ? 0 : 1;
+  next.startingPlayer = winner;
+  next.activePlayer = winner;
+  next.initiative.winner = winner;
+  next.players[winner].turnsStarted = 1;
+  next.phase = 'main';
+  addLog(next, `${next.players[winner].name} wins the opening roll and takes the first turn.`, 'turn', next.players[winner].id);
+  return next;
 }
 
 export function getActingPlayerIndex(state) {
@@ -323,7 +356,7 @@ export function endTurn(state) {
   next.refreshCardIds = [];
   clearPending(next);
   next.activePlayer = next.activePlayer === 0 ? 1 : 0;
-  if (next.activePlayer === 0) {
+  if (next.activePlayer === next.startingPlayer) {
     next.round += 1;
     addLog(next, `Round ${next.round} begins.`, 'round');
   }
@@ -333,7 +366,11 @@ export function endTurn(state) {
   player.loaded = player.loadedPending;
   player.loadedPending = 0;
   if (isOpeningTurn) {
-    addLog(next, `${player.name} takes their opening turn with ${player.hand.length} spell slabs.`, 'turn', player.id);
+    const count = next.secondPlayerOpeningDrawPending && next.activePlayer !== next.startingPlayer
+      ? Math.min(1, Math.max(0, 5 - player.hand.length), player.deck.length) : 0;
+    if (count) player.hand.push(...player.deck.splice(0, count));
+    if (next.activePlayer !== next.startingPlayer) next.secondPlayerOpeningDrawPending = false;
+    addLog(next, `${player.name} takes their opening turn${count ? ', draws 1 extra slab for going second' : ''}; ${player.hand.length} spell slabs in hand.`, 'turn', player.id);
   } else {
     player.mana += 2;
     const count = drawToFive(player);
@@ -381,7 +418,7 @@ export function confirmRefresh(state) {
 
 /** Shield absorbs self-damage and opposing damage by the same rule. */
 export function applyDamage(state, targetIndex, amount) {
-  if (state.status !== 'playing' || ![0, 1].includes(targetIndex) || !Number.isSafeInteger(amount) || amount <= 0) return state;
+  if (state.status !== 'playing' || state.phase === 'initiative' || ![0, 1].includes(targetIndex) || !Number.isSafeInteger(amount) || amount <= 0) return state;
   const next = structuredClone(state);
   const target = next.players[targetIndex];
   const absorbed = Math.min(target.shield, amount);
@@ -398,7 +435,6 @@ function requireValue(condition, message) {
 }
 
 function assertSavedState(state, version, deckSize, expectedDeck) {
-  const current = version === SAVE_VERSION;
   const realRules = version >= 4;
   const primaryRules = version >= 5;
   const customDeckRules = version >= 7;
@@ -406,7 +442,7 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
   requireValue(Number.isSafeInteger(state.round) && state.round >= 1, 'round');
   requireValue([0, 1].includes(state.activePlayer), 'active player');
   requireValue(['playing', 'finished'].includes(state.status), 'status');
-  requireValue((realRules ? PHASES : PREVIEW_PHASES).includes(state.phase), 'phase');
+  requireValue((version >= 9 ? PHASES : realRules ? PRE_INITIATIVE_PHASES : PREVIEW_PHASES).includes(state.phase), 'phase');
   if (primaryRules) requireValue(typeof state.primaryUsed === 'boolean', 'primary spell used');
   requireValue(Array.isArray(state.players) && state.players.length === 2, 'players');
   const allIds = new Set();
@@ -418,7 +454,7 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
     requireValue(player.maxHp === 30 && Number.isSafeInteger(player.hp) && player.hp >= 0 && player.hp <= player.maxHp, 'HP');
     for (const key of ['mana', 'shield', 'element', 'loaded', 'turnsStarted', ...(realRules ? ['loadedPending'] : [])]) requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
     if (version >= 6 && player.id === 'water') requireValue(player.element <= MAX_FLOW, 'Flow cap');
-    if (current && player.id === 'fire') requireValue(player.element <= MAX_EMBERS, 'Ember cap');
+    if (version >= 8 && player.id === 'fire') requireValue(player.element <= MAX_EMBERS, 'Ember cap');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
     requireValue(player.hand.length <= 5, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
@@ -434,6 +470,35 @@ function assertSavedState(state, version, deckSize, expectedDeck) {
       for (const [key, value] of Object.entries(expected)) requireValue(card[key] === value, 'spell definition');
     }
   });
+  if (version >= 9) {
+    const initiative = state.initiative;
+    requireValue(initiative && typeof initiative === 'object' && !Array.isArray(initiative), 'opening initiative');
+    requireValue(typeof initiative.legacy === 'boolean' && typeof state.secondPlayerOpeningDrawPending === 'boolean', 'opening draw tracking');
+    requireValue(Array.isArray(initiative.rolls) && initiative.rolls.length === 2 && initiative.rolls.every((roll) => roll === null || (Number.isInteger(roll) && roll >= 1 && roll <= 6)), 'opening dice');
+    requireValue(Array.isArray(initiative.history), 'opening tie history');
+    if (initiative.legacy) {
+      requireValue(initiative.round === 0 && initiative.history.length === 0 && initiative.rolls.every((roll) => roll === null)
+        && initiative.winner === 0 && state.startingPlayer === 0 && state.phase !== 'initiative', 'legacy opening order');
+    } else {
+      requireValue(Number.isSafeInteger(initiative.round) && initiative.round >= 1 && initiative.history.length === initiative.round - 1, 'opening round');
+      initiative.history.forEach((entry, index) => requireValue(entry && entry.round === index + 1
+        && Array.isArray(entry.rolls) && entry.rolls.length === 2 && entry.rolls[0] === entry.rolls[1]
+        && Number.isInteger(entry.rolls[0]) && entry.rolls[0] >= 1 && entry.rolls[0] <= 6, 'tied opening dice'));
+      if (state.phase === 'initiative') {
+        requireValue(state.status === 'playing' && state.round === 1 && state.activePlayer === 0
+          && state.startingPlayer === null && initiative.winner === null && initiative.rolls.includes(null)
+          && state.secondPlayerOpeningDrawPending && !state.primaryUsed && state.players.every((player) => player.turnsStarted === 0), 'pending opening roll');
+      } else {
+        const [fire, water] = initiative.rolls;
+        requireValue(fire !== null && water !== null && fire !== water
+          && initiative.winner === (fire > water ? 0 : 1) && state.startingPlayer === initiative.winner, 'opening winner');
+      }
+    }
+    if (state.phase !== 'initiative') {
+      requireValue([0, 1].includes(state.startingPlayer) && state.players[state.startingPlayer].turnsStarted >= 1, 'starting player');
+      requireValue(state.secondPlayerOpeningDrawPending === (state.players[1 - state.startingPlayer].turnsStarted === 0), 'second opening draw status');
+    }
+  }
   const hand = state.players[state.activePlayer].hand;
   const isOwnCard = (id) => typeof id === 'string' && hand.some((card) => card.id === id);
   if (realRules) {
@@ -611,6 +676,7 @@ function upgradePreviewRules(preview) {
   if (wasPending || (next.selectedCardId && !canSelectCard(next, next.selectedCardId))) next.selectedCardId = null;
   applyFlowUpgrade(next);
   applyEmberUpgrade(next);
+  applyInitiativeUpgrade(next);
   addLog(next, 'Spell effects, printed mana costs and two-player Fate are now active. Existing Loaded is available on the current turn or queued for its owner’s next turn.');
   if (wasPending) addLog(next, 'The unfinished preview spell was cancelled without charging mana, spending Embers, discarding it or applying effects.');
   assertGame(next);
@@ -670,16 +736,33 @@ function applyEmberUpgrade(next) {
 function upgradeEmberRules(previous) {
   assertSavedState(previous, 7, DECK_SIZE, makeDeckCards);
   const next = structuredClone(previous);
-  next.version = SAVE_VERSION;
+  next.version = 8;
   applyEmberUpgrade(next);
+  return upgradeInitiativeRules(next);
+}
+
+/** Existing duels keep their historical Fire-first order without rolling again. */
+function applyInitiativeUpgrade(next) {
+  next.startingPlayer = 0;
+  next.initiative = { round: 0, rolls: [null, null], history: [], winner: 0, legacy: true };
+  next.secondPlayerOpeningDrawPending = next.players[1].turnsStarted === 0;
+  addLog(next, 'Opening dice now choose the first wizard in new duels. This duel keeps its current order; the second wizard draws one extra slab when their opening turn begins.');
+}
+
+function upgradeInitiativeRules(previous) {
+  assertSavedState(previous, 8, DECK_SIZE, makeDeckCards);
+  const next = structuredClone(previous);
+  next.version = SAVE_VERSION;
+  applyInitiativeUpgrade(next);
   assertGame(next);
   return next;
 }
 
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![1, 2, 3, 4, 5, 6, 7].includes(value.version)) return null;
+  if (!value || ![1, 2, 3, 4, 5, 6, 7, 8].includes(value.version)) return null;
   try {
+    if (value.version === 8) return upgradeInitiativeRules(value);
     if (value.version === 7) return upgradeEmberRules(value);
     if (value.version === 6) return upgradeCustomDeckRules(value);
     if (value.version === 5) return upgradeFlowRules(value);

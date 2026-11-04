@@ -11,3 +11,7 @@ docs
 **/.env.*
 !.env.example
 .DS_Store
+data
+**/*.sqlite*
+**/*.db
+**/*.db-*

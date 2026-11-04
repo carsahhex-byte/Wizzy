@@ -5,9 +5,10 @@ import path from 'node:path';
 import {
   createGame, assertGame, getActingPlayerIndex, selectCard, castSelected,
   castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh,
-  toggleRefreshCard, confirmRefresh,
+  toggleRefreshCard, confirmRefresh, rollInitiative,
 } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
+import { createAccountStore, AccountError } from './account-store.js';
 
 const DEFAULT_ROOT = path.resolve(import.meta.dirname, '../dist');
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -108,9 +109,12 @@ export function createMultiplayerServer(options = {}) {
   const now = options.now ?? Date.now;
   const makeMatch = options.createMatch ?? secureMatch;
   const rollRandom = options.rollRandom ?? secureRoll;
+  const initiativeRandom = options.initiativeRandom ?? secureRoll;
   const maxRooms = options.maxRooms ?? 500;
   const ttl = options.roomTtlMs ?? 6 * 60 * 60 * 1000;
   if (!Number.isSafeInteger(maxRooms) || maxRooms < 1 || !Number.isFinite(ttl) || ttl <= 0) throw new Error('Invalid room limits.');
+  const ownsAccounts = !options.accountStore;
+  const accounts = options.accountStore ?? createAccountStore({ dbPath: options.accountDbPath ?? ':memory:', now, ...(options.accountSessionTtlMs !== undefined ? { sessionTtlMs: options.accountSessionTtlMs } : {}) });
   const rooms = new Map();
   const limits = new Map();
   let lastSweep = 0;
@@ -150,9 +154,17 @@ export function createMultiplayerServer(options = {}) {
     room.touchedAt = now();
     return playerIndex;
   }
-  function newPlayer(name, deck) {
+  function accountToken(request) {
+    const match = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(request.headers.authorization || '');
+    if (!match) throw new AccountError(401, 'account_unauthorized', 'Log in to your Wizzy account again.');
+    return match[1];
+  }
+  function optionalAccount(request) {
+    return request.headers.authorization ? accounts.get(accountToken(request)) : null;
+  }
+  function newPlayer(name, deck, accountId = null) {
     const token = randomBytes(32).toString('base64url');
-    return { token, record: { name, deck, tokenHash: tokenHash(token), requests: new Map() } };
+    return { token, record: { name, deck, accountId, tokenHash: tokenHash(token), requests: new Map() } };
   }
   function newCode() {
     let code;
@@ -173,10 +185,15 @@ export function createMultiplayerServer(options = {}) {
     if (!Number.isSafeInteger(body.revision) || body.revision !== room.revision) fail(409, 'stale_revision', 'The battle changed. Your view has been refreshed.', roomView(room, playerIndex));
     if (!room.state) fail(409, 'waiting_for_player', 'Wait for the other wizard to join.');
     if (room.state.status !== 'playing') fail(409, 'duel_finished', 'This duel is complete. Create a new battle to play again.');
-    if (getActingPlayerIndex(room.state) !== playerIndex) fail(403, 'not_your_turn', 'Wait for the other wizard to finish this step.');
+    if (room.state.phase === 'initiative') {
+      if (body.type !== 'rollInitiative') fail(403, 'opening_roll_required', 'Both wizards must finish the opening roll before playing.');
+    } else if (getActingPlayerIndex(room.state) !== playerIndex) fail(403, 'not_your_turn', 'Wait for the other wizard to finish this step.');
     const payload = body.payload ?? {};
     let next;
     switch (body.type) {
+      case 'rollInitiative':
+        if (Object.keys(payload).length) fail(400, 'invalid_action', 'The server rolls your opening die.');
+        next = rollInitiative(room.state, playerIndex, initiativeRandom); break;
       case 'selectCard': next = selectCard(room.state, payload.cardId); break;
       case 'castSpell': next = castSelected(room.state, { emberSpend: payload.emberSpend ?? 0 }); break;
       case 'castFate': next = castFateSelected(room.state); break;
@@ -236,7 +253,7 @@ export function createMultiplayerServer(options = {}) {
       if (!url.pathname.startsWith('/api/')) { await staticFile(request, response, url.pathname); return; }
       response.setHeader('Cache-Control', 'no-store');
       if (request.method === 'OPTIONS') {
-        response.writeHead(204, { 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600' });
+        response.writeHead(204, { 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600' });
         response.end(); return;
       }
       sweep();
@@ -245,16 +262,33 @@ export function createMultiplayerServer(options = {}) {
       let result;
       let status = 200;
       if (url.pathname === '/api/health' && request.method === 'GET') {
-        result = { ok: true, service: 'wizzy-multiplayer', storage: 'memory' };
+        result = { ok: true, service: 'wizzy-multiplayer', storage: 'memory', accounts: { enabled: true, storage: accounts.storage } };
+      } else if (url.pathname.startsWith('/api/accounts/')) {
+        const operation = url.pathname.slice('/api/accounts/'.length);
+        if (operation === 'register' && request.method === 'POST') {
+          limit(`register:${ip}`, 6);
+          result = await accounts.register(await jsonBody(request)); status = 201;
+        } else if (operation === 'login' && request.method === 'POST') {
+          limit(`login:${ip}`, 20);
+          result = await accounts.login(await jsonBody(request));
+        } else if (operation === 'me' && request.method === 'GET') {
+          result = { account: accounts.get(accountToken(request)) };
+        } else if (operation === 'me' && request.method === 'PUT') {
+          limit(`save-account:${ip}`, 120);
+          result = { account: accounts.update(accountToken(request), await jsonBody(request)) };
+        } else if (operation === 'logout' && request.method === 'POST') {
+          accounts.logout(accountToken(request)); result = { ok: true };
+        } else fail(405, 'method_not_allowed', 'That account method is not supported.');
       } else if (url.pathname === '/api/rooms' && request.method === 'POST') {
         limit(`create:${ip}`, 10);
         const body = await jsonBody(request);
         if (!['fire', 'water'].includes(body.element)) fail(400, 'invalid_element', 'Choose Fire or Water.');
-        const name = playerName(body.name);
-        const deck = playableDeck(body.deck, body.element);
+        const account = optionalAccount(request);
+        const name = account ? account.profile.name : playerName(body.name);
+        const deck = playableDeck(account ? account.decks[body.element] : body.deck, body.element);
         if (rooms.size >= maxRooms) fail(503, 'rooms_full', 'The battle server is full. Please try again later.');
         const playerIndex = body.element === 'fire' ? 0 : 1;
-        const player = newPlayer(name, deck);
+        const player = newPlayer(name, deck, account?.id);
         const room = { code: newCode(), hostIndex: playerIndex, revision: 0, players: [null, null], state: null, touchedAt: now() };
         room.players[playerIndex] = player.record; rooms.set(room.code, room);
         result = { ...roomView(room, playerIndex), token: player.token }; status = 201;
@@ -271,7 +305,9 @@ export function createMultiplayerServer(options = {}) {
           if (room.state || room.players.every(Boolean)) fail(409, 'room_full', 'Both seats in this battle are already taken.');
           const body = await jsonBody(request);
           const playerIndex = room.players[0] ? 1 : 0;
-          const player = newPlayer(playerName(body.name), playableDeck(body.deck, playerIndex === 0 ? 'fire' : 'water'));
+          const account = optionalAccount(request);
+          const element = playerIndex === 0 ? 'fire' : 'water';
+          const player = newPlayer(account ? account.profile.name : playerName(body.name), playableDeck(account ? account.decks[element] : body.deck, element), account?.id);
           const nextPlayers = room.players.slice(); nextPlayers[playerIndex] = player.record;
           const state = makeMatch({ fire: nextPlayers[0].deck, water: nextPlayers[1].deck });
           assertGame(state);
@@ -291,15 +327,16 @@ export function createMultiplayerServer(options = {}) {
       response.end(JSON.stringify(result));
     } catch (error) {
       if (response.headersSent) { response.end(); return; }
-      const known = error instanceof RoomError;
+      const known = error instanceof RoomError || error instanceof AccountError;
       const status = known ? error.status : 500;
       if (status === 429) response.setHeader('Retry-After', '60');
       response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-      response.end(JSON.stringify({ error: known ? error.message : 'The battle server could not finish this request.', code: known ? error.code : 'server_error', ...(known && error.view ? { view: error.view } : {}) }));
+      response.end(JSON.stringify({ error: known ? error.message : 'The battle server could not finish this request.', code: known ? error.code : 'server_error', ...(known && error.view ? { view: error.view } : {}), ...(known && error.account ? { account: error.account } : {}) }));
       if (!known) options.onError?.(error);
     }
   });
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
+  if (ownsAccounts) server.on('close', () => accounts.close());
   return server;
 }

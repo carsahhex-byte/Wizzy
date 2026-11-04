@@ -13,15 +13,24 @@
     <link rel="stylesheet" href="./src/style.css" />
     <link rel="stylesheet" href="./src/hub.css" />
     <link rel="stylesheet" href="./src/multiplayer.css" />
+    <link rel="stylesheet" href="./src/accounts.css" />
     <script type="module" src="./src/main.js"></script>
   </head>
   <body>
     <main id="hub" class="hub-root" aria-label="Wizzy"></main>
+    <section id="account-view" aria-label="Wizard account and saved decks" hidden></section>
     <section id="online-view" aria-label="Two-screen battles" hidden></section>
     <section id="battle-view" aria-label="Wizzy Battle Simulator" hidden>
       <nav class="battle-navigation" aria-label="Battle navigation"><button id="battle-home">← Home</button><div class="battle-session"><span id="battle-session-label">LOCAL DUEL · FIRE / WATER</span><small id="battle-connection" role="status" hidden></small></div><button id="battle-new">New duel</button><button id="battle-online-lobby" hidden>Lobby</button></nav>
       <div id="app" aria-label="Battle board"></div>
     </section>
+    <dialog id="opening-roll" class="game-dialog opening-dialog" aria-labelledby="opening-title">
+      <p class="eyebrow">WHO TAKES THE FIRST TURN?</p>
+      <h2 id="opening-title">Roll for first turn</h2>
+      <div id="opening-roll-content"></div>
+      <button class="dialog-primary" id="opening-continue" hidden>Begin battle</button>
+      <button class="secondary-button opening-home" id="opening-home">Back to Seattle</button>
+    </dialog>
     <dialog id="battle-mode" class="game-dialog" aria-labelledby="battle-mode-title">
       <button class="close-dialog" aria-label="Close battle options" data-close="battle-mode">×</button>
       <p class="eyebrow">CHOOSE YOUR DUEL</p>
@@ -45,6 +54,8 @@
       <p>Share one screen locally, or choose <strong>Play on two screens</strong> to create or join a hosted room. Each wizard has their own hand, spell tower, and discard pile.</p>
       <ul class="rules-list">
         <li>Start with <strong>30 HP, 3 mana, and 4 spell slabs</strong>. Each deck has 30 slabs, leaving 26 in the opening tower. Shield, Embers/Flow, and loaded dice start at zero.</li>
+        <li>Each wizard rolls <strong>one opening die</strong>. The higher roll takes the first turn; ties make both wizards roll again. Opening rolls use no Fate or Loaded bonuses.</li>
+        <li>The wizard going second draws <strong>one extra slab at the beginning of their first turn</strong>, normally starting that turn with 5 rather than 4. Slabs used for defending Fate before that turn remain spent. This opening draw happens once and grants no extra mana.</li>
         <li>Both wizards take one turn per round. Each gains <strong>2 mana at the start of their own turn after their opening turn</strong>. Unspent mana carries over.</li>
         <li>After each wizard’s opening turn, draw up to <strong>5 slabs at the beginning of their turn</strong>.</li>
         <li>Each player may cast <strong>one primary spell per turn</strong>. Elemental and Neutral slabs are primary spells. Cast Spell pays the printed mana cost; it stays disabled after that spell resolves. A spell without a roll condition resolves immediately. Ember spending choices are made before casting.</li>

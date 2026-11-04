@@ -5,6 +5,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT m
 const origins = process.env.ALLOWED_ORIGINS?.split(',').map(value => value.trim()).filter(Boolean);
 const server = createMultiplayerServer({
   ...(origins ? { allowedOrigins: origins } : {}),
+  accountDbPath: process.env.ACCOUNT_DB_PATH || 'data/wizzy.sqlite',
   onError: () => console.error('A multiplayer request failed. No player tokens were logged.'),
 });
 server.listen(port, '0.0.0.0', () => {

@@ -19,6 +19,16 @@
     "width": 1024,
     "height": 1536
   },
+  "mapSurround": {
+    "file": "mapSurround-f5edaeca9c2d.webp",
+    "source": "Wizzy Ocean Surround.png",
+    "sourceSha256": "51a953ef636a3af027f602103529a2fbe76602617c3a4318d7ed69b3bd21799d",
+    "optimizedSha256": "f5edaeca9c2d1c7d3bbfa3fc161d13811102074b8c47cda86ea81b7bcfaf1a82",
+    "bytes": 1067092,
+    "sourceBytes": 1517010,
+    "width": 1024,
+    "height": 1536
+  },
   "iconAtlas": {
     "file": "iconAtlas-b50d0616369c.webp",
     "source": "Wizzy Interface Icons.png",

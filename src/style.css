@@ -31,6 +31,21 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .battle-mode-option span { color: #c8c9e1; font-size: 12px; line-height: 1.5; }
 .battle-mode-option:hover { background: #39315b; }
 [hidden].battle-mode-option { display: none; }
+.opening-dialog { max-width: min(520px,calc(100% - 28px)); }
+.opening-players { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin: 20px 0 15px; }
+.opening-player { display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; padding: 15px 8px; border: 2px solid #736a9c; background: #151b30c9; }
+.opening-player.fire { border-color: #e19d62; }.opening-player.water { border-color: #7ac7e4; }
+.opening-player>strong { font-size: 16px; }.opening-player .secondary-button { padding: 9px 12px; min-height: 42px; width: 100%; }
+.opening-player .secondary-button:disabled { opacity: .55; }
+.opening-die { width: 80px; height: 80px; }
+.opening-die .die-face { display: block; width: 100%; height: 100%; }
+.opening-value { color: #f4e7c8; font-weight: 800; font-size: 18px; }
+.opening-wait { min-height: 42px; display: grid; place-items: center; color: #c2b9d8; font-size: 11px; }
+.opening-dialog .opening-tie { color: #f1cf83; font-size: 11px; }
+.opening-home { margin-top: 12px; width: 100%; }
+#opening-continue[hidden] { display: none; }
+.opening-dialog .opening-explanation { margin-bottom: 12px; }
+@media(max-width:360px) { .opening-dialog { padding: 22px 16px; }.opening-players { gap: 9px; }.opening-player { padding: 12px 5px; }.opening-die { width: 66px; height: 66px; }.opening-player>strong { font-size: 14px; } }
 .game-shell { position: absolute; top: 0; left: 0; width: 1024px; height: 1536px; transform: scale(var(--board-scale, 1)); transform-origin: top left; }
 .game-board { position: absolute; inset: 0; isolation: isolate; background: var(--forest) center top / contain no-repeat; image-rendering: pixelated; }
 .topbar { position: absolute; top: 18px; left: 18px; right: 18px; height: 72px; display: flex; align-items: flex-start; justify-content: space-between; z-index: 8; pointer-events: none; }

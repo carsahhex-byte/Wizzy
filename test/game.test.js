@@ -1,12 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createGame, selectCard, canSelectCard, canCastSelected, getActingPlayerIndex,
+  createGame as createUnstartedGame, rollInitiative, selectCard, canSelectCard, canCastSelected, getActingPlayerIndex,
   castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn,
   beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh,
   applyDamage, assertGame, validateSavedGame, migrateSavedGame,
   SPELL_CATALOG, SPELL_RULES, DECK_LISTS, DECK_SIZE, SAVE_VERSION, getEmberSpendRange,
 } from '../src/game.js';
+
+// Existing effect/phase fixtures explicitly finish the new opening dice first.
+function createGame(seed, decks) {
+  return rollInitiative(rollInitiative(createUnstartedGame(seed, decks), 0, () => 5 / 6), 1, () => 0);
+}
 
 const pass = (state) => endTurn(endTurn(state));
 const allCards = (player) => [...player.hand, ...player.deck, ...player.discard];
@@ -46,7 +51,10 @@ function finishRoll(state, dice = [1, 1]) {
 
 // Published preview fixtures do not run actions from the current engine.
 function previewSave() {
-  const state = createGame(6); state.version = 3;
+  const state = createUnstartedGame(6); state.version = 3; state.phase = 'main';
+  state.players[0].turnsStarted = 1;
+  state.log[1] = { id: 2, round: 1, type: 'turn', playerId: 'fire', message: 'Fire takes the first turn.' };
+  delete state.startingPlayer; delete state.initiative; delete state.secondPlayerOpeningDrawPending;
   delete state.pendingSpell; delete state.fatePlayer; delete state.lastRoll;
   delete state.primaryUsed; delete state.selectedFateCardIds;
   for (const player of state.players) {
@@ -92,7 +100,7 @@ function previewPhases(base) {
 
 test('opening stats, four-card hands and exact 30-slab deck quantities match the PDF lists', () => {
   const state = createGame(7);
-  assert.deepEqual([state.round, state.activePlayer, state.phase, SAVE_VERSION, DECK_SIZE], [1, 0, 'main', 8, 30]);
+  assert.deepEqual([state.round, state.activePlayer, state.phase, SAVE_VERSION, DECK_SIZE], [1, 0, 'main', 9, 30]);
   assert.deepEqual([state.primaryUsed, state.selectedFateCardIds], [false, []]);
   const expectedCounts = {
     fire: { 'FIR-001': 1, 'FIR-002': 2, 'FIR-004': 2, 'FIR-005': 3, 'FIR-006': 3, 'FIR-007': 2, 'FIR-010': 2, 'FIR-011': 3, 'FIR-012': 3, 'FAT-001': 3, 'FAT-002': 2, 'FAT-003': 2, 'NEU-004': 1, 'NEU-003': 1 },
@@ -332,10 +340,10 @@ test('damage helper absorbs Shield, rejects invalid amounts and cleans committed
   assert.deepEqual([state.status, state.winner, state.pendingCardId, state.players[0].discard.length], ['finished', 0, null, 1]); assertGame(state);
 });
 
-test('opening turns keep their hands; 2 mana and mandatory draw happen only on subsequent own turns', () => {
+test('the second opening turn gains one slab; 2 mana and draw-to-five happen only on subsequent own turns', () => {
   let state = handOf(createGame(2), 0, ['FIR-001']); handOf(state, 1, ['WAT-001']); state = cast(state, 'FIR-001');
   const ending = endTurn(state); assert.deepEqual([ending.phase, ending.activePlayer, ending.selectedCardId], ['end', 0, null]);
-  state = endTurn(ending); assert.deepEqual([state.activePlayer, state.round, state.players[1].hand.length], [1, 1, 1]);
+  state = endTurn(ending); assert.deepEqual([state.activePlayer, state.round, state.players[1].hand.length], [1, 1, 2]);
   assert.deepEqual(state.players.map((p) => p.mana), [2, 3]); state = pass(cast(state, 'WAT-001'));
   assert.deepEqual([state.activePlayer, state.round, state.players[0].hand.length], [0, 2, 5]); assert.deepEqual(state.players.map((p) => p.mana), [4, 2]);
   state = pass(state); assert.deepEqual([state.activePlayer, state.round, state.players[1].hand.length], [1, 2, 5]); assert.deepEqual(state.players.map((p) => p.mana), [4, 4]); assertGame(state);
@@ -859,7 +867,7 @@ test('v7 custom duels retain every phase and committed resource while excess sto
     const expected = structuredClone(previous); expected.players[0].element = 5;
     for (const key of ['round', 'activePlayer', 'phase', 'status', 'winner', 'primaryUsed', 'selectedCardId', 'selectedFateCardIds', 'pendingCardId', 'pendingSpell', 'fatePlayer', 'lastRoll', 'refreshCardIds', 'players']) assert.deepEqual(upgraded[key], expected[key], key);
     assert.deepEqual(upgraded.log.slice(0, previous.log.length), previous.log);
-    assert.match(upgraded.log.at(-1).message, /capped from 9 to 5/);
+    assert.match(upgraded.log.findLast((entry) => /capped from 9 to 5/.test(entry.message)).message, /capped from 9 to 5/);
     assert.deepEqual(previous, original);
     assert.equal(migrateSavedGame(upgraded), upgraded);
   }
@@ -882,4 +890,120 @@ test('v7 migration validates custom decks and preserves already-paid pre-cap Emb
   assert.equal(upgraded.pendingSpell.emberSpent, 9);
   assert.equal(upgraded.players[0].element, 0);
   assert.equal(finishRoll(upgraded).players[1].hp, 0);
+});
+
+test('new duels require one unmodified opening die per wizard and reroll ties', () => {
+  const initial = createUnstartedGame(50);
+  assert.deepEqual([initial.phase, initial.startingPlayer, initial.activePlayer], ['initiative', null, 0]);
+  assert.deepEqual(initial.initiative, { round: 1, rolls: [null, null], history: [], winner: null, legacy: false });
+  assert.deepEqual(initial.players.map((player) => [player.turnsStarted, player.hand.length, player.deck.length, player.mana]), [[0, 4, 26, 3], [0, 4, 26, 3]]);
+  const card = initial.players[0].hand[0];
+  assert.equal(selectCard(initial, card.id), initial);
+  for (const action of [castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, confirmRefresh]) assert.equal(action(initial), initial);
+  assert.equal(applyDamage(initial, 0, 5), initial);
+  for (const sample of [-1, 1, NaN, Infinity]) assert.equal(rollInitiative(initial, 0, () => sample), initial);
+  assert.equal(rollInitiative(initial, 2, () => 0), initial);
+  let state = rollInitiative(initial, 1, () => .5); assertGame(state);
+  assert.deepEqual(state.initiative.rolls, [null, 4]);
+  assert.equal(rollInitiative(state, 1, () => { throw new Error('Must not reroll one wizard early'); }), state);
+  state = rollInitiative(state, 0, () => .5); assertGame(state);
+  assert.deepEqual(state.initiative, { round: 2, rolls: [null, null], history: [{ round: 1, rolls: [4, 4] }], winner: null, legacy: false });
+  state = rollInitiative(rollInitiative(state, 0, () => 0), 1, () => 5 / 6); assertGame(state);
+  assert.deepEqual([state.phase, state.startingPlayer, state.activePlayer, state.initiative.winner], ['main', 1, 1, 1]);
+  assert.deepEqual(state.players.map((player) => [player.mana, player.loaded, player.loadedPending, player.turnsStarted]), [[3, 0, 0, 0], [3, 0, 0, 1]]);
+  assert.equal(state.lastRoll, null, 'opening dice do not become a spell roll');
+  assert.equal(state.primaryUsed, false);
+  assert.equal(rollInitiative(state, 0, () => 0), state);
+  assertGame(initial); assert.deepEqual(initial.initiative.rolls, [null, null], 'rolling does not mutate the previous state');
+  const loaded = createUnstartedGame(57); loaded.players[0].loaded = 5; loaded.players[1].loadedPending = 4;
+  const unmodified = rollInitiative(rollInitiative(loaded, 0, () => 1 / 6), 1, () => 2 / 6);
+  assert.deepEqual([unmodified.activePlayer, ...unmodified.initiative.rolls], [1, 2, 3]);
+  assert.deepEqual([unmodified.players[0].loaded, unmodified.players[1].loadedPending], [5, 4], 'initiative neither applies nor consumes Loaded');
+  assertGame(unmodified);
+});
+
+test('Water may start; rounds follow the winner and only the second wizard gets the first-turn bonus', () => {
+  let state = rollInitiative(rollInitiative(createUnstartedGame(51), 0, () => 0), 1, () => 5 / 6);
+  handOf(state, 0, ['FIR-001', 'FIR-002', 'FAT-001', 'NEU-004']);
+  handOf(state, 1, ['WAT-001', 'WAT-003', 'FAT-001', 'NEU-004']);
+  assert.deepEqual([state.activePlayer, state.round, state.players[1].hand.length], [1, 1, 4]);
+  state = pass(state); assertGame(state);
+  assert.deepEqual([state.activePlayer, state.round, state.players[0].hand.length, state.players[0].deck.length, state.players[0].mana], [0, 1, 5, 25, 3]);
+  assert.equal(state.secondPlayerOpeningDrawPending, false);
+  state = pass(cast(state, 'FIR-001')); assertGame(state);
+  assert.deepEqual([state.activePlayer, state.round, state.players[1].hand.length, state.players[1].mana], [1, 2, 5, 5]);
+  state = pass(cast(state, 'WAT-001')); assertGame(state);
+  assert.deepEqual([state.activePlayer, state.round, state.players[0].hand.length, state.players[0].mana], [0, 2, 5, 4]);
+  assert.deepEqual(state.players.map((player) => player.turnsStarted), [2, 2]);
+  const restored = migrateSavedGame(JSON.parse(JSON.stringify(state)));
+  assert.equal(restored.secondPlayerOpeningDrawPending, false);
+  const next = pass(restored); assertGame(next);
+  assert.deepEqual([next.activePlayer, next.round, next.players[1].mana], [1, 3, 6]);
+});
+
+test('the second wizard draws exactly one after using defending Fate and never exceeds five or invents a slab', () => {
+  let state = handOf(createGame(52), 0, ['FIR-004', 'FAT-001', 'FIR-001', 'FIR-002']);
+  handOf(state, 1, ['FAT-002', 'FAT-003', 'WAT-001', 'NEU-004']);
+  state = skipFate(cast(state, 'FIR-004'));
+  state = fate(state, ['FAT-002', 'FAT-003']);
+  state = resolveSpell(rollDice(state, () => 0));
+  assert.deepEqual([state.players[1].hand.length, state.players[1].deck.length], [2, 26]);
+  state = pass(state); assertGame(state);
+  assert.deepEqual([state.players[1].hand.length, state.players[1].deck.length, state.players[1].discard.length, state.players[1].mana], [3, 25, 2, 3]);
+  assert.equal(state.secondPlayerOpeningDrawPending, false);
+  const capped = handOf(createGame(53), 1, ['WAT-001', 'WAT-002', 'WAT-003', 'WAT-004', 'WAT-005']);
+  const capPassed = pass(capped); assertGame(capPassed);
+  assert.deepEqual([capPassed.players[1].hand.length, capPassed.players[1].deck.length], [5, 25]);
+  const empty = createGame(54); empty.players[1].discard.push(...empty.players[1].deck.splice(0));
+  const emptyPassed = pass(empty); assertGame(emptyPassed);
+  assert.deepEqual([emptyPassed.players[1].hand.length, emptyPassed.players[1].deck.length, emptyPassed.players[1].discard.length], [4, 0, 26]);
+  assert.equal(emptyPassed.secondPlayerOpeningDrawPending, false);
+});
+
+test('partial, tied and completed opening rolls resume safely and corrupted opening state is rejected', () => {
+  const initial = createUnstartedGame(55);
+  const partial = rollInitiative(initial, 0, () => .5);
+  const tied = rollInitiative(partial, 1, () => .5);
+  const won = rollInitiative(rollInitiative(tied, 0, () => 5 / 6), 1, () => 0);
+  for (const state of [initial, partial, tied, won, pass(won)]) {
+    const saved = JSON.parse(JSON.stringify(state)); assertGame(saved); assert.equal(migrateSavedGame(saved), saved);
+  }
+  for (const mutate of [
+    (s) => { delete s.initiative; }, (s) => { s.initiative.rolls = [7, null]; },
+    (s) => { s.initiative.rolls = [4, 4]; }, (s) => { s.initiative.round = 2; },
+    (s) => { s.initiative.history = [{ round: 1, rolls: [3, 4] }]; s.initiative.round = 2; },
+    (s) => { s.startingPlayer = 0; }, (s) => { s.players[0].turnsStarted = 1; },
+    (s) => { s.secondPlayerOpeningDrawPending = false; }, (s) => { s.primaryUsed = true; },
+  ]) { const state = structuredClone(initial); mutate(state); assert.equal(validateSavedGame(state), false); }
+  for (const mutate of [
+    (s) => { s.initiative.winner = 1; }, (s) => { s.startingPlayer = 1; },
+    (s) => { s.initiative.rolls = [3, 3]; }, (s) => { s.secondPlayerOpeningDrawPending = false; },
+  ]) { const state = structuredClone(won); mutate(state); assert.equal(validateSavedGame(state), false); }
+});
+
+test('v8 duels preserve all paid progress and historical order without replaying opening dice or a used bonus', () => {
+  const base = handOf(createGame(56, { fire: customDeck('fire'), water: customDeck('water') }), 0, ['FIR-004', 'FAT-001', 'FAT-003', 'NEU-001']);
+  handOf(base, 1, ['FAT-002', 'FAT-003', 'WAT-001', 'NEU-004']);
+  const attacking = cast(base, 'FIR-004');
+  const defending = fate(attacking, 'FAT-001');
+  const selected = selectCard(defending, defending.players[1].hand[0].id);
+  const rolling = castFateSelected(selected);
+  const resolving = rollDice(rolling, () => .5);
+  const resolved = resolveSpell(resolving);
+  const ending = endTurn(resolved);
+  const refreshing = toggleRefreshCard(beginRefresh(ending), ending.players[0].hand[0].id);
+  const secondTurn = pass(resolved);
+  const finished = applyDamage(resolved, 1, 100);
+  for (const current of [base, attacking, defending, selected, rolling, resolving, resolved, ending, refreshing, secondTurn, finished]) {
+    const previous = structuredClone(current); previous.version = 8;
+    delete previous.initiative; delete previous.startingPlayer; delete previous.secondPlayerOpeningDrawPending;
+    const original = structuredClone(previous), next = migrateSavedGame(previous); assertGame(next);
+    for (const key of ['players', 'round', 'activePlayer', 'phase', 'status', 'winner', 'primaryUsed', 'selectedCardId', 'selectedFateCardIds', 'refreshCardIds', 'pendingSpell', 'pendingCardId', 'lastRoll']) assert.deepEqual(next[key], previous[key], key);
+    assert.deepEqual(previous, original);
+    assert.deepEqual(next.initiative, { round: 0, rolls: [null, null], history: [], winner: 0, legacy: true });
+    assert.equal(next.startingPlayer, 0);
+    assert.equal(next.secondPlayerOpeningDrawPending, previous.players[1].turnsStarted === 0);
+    assert.deepEqual(next.log.slice(0, previous.log.length), previous.log);
+    assert.equal(rollInitiative(next, 1, () => 0), next);
+  }
 });

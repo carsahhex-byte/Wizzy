@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMultiplayerServer } from '../server/room-server.js';
-import { createGame } from '../src/game.js';
+import { createGame, rollInitiative } from '../src/game.js';
 import { createStarterDeck, normalizeDeck } from '../src/decks.js';
 
 function arrangeHand(state, playerIndex, spellIds) {
@@ -20,7 +20,9 @@ function arrangeHand(state, playerIndex, spellIds) {
 }
 
 function fixtureMatch(decks) {
-  const state = createGame(19, decks);
+  let state = createGame(19, decks);
+  state = rollInitiative(state, 0, () => .99);
+  state = rollInitiative(state, 1, () => 0);
   arrangeHand(state, 0, ['FIR-004', 'FAT-001', 'NEU-004', 'FIR-001']);
   arrangeHand(state, 1, ['FAT-002', 'FAT-003', 'NEU-002', 'WAT-001']);
   return state;
@@ -60,7 +62,7 @@ async function service(t, options = {}) {
 
 test('room creation, opposite-element joins and private player views support two independent screens', async t => {
   const api = await service(t);
-  assert.deepEqual((await api.request('/api/health')).data, { ok: true, service: 'wizzy-multiplayer', storage: 'memory' });
+  assert.deepEqual((await api.request('/api/health')).data, { ok: true, service: 'wizzy-multiplayer', storage: 'memory', accounts: { enabled: true, storage: 'memory' } });
   const host = await api.create();
   assert.match(host.code, /^[A-Z2-9]{8}$/); assert.match(host.token, /^[A-Za-z0-9_-]{43}$/);
   assert.deepEqual([host.revision, host.status, host.state, host.playerIndex], [0, 'waiting', null, 0]);

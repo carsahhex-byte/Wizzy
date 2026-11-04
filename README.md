@@ -4,7 +4,7 @@ A mobile-first pixel-art game prototype with a title screen, a Seattle map previ
 
 ## Run
 
-Requires Node.js 22 or later; Node.js 24 is recommended for hosting. There are no npm dependencies to install. Shared-screen play needs no credentials or external services. Two-screen play needs the included room server running locally or on an HTTPS host.
+Requires Node.js 24 or later, including its built-in SQLite support for accounts. There are no npm dependencies to install. Shared-screen play needs no credentials or external services. Two-screen play needs the included room server running locally or on an HTTPS host.
 
 ```sh
 cd /workspace/Wizzy
@@ -21,19 +21,27 @@ npm run preview  # serve the built release on port 5173
 npm run multiplayer # serve the built app and room API on port 8787
 ```
 
-The frontend release can be hosted on any static web server, including a project subpath such as `/Wizzy/`. Shared-screen saves and saved decks use this browser's local storage. Two-screen play sends the selected deck and game actions to the room server and stores a private player token on the device for reconnecting.
+The frontend release can be hosted on any static web server, including a project subpath such as `/Wizzy/`. Shared-screen saves and guest decks use this browser's local storage. Signing in syncs the same profile and legal Fire/Water decks through the account server, so another device can use the same deck editor and saved decks. Two-screen play sends game actions to the room server and stores a private room token on the device for reconnecting.
 
 For two phones on the same Wi-Fi, run `npm run build:web` followed by `npm run multiplayer`, then open the computer's local IP address with port 8787 on each phone. For remote players, deploy that server to an HTTPS host and enter its address in **Two Screens**. See [the complete multiplayer setup guide](docs/multiplayer.md) for the commands, hosting resources, room-code flow, and troubleshooting. GitHub Pages cannot run the room API.
 
 ## Screens and deck building
 
-The title screen opens a Home map showing a rough pixel-art Seattle, with Northgate, Rainier Beach, Magnolia, Magnuson Park, greyed-out West Seattle, and a Pike Place marker. The map supports mouse or touch dragging and an enlarged South Lake Union view. **Whole map** fits the complete Seattle illustration inside a clear viewport; the header, zoom toolbar, and navigation dock sit outside the map so they do not cover the city. Its red blinking location dot marks a preview position; GPS navigation and arrival unlocks are not connected. Home links to Character, Deck, Friends, and Battle. A Storybook graphic and placeholder button sit above Character; photo capture and uploads are a later step. The Character screen keeps a local wizard name and Fire/Water choice. Friends provides access to room-code battles; persistent friend accounts, invitations, and messaging remain later additions.
+The title screen opens a Home map showing a rough pixel-art Seattle, with Northgate, Rainier Beach, Magnolia, Magnuson Park, greyed-out West Seattle, and a Pike Place marker. The map supports mouse or touch dragging and an enlarged South Lake Union view. **Whole map** fits the complete Seattle illustration inside a clear viewport; the header, zoom toolbar, and navigation dock sit outside the map so they do not cover the city. Matching pixel-art water and islands fill the Fit margins. Its red blinking location dot marks a preview position; GPS navigation and arrival unlocks are not connected. Home links to Character, Deck, Friends, and Battle. A Storybook graphic and placeholder button sit above Character; photo capture and uploads are a later step. The Character screen keeps a wizard name and Fire/Water choice and links to account sign-in. Friends provides access to room-code battles; friend lists, invitations, and messaging remain later additions.
 
 The deck builder places a scrollable selected-deck list in the upper half and a slab collection in the lower half, with four cards per collection row. Check a slab to add its first copy, use the quantity controls to add or remove further copies, and uncheck it to remove all copies. Filters cover All, Fire, Water, Neutral, Fate, and slabs currently in the deck. All 29 imported spells can be inspected; only slabs eligible for the chosen main element can be added.
 
-A saved deck must contain **exactly 30 slabs**, with **at most 3 copies of any spell**, and choose **one main element: Fire or Water**. Neutral and Fate slabs are allowed with either element. The starter decks' 21 Elemental / 2 Neutral / 7 Fate split is a preset composition, not a construction requirement. Incomplete drafts may be edited, but only valid full decks can be saved for battle. Fire and Water drafts and saved decks are retained separately in local browser storage. Saving a deck does not alter an ongoing duel; starting a fresh duel uses the saved compositions.
+A saved deck must contain **exactly 30 slabs**, with **at most 3 copies of any spell**, and choose **one main element: Fire or Water**. Neutral and Fate slabs are allowed with either element. The starter decks' 21 Elemental / 2 Neutral / 7 Fate split is a preset composition, not a construction requirement. Incomplete drafts may be edited, but only valid full decks can be saved for battle. Fire and Water drafts and saved decks are retained separately in local browser storage. Signed-in saved decks also sync to that account on the server; incomplete drafts stay on the device. Saving a deck does not alter an ongoing duel; starting a fresh duel uses the saved compositions.
 
-The Battle shortcut offers shared-screen or two-screen play and provides a route back to Home. Two-screen matches use each device's saved deck and private hand, with server-validated actions, server-side shuffling and dice, and reconnecting by player token. The first room prototype pairs Fire against Water and keeps matches in server memory; a process restart or sleeping free instance can erase a room. Native iPhone packaging, signing, and TestFlight distribution remain a later step.
+The Battle shortcut offers shared-screen or two-screen play and provides a route back to Home. Guest two-screen matches use each device's saved deck; signed-in matches use the account's saved role deck. Each player keeps a private hand, with server-validated actions, server-side shuffling and dice, and reconnecting by player token. The first room prototype pairs Fire against Water and keeps matches in server memory; a process restart or sleeping free instance can erase a room. Native iPhone packaging, signing, and TestFlight distribution remain a later step.
+
+## Accounts and saved decks
+
+Open **Account** from the title or Character screen. Create a username/password account on your game server to import this device's current saved decks, or sign in to load that account's profile and decks. Every device uses the same UI and deck-construction rules. Valid deck/profile saves sync while signed in; unsaved drafts remain local. Guest decks remain available after signing out.
+
+The server stores accounts, legal decks, salted password hashes, and hashed 30-day sessions in SQLite. `npm run multiplayer` uses `data/wizzy.sqlite` by default; set `ACCOUNT_DB_PATH` to another persistent file. This is separate from room storage: accounts survive a server restart when the database file is retained, while active rooms still reset. Database files are excluded from Git and Docker build contexts. Remote sign-in needs HTTPS. The beta has no email service or automated password recovery.
+
+For hosted accounts, choose persistent storage and back it up. An ephemeral free instance can lose account data on a redeploy even though the login code works. The Docker image uses `/data/wizzy.sqlite`; mount a named volume at `/data`. The [setup guide](docs/multiplayer.md) includes account setup, persistent-disk settings, and backup instructions.
 
 ## Hosting on GitHub Pages
 
@@ -59,7 +67,7 @@ The uploaded PNGs remain unmodified in `public/graphics/`, including graphics re
 
 The hosted build uses the required images from `public/optimized/`, encoded as lossless WebP with content-hashed filenames for caching. Their decoded RGBA pixels are byte-for-byte identical to the originals, and they load separately rather than being embedded in the HTML. Original and unused artwork and the large standalone download are excluded from the hosted release.
 
-All **29 imported spells** have individual pixel-art illustrations arranged in four category atlases. Fire, Water, Neutral, and Fate retain their category-colored slab frames, with names, costs, and rules text rendered from the master metadata. Sunsetter depicts a dramatic sun/fireball impacting the ocean with mountains in the foreground; Poseidon's Rift depicts a golden trident in a pounding whirlpool. The atlas mapping in `src/assets.js` selects the illustration for each spell, so future text and balance changes do not require repainting the card. Selecting an eligible Fate slab uses the supplied **Cast Fate** button artwork.
+All **29 imported spells** have individual pixel-art illustrations, with shared category atlases and a dedicated Sunsetter illustration. Fire, Water, Neutral, and Fate retain their category-colored slab frames, with names, costs, and rules text rendered from the master metadata. Sunsetter depicts a dramatic sun/fireball impacting the ocean with mountains in the foreground; Poseidon's Rift depicts a golden trident in a pounding whirlpool. The atlas mapping in `src/assets.js` selects the illustration for each spell, so future text and balance changes do not require repainting the card. Selecting an eligible Fate slab uses the supplied **Cast Fate** button artwork.
 
 After replacing source PNGs, regenerate their optimized copies with `npm run optimize:art`. That optional authoring command requires Python and Pillow with WebP support; running, testing, building, and deploying the retained files require only Node.js and Git. The web build verifies source and optimized SHA-256 hashes and rejects stale or damaged copies.
 
@@ -72,8 +80,8 @@ Use **Larger view** for a larger, scrollable portrait board and **Fit screen** t
 ## Implemented rules
 
 - Both wizards start at 30 HP, with 3 mana, 0 shield, 0 elemental points (**Embers** for Fire, **Flow** for Water), and +0 loaded dice.
-- Each wizard starts with 4 spell slabs, including Water's opening turn. Each 30-slab deck therefore has 26 slabs left in its Spell Tower after the opening deal.
-- A round is one turn per wizard, Fire then Water. At the beginning of each wizard's own turn after their opening turn, that wizard gains 2 mana. Unspent mana carries over.
+- Each wizard is dealt **4 spell slabs**. Before new duels, each rolls **one d6**; the higher result goes first and ties reroll both dice. Fate and Loaded do not affect this opening roll. The second player draws **exactly 1 extra slab at the beginning of their first turn**, normally starting that turn with 5. If they spent Fate beforehand, the bonus adds one to the remaining hand rather than filling it to five. The hand limit remains five.
+- A round is one turn per wizard, starting with the opening-roll winner, who can be Fire or Water. At the beginning of each wizard's own turn after their opening turn, that wizard gains 2 mana. Neither gains extra mana on their opening turn. Unspent mana carries over.
 - On a wizard's turns after their opening turn, automatically draw up to 5 cards. Drawing happens at the beginning of the turn, not after casting.
 - Each wizard may commit **one primary spell per own turn**. Elemental and Neutral slabs are primary spells; Fate slabs do not use this allowance. Click a primary slab to highlight it, then click **Cast Spell**. The allowance and printed mana cost are consumed when the spell is committed, before any Fate decisions; an unaffordable slab can be inspected but cannot be cast. Choose any permitted Ember spending before committing the spell; Sunsetter spends all available Embers.
 - Only spells with roll thresholds use dice and open Fate decisions. Other spells resolve immediately, without a Fate window or dice roll. Elemental type alone does not require dice.
@@ -90,7 +98,7 @@ Use **Larger view** for a larger, scrollable portrait board and **Fit screen** t
 - Passing shows a handoff dialog before the next wizard begins; Fate decisions also use local handoffs when control changes.
 - Spell tower and discard counts follow the active wizard and update with card movement.
 - Select a slab and use **Read Slab** to inspect its complete printed rules. Clicking the **Spell Tower** or using the deck option in Settings opens that wizard's full composition and quantities; it does not reveal the hidden draw order.
-- Combat log, new-duel confirmation, and validated browser save/resume are included. Save version 8 records each wizard's complete starting deck definition alongside current zones, primary-spell allowance, selected Fate batches, paid pending spells, dice results, and refresh progress. Valid version 7 saves retain their custom decks and all progress while capping any stored Fire Embers above 5. Version 6 saves retain progress and gain their original starter deck definitions. Version 5 upgrades retain progress while capping any stored Water Flow above 5. Version 4 upgrades also preserve paid spell, Fate, dice, and queued Loaded progress; a selected Fate slab becomes a batch selection, and current-turn pending spells or cast log entries determine whether the primary allowance is already spent. Valid version 3 preview saves retain stats, turn progress, and card zones; any unfinished unpaid preview spell is cancelled without retroactive costs, discarded slabs, or effects. Older valid 24-card sample saves first gain six slabs in each Spell Tower to reach the actual decklists. Every older-save upgrade caps stored Embers and Flow at 5. The combat log records upgrades.
+- Combat log, new-duel confirmation, and validated browser save/resume are included. Save version 9 records opening-roll results, the starting player, the pending second-player bonus, and each wizard's complete starting deck definition alongside current zones, primary-spell allowance, selected Fate batches, paid pending spells, dice results, and refresh progress. Existing version 8 duels keep their original Fire-first order and progress without a retroactive initiative roll; a second-player opening bonus is pending only if Water has not begun its first turn. Valid version 7 saves retain their custom decks and all progress while capping any stored Fire Embers above 5. Version 6 saves retain progress and gain their original starter deck definitions. Version 5 upgrades retain progress while capping any stored Water Flow above 5. Version 4 upgrades also preserve paid spell, Fate, dice, and queued Loaded progress; a selected Fate slab becomes a batch selection, and current-turn pending spells or cast log entries determine whether the primary allowance is already spent. Valid version 3 preview saves retain stats, turn progress, and card zones; any unfinished unpaid preview spell is cancelled without retroactive costs, discarded slabs, or effects. Older valid 24-card sample saves first gain six slabs in each Spell Tower to reach the actual decklists. Every older-save upgrade caps stored Embers and Flow at 5. The combat log records upgrades.
 
 ## Spell slabs and decklists
 
@@ -108,7 +116,7 @@ See [the exact decklists and source references](docs/decklists.md) for master ID
 
 ## Current limits
 
-If the tower runs out, drawing stops, so automatic draws and hand refresh can produce fewer than five cards. No reshuffle or fatigue rule is invented. There is no AI opponent. Online rooms currently support Fire versus Water, use in-memory storage, and do not add a turn-timeout rule, full Friends accounts, chat, or photo uploads.
+If the tower runs out, drawing stops, so automatic draws and hand refresh can produce fewer than five cards. No reshuffle or fatigue rule is invented. There is no AI opponent. Online rooms currently support Fire versus Water, use in-memory match storage, and do not add a turn-timeout rule, friend lists, chat, or photo uploads. Username/password accounts and saved decks use persistent SQLite storage when the configured database file is retained.
 
 The in-game settings/handbook describes the active rules and local two-player flow.
 
@@ -121,6 +129,7 @@ The in-game settings/handbook describes the active rules and local two-player fl
 - `src/main.js` — battle rendering, local/remote interactions, browser persistence, and hub integration.
 - `src/multiplayer.js` — room lobby, private player session, server actions, polling, and reconnecting.
 - `src/multiplayer.css` — mobile two-screen lobby layout.
+- `src/accounts.js` / `src/accounts.css` — account sign-in, saved-deck synchronization, and account-screen layout.
 - `src/hub.js` — title, Home, Character, Friends, and deck-builder screens with local profile/deck persistence.
 - `src/hub.css` — mobile hub layout, pixel-styled controls, and independently scrolling deck panels.
 - `src/style.css` — responsive arena and card styling.
@@ -133,8 +142,8 @@ The in-game settings/handbook describes the active rules and local two-player fl
 - `test/decks.test.js` — full-deck and draft validation, element restrictions, quantities, and copy limits.
 - `docs/decklists.md` — reviewable deck composition and metadata source documentation.
 - `docs/multiplayer.md` — two-device local setup, remote hosting resources, room flow, and troubleshooting.
-- `server/` — authoritative room server, private player views, validation, and built-frontend serving.
+- `server/` — authoritative room server, private player views, SQLite accounts/decks/sessions, validation, and built-frontend serving.
 - `Dockerfile` — optional Node 24 container build for a room-server host.
 - `scripts/` — Node server, static build, GitHub Pages deployment, and optional artwork optimizer.
 
-Engine tests cover deck quantities and metadata, printed costs, spell thresholds, Shield and self-damage, healing, Ember spending, Flow, Fate eligibility, batch selection and order, one primary per turn, Loaded timing, phase locks, refresh confirmation and passing, card conservation, drawing, victory, and save migration. Browser checks cover artwork loading, slab selection and inspection, Fate/resolution controls, hand refresh, counters, turn passing, save/resume, hosted resource versioning, and the portrait layout.
+Engine tests cover opening initiative, ties, second-player drawing, turn order, deck quantities and metadata, printed costs, spell thresholds, Shield and self-damage, healing, Ember spending, Flow, Fate eligibility, batch selection and order, one primary per turn, Loaded timing, phase locks, refresh confirmation and passing, card conservation, drawing, victory, and save migration. Browser checks cover artwork loading, slab selection and inspection, Fate/resolution controls, hand refresh, counters, turn passing, save/resume, hosted resource versioning, and the portrait layout.

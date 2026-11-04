@@ -1,59 +1,61 @@
-# Two-screen multiplayer setup
+# Accounts and two-screen multiplayer setup
 
-Wizzy includes two ways to play: share one screen, or connect two separate browsers to the room server. Nearby players and remote players use the same room-code flow. The first online prototype pairs one Fire wizard with one Water wizard, using each player's saved deck.
+Wizzy supports shared-screen battles, guest room-code battles, and username/password accounts with saved decks. Every player gets the same map, profile, slab collection, filters, and deck editor. Signing in on another device loads that account's profile and saved Fire/Water decks; guest decks remain local to their device.
 
-The room server runs the game rules, validates decks and moves, shuffles with server-side randomness, and rolls the dice. A player receives their own hand and public battle information. Their opponent's hand, draw order, player token, and private deck composition are not sent to that browser.
+The server validates decks and moves, shuffles the cards, and rolls dice. Each phone receives only its own hand and public battle information. The other hand, draw order, private deck composition, and player tokens are not sent to that browser.
 
-This guide sets up the server; the GitHub Pages website alone cannot run it. No hosting account has been created or paid service provisioned automatically.
+GitHub Pages serves the frontend. A running server is required for accounts, deck synchronization, and two-screen matches. No hosting account or paid storage has been provisioned automatically.
 
 ## What you need
 
-- The latest source from [carsahhex-byte/Wizzy](https://github.com/carsahhex-byte/Wizzy), on the branch containing the multiplayer update, currently `codex/wizzy-hosting`.
-- [Node.js 24 LTS or a supported newer release](https://nodejs.org/en/download). The project uses built-in Node modules and has no npm dependencies to install.
-- Two browser sessions. For phones, use Safari on each iPhone. For two windows on one computer, use separate browser profiles or a normal window plus a private window so they do not share the same player token.
-- For nearby phone testing, a Mac or other computer on the same Wi-Fi network. For remote testing, an HTTPS Node hosting service.
+- The latest source from [carsahhex-byte/Wizzy](https://github.com/carsahhex-byte/Wizzy), branch `codex/wizzy-hosting`.
+- [Node.js 24 or a supported newer release](https://nodejs.org/en/download), including built-in SQLite. There are no npm dependencies to install.
+- Two devices or separate browser profiles. For two windows on one Mac, use a normal window and a private window so room tokens do not share storage.
+- For nearby testing, a Mac or other computer on the same Wi-Fi. For remote testing, an HTTPS Node host with persistent disk storage for accounts.
 
-TestFlight is not required to test this browser version. A later native app can connect to the same room server.
+TestFlight can be configured later. The browser version tests the same account and battle service.
 
 ## Nearby testing on the same Wi-Fi
 
-If the source is not already on your Mac, open Terminal and get the tested branch:
+Get the source if it is not already on your computer:
 
 ```sh
 git clone --branch codex/wizzy-hosting https://github.com/carsahhex-byte/Wizzy.git
 cd Wizzy
 ```
 
-If you already have a checkout, use that folder and update to the latest multiplayer branch. In the Wizzy source folder, run:
+In that folder, build the app and start its server:
 
 ```sh
 npm run build:web
 npm run multiplayer
 ```
 
-The server listens on port **8787** by default and serves both the app and its multiplayer API. On the computer running it, open:
+On the computer, open `http://localhost:8787/`. On both phones, open the computer's Wi-Fi IP address with port **8787**, for example `http://192.168.1.20:8787/`. Use the real address shown in **System Settings → Wi-Fi → Details → TCP/IP** on a Mac. `localhost` on a phone refers to the phone, not your Mac.
 
-```text
-http://localhost:8787/
-```
+Both phones must be on the same network, the computer must remain awake, and its firewall must allow Node to accept connections. Guest networks can isolate devices. Keep the terminal running while testing.
 
-Find that computer's local Wi-Fi address in its network settings. On a Mac, open **System Settings → Wi-Fi → Details → TCP/IP** and look for its IP address. On both phones, open that address with port 8787, for example:
+Use this locally served HTTP address for the nearby test. The HTTPS GitHub Pages site cannot call an HTTP Mac address because browsers block mixed HTTPS/HTTP requests. Use a password unique to this private game during LAN testing.
 
-```text
-http://192.168.1.20:8787/
-```
+## Create an account and sync decks
 
-The example address is a placeholder; use your computer's actual address. Both phones must be on the same network, the computer must remain awake, and its firewall must allow Node to accept connections. Guest Wi-Fi networks sometimes block devices from reaching each other.
+1. Open **Account** from the title or Character screen and use the same server address on both devices.
+2. Register a username and password. Usernames contain 3–24 letters, digits, underscores, or hyphens and are case insensitive. Passwords contain 10–128 characters. Registration imports that device's current saved profile and legal decks.
+3. On another device, sign in with the same credentials. The account's profile and saved decks load into the same UI and editor.
+4. Edit a deck and press **Save deck**. Valid saved decks and profile changes sync while signed in. Incomplete editor drafts remain on the device, and changing decks does not alter a match already in progress.
+5. Each friend creates their own account. Signing out returns to the device's guest profile/decks.
 
-Open **Battle → Two Screens**, or the online battle option in Friends. When the app and server share this address, the server field can use the same address. Create a room on one phone, share its code, and join it on the other. Keep the terminal running for the duration of the match.
+The server stores salted password hashes and hashed 30-day session tokens, not plaintext passwords. The browser stores its private session token so it can reconnect; passwords are not saved in browser storage. Do not share account or room tokens. The short battle room code is the part intended to be shared.
 
-Use the locally served address for this test. A page opened from the HTTPS GitHub Pages site cannot call a plain HTTP computer address because browsers block mixed HTTPS/HTTP requests.
+This beta has no email provider or automated password recovery. Choose credentials you can retain. Persistent account storage is required for accounts to survive hosting restarts or redeploys.
 
-## Remote testing with an HTTPS host
+Guest play remains available. Guest matches use this device's saved deck; signed-in matches use the corresponding account deck stored by the server. Both routes enforce exactly 30 slabs, at most three copies per spell, and one element plus Neutral and Fate.
 
-A small Node service is enough for this prototype. [Render's Node deployment guide](https://render.com/docs/deploy-node-express-app) is one available route; the server uses plain Node HTTP and does not require Express. A Docker-capable host can use the included `Dockerfile` instead.
+## Remote hosting with persistent accounts
 
-For a native Node web service, connect the Wizzy repository and select the branch containing the multiplayer code. Configure:
+A small Node service with HTTPS and persistent disk is enough. [Render's Node deployment guide](https://render.com/docs/deploy-node-express-app) and [persistent disk guide](https://render.com/docs/disks) describe one hosting route. A Docker host can use the included `Dockerfile`.
+
+Connect the repository, select the tested branch, and configure:
 
 | Setting | Value |
 | --- | --- |
@@ -61,49 +63,68 @@ For a native Node web service, connect the Wizzy repository and select the branc
 | Build command | `npm run build:web` |
 | Start command | `npm run multiplayer` |
 | Health-check path | `/api/health` |
-| `PORT` | Use the port supplied by the hosting service; local default is 8787 |
-| `ALLOWED_ORIGINS` | `https://carsahhex-byte.github.io` when using the GitHub Pages frontend |
+| `PORT` | Use the host-supplied port; local default is 8787 |
+| `ALLOWED_ORIGINS` | `https://carsahhex-byte.github.io` for the Pages frontend |
+| Persistent disk mount | `/data` |
+| `ACCOUNT_DB_PATH` | `/data/wizzy.sqlite` |
 
-`ALLOWED_ORIGINS` accepts a comma-separated list of exact browser origins. An origin contains the scheme and host, plus a nonstandard port if applicable. It does **not** include a path such as `/Wizzy/`, a trailing slash, or a wildcard. Add your own domain's origin if you later move the frontend. Keep configuration in the host's runtime environment settings; do not place private player tokens in repository files or build arguments.
+A free ephemeral filesystem is unsuitable for permanent accounts: the database can disappear on redeploy or instance replacement. Choose a plan that supports persistent disks, or move to a managed database in a later deployment. Confirm current provider prices and disk options before choosing a plan. The previous US$0–$50/month estimate is a planning allowance, not a price quote or a promise that a free plan includes durable storage.
 
-Once the service starts, it will have an HTTPS address such as:
+`ALLOWED_ORIGINS` is a comma-separated list of exact frontend origins. It contains scheme and host, plus a nonstandard port if used; omit `/Wizzy/`, trailing slashes, and wildcards. Add your own frontend origin if needed. Use HTTPS for remote sign-in and matches.
 
-```text
-https://your-wizzy-server.example
+After deployment, open the host's real HTTPS address followed by `/api/health`. Then open the app from that host, or use the existing [Wizzy website](https://carsahhex-byte.github.io/Wizzy/) and enter the HTTPS server address in Account and **Battle → Two Screens**. No account secret belongs in repository files or build arguments.
+
+## Database location and backups
+
+Running `npm run multiplayer` stores accounts, saved decks, and account sessions in **`data/wizzy.sqlite`** by default. `ACCOUNT_DB_PATH` selects a different writable file. Keep that file outside the static `dist/` directory. Database files are excluded from Git and Docker build contexts.
+
+The container uses `/data/wizzy.sqlite`, runs as the `node` user, and declares `/data` as its data volume. Mount a persistent named volume or hosting disk at `/data`; ensure the runtime user can write there. For a local Docker test:
+
+```sh
+docker build -t wizzy .
+docker volume create wizzy-data
+docker run --rm -p 8787:8787 -v wizzy-data:/data wizzy
 ```
 
-Use the real address issued by your host. First open `https://your-wizzy-server.example/api/health` to check that it responds. Then either open the app at the server's root address, or open the existing [Wizzy website](https://carsahhex-byte.github.io/Wizzy/) and enter the HTTPS server address in **Two Screens**. Share the frontend address and room code with your friend; each browser receives its own private player token.
+Back up the data directory separately from the source repository. For a simple consistent backup, stop the server cleanly, copy the entire database directory including any `-wal` or `-shm` companion files, then restart. Treat backups as private account data. Restoring the account database does not restore in-memory rooms.
 
-For ten friends, a free tier may be sufficient. A planning allowance of **US$0–$50/month** remains reasonable, depending on the provider and plan. This is not a live price quote; check current pricing, sleep behavior, bandwidth, and service limits before choosing a host.
+## Create and join a battle
 
-## Create and join a match
+1. Sign in if you want account-backed decks, or continue as a guest. Save legal Fire and Water decks in the editor.
+2. Open **Battle → Two Screens**, or the room option in Friends. Both devices use the same server address.
+3. The host chooses Fire or Water and creates a room. Share its code. The other player joins as the opposite element using that role's saved deck.
+4. Each player rolls **one d6** to decide who starts. Higher goes first; ties reroll both. Fate and Loaded do not affect initiative.
+5. Both start with four slabs. The second player draws **one extra slab when their first own turn begins**, normally reaching five. If they already used Fate, the bonus adds one to the remaining hand rather than filling it to five. Neither player gains the later-turn +2 mana on their opening turn.
+6. During a rolling spell, the attacker chooses Fate, then the defender responds. The server rolls and resolves the spell. A round ends after both wizards have played, even when Water goes first.
 
-1. Save legal Fire and Water decks in the deck builder: exactly 30 slabs, at most three copies per spell, one main element plus Neutral and Fate.
-2. Open **Two Screens** and enter the server address if the frontend is hosted separately.
-3. The host chooses Fire or Water and creates a room. Share the room code with the other player.
-4. The guest joins with the opposite element and that device's saved deck. Fire takes the first turn.
-5. Each player sees their own hand. During a rolling spell, the attacker chooses Fate first, followed by the defender; the server then rolls and resolves the spell.
+Each player sees only their own hand and can act only at the appropriate step. Room revisions and request IDs prevent stale or retried requests from applying a move twice.
 
-The first version uses room codes rather than a full Friends account or messaging system. Only the acting player can submit a game action. Revisions and request IDs prevent stale requests or retried requests from applying a move twice.
+## Reconnecting and storage limits
 
-## Reconnecting and prototype limits
+Account data and room data have different lifetimes:
 
-The browser stores its server address and private player token on that device. Keep the same browser profile to reconnect to the same seat. A normal window and private window do not share the token; clearing browser storage also removes it. Do not share player tokens or paste them into a URL. The short room code is the part intended to be shared.
+- **Accounts, saved decks, and account sessions** persist when the SQLite database file is retained. Signing in from another device loads the saved profile and decks.
+- **Active battle rooms** remain in memory and expire after six hours without authorized activity. Restarting, redeploying, or sleeping the server can end active matches even though accounts still exist.
+- **Guest profiles, local duels, and incomplete drafts** remain in browser storage on that device.
 
-Rooms currently live in the server's memory and expire after six hours without authorized activity. Restarting the server, redeploying it, or allowing a free hosting instance to sleep can erase active rooms. Local browser saves do not restore a lost server match. For dependable longer-running tests, use an instance that stays awake; durable database storage is a later addition.
+Keep the same browser profile to reconnect to the same room seat. Clearing browser storage removes that device's room token; signing back into an account restores its decks, not a lost room seat. Normal and private windows do not share these tokens.
 
-This prototype does not add persistent friend accounts, chat, photos, spectators, matchmaking, or a new turn-timeout rule. Storybook remains a placeholder. Keep the ordinary shared-screen battle available when a room server is not running.
+Existing v8 local duels migrate without a retroactive initiative roll and retain their original Fire-first order. Their second-player opening bonus is pending only if Water has not begun its first turn. Start a new duel to use the new opening-roll flow.
+
+This release does not add friend lists, messaging, photo uploads, matchmaking, or turn timeouts. Storybook remains a placeholder.
 
 ## Troubleshooting
 
 | Symptom | What to check |
 | --- | --- |
-| Two Screens asks for a server address on GitHub Pages | Enter your deployed HTTPS room-server address. Pages serves the app, not the API. |
-| A phone cannot reach a local server | Same Wi-Fi, correct computer address and port, computer awake, firewall permission, and network device isolation. `localhost` on a phone means that phone. |
-| HTTPS frontend cannot reach an HTTP server | Open both from the local HTTP server for nearby testing, or deploy an HTTPS backend for remote testing. |
-| Browser reports an origin/CORS error | Add the exact frontend origin to `ALLOWED_ORIGINS`; omit `/Wizzy/` and trailing slashes. |
-| Both test windows appear to use the same seat | Use separate browser profiles or one private window. |
-| A room is no longer available | Check whether the server restarted, slept, or expired the room. Create a fresh room. |
-| A submitted action was stale | Let the client refresh the latest state, then select the intended action again. |
+| Account or Two Screens asks for a server | Enter the same running server address on both phones. Pages serves the frontend, not the account/room API. |
+| An account vanishes after redeployment | Confirm `ACCOUNT_DB_PATH` points at the mounted persistent disk and that backups exist. An ephemeral filesystem can be replaced. |
+| A phone cannot reach a Mac server | Same Wi-Fi, actual Mac IP, port 8787, Mac awake, firewall permission, and device isolation on the network. |
+| HTTPS page cannot reach an HTTP Mac | Open the locally served HTTP app for LAN testing, or deploy an HTTPS backend. |
+| Browser reports CORS/origin error | Add the exact frontend origin to `ALLOWED_ORIGINS`, without `/Wizzy/` or a trailing slash. |
+| Two test windows use the same room seat | Use separate browser profiles or one private window. |
+| A room expires but the account still works | Room memory was lost or expired. Create a new room; the account deck remains in SQLite. |
+| A deck update reports a conflict | Refresh the account's saved decks before retrying; another signed-in device may have saved a newer revision. |
+| A move was stale | Let the client refresh the room, then choose the intended action again. |
 
-The setup resources are [Node.js downloads](https://nodejs.org/en/download), [Render's Node service guide](https://render.com/docs/deploy-node-express-app), and [Docker's installation guide](https://docs.docker.com/get-started/get-docker/). Store and TestFlight setup can follow after the two-browser flow is tested.
+Resources: [Node.js downloads](https://nodejs.org/en/download), [Render Node hosting](https://render.com/docs/deploy-node-express-app), [Render persistent disks](https://render.com/docs/disks), and [Docker installation](https://docs.docker.com/get-started/get-docker/). TestFlight can connect to the same service later.

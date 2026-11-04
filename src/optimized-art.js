@@ -10,6 +10,11 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "b0fc7738d331c06a25ca53b6f0118c820b8ffd365030b8b75004704ba96b240c",
     "optimizedSha256": "550c4d2c80dbb390243f42bfdf6c6c61914520e50eeac165e45f379f9201e37b"
   },
+  "mapSurround": {
+    "file": "mapSurround-f5edaeca9c2d.webp",
+    "sourceSha256": "51a953ef636a3af027f602103529a2fbe76602617c3a4318d7ed69b3bd21799d",
+    "optimizedSha256": "f5edaeca9c2d1c7d3bbfa3fc161d13811102074b8c47cda86ea81b7bcfaf1a82"
+  },
   "iconAtlas": {
     "file": "iconAtlas-b50d0616369c.webp",
     "sourceSha256": "318ea01449ccb5480e8258c056f87216392bd567dc32813e3e87541436e82bf6",
