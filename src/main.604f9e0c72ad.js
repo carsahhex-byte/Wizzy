@@ -1,10 +1,11 @@
-import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.2905fe981db7.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.1a531604e0e7.js';
+import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.011a2f1a5214.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.99bc679d8c97.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.60141befac6b.js';
-import { createHub } from './hub.0056373d56d0.js';
-import { createMultiplayer } from './multiplayer.e355fd248e1c.js';
+import { createHub } from './hub.6cd94221e8c1.js';
+import { createMultiplayer } from './multiplayer.6d3c77ebb132.js';
+import { createAccounts } from './accounts.528a58711408.js';
 
-const SAVE_KEY = 'wizzy.duel.v8';
+const SAVE_KEY = 'wizzy.duel.v9';
 const app = document.querySelector('#app');
 const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
@@ -18,6 +19,9 @@ let shouldEnterAfterRestart = false;
 let state = loadGame();
 let localState = state;
 let multiplayer = null;
+let accounts = null;
+let accountIdentity = null;
+let changingAccount = false;
 let battleMode = 'local';
 let lastBattleMode = 'local';
 let onlinePlayerIndex = null;
@@ -25,11 +29,13 @@ let onlineCode = null;
 let onlineBusy = false;
 let onlineStatus = '';
 let pendingModeDecks = null;
+const openingAcknowledged = { local: state.phase !== 'initiative', online: true };
 try { lastBattleMode=localStorage.getItem('wizzy.battle.mode')==='online'?'online':'local'; } catch {}
 
 const isOnlineBattle = () => battleMode === 'online';
 const displayedPlayerIndex = () => isOnlineBattle() ? onlinePlayerIndex : getActingPlayerIndex(state);
-const canActOnline = () => !isOnlineBattle() || (!onlineBusy && multiplayer?.isActive() && getActingPlayerIndex(state) === onlinePlayerIndex);
+const canActOnline = () => state.phase !== 'initiative' && (!isOnlineBattle() || (!onlineBusy && multiplayer?.isActive() && getActingPlayerIndex(state) === onlinePlayerIndex));
+const canRollOpeningOnline = () => isOnlineBattle() && !onlineBusy && multiplayer?.isActive() && state.phase === 'initiative' && state.initiative?.rolls[onlinePlayerIndex] === null;
 const deckCount = player => player.deckCount ?? player.deck.length;
 const handCount = player => player.handCount ?? player.hand.length;
 
@@ -40,7 +46,7 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  for(const key of ['wizzy.duel.v7','wizzy.duel.v6','wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
+  for(const key of ['wizzy.duel.v8','wizzy.duel.v7','wizzy.duel.v6','wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
   }
@@ -63,15 +69,18 @@ function handFrame() {
   return `<div class="hand-frame-shell" aria-hidden="true">${art('handFrame','frame-center',crop(140,320,900,650))}${art('handFrame','frame-top',crop(135,178,190,40))}${art('handFrame','frame-bottom',crop(135,1058,930,43))}${art('handFrame','frame-left',crop(14,300,40,650))}${art('handFrame','frame-right',crop(1163,300,41,650))}${art('handFrame','frame-tl',crop(13,176,105,105))}${art('handFrame','frame-tr',crop(1099,176,105,105))}${art('handFrame','frame-bl',crop(13,996,105,105))}${art('handFrame','frame-br',crop(1099,996,105,105))}</div>${art('handFrame','hand-title-art',crop(365,121,485,113))}`;
 }
 function playerPanel(player, index) {
-  return `<section class="stat-panel ${player.id} ${state.activePlayer === index ? 'is-active' : ''}" aria-label="${player.name} wizard stats">
+  return `<section class="stat-panel ${player.id} ${state.phase!=='initiative'&&state.activePlayer === index ? 'is-active' : ''}" aria-label="${player.name} wizard stats">
     ${art(player.id === 'fire' ? 'fireFrame' : 'waterFrame','stat-frame')}
-    <div class="stat-heading"><span class="element-symbol" aria-hidden="true">${player.id === 'fire' ? '♨' : '◈'}</span><h2>${player.name}</h2><span class="player-label">P${index+1}</span>${state.activePlayer === index ? '<span class="active-dot" aria-label="Active wizard"></span>' : ''}</div>
+    <div class="stat-heading"><span class="element-symbol" aria-hidden="true">${player.id === 'fire' ? '♨' : '◈'}</span><h2>${player.name}</h2><span class="player-label">${state.startingPlayer===null?'':state.startingPlayer===index?'1ST':'2ND'}</span>${state.phase!=='initiative'&&state.activePlayer === index ? '<span class="active-dot" aria-label="Active wizard"></span>' : ''}</div>
     <div class="stat-body"><div class="health-row"><span>HP</span><strong data-stat="${player.id}-hp">${player.hp}<small> / ${player.maxHp}</small></strong></div><div class="health-track" role="progressbar" aria-label="${player.name} HP" aria-valuemin="0" aria-valuemax="${player.maxHp}" aria-valuenow="${player.hp}"><span style="width:${player.hp/player.maxHp*100}%"></span></div>
     <div class="resource-grid"><div class="resource mana"><i aria-hidden="true">◆</i><span>Mana</span><strong data-stat="${player.id}-mana">${player.mana}</strong></div><div class="resource shield"><i aria-hidden="true">⬟</i><span>Shield</span><strong>${player.shield}</strong></div><div class="resource element"><i aria-hidden="true">${player.id === 'fire' ? '♨' : '≈'}</i><span>${player.elementName}</span><strong>${player.element}</strong></div><div class="resource loaded"><i aria-hidden="true">⚄</i><span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
   </section>`;
 }
 function phaseHint(active) {
   if (state.status === 'finished') return `${state.players[state.winner].name} wins the duel!`;
+  if(state.phase==='initiative')return isOnlineBattle()
+    ? onlineBusy?'Sending your opening roll…':state.initiative.rolls[onlinePlayerIndex]===null?'Roll your opening die. The higher roll goes first.':'Your opening die is rolled. Waiting for the other wizard.'
+    : 'Both wizards roll one die to decide who goes first.';
   if(isOnlineBattle()&&!canActOnline()){
     if(onlineBusy)return 'Sending your move…';
     const actor=state.players[getActingPlayerIndex(state)];
@@ -110,8 +119,40 @@ function pips(value) {
 function diceFace(value,index) {
   return `<span class="die-face" data-die-index="${index}" data-die-value="${value??''}">${art('dicePair','die-border',ASSET_CROPS[index===0?'diceLeft':'diceRight'])}<span class="die-surface">${pips(value)}</span></span>`;
 }
+function renderOpeningRoll() {
+  const dialog=document.querySelector('#opening-roll');
+  if(battleView.hidden||state.status!=='playing'){
+    if(dialog.open)dialog.close();
+    return;
+  }
+  const initiative=state.initiative;
+  if(!initiative||initiative.legacy){if(dialog.open)dialog.close();return;}
+  if(state.phase==='initiative')openingAcknowledged[battleMode]=false;
+  const completed=initiative.winner!==null;
+  if(state.phase!=='initiative'&&(openingAcknowledged[battleMode]||!completed)){
+    if(dialog.open)dialog.close();
+    return;
+  }
+  const focusPlayer=document.activeElement?.dataset.openingPlayer;
+  const winner=completed?state.players[initiative.winner]:null;
+  const second=completed?state.players[1-initiative.winner]:null;
+  document.querySelector('#opening-title').textContent=winner?`${winner.name} goes first!`:initiative.history.length?'Tie! Roll again':'Roll for first turn';
+  const previousTie=initiative.history.at(-1);
+  document.querySelector('#opening-roll-content').innerHTML=`<p class="opening-explanation">${completed?`${winner.name} won the opening roll. ${second.name} draws one extra slab when their first turn begins.`:'Each wizard rolls one six-sided die. The higher roll starts. Fate and Loaded do not affect this roll.'}</p><div class="opening-players">${state.players.map((player,index)=>{
+    const value=initiative.rolls[index];
+    const own=!isOnlineBattle()||onlinePlayerIndex===index;
+    const disabled=completed||value!==null||onlineBusy;
+    return `<section class="opening-player ${player.id} ${own?'is-own':''}" aria-label="${player.name} opening roll"><strong>${player.name}${isOnlineBattle()&&own?' · YOU':''}</strong><div class="opening-die">${diceFace(value,index)}</div><span class="opening-value" data-testid="opening-value-${index}">${value===null?'Not rolled':value}</span>${own&&!completed?`<button class="secondary-button" data-opening-player="${index}" ${disabled?'disabled':''}>${value!==null?'Rolled':onlineBusy?'Rolling…':`Roll ${player.name}`}</button>`:!completed?'<span class="opening-wait">Waiting for their roll</span>':''}</section>`;
+  }).join('')}</div>${previousTie?`<p class="opening-tie">Previous round tied ${previousTie.rolls[0]}–${previousTie.rolls[1]}. Both dice reset.</p>`:''}<p class="dialog-footnote">First turn: 4 opening slabs. Second turn: draw 1 extra slab, up to 5 in hand.</p>`;
+  const continueButton=document.querySelector('#opening-continue');
+  continueButton.hidden=!completed;
+  continueButton.textContent=completed?(isOnlineBattle()?initiative.winner===onlinePlayerIndex?'Begin your turn':'View battle':`Begin ${winner.name}’s turn`):'Begin battle';
+  if(!dialog.open)dialog.showModal();
+  if(focusPlayer!==undefined)dialog.querySelector(`[data-opening-player="${focusPlayer}"]`)?.focus({preventScroll:true});
+}
 const signed=value=>`${value>=0?'+':''}${value}`;
 function diceView() {
+  if(state.phase==='initiative')return `<section class="dice-area" aria-label="Opening rolls">${art('diceFrame','dice-frame')}<strong class="roll-total">Opening roll</strong><div class="dice-pair">${diceFace(state.initiative.rolls[0],0)}${diceFace(state.initiative.rolls[1],1)}</div><span class="roll-breakdown">FIRE · WATER</span><span class="dice-caption">HIGHER ROLL TAKES THE FIRST TURN</span></section>`;
   const pending=['fate','rolling'].includes(state.phase);
   const last=pending?null:state.lastRoll;
   const title=state.phase==='fate'?'Fate window':state.phase==='rolling'?'Rolling…':last?`Total: ${last.total}`:'Ready to roll';
@@ -131,6 +172,7 @@ function render() {
   const active = state.players[state.activePlayer];
   const displayPlayer=state.players[displayedPlayerIndex()];
   const finished = state.status !== 'playing';
+  const opening = state.phase === 'initiative';
   const isFate = state.phase === 'fate';
   const resolving = ['rolling','resolving'].includes(state.phase);
   const ending = ['end','refresh','ready-to-pass'].includes(state.phase);
@@ -151,13 +193,13 @@ function render() {
   app.innerHTML = `<div class="game-shell">
     <header class="topbar"><span class="wordmark">WIZZY <small>BATTLE SIMULATOR</small></span><span class="save-state">${storageAvailable ? '✦ DUEL SAVED' : 'SAVING UNAVAILABLE'}</span><button class="view-toggle" id="toggle-fit" aria-label="${fitScreen?'Switch to larger view':'Fit game to screen'}">${fitScreen?'Larger view ↗':'Fit screen ↙'}</button><button class="settings-button" id="open-settings" aria-label="Open settings and game rules">⚙</button></header>
     <div class="game-board ${active.id} phase-${state.phase}" style="--forest:url('${ASSETS.forest}')">
-    <section class="battle-scene" aria-label="Fire and Water wizards in the forest ruins"><div class="game-title"><span class="title-stars" aria-hidden="true">✦ ◆ ✦</span><h1>Wizzy</h1><p>Battle Simulator</p></div><div class="combatant fire-combatant ${state.activePlayer===0?'active-combatant':''}">${art('fireMage','mage-art')}<span class="mage-shadow"></span></div><span class="versus" aria-hidden="true">VS</span><div class="combatant water-combatant ${state.activePlayer===1?'active-combatant':''}">${art('waterMage','mage-art')}<span class="mage-shadow"></span></div></section>
+    <section class="battle-scene" aria-label="Fire and Water wizards in the forest ruins"><div class="game-title"><span class="title-stars" aria-hidden="true">✦ ◆ ✦</span><h1>Wizzy</h1><p>Battle Simulator</p></div><div class="combatant fire-combatant ${state.phase!=='initiative'&&state.activePlayer===0?'active-combatant':''}">${art('fireMage','mage-art')}<span class="mage-shadow"></span></div><span class="versus" aria-hidden="true">VS</span><div class="combatant water-combatant ${state.phase!=='initiative'&&state.activePlayer===1?'active-combatant':''}">${art('waterMage','mage-art')}<span class="mage-shadow"></span></div></section>
     <div class="battle-hud">${playerPanel(state.players[0],0)}${diceView()}${playerPanel(state.players[1],1)}</div>
     <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${displayPlayer.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${isOnlineBattle()?'YOUR ':''}${displayPlayer.name.toUpperCase()} · ${isOnlineBattle()&&!canActOnline()?'WAITING':isFate?(state.fatePlayer===state.activePlayer?'ATTACKING FATE':'DEFENDING FATE'):'SPELLBOOK'}</span><span data-testid="hand-count">${handCount(displayPlayer)} / 5 SLABS</span></div>
     <div class="cards ${displayPlayer.id} cards-${displayPlayer.hand.length}" aria-label="${displayPlayer.name} wizard’s spell slabs">${displayPlayer.hand.map(card=>cardView(card,displayPlayer,finished)).join('')||'<div class="empty-hand"><span>✧</span><p>No spells in hand.<br>Refresh your hand or draw on your next turn.</p></div>'}</div>
     <div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${displayPlayer.discard.length} <small>${displayPlayer.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${isOnlineBattle()&&!canActOnline()?'YOUR PRIVATE HAND':state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${deckCount(displayPlayer)} <small>${deckCount(displayPlayer)===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
     <div class="turn-controls"><div class="phase-hint" role="status">${hintView(active,selected)}${isOnlineBattle()&&state.pendingSpell?'<button class="text-button" id="inspect-pending">Read pending spell</button>':''}</div>
-    <div class="action-bar"><div class="round-plaque" aria-label="Round ${state.round}, ${active.name} wizard’s turn">${art('round','round-art')}<span class="round-cover"><strong>Round <span data-testid="round-number">${state.round}</span></strong><span>${finished?'Duel complete':`${active.name}’s Turn`}</span></span></div>
+    <div class="action-bar"><div class="round-plaque" aria-label="${opening?'Opening roll':`Round ${state.round}, ${active.name} wizard’s turn`}">${art('round','round-art')}<span class="round-cover"><strong>Round <span data-testid="round-number">${state.round}</span></strong><span>${finished?'Duel complete':opening?'Opening roll':`${active.name}’s Turn`}</span></span></div>
     <button class="art-button cast-button" id="cast-spell" data-focus="cast" aria-label="${castLabel}" ${finished||resolving||!canActOnline()||(isFate?(fateCount>0&&!canCastSelected(state)):!canCastSelected(state))?'disabled':''}>${art(castArt,'button-art')}</button>
     <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh and pass, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh||!canActOnline()?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button ${ending?'is-ending':''}" id="end-turn" data-focus="end" aria-label="${['end','refresh','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||!canActOnline()||(isOnlineBattle()&&state.activePlayer!==onlinePlayerIndex)||['fate','rolling','resolving'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
     <details class="combat-log" ${logOpen?'open':''}><summary aria-label="View combat log">${art('combatLog','log-button')}<span class="log-count">${state.log.length}</span><span class="chevron" aria-hidden="true">⌄</span></summary><ol>${state.log.slice().reverse().map(entry=>`<li><span class="log-round">R${entry.round}</span><span>${escape(entry.message)}</span></li>`).join('')}</ol></details>
@@ -166,6 +208,7 @@ function render() {
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   scheduleCombat();
   fitBoard();
+  renderOpeningRoll();
 }
 // The forest and every game element share one undistorted 1024 × 1536 canvas.
 // Only this outer scale changes with the viewport; log expansion never resizes it.
@@ -344,6 +387,20 @@ app.addEventListener('click',event=>{
 });
 
 document.querySelector('#begin-turn').addEventListener('click',()=>{handoff.close();scheduleCombat();app.querySelector('.spell-card:not(:disabled)')?.focus({preventScroll:true});});
+document.querySelector('#opening-roll').addEventListener('click',event=>{
+  const button=event.target.closest('[data-opening-player]');
+  if(!button||button.disabled||state.phase!=='initiative')return;
+  if(isOnlineBattle())sendOnlineAction('rollInitiative');
+  else update(rollInitiative(state,Number(button.dataset.openingPlayer)));
+});
+document.querySelector('#opening-continue').addEventListener('click',()=>{
+  if(state.phase==='initiative')return;
+  openingAcknowledged[battleMode]=true;
+  document.querySelector('#opening-roll').close();
+  app.querySelector('.spell-card:not(:disabled)')?.focus({preventScroll:true});
+});
+document.querySelector('#opening-home').addEventListener('click',()=>leaveBattle('home'));
+document.querySelector('#opening-roll').addEventListener('cancel',event=>event.preventDefault());
 // Avoid revealing the next hand accidentally by dismissing a pass-screen dialog.
 handoff.addEventListener('cancel',event=>event.preventDefault());
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.close).close()));
@@ -356,7 +413,8 @@ function restartGame() {
   const decks=pendingBattleDecks||hub.getSavedDecks();
   pendingBattleDecks=null;
   if(shouldEnterAfterRestart){shouldEnterAfterRestart=false;enterBattle();}
-  update(createGame(Date.now(),decks),'A new duel has begun with your saved decks. Fire goes first.');
+  openingAcknowledged.local=false;
+  update(createGame(Date.now(),decks),'A new duel has begun with your saved decks. Roll to decide who starts.');
 }
 document.querySelector('#confirm-restart').addEventListener('click',restartGame);
 document.querySelector('#victory-restart').addEventListener('click',restartGame);
@@ -370,7 +428,12 @@ document.querySelector('#confirm-embers').addEventListener('click',()=>{
   document.querySelector('#ember-choice').close();
   commitSpell(amount);
 });
-const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspectSpell:showSlab,onMultiplayer:()=>openOnlineLobby(),onBattle:({decks,forceNew=false}={})=>{
+const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspectSpell:showSlab,onMultiplayer:()=>openOnlineLobby(),onAccount:()=>openAccountScreen(),onSaveLocal:data=>{
+  if(!accounts?.hasSession())return;
+  const username=accounts.getSession()?.account?.username;
+  hub.setAccountStatus({username,state:'syncing',message:'Saving to your account…'});
+  accounts.save(data).catch(error=>hub.setAccountStatus({username,state:'offline',message:error?.message||'Saved on this device. Cloud sync will need a retry.'}));
+},onBattle:({decks,forceNew=false}={})=>{
   if(forceNew){restoreLocalBattle();requestNewBattle(decks,true);return;}
   pendingModeDecks=decks||hub.getSavedDecks();
   document.querySelector('#resume-online').hidden=!multiplayer?.isActive();
@@ -378,9 +441,18 @@ const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspect
 }});
 multiplayer=createMultiplayer({
   root:document.querySelector('#online-view'),getSavedDecks:()=>hub.getSavedDecks(),getProfile:()=>hub.getProfile(),
+  getAccountSession:()=>accounts?.getSession(),
+  prepareAccountBattle:async()=>{
+    if(accounts?.hasSession()){
+      const session=accounts.getSession()||await accounts.resume();
+      if(!session)throw new Error('Reconnect or sign in to your account before starting this battle.');
+      await accounts.flush();
+    }
+  },
   onEnterMatch:view=>receiveOnlineView(view,true),
   onMatchUpdate:view=>{if(isOnlineBattle()&&view.code===onlineCode)receiveOnlineView(view);},
   onExit:details=>{
+    if(changingAccount)return;
     if(details?.message)document.querySelector('#announcement').textContent=details.message;
     if(details?.reason==='expired'){
       if(isOnlineBattle())openOnlineLobby();
@@ -396,6 +468,40 @@ multiplayer=createMultiplayer({
     }
   },
 });
+accounts=createAccounts({
+  root:document.querySelector('#account-view'),getLocalData:()=>hub.getLocalData(),
+  onAccountData:(account,details={})=>{
+    const changed=accountIdentity!==null&&accountIdentity!==account.id;
+    const newLogin=['login','register'].includes(details.source)&&accountIdentity!==account.id;
+    if(changed||newLogin)discardOnlineIdentity();
+    accountIdentity=account.id;
+    hub.applyAccountData(account);
+    hub.setAccountStatus({username:account.username,state:'synced',message:'Your profile and saved decks are synced.'});
+  },
+  onSignedOut:()=>{
+    discardOnlineIdentity();accountIdentity=null;
+    hub.clearAccountData();
+    hub.setAccountStatus({state:'guest',message:'Playing locally on this device.'});
+  },
+  onExit:details=>leaveBattle(details?.screen==='deck'?'deck':'home'),
+  onStatus:(message,details={})=>hub.setAccountStatus({username:details.username,state:details.busy?'syncing':details.unsynced||details.kind==='error'?'offline':details.signedIn?'synced':'guest',message}),
+});
+function discardOnlineIdentity(){
+  changingAccount=true;
+  try { if(multiplayer?.getSession())multiplayer.leave(); }
+  finally { changingAccount=false; }
+  if(isOnlineBattle()){
+    restoreLocalBattle();
+    if(!battleView.hidden)leaveBattle('home');
+  }
+}
+function openAccountScreen(){
+  clearCombatTimers();
+  document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
+  restoreLocalBattle();hub.hide();multiplayer?.hide();battleView.hidden=true;
+  if(location.hash!=='#account')history.pushState(null,'','#account');
+  accounts.show();
+}
 function restoreLocalBattle(){
   if(isOnlineBattle()){clearCombatTimers();state=localState;}
   battleMode='local';onlineBusy=false;
@@ -406,29 +512,39 @@ function receiveOnlineView(view,enter=false){
     if(!isOnlineBattle())localState=state;
     clearCombatTimers();
     document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
+    if(onlineCode!==view.code)openingAcknowledged.online=view.state.phase!=='initiative';
     battleMode='online';onlineCode=view.code;onlinePlayerIndex=view.playerIndex;
     state=view.state;enterBattle();
   }else update(view.state);
 }
 async function sendOnlineAction(type,payload={}){
-  if(!isOnlineBattle()||!canActOnline())return;
+  if(!isOnlineBattle()||(type==='rollInitiative'?!canRollOpeningOnline():!canActOnline()))return;
+  const openingRound=type==='rollInitiative'?state.initiative.round:null;
   onlineBusy=true;render();
-  try { await multiplayer.action(type,payload); }
+  try {
+    const result=await multiplayer.action(type,payload);
+    // Both opening dice may be requested together. A stale response refreshes
+    // the view; retry this player's still-unrolled die only in that same round.
+    if(!result&&type==='rollInitiative'&&isOnlineBattle()&&state.phase==='initiative'
+      &&state.initiative.round===openingRound&&state.initiative.rolls[onlinePlayerIndex]===null)await multiplayer.action(type,payload);
+  }
   catch(error){onlineStatus=error?.message||'Your move could not be sent. Try again.';}
   finally { onlineBusy=false;if(isOnlineBattle())render(); }
 }
 function openOnlineLobby(){
   clearCombatTimers();
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
-  restoreLocalBattle();hub.hide();battleView.hidden=true;
+  restoreLocalBattle();hub.hide();accounts?.hide();battleView.hidden=true;
   if(location.hash!=='#online')history.pushState(null,'','#online');
   multiplayer.show();
 }
 function isUntouchedBattle(){
+  if(state.phase==='initiative')return !state.initiative.history.length&&state.initiative.rolls.every(value=>value===null);
+  if(!state.initiative?.legacy)return false;
   return state.status==='playing'&&state.phase==='main'&&state.round===1&&state.activePlayer===0&&!state.primaryUsed&&!state.selectedCardId&&state.players.every(player=>player.hp===30&&player.mana===3&&player.shield===0&&player.element===0&&player.loaded===0&&player.loadedPending===0&&player.discard.length===0&&player.hand.length===4&&player.deck.length===26)&&!state.log.some(entry=>entry.type==='cast');
 }
 function enterBattle(){
-  hub.hide();multiplayer?.hide();battleView.hidden=false;
+  hub.hide();multiplayer?.hide();accounts?.hide();battleView.hidden=false;
   lastBattleMode=battleMode;
   try { localStorage.setItem('wizzy.battle.mode',lastBattleMode); } catch {}
   if(location.hash!=='#battle')history.pushState(null,'','#battle');
@@ -438,7 +554,7 @@ function leaveBattle(screen='home'){
   clearCombatTimers();
   pendingBattleDecks=null;shouldEnterAfterRestart=false;
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
-  restoreLocalBattle();multiplayer?.hide();battleView.hidden=true;hub.show(screen);
+  restoreLocalBattle();multiplayer?.hide();accounts?.hide();battleView.hidden=true;hub.show(screen);
 }
 function requestNewBattle(decks=hub.getSavedDecks(),enterAfter=false){
   if(isOnlineBattle())return;
@@ -452,7 +568,10 @@ document.querySelector('#battle-online-lobby').addEventListener('click',openOnli
 document.querySelector('#victory-online').addEventListener('click',()=>{multiplayer.leave();openOnlineLobby();});
 document.querySelector('#choose-local').addEventListener('click',()=>{
   document.querySelector('#battle-mode').close();restoreLocalBattle();
-  if(isUntouchedBattle())update(createGame(Date.now(),pendingModeDecks||hub.getSavedDecks()));
+  if(isUntouchedBattle()){
+    openingAcknowledged.local=false;
+    update(createGame(Date.now(),pendingModeDecks||hub.getSavedDecks()));
+  }
   pendingModeDecks=null;enterBattle();
 });
 document.querySelector('#choose-online').addEventListener('click',openOnlineLobby);
@@ -467,6 +586,7 @@ document.querySelector('#restart').addEventListener('cancel',()=>{pendingBattleD
 document.querySelector('#restart').addEventListener('close',scheduleCombat);
 function syncAppRoute(){
   const screen=location.hash.slice(1);
+  if(screen==='account'){openAccountScreen();return;}
   if(screen==='online'){openOnlineLobby();return;}
   if(screen==='battle'){
     if(lastBattleMode==='online'){
@@ -482,3 +602,4 @@ window.addEventListener('hashchange',syncAppRoute);
 window.addEventListener('popstate',syncAppRoute);
 const touchIcon=document.createElement('link');touchIcon.rel='apple-touch-icon';touchIcon.href=ASSETS.appIcon;document.head.append(touchIcon);
 saveGame();render();syncAppRoute();
+accounts.resume().catch(()=>{});

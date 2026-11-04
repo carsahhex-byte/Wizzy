@@ -1,4 +1,4 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.1a531604e0e7.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.99bc679d8c97.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.60141befac6b.js';
 import { MAX_COPIES, createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount } from './decks.8ef89a458653.js';
 
@@ -46,7 +46,7 @@ function restoreDraft(candidate, element, fallback) {
 }
 
 /** Mobile navigation and local deck editing. The battle host owns duel state. */
-export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {}, onInspectSpell = () => {}, assets = {} }) {
+export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {}, onAccount = () => {}, onSaveLocal = () => {}, onInspectSpell = () => {}, assets = {} }) {
   if (!root) throw new Error('The Wizzy hub needs a root element.');
   root.classList.add('wz-hub-root');
   root.hidden = true;
@@ -56,6 +56,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   const storybook = assets.storybookIcon || ASSETS.storybookIcon;
   if (scene) root.style.setProperty('--wz-title-scene', `url("${scene}")`);
   if (map) root.style.setProperty('--wz-map-scene', `url("${map}")`);
+  if (assets.mapSurround || ASSETS.mapSurround) root.style.setProperty('--wz-map-surround', `url("${assets.mapSurround || ASSETS.mapSurround}")`);
   if (atlas) {
     root.style.setProperty('--wz-icon-atlas', `url("${atlas}")`);
     root.classList.add('wz-has-atlas');
@@ -78,11 +79,21 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   let profile = { name: 'Wizzy', element: 'fire' };
   let savedDecks = { fire: createStarterDeck('fire'), water: createStarterDeck('water') };
   let drafts = cloneHub(savedDecks);
+  let activeAccountId = null;
+  let cloudDecks = null;
+  let accountUsername = '';
+  let accountStatus = { state: 'guest', message: '' };
+  let guestSnapshot = null;
 
   try {
     const raw = localStorage.getItem(HUB_SAVE_KEY);
     const stored = raw ? JSON.parse(raw) : null;
     if (stored?.version === 1) {
+      if (typeof stored.accountId === 'string' && stored.accountId) {
+        activeAccountId = stored.accountId;
+        accountUsername = String(stored.accountUsername || '').slice(0, 24);
+        accountStatus = { state: 'offline', message: 'Saved on this device. Connect to sync your account.' };
+      }
       if (stored.profile && ['fire', 'water'].includes(stored.profile.element)) {
         profile.element = stored.profile.element;
         if (typeof stored.profile.name === 'string' && stored.profile.name.trim()) profile.name = stored.profile.name.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 24) || 'Wizzy';
@@ -91,16 +102,22 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
         if (stored.savedDecks?.[element]?.element === element && validateDeck(stored.savedDecks[element])) savedDecks[element] = normalizeDeck(stored.savedDecks[element]);
         drafts[element] = restoreDraft(stored.drafts?.[element], element, savedDecks[element]);
       }
+      if (activeAccountId) cloudDecks = ['fire', 'water'].every(id => stored.cloudDecks?.[id]?.element === id && validateDeck(stored.cloudDecks[id])) ? cloneHub(stored.cloudDecks) : cloneHub(savedDecks);
     }
   } catch {
     storageAvailable = false;
     notice = 'Device storage could not be read. Starter decks are ready for this session.';
   }
   selectedElement = profile.element;
+  try { guestSnapshot = JSON.parse(localStorage.getItem('wizzy.hub.guest.v1') || 'null'); } catch {}
+  if (!activeAccountId) guestSnapshot = snapshotHub();
+
+  function snapshotHub() { return cloneHub({ profile, savedDecks, drafts, cloudDecks }); }
+  function cacheHub(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { storageAvailable = false; } }
 
   function persistHub() {
     try {
-      localStorage.setItem(HUB_SAVE_KEY, JSON.stringify({ version: 1, profile, savedDecks, drafts }));
+      localStorage.setItem(HUB_SAVE_KEY, JSON.stringify({ version: 1, profile, savedDecks, drafts, cloudDecks, accountId: activeAccountId, accountUsername }));
       storageAvailable = true;
       return true;
     } catch { storageAvailable = false; return false; }
@@ -112,7 +129,11 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   }
   function footerHub() {
     const build = document.querySelector('meta[name="wizzy-build"]')?.content;
-    return `<footer class="wz-footer"><span>${storageAvailable ? 'SAVED ON THIS DEVICE' : 'DEVICE SAVING UNAVAILABLE'}</span><span>${build && build !== 'development' ? `BUILD ${escapeHub(build)}` : 'WIZZY · FIRST JOURNEY'}</span></footer>`;
+    const storageLabel = !storageAvailable ? 'DEVICE SAVING UNAVAILABLE' : !activeAccountId ? 'SAVED ON THIS DEVICE' : accountStatus.state === 'synced' ? 'ACCOUNT DECKS SYNCED' : accountStatus.state === 'syncing' ? 'SYNCING ACCOUNT…' : 'SAVED LOCALLY · SYNC PENDING';
+    return `<footer class="wz-footer"><span>${storageLabel}</span><span>${build && build !== 'development' ? `BUILD ${escapeHub(build)}` : 'WIZZY · FIRST JOURNEY'}</span></footer>`;
+  }
+  function accountPanelHub() {
+    return `<button class="wz-account-entry" data-wz-action="account"><span aria-hidden="true">✦</span><span><strong>${activeAccountId ? escapeHub(accountUsername || 'Your account') : 'Sign in to your Wizzy'}</strong><small>${escapeHub(activeAccountId ? accountStatus.message || 'Your profile and decks follow your account.' : 'Keep your saved decks across phones.')}</small></span><b aria-hidden="true">›</b></button>`;
   }
   function topHub(title, subtitle = '') {
     return `<header class="wz-header"><button class="wz-back" data-wz-action="home" aria-label="Back to Seattle map">‹</button><div><p class="wz-eyebrow">${subtitle || 'WIZZY · SEATTLE'}</p><h1 tabindex="-1">${title}</h1></div><button class="wz-mini-avatar" data-wz-action="character" aria-label="Open your character">${hubHead(profile.element)}</button></header>`;
@@ -122,7 +143,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     return `<div class="wz-element-switch" role="group" aria-label="${context === 'profile' ? 'Choose your wizard element' : 'Choose a deck to edit'}">${['fire', 'water'].map(id => `<button class="wz-element-tab wz-${id} ${element === id ? 'wz-active' : ''}" data-wz-action="${context === 'profile' ? 'profile-element' : 'deck-element'}" data-wz-element="${id}" data-wz-focus="${context}-${id}" aria-pressed="${element === id}"><span aria-hidden="true">${id === 'fire' ? '♨' : '≈'}</span> ${elementName(id)}</button>`).join('')}</div>`;
   }
   function titleHub() {
-    return `<section class="wz-phone wz-title-screen"><div class="wz-title-shade"></div><div class="wz-title-brand"><p class="wz-eyebrow">A LITTLE MAGIC. A WHOLE CITY.</p><h1 tabindex="-1">Wizzy</h1><p class="wz-title-subtitle">YOUR JOURNEY BEGINS IN SEATTLE</p></div><div class="wz-title-entry"><span class="wz-spark wz-spark-left" aria-hidden="true">✦</span><button class="wz-pixel-button wz-enter" data-wz-action="enter">Enter Game <span aria-hidden="true">→</span></button><span class="wz-spark wz-spark-right" aria-hidden="true">✦</span><p>EXPLORE THE CITY. FIND YOUR MAGIC.</p></div><div class="wz-title-bottom"><span class="wz-tiny-star" aria-hidden="true">✧</span><p>FIRE · WATER · FATE</p></div>${footerHub()}</section>`;
+    return `<section class="wz-phone wz-title-screen"><div class="wz-title-shade"></div><div class="wz-title-brand"><p class="wz-eyebrow">A LITTLE MAGIC. A WHOLE CITY.</p><h1 tabindex="-1">Wizzy</h1><p class="wz-title-subtitle">YOUR JOURNEY BEGINS IN SEATTLE</p></div><div class="wz-title-entry"><span class="wz-spark wz-spark-left" aria-hidden="true">✦</span><button class="wz-pixel-button wz-enter" data-wz-action="enter">Enter Game <span aria-hidden="true">→</span></button><span class="wz-spark wz-spark-right" aria-hidden="true">✦</span><p>EXPLORE THE CITY. FIND YOUR MAGIC.</p><button class="wz-title-account" data-wz-action="account">${activeAccountId ? 'Your account' : 'Sign in / Create account'}</button></div><div class="wz-title-bottom"><span class="wz-tiny-star" aria-hidden="true">✧</span><p>FIRE · WATER · FATE</p></div>${footerHub()}</section>`;
   }
   function homeHub() {
     const storyIcon = storybook ? `<span class="wz-storybook-icon" aria-hidden="true"><img alt="" draggable="false" src="${escapeHub(storybook)}"></span>` : '<span class="wz-storybook-icon wz-storybook-fallback" aria-hidden="true">▤</span>';
@@ -149,7 +170,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   }
   function characterHub() {
     const deck = savedDecks[profile.element];
-    return `<section class="wz-phone wz-panel-screen wz-character-screen">${topHub('Your Wizzy', 'CHARACTER')}<div class="wz-page-scroll" data-wz-scroll="character"><div class="wz-character-stage wz-${profile.element}"><span class="wz-character-halo"></span>${hubArt(profile.element === 'water' ? 'waterMage' : 'fireMage', 'wz-character-art')}<div class="wz-character-plaque"><strong>${escapeHub(profile.name)}</strong><span>${elementName(profile.element)} wizard</span></div></div><div class="wz-paper-panel"><form class="wz-profile-form"><label for="wz-character-name">Wizard name</label><div class="wz-name-row"><input id="wz-character-name" name="wizardName" maxlength="24" value="${escapeHub(profile.name)}" autocomplete="nickname" data-wz-focus="wizard-name"><button class="wz-small-button" type="submit">Save</button></div></form><p class="wz-field-label">YOUR ELEMENT</p>${elementSwitch('profile')}<p class="wz-element-help">Your element chooses your wizard portrait and the deck you open first.</p><div class="wz-stat-heading">DUEL STARTING STATS</div><div class="wz-profile-stats"><div><span>HP</span><strong>30</strong></div><div><span>MANA</span><strong>3</strong></div><div><span>${profile.element === 'water' ? 'FLOW' : 'EMBERS'}</span><strong>0</strong></div></div><button class="wz-profile-deck" data-wz-action="deck">${hubIcon('deck')}<span>${elementName(profile.element)} spell deck<small>${getDeckValidation(deck).total} slabs · ready for battle</small></span><b aria-hidden="true">›</b></button></div><p class="wz-page-note">Your name, element, and decks stay on this device. Story progression will grow with the city.</p></div>${footerHub()}</section>`;
+    return `<section class="wz-phone wz-panel-screen wz-character-screen">${topHub('Your Wizzy', 'CHARACTER')}<div class="wz-page-scroll" data-wz-scroll="character">${accountPanelHub()}<div class="wz-character-stage wz-${profile.element}"><span class="wz-character-halo"></span>${hubArt(profile.element === 'water' ? 'waterMage' : 'fireMage', 'wz-character-art')}<div class="wz-character-plaque"><strong>${escapeHub(profile.name)}</strong><span>${elementName(profile.element)} wizard</span></div></div><div class="wz-paper-panel"><form class="wz-profile-form"><label for="wz-character-name">Wizard name</label><div class="wz-name-row"><input id="wz-character-name" name="wizardName" maxlength="24" value="${escapeHub(profile.name)}" autocomplete="nickname" data-wz-focus="wizard-name"><button class="wz-small-button" type="submit">Save</button></div></form><p class="wz-field-label">YOUR ELEMENT</p>${elementSwitch('profile')}<p class="wz-element-help">Your element chooses your wizard portrait and the deck you open first.</p><div class="wz-stat-heading">DUEL STARTING STATS</div><div class="wz-profile-stats"><div><span>HP</span><strong>30</strong></div><div><span>MANA</span><strong>3</strong></div><div><span>${profile.element === 'water' ? 'FLOW' : 'EMBERS'}</span><strong>0</strong></div></div><button class="wz-profile-deck" data-wz-action="deck">${hubIcon('deck')}<span>${elementName(profile.element)} spell deck<small>${getDeckValidation(deck).total} slabs · ready for battle</small></span><b aria-hidden="true">›</b></button></div><p class="wz-page-note">Your name, element, and decks stay on this device. Story progression will grow with the city.</p></div>${footerHub()}</section>`;
   }
   function friendsHub() {
     return `<section class="wz-phone wz-panel-screen wz-friends-screen">${topHub('Your Party', 'FRIENDS')}<div class="wz-page-scroll" data-wz-scroll="friends"><div class="wz-party-art" aria-hidden="true"><span class="wz-party-star">✦</span>${hubIcon('friends')}<span class="wz-party-star">✧</span></div><div class="wz-empty-party"><p class="wz-eyebrow">ADVENTURES ARE BETTER TOGETHER</p><h2>A place for your party.</h2><p>Your friends list and messages will live here. For now, invite a friend to a battle with a room code.</p><div class="wz-friend-features"><span>${hubIcon('friends')} Add friends</span><span>${hubIcon('battle')} Challenge a wizard</span><span class="wz-message-feature"><i aria-hidden="true">▤</i> Send messages</span></div><span class="wz-preview-tag">FRIENDS SCREEN PREVIEW</span></div><div class="wz-local-play-panel"><strong>Bring a friend into the battle.</strong><p>Create a room or join with a code to test on two screens.</p><button class="wz-pixel-button" data-wz-action="multiplayer">${hubIcon('battle')} Create or join a battle</button><button class="wz-small-button wz-shared-screen" data-wz-action="battle">Play on this screen</button></div></div>${footerHub()}</section>`;
@@ -304,6 +325,62 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   function hide() { finishMapDrag(); mapObserver?.disconnect(); visible = false; root.hidden = true; }
   function getSavedDecks() { return cloneHub(savedDecks); }
   function getProfile() { return cloneHub(profile); }
+  function getLocalData() { return { profile: getProfile(), decks: getSavedDecks() }; }
+  function savedLocalHub() {
+    if (!activeAccountId) { guestSnapshot = snapshotHub(); cacheHub('wizzy.hub.guest.v1', guestSnapshot); }
+    try { Promise.resolve(onSaveLocal(getLocalData())).catch(() => {}); } catch {}
+  }
+  function applyAccountData(account) {
+    if (!account || typeof account.id !== 'string' || !account.id || !['fire', 'water'].includes(account.profile?.element)
+      || !['fire', 'water'].every(id => account.decks?.[id]?.element === id && validateDeck(account.decks[id]))) {
+      throw new Error('The account profile or saved decks are invalid.');
+    }
+    const switching = activeAccountId !== account.id;
+    let prior = snapshotHub();
+    if (switching) {
+      if (activeAccountId) cacheHub(`wizzy.hub.account.${activeAccountId}`, prior);
+      else { guestSnapshot = prior; cacheHub('wizzy.hub.guest.v1', prior); }
+      prior = null;
+      try { prior = JSON.parse(localStorage.getItem(`wizzy.hub.account.${account.id}`) || 'null'); } catch {}
+    }
+    activeAccountId = account.id;
+    accountUsername = String(account.username || '').slice(0, 24);
+    profile = { name: String(account.profile.name || 'Wizzy').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 24) || 'Wizzy', element: account.profile.element };
+    savedDecks = { fire: normalizeDeck(account.decks.fire), water: normalizeDeck(account.decks.water) };
+    cloudDecks = cloneHub(savedDecks);
+    drafts = {};
+    for (const id of ['fire', 'water']) {
+      const previousDraft = restoreDraft(prior?.drafts?.[id], id, savedDecks[id]);
+      const previousSaved = validateDeck(prior?.savedDecks?.[id]) ? prior.savedDecks[id] : null;
+      const previousCloud = validateDeck(prior?.cloudDecks?.[id]) ? prior.cloudDecks[id] : previousSaved;
+      const wasDirty = previousSaved && (deckSignature(previousDraft) !== deckSignature(previousSaved) || deckSignature(previousDraft) !== deckSignature(previousCloud));
+      drafts[id] = wasDirty ? restoreDraft(previousDraft, id, savedDecks[id]) : cloneHub(savedDecks[id]);
+    }
+    if (switching) selectedElement = profile.element;
+    accountStatus = { state: 'synced', message: 'Profile and saved decks are synced to your account.' };
+    persistHub();
+    if (visible) render();
+  }
+  function clearAccountData() {
+    if (activeAccountId) cacheHub(`wizzy.hub.account.${activeAccountId}`, snapshotHub());
+    const guest = guestSnapshot;
+    profile = guest?.profile && ['fire', 'water'].includes(guest.profile.element) ? cloneHub(guest.profile) : { name: 'Wizzy', element: 'fire' };
+    savedDecks = {};
+    drafts = {};
+    for (const id of ['fire', 'water']) {
+      savedDecks[id] = guest?.savedDecks?.[id]?.element === id && validateDeck(guest.savedDecks[id]) ? normalizeDeck(guest.savedDecks[id]) : createStarterDeck(id);
+      drafts[id] = restoreDraft(guest?.drafts?.[id], id, savedDecks[id]);
+    }
+    activeAccountId = null; cloudDecks = null; accountUsername = ''; accountStatus = { state: 'guest', message: '' };
+    selectedElement = profile.element;
+    persistHub();
+    if (visible) render();
+  }
+  function setAccountStatus(status = {}) {
+    accountStatus = { ...accountStatus, ...status };
+    if (typeof status.username === 'string') accountUsername = status.username.slice(0, 24);
+    if (visible) render();
+  }
   function battleHub(forceNew = false) { onBattle({ decks: getSavedDecks(), forceNew }); }
   function updateQuantityHub(spellId, quantity) {
     try {
@@ -319,6 +396,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     savedDecks[selectedElement] = normalizeDeck(drafts[selectedElement]);
     drafts[selectedElement] = cloneHub(savedDecks[selectedElement]);
     const stored = persistHub();
+    savedLocalHub();
     messageHub(stored ? `${elementName(selectedElement)} deck saved. New battles will use these 30 slabs.` : 'Deck ready for this session. Device saving is unavailable.');
     render();
     if (startBattle) battleHub(true);
@@ -339,9 +417,10 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
       case 'storybook': break;
       case 'battle': battleHub(); break;
       case 'multiplayer': onMultiplayer({ decks: getSavedDecks(), profile: getProfile() }); break;
+      case 'account': onAccount(); break;
       case 'inspect': onInspectSpell(button.dataset.wzSpell); break;
       case 'deck-element': selectedElement = button.dataset.wzElement; notice = ''; render(); break;
-      case 'profile-element': profile.element = button.dataset.wzElement; selectedElement = profile.element; persistHub(); render(); break;
+      case 'profile-element': profile.element = button.dataset.wzElement; selectedElement = profile.element; persistHub(); savedLocalHub(); render(); break;
       case 'filter': filter = button.dataset.wzFilter; render(); break;
       case 'quantity': updateQuantityHub(button.dataset.wzSpell, getDeckCount(drafts[selectedElement], button.dataset.wzSpell) + Number(button.dataset.wzDelta)); break;
       case 'clear': drafts[selectedElement] = { element: selectedElement, entries: [] }; persistHub(); messageHub('Draft cleared. Your saved battle deck is still available.'); render(); break;
@@ -360,6 +439,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     const name = new FormData(event.target).get('wizardName');
     profile.name = String(name || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 24) || 'Wizzy';
     const stored = persistHub();
+    savedLocalHub();
     messageHub(stored ? 'Your wizard name is saved.' : 'Name updated for this session. Device saving is unavailable.');
     render();
   });
@@ -369,5 +449,5 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   };
   window.addEventListener('hashchange', followHashHub);
   window.addEventListener('popstate', followHashHub);
-  return { show, hide, render, getSavedDecks, getProfile, isVisible: () => visible };
+  return { show, hide, render, getSavedDecks, getProfile, getLocalData, applyAccountData, clearAccountData, setAccountStatus, isVisible: () => visible };
 }

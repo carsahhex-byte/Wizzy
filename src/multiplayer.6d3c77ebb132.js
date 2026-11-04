@@ -19,7 +19,7 @@ function normalizeOnlineEndpoint(value) {
 }
 
 /** Two-screen lobby and transport. All game decisions remain on the server. */
-export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ name: 'Wizzy', element: 'fire' }), onEnterMatch = () => {}, onMatchUpdate = () => {}, onExit = () => {}, onStatus = () => {} }) {
+export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ name: 'Wizzy', element: 'fire' }), getAccountSession = () => null, prepareAccountBattle = async () => {}, onEnterMatch = () => {}, onMatchUpdate = () => {}, onExit = () => {}, onStatus = () => {} }) {
   if (!root || typeof getSavedDecks !== 'function') throw new Error('Multiplayer needs a lobby root and saved decks.');
   root.classList.add('wz-online-root');
   root.hidden = true;
@@ -44,6 +44,7 @@ export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ n
 
   const defaultEndpoint = () => {
     try {
+      if (getAccountSession()?.endpoint) return normalizeOnlineEndpoint(getAccountSession().endpoint);
       if (globalThis.WIZZY_MULTIPLAYER_URL) return normalizeOnlineEndpoint(globalThis.WIZZY_MULTIPLAYER_URL);
       if (['http:', 'https:'].includes(location.protocol) && !location.hostname.endsWith('github.io')) return location.origin;
     } catch { /* The configuration field remains available for correction. */ }
@@ -169,14 +170,23 @@ export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ n
     }
   }
   function cleanName() { return String(name || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 24) || 'Wizzy'; }
+  async function prepareAccountRoom() {
+    await prepareAccountBattle();
+    const account = getAccountSession();
+    if (!account?.token) return undefined;
+    if (normalizeOnlineEndpoint(account.endpoint) !== endpoint) throw new Error('Use your account’s game server for this battle, or sign out to play as a guest elsewhere.');
+    return getAccountSession()?.token;
+  }
   async function createOnlineRoom() {
     if (busy || session) return;
     busy = true; stopPolling(); notice = ''; renderOnline();
     const currentGeneration = ++generation;
     try {
       endpoint = requireEndpoint();
+      const accountToken = await prepareAccountRoom();
+      if (generation !== currentGeneration) return;
       const deck = getSavedDecks()[element];
-      const view = await requestOnline(endpoint, '/api/rooms', { method: 'POST', body: { name: cleanName(), element, deck } });
+      const view = await requestOnline(endpoint, '/api/rooms', { method: 'POST', token: accountToken, body: { name: cleanName(), element, deck } });
       if (generation !== currentGeneration) return;
       entered = false;
       applyOnlineView(view, { first: true });
@@ -190,13 +200,15 @@ export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ n
     const currentGeneration = ++generation;
     try {
       endpoint = requireEndpoint();
+      const accountToken = await prepareAccountRoom();
+      if (generation !== currentGeneration) return;
       const code = roomInput.replace(/[\s-]/g, '').toUpperCase();
       if (!/^[A-Z0-9]{8}$/.test(code)) throw new Error('Enter the eight-character room code shared by your friend.');
       roomInput = code;
       const info = await requestOnline(endpoint, `/api/rooms/${code}/info`);
       const assignedElement = info.joiningElement;
       if (!['fire', 'water'].includes(assignedElement)) throw new Error('This room is no longer available to join.');
-      const view = await requestOnline(endpoint, `/api/rooms/${code}/join`, { method: 'POST', body: { name: cleanName(), deck: getSavedDecks()[assignedElement] } });
+      const view = await requestOnline(endpoint, `/api/rooms/${code}/join`, { method: 'POST', token: accountToken, body: { name: cleanName(), deck: getSavedDecks()[assignedElement] } });
       if (generation !== currentGeneration) return;
       entered = false;
       applyOnlineView(view, { first: true });
@@ -235,6 +247,14 @@ export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ n
   function isActive() { return Boolean(session?.state && ['playing', 'finished'].includes(session.status)); }
   function hide() { visible = false; root.hidden = true; }
   function show() {
+    if (!session) {
+      const account = getAccountSession();
+      if (account?.endpoint) {
+        endpoint = normalizeOnlineEndpoint(account.endpoint);
+        name = String(account.account?.profile?.name || getProfile()?.name || 'Wizzy').slice(0, 24);
+        element = account.account?.profile?.element === 'water' ? 'water' : 'fire';
+      }
+    }
     visible = true; root.hidden = false; renderOnline();
     root.querySelector('h1')?.focus({ preventScroll: true });
     if (session) refreshOnline();

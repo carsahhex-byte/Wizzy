@@ -37,7 +37,7 @@
 .wz-title-bottom p { font: 8px 'Courier New', monospace; letter-spacing: 4px; color: #d6d3e9; }
 .wz-title-screen > .wz-footer { position: absolute; bottom: 0; left: 0; right: 0; }
 .wz-home-screen { display: flex; flex-direction: column; background: #101b31; }
-.wz-map-viewport { position: relative; flex: 1; min-height: 0; width: 100%; overflow: hidden; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; overscroll-behavior: none; background: #12345c; border-block: 2px solid #526381; }
+.wz-map-viewport { position: relative; flex: 1; min-height: 0; width: 100%; overflow: hidden; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; overscroll-behavior: none; background: #0b4a80 var(--wz-map-surround) center / 100% 100% no-repeat; image-rendering: pixelated; border-block: 2px solid #526381; }
 .wz-map-viewport:focus-visible { outline: 3px solid #b6ffff; outline-offset: -4px; }
 .wz-map-viewport.wz-dragging { cursor: grabbing; }
 .wz-map-world { position: absolute; width: 1024px; height: 1536px; transform-origin: 0 0; will-change: transform; --wz-marker-scale: 1; }
@@ -158,3 +158,11 @@
 .wz-home-screen .wz-map-button { font: 700 11px 'Trebuchet MS', Arial, sans-serif; }
 .wz-home-screen .wz-left-controls .wz-map-button { font-size: 10px; }
 @media (max-width: 350px) { .wz-home-screen .wz-left-controls .wz-map-button { font-size: 9px; } }
+
+.wz-title-account { display: inline-block; min-height: 34px; margin-top: 5px; padding: 7px 13px; border: 1px solid #a3b8dc; background: #172342e8; color: #dce8f9; font-size: 11px; box-shadow: 2px 3px #10162d; }
+.wz-account-entry { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 65px; margin-top: 16px; padding: 12px; border: 2px solid #929bc2; background: #26314a; text-align: left; box-shadow: 3px 4px #10172b; }
+.wz-account-entry > span:first-child { flex: 0 0 auto; font-size: 25px; color: #e6cf95; }
+.wz-account-entry > span:nth-child(2) { flex: 1; min-width: 0; }
+.wz-account-entry strong { display: block; font-size: 12px; color: #f2e6c4; }
+.wz-account-entry small { display: block; margin-top: 5px; font-size: 10px; line-height: 1.45; color: #b9c9df; }
+.wz-account-entry > b { color: #cfddf2; font-size: 23px; }
