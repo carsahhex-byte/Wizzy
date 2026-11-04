@@ -1,8 +1,8 @@
-import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.a0fabfc33422.js';
+import { createGame, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.3110d620a1aa.js';
 import { ASSETS, ASSET_CROPS } from './assets.0db7bcf37e8f.js';
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SOURCE_INFO } from './spells.60141befac6b.js';
 
-const SAVE_KEY = 'wizzy.duel.v4';
+const SAVE_KEY = 'wizzy.duel.v5';
 const app = document.querySelector('#app');
 const handoff = document.querySelector('#handoff');
 let storageAvailable = true;
@@ -19,7 +19,7 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  for(const key of ['wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
+  for(const key of ['wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
   }
@@ -50,20 +50,20 @@ function playerPanel(player, index) {
 function phaseHint(active) {
   if (state.status === 'finished') return `${state.players[state.winner].name} wins the duel!`;
   switch(state.phase) {
-    case 'fate': return `${state.players[state.fatePlayer].name} · ${state.fatePlayer===state.activePlayer?'Attacking':'Defending'} Fate. Choose Fate slabs or Skip Fate.`;
+    case 'fate': return `${state.players[state.fatePlayer].name} · ${state.fatePlayer===state.activePlayer?'Attacking':'Defending'} Fate. Select a batch, or Skip Fate.`;
     case 'rolling': return 'Rolling two dice…';
     case 'resolving': return 'Resolving your spell…';
-    case 'end': return 'Refresh your hand, or click End Turn again to pass.';
-    case 'refresh': return `Select discards (${state.refreshCardIds.length}), then Hand Refresh again.`;
+    case 'end': return 'End Turn passes. Hand Refresh lets you choose discards first.';
+    case 'refresh': return `${state.refreshCardIds.length} selected. Hand Refresh confirms and passes; End Turn skips refresh.`;
     case 'ready-to-pass': return 'Hand refreshed. Click End Turn to pass to the next wizard.';
-    default: return `${active.name} wizard · select a slab, then Cast Spell.`;
+    default: return state.primaryUsed?'Primary spell resolved. End Turn to continue.':`${active.name} wizard · select a slab, then Cast Spell.`;
   }
 }
 function slabFace(card) {
   return `${art(card.art,'card-image')}<span class="card-name" style="--name-size:${card.name.length>12?18:21}px">${escape(card.name)}</span><span class="card-copy"><strong class="mana-cost">${card.manaCost} Mana</strong><span class="card-effect">${escape(card.effectText)}</span></span>`;
 }
 function cardView(card, active, finished) {
-  const selected = state.selectedCardId === card.id;
+  const selected = state.phase==='fate'?state.selectedFateCardIds.includes(card.id):state.selectedCardId===card.id;
   const refreshSelected = state.refreshCardIds.includes(card.id);
   const pending = state.pendingCardId === card.id;
   const eligible=canSelectCard(state,card.id);
@@ -88,14 +88,15 @@ function diceView() {
   const last=pending?null:state.lastRoll;
   const title=state.phase==='fate'?'Fate window':state.phase==='rolling'?'Rolling…':last?`Total: ${last.total}`:'Ready to roll';
   const equation=last?`${last.dice[0]} + ${last.dice[1]} ${signed(last.loadedBonus)} Loaded ${signed(last.attackingFate)} Fate ${signed(last.defendingFate)} Fate`:state.pendingSpell?`Loaded ${signed(state.pendingSpell.loadedBonus)} · Attack ${signed(state.pendingSpell.attackingFate)} · Defend ${signed(state.pendingSpell.defendingFate)}`:'Two six-sided dice';
-  return `<section class="dice-area ${state.phase==='rolling'?'dice-rolling':''}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. Modified total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · LAST ROLL`:state.phase==='fate'?'PLAY FATE, THEN SKIP TO CONTINUE':'ROLLS ONLY WHEN A SPELL REQUIRES THEM'}</span></section>`;
+  return `<section class="dice-area ${state.phase==='rolling'?'dice-rolling':''}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. Modified total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · LAST ROLL`:state.phase==='fate'?'CAST YOUR SELECTED FATE, OR SKIP':'ROLLS ONLY WHEN A SPELL REQUIRES THEM'}</span></section>`;
 }
 function hintView(active,selected) {
+  if(state.phase==='main'&&state.primaryUsed)return `${phaseHint(active)}${selected?'<div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button></div>':''}`;
   if(selected&&['main','fate'].includes(state.phase)){
-    const short=state.phase==='fate'?(state.fatePlayer===state.activePlayer?'Attacking Fate':'Defending Fate'):`${selected.manaCost} Mana${active.mana<selected.manaCost?' · Not enough mana':''}`;
-    return `<span>${escape(selected.name)} · ${short}</span><div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button>${state.phase==='fate'?'<button class="text-button" id="skip-fate">Skip Fate</button>':''}</div>`;
+    const label=state.phase==='fate'?`${state.selectedFateCardIds.length} Fate ${state.selectedFateCardIds.length===1?'slab':'slabs'} selected`:`${escape(selected.name)} · ${selected.manaCost} Mana${active.mana<selected.manaCost?' · Not enough mana':''}`;
+    return `<span>${label}</span><div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button>${state.phase==='fate'?'<button class="text-button" id="skip-fate">Skip Fate</button>':''}</div>`;
   }
-  return `${phaseHint(active)}${state.phase==='refresh'?'<button class="text-button" id="cancel-refresh">Cancel refresh</button>':''}`;
+  return phaseHint(active);
 }
 function render() {
   const active = state.players[state.activePlayer];
@@ -106,8 +107,9 @@ function render() {
   const ending = ['end','refresh','ready-to-pass'].includes(state.phase);
   const showRefresh = ['end','refresh'].includes(state.phase) && !finished;
   const selected=displayPlayer.hand.find(card=>card.id===state.selectedCardId);
-  const castLabel=isFate?(selected?'Cast Fate':'Skip Fate'):resolving?'Resolving spell':'Cast Spell';
-  const castArt=isFate?(selected?'castFate':'skipFate'):'cast';
+  const fateCount=state.selectedFateCardIds.length;
+  const castLabel=isFate?(fateCount?'Cast Fate':'Skip Fate'):resolving?'Resolving spell':'Cast Spell';
+  const castArt=isFate?(fateCount?'castFate':'skipFate'):'cast';
   const focusKey = document.activeElement?.dataset.focus;
   app.innerHTML = `<div class="game-shell">
     <header class="topbar"><span class="wordmark">WIZZY <small>BATTLE SIMULATOR</small></span><span class="save-state">${storageAvailable ? '✦ DUEL SAVED' : 'SAVING UNAVAILABLE'}</span><button class="view-toggle" id="toggle-fit" aria-label="${fitScreen?'Switch to larger view':'Fit game to screen'}">${fitScreen?'Larger view ↗':'Fit screen ↙'}</button><button class="settings-button" id="open-settings" aria-label="Open settings and game rules">⚙</button></header>
@@ -119,8 +121,8 @@ function render() {
     <div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${displayPlayer.discard.length} <small>${displayPlayer.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${displayPlayer.deck.length} <small>${displayPlayer.deck.length===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
     <div class="turn-controls"><div class="phase-hint" role="status">${hintView(active,selected)}</div>
     <div class="action-bar"><div class="round-plaque" aria-label="Round ${state.round}, ${active.name} wizard’s turn">${art('round','round-art')}<span class="round-cover"><strong>Round <span data-testid="round-number">${state.round}</span></strong><span>${finished?'Duel complete':`${active.name}’s Turn`}</span></span></div>
-    <button class="art-button cast-button" id="cast-spell" data-focus="cast" aria-label="${castLabel}" ${finished||resolving||(!isFate&&!canCastSelected(state))?'disabled':''}>${art(castArt,'button-art')}</button>
-    <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button" id="end-turn" data-focus="end" aria-label="${['end','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||['fate','rolling','resolving','refresh'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
+    <button class="art-button cast-button" id="cast-spell" data-focus="cast" aria-label="${castLabel}" ${finished||resolving||(isFate?(fateCount>0&&!canCastSelected(state)):!canCastSelected(state))?'disabled':''}>${art(castArt,'button-art')}</button>
+    <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh and pass, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button ${ending?'is-ending':''}" id="end-turn" data-focus="end" aria-label="${['end','refresh','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||['fate','rolling','resolving'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
     <details class="combat-log" ${logOpen?'open':''}><summary aria-label="View combat log">${art('combatLog','log-button')}<span class="log-count">${state.log.length}</span><span class="chevron" aria-hidden="true">⌄</span></summary><ol>${state.log.slice().reverse().map(entry=>`<li><span class="log-round">R${entry.round}</span><span>${escape(entry.message)}</span></li>`).join('')}</ol></details>
     <footer class="game-footer"><span>LOCAL DUEL · TWO WIZARDS, ONE SCREEN</span><span>FIRE · WATER · FATE</span></footer></div></div>`;
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
@@ -180,14 +182,16 @@ function showHandoff(playerIndex=state.activePlayer,kind='turn') {
   clearCombatTimers();
   const player=state.players[playerIndex];
   document.querySelector('#handoff-title').textContent=kind==='fate'?`${player.name} · defending Fate`:kind==='roll'?`${player.name} · roll the dice`:`${player.name}’s turn`;
-  document.querySelector('#handoff-description').textContent=kind==='fate'?'Pass the screen to the defender. Play any number of Misfortune or Twist slabs, then Skip Fate.':kind==='roll'?'Both Fate windows are complete. Return the screen to the caster to roll and resolve the spell.':`Round ${state.round}. Pass the screen to the ${player.name} wizard. Your hand is ready.`;
+  document.querySelector('#handoff-description').textContent=kind==='fate'?'Pass the screen to the defender. Select any Misfortune or Twist slabs, then Cast Fate to play the batch and continue, or Skip Fate.':kind==='roll'?'Both Fate windows are complete. Return the screen to the caster to roll and resolve the spell.':`Round ${state.round}. Pass the screen to the ${player.name} wizard. Your hand is ready.`;
   document.querySelector('#handoff-portrait').innerHTML=art(player.id==='fire'?'fireMage':'waterMage');
   document.querySelector('#begin-turn').innerHTML=`${kind==='fate'?'Choose Fate':kind==='roll'?'Roll dice':'Begin turn'} <span aria-hidden="true">→</span>`;
   handoff.showModal();
 }
 function finishFateWindow() {
+  advanceFateWindow(skipFate(state));
+}
+function advanceFateWindow(next) {
   const previous=state;
-  const next=skipFate(state);
   if(next===state)return;
   update(next);
   if(state.phase==='fate'&&state.fatePlayer!==previous.fatePlayer)showHandoff(state.fatePlayer,'fate');
@@ -199,7 +203,7 @@ function commitSpell(emberSpend=0) {
 }
 function requestCast() {
   if(state.phase==='fate'){
-    if(state.selectedCardId){update(castFateSelected(state));app.querySelector('#cast-spell')?.focus({preventScroll:true});}
+    if(state.selectedFateCardIds.length)advanceFateWindow(castFateSelected(state));
     else finishFateWindow();
     return;
   }
@@ -274,10 +278,13 @@ app.addEventListener('click',event=>{
       else if(state.phase==='end')app.querySelector('#hand-refresh')?.focus({preventScroll:true});
       break;
     }
-    case 'hand-refresh':
+    case 'hand-refresh':{
+      const previous=state.activePlayer;
       update(state.phase==='refresh'?confirmRefresh(state):beginRefresh(state));
-      app.querySelector(state.phase==='refresh'?'[data-card-id]':'#end-turn')?.focus({preventScroll:true});
+      if(state.activePlayer!==previous)showHandoff();
+      else app.querySelector(state.phase==='refresh'?'[data-card-id]':'#end-turn')?.focus({preventScroll:true});
       break;
+    }
     case 'cancel-refresh':update(cancelRefresh(state));break;
   }
 });

@@ -151,6 +151,8 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .round-cover { position: absolute; inset: 17% 12%; display: flex; justify-content: center; flex-direction: column; gap: 2px; align-items: center; background: linear-gradient(#6525a6,#452080); color: #fff2fb; font-weight: 900; font-size: 30px; text-shadow: 3px 3px #150a28,-1px -1px #150a28; }
 .round-cover strong { font-size: 36px; }
 .end-controls { position: relative; z-index: 4; }
+.end-button.is-ending,.refresh-button.is-confirming { isolation: isolate; }
+.end-button.is-ending::after,.refresh-button.is-confirming::after { content: ''; position: absolute; inset: 13% 6%; background: linear-gradient(135deg,#ff3434,#c60016); mix-blend-mode: color; clip-path: polygon(4% 0,96% 0,100% 18%,100% 82%,96% 100%,4% 100%,0 82%,0 18%); pointer-events: none; }
 .refresh-button { position: absolute; inset: auto 0 0; aspect-ratio: 2009/624; transform: translateY(0) scale(.96); opacity: 0; visibility: hidden; pointer-events: none; z-index: 1; transition: transform .35s cubic-bezier(.2,.8,.2,1),opacity .25s,visibility .25s; }
 .refresh-button.is-revealed { transform: translateY(calc(-100% - 8px)) scale(.96); opacity: 1; visibility: visible; pointer-events: auto; }
 .refresh-button.is-revealed:hover { transform: translateY(calc(-100% - 10px)) scale(.98); }
