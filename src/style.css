@@ -70,13 +70,25 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .resource.element i { color: #ffc368; }.water .resource.element i { color: #9cecff; }
 .resource.loaded i { color: #ded1ff; }
 .resource strong { margin-left: auto; font-size: 24px; color: #fff5d7; }
+.resource .loaded-value { display: flex; align-items: baseline; gap: 5px; }
+.loaded-value small { font-size: 14px; color: #bdb0e2; white-space: nowrap; }
 .dice-area { position: relative; width: 300px; height: 169.58px; margin-top: 105px; }
 .dice-frame { width: 100%; height: 100%; position: absolute; inset: 0; }
-.dice-pair { position: absolute; width: 64%; height: 51%; top: 23%; left: 18%; }
+.dice-pair { position: absolute; width: 60%; height: 48%; top: 22%; left: 20%; display: flex; justify-content: space-between; }
+.die-face { position: relative; flex: 0 0 45%; height: 100%; }
+.die-border { position: absolute; inset: 0; width: 100%; height: 100%; }
+.die-surface { position: absolute; inset: 14%; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); background: linear-gradient(135deg,#fff,#fffaff); }
+.die-pip { display: block; width: 62%; aspect-ratio: 1; background: #100e19; opacity: 0; align-self: center; justify-self: center; border-radius: 1px; }
+.die-pip.visible { opacity: 1; }
+.unrolled-mark { grid-column: 1/-1; grid-row: 1/-1; align-self: center; justify-self: center; font: bold 32px monospace; color: #a79bbd; }
+.roll-total { position: absolute; top: -26px; left: 0; right: 0; text-align: center; font-size: 24px; line-height: 26px; color: #fff1aa; text-shadow: 2px 2px #101325; }
+.roll-breakdown { position: absolute; left: 10%; right: 10%; bottom: 13%; text-align: center; font-size: 11.5px; line-height: 1.15; color: #ddd5f2; }
+.dice-rolling .die-face { animation: die-tumble .12s ease-in-out infinite alternate; }
+.dice-rolling .die-face:nth-child(2) { animation-direction: alternate-reverse; }
 .dice-caption { position: absolute; bottom: -21px; width: 100%; text-align: center; color: #e0d7a8; font: 11px monospace; letter-spacing: 1px; text-shadow: 2px 2px #0b1020; }
 .spell-resolving .dice-pair { animation: resolve-pulse .6s ease-in-out infinite alternate; }
 
-/* Four opening cards across; the fifth occupies the middle of the lower row.
+/* Three slabs across; two occupy a centered lower row at the five-slab limit.
    The lower sides remain free for the tower/discard and the refresh drawer. */
 .hand-chamber { position: absolute; left: 16px; top: 775px; width: 992px; height: 560px; }
 .hand-frame-shell { position: absolute; inset: 24px 0 0; pointer-events: none; }
@@ -92,22 +104,23 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .hand-content { position: absolute; inset: 0; }
 .hand-meta { position: absolute; top: 52px; left: 36px; right: 36px; display: flex; justify-content: space-between; gap: 10px; color: #c7b5a3; font: 11px monospace; letter-spacing: 1px; }
 .hand-meta>span:last-child { color: #f3d391; white-space: nowrap; }
-.cards { position: absolute; left: 126px; right: 126px; top: 75px; display: grid; grid-template-columns: repeat(4,170px); grid-auto-rows: 224.39px; gap: 15px 20px; justify-content: center; align-items: start; }
-.spell-card { position: relative; padding: 0; border: 0; border-radius: 7%; width: 170px; height: 224.39px; background: transparent; isolation: isolate; transition: transform .14s,filter .14s,box-shadow .14s; box-shadow: 0 4px 8px #080b1f66; }
-.spell-card:nth-child(5) { grid-column: 2 / span 2; justify-self: center; }
-.cards-1 { grid-template-columns: 170px; }
-.cards-2 { grid-template-columns: repeat(2,170px); }
-.cards-3 { grid-template-columns: repeat(3,170px); }
+.cards { position: absolute; left: 0; right: 0; top: 75px; display: grid; grid-template-columns: repeat(6,75px); grid-auto-rows: 224.39px; gap: 15px 20px; justify-content: center; align-items: start; }
+.spell-card { position: relative; grid-column: span 2; padding: 0; border: 0; border-radius: 7%; width: 170px; height: 224.39px; background: transparent; isolation: isolate; transition: transform .14s,filter .14s,box-shadow .14s; box-shadow: 0 4px 8px #080b1f66; }
+.cards-5 .spell-card:nth-child(4) { grid-column: 2 / span 2; }
+.cards-5 .spell-card:nth-child(5) { grid-column: 4 / span 2; }
+.cards-4 .spell-card:nth-child(4),.cards-1 .spell-card { grid-column: 3 / span 2; }
+.cards-2 .spell-card:first-child { grid-column: 2 / span 2; }
+.cards-2 .spell-card:last-child { grid-column: 4 / span 2; }
 .card-image { width: 100%; height: 100%; }
 .spell-card:hover:not(:disabled):not(.discard-selected) { transform: translateY(-5px); filter: brightness(1.1); }
 .spell-card.selected { transform: translateY(-5px); box-shadow: 0 0 0 3px #fff6b4, 0 0 0 6px #ffcc3e, 0 0 20px #ffd94c66; }
 .card-name { position: absolute; top: 6.5%; left: 10%; right: 10%; font: 900 var(--name-size,21px) 'Trebuchet MS', sans-serif; color: white; text-shadow: 2px 2px #120c1e, -1px -1px #120c1e, 1px -1px #120c1e, -1px 1px #120c1e; line-height: 1.1; }
-.slab-type { position: absolute; top: 18%; left: 50%; transform: translateX(-50%); padding: 2px 6px; border: 1px solid #fff4cd6e; border-radius: 3px; background: #151629c9; color: #fff3ce; font: bold 11px monospace; text-transform: uppercase; letter-spacing: .6px; }
 .card-copy { position: absolute; top: 62%; bottom: 9%; left: 12%; right: 12%; display: flex; flex-direction: column; justify-content: center; gap: 4px; color: #291d19; line-height: 1.1; text-shadow: none; }
 .card-copy .mana-cost { font-size: 18px; flex-shrink: 0; }
 .card-copy .card-effect { font-size: 12px; line-height: 1.1; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .card-badge { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); background: #ffe18a; border: 2px solid #fff4b4; color: #38220b; padding: 3px 6px; white-space: nowrap; font: bold 11px monospace; letter-spacing: .5px; box-shadow: 0 2px 2px #090c20; border-radius: 2px; z-index: 2; }
 .spell-card.fate-muted { filter: grayscale(1) brightness(.62); }
+.spell-card.fate-unavailable { opacity: .55; }
 .spell-card.pending-card { box-shadow: 0 0 0 3px #c4b886; }
 .spell-card.discard-selected { filter: grayscale(1) brightness(.55); box-shadow: 0 0 0 3px #d4c7dd; }
 .discard-badge { background: #d9d3e2; border-color: #f1eafa; }.pending-badge { background: #cec5df; }
@@ -125,7 +138,8 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 
 /* Controls retain their reference positions; hints use the gap above the dice. */
 .turn-controls { position: absolute; inset: 0; pointer-events: none; }
-.phase-hint { position: absolute; left: 355px; top: 490px; width: 314px; min-height: 74px; display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 4px; padding: 3px 8px; color: #f4e8c3; font-size: 18px; line-height: 1.2; text-align: center; text-shadow: 2px 2px #101426; background: #10162bd4; border: 1px solid #7a6746; border-radius: 6px; pointer-events: auto; }
+.phase-hint { position: absolute; left: 355px; top: 480px; width: 314px; min-height: 64px; display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 4px; padding: 3px 8px; color: #f4e8c3; font-size: 16px; line-height: 1.15; text-align: center; text-shadow: 2px 2px #101426; background: #10162bd4; border: 1px solid #7a6746; border-radius: 6px; pointer-events: auto; }
+.hint-actions { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .action-bar { position: absolute; left: 18px; right: 18px; top: 1358px; display: grid; grid-template-columns: 300px 340px 300px; gap: 24px; align-items: center; pointer-events: auto; }
 .art-button { display: block; position: relative; width: 100%; padding: 0; border: 0; background: transparent; filter: drop-shadow(0 4px 2px #11142688); transition: transform .14s,filter .14s; }
 .button-art { width: 100%; height: 100%; }
@@ -176,7 +190,6 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .large-slab { position: relative; width: min(336px,100%); aspect-ratio: 947/1250; margin: 0 auto; }
 .large-slab .card-image { position: absolute; inset: 0; }
 .large-slab .card-name { font-size: clamp(22px,6vw,32px); }
-.large-slab .slab-type { font-size: 12px; padding: 4px 10px; }
 .large-slab .card-copy { top: 62%; bottom: 8%; gap: 5px; }
 .large-slab .mana-cost { font-size: 20px; color: #291d19; }
 .large-slab .card-effect { display: block; overflow: visible; font-size: clamp(10px,2.8vw,13px); line-height: 1.15; -webkit-line-clamp: unset; }
@@ -196,6 +209,10 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .deck-mana { color: #85d7ed; font-size: 15px; text-align: center; }
 .deck-mana small { display: block; color: #a7a1b2; font-size: 8px; margin-top: 1px; }
 .deck-quantity { color: #f5d791; font-size: 18px; text-align: right; }
+.ember-input { display: flex; align-items: center; justify-content: center; gap: 14px; color: #ffe2a0; font-size: 15px; font-weight: bold; margin-top: 20px; }
+.ember-input input { width: 100px; padding: 9px; border: 1px solid #b98847; background: #11192c; color: #fff1be; border-radius: 4px; font: bold 20px monospace; }
+.game-dialog .input-error { min-height: 18px; font-size: 12px; color: #ffb99e; }
+@keyframes die-tumble { from{transform:translateY(-2px) rotate(-4deg)}to{transform:translateY(2px) rotate(4deg)} }
 @keyframes resolve-pulse { from{filter:brightness(1)}to{filter:brightness(1.35);transform:scale(1.03)} }
 @keyframes refresh-reveal { from{transform:translateY(0) scale(.96);opacity:0}to{transform:translateY(calc(-100% - 8px)) scale(.96);opacity:1} }
 .phase-end .refresh-button.is-revealed { animation: refresh-reveal .35s cubic-bezier(.2,.8,.2,1) both; }
