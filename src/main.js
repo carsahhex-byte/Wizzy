@@ -14,6 +14,7 @@ let logOpen = false;
 let fitScreen = true;
 let resolutionTimer;
 let diceAnimationTimer;
+let emberChoice = null;
 let pendingBattleDecks = null;
 let shouldEnterAfterRestart = false;
 let state = loadGame();
@@ -208,6 +209,7 @@ function render() {
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   scheduleCombat();
   fitBoard();
+  syncEmberChoice();
   renderOpeningRoll();
 }
 // The forest and every game element share one undistorted 1024 × 1536 canvas.
@@ -220,6 +222,7 @@ function fitBoard() {
   app.style.width=`${1024*scale}px`;
   app.style.height=`${1536*scale}px`;
   app.style.marginTop=fitScreen?`${Math.max(0,(height-1536*scale)/2)}px`:'0px';
+  positionEmberChoice();
 }
 window.addEventListener('resize',fitBoard);
 function update(next,message) {
@@ -284,6 +287,44 @@ function commitSpell(emberSpend=0) {
   update(castSelected(state,{emberSpend}));
   app.querySelector(state.phase==='fate'?'#cast-spell':'.spell-card:not(:disabled)')?.focus({preventScroll:true});
 }
+function closeEmberChoice(restoreFocus=false) {
+  const choice=emberChoice;
+  emberChoice=null;
+  const dialog=document.querySelector('#ember-choice');
+  if(dialog.open)dialog.close();
+  if(restoreFocus&&choice)app.querySelector(`[data-card-id="${CSS.escape(choice.cardId)}"]`)?.focus({preventScroll:true});
+}
+function positionEmberChoice() {
+  const dialog=document.querySelector('#ember-choice');
+  if(!dialog?.open||!emberChoice)return;
+  const anchor=app.querySelector(`[data-card-id="${CSS.escape(emberChoice.cardId)}"]`);
+  if(!anchor)return;
+  const card=anchor.getBoundingClientRect();
+  const view=window.visualViewport;
+  const minLeft=(view?.offsetLeft||0)+8;
+  const minTop=(view?.offsetTop||0)+8;
+  const width=view?.width||innerWidth;
+  const height=view?.height||innerHeight;
+  const popup=dialog.getBoundingClientRect();
+  const left=Math.max(minLeft,Math.min(card.left+card.width/2-popup.width/2,minLeft+width-popup.width-16));
+  const top=Math.max(minTop,Math.min(card.top-popup.height-12,minTop+height-popup.height-16));
+  dialog.style.left=`${left}px`;
+  dialog.style.top=`${top}px`;
+  dialog.style.setProperty('--ember-arrow-left',`${Math.max(18,Math.min(popup.width-26,card.left+card.width/2-left-6))}px`);
+}
+function syncEmberChoice() {
+  if(!emberChoice)return;
+  const player=state.players[state.activePlayer];
+  const card=player.hand.find(entry=>entry.id===emberChoice.cardId);
+  if(battleView.hidden||state.phase!=='main'||!canActOnline()||!canCastSelected(state)
+    ||state.selectedCardId!==emberChoice.cardId||state.activePlayer!==emberChoice.playerIndex
+    ||state.round!==emberChoice.round||!card){closeEmberChoice();return;}
+  const range=getEmberSpendRange(card.spellId,player.element);
+  if(range.mandatory||range.max===0){closeEmberChoice();return;}
+  document.querySelector('#ember-description').textContent=`${player.element} available · choose 0–${range.max}.`;
+  document.querySelector('#ember-amount').max=String(range.max);
+  positionEmberChoice();
+}
 function requestCast() {
   if(!canActOnline())return;
   if(state.phase==='fate'){
@@ -299,13 +340,20 @@ function requestCast() {
   const card=player.hand.find(card=>card.id===state.selectedCardId);
   const range=getEmberSpendRange(card.spellId,player.element);
   if(!range.mandatory&&range.max>0){
-    document.querySelector('#ember-title').textContent=`${card.name}: spend Embers?`;
-    document.querySelector('#ember-description').textContent=`Choose 0–${range.max} Embers before casting. The spell costs ${card.manaCost} mana. ${card.effectText}`;
+    const dialog=document.querySelector('#ember-choice');
+    if(dialog.open){document.querySelector('#ember-amount').focus({preventScroll:true});return;}
+    emberChoice={cardId:card.id,playerIndex:state.activePlayer,round:state.round};
+    document.querySelector('#ember-title').textContent=`${card.name} · Embers`;
+    document.querySelector('#ember-description').textContent=`${player.element} available · choose 0–${range.max}.`;
     const input=document.querySelector('#ember-amount');
     input.min=String(range.min);input.max=String(range.max);input.value='0';
     document.querySelector('#ember-error').textContent='';
-    document.querySelector('#ember-choice').showModal();
-    input.focus();
+    dialog.classList.add('ember-popover');
+    dialog.setAttribute('aria-modal','false');
+    dialog.setAttribute('aria-describedby','ember-description');
+    dialog.show();
+    positionEmberChoice();
+    input.focus({preventScroll:true});
   }else commitSpell(range.mandatory?range.max:0);
 }
 function showSlab(spellId) {
@@ -419,15 +467,33 @@ function restartGame() {
 document.querySelector('#confirm-restart').addEventListener('click',restartGame);
 document.querySelector('#victory-restart').addEventListener('click',restartGame);
 document.querySelector('#confirm-embers').addEventListener('click',()=>{
+  if(!emberChoice)return;
+  syncEmberChoice();
+  if(!emberChoice)return;
   const input=document.querySelector('#ember-amount');
   const amount=Number(input.value);
   if(!input.reportValidity()||!Number.isSafeInteger(amount)||amount<Number(input.min)||amount>Number(input.max)){
     document.querySelector('#ember-error').textContent=`Choose a whole number from ${input.min} to ${input.max}.`;
+    positionEmberChoice();
     return;
   }
-  document.querySelector('#ember-choice').close();
+  closeEmberChoice();
   commitSpell(amount);
 });
+document.querySelector('#ember-choice').addEventListener('close',()=>{emberChoice=null;});
+document.querySelector('#ember-choice').addEventListener('keydown',event=>{
+  if(event.key==='Escape'){event.preventDefault();closeEmberChoice(true);}
+  if(event.key==='Enter'&&event.target.id==='ember-amount'){
+    event.preventDefault();document.querySelector('#confirm-embers').click();
+  }
+});
+document.querySelector('[data-close="ember-choice"]').addEventListener('click',()=>closeEmberChoice(true));
+document.addEventListener('pointerdown',event=>{
+  if(emberChoice&&!event.target.closest('#ember-choice,#cast-spell'))closeEmberChoice();
+});
+window.addEventListener('scroll',positionEmberChoice,true);
+window.visualViewport?.addEventListener('resize',positionEmberChoice);
+window.visualViewport?.addEventListener('scroll',positionEmberChoice);
 const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspectSpell:showSlab,onMultiplayer:()=>openOnlineLobby(),onAccount:()=>openAccountScreen(),onSaveLocal:data=>{
   if(!accounts?.hasSession())return;
   const username=accounts.getSession()?.account?.username;

@@ -73,9 +73,11 @@ After replacing source PNGs, regenerate their optimized copies with `npm run opt
 
 The battle arena uses the forest's original **1024 × 1536 (2:3 portrait)** canvas. One uniform scale fits it to the available screen; the forest is never stretched or cropped to widen the board. On Mac screens, its top and bottom meet the viewport edges, with side gutters. Narrower screens fit the width and center the board vertically. The other screens use a mobile layout that adapts to the viewport, with independently scrolling deck panels.
 
+The Seattle map uses one square expanded illustration with ocean and islands around the city. **Fit / 1×** fills the map panel with that artwork; panning and zooming move the ocean, city, and markers together. Controls have their own rows outside the map. The page backdrop outside the mobile app remains separate from the map panel.
+
 Wizards stand on the grass around logical y450. Stat panels begin at y480, with the hand and turn controls on the stone-and-dirt area below. The hand has three slabs in the top row and up to two centered in the bottom row, with the discard and tower signs at its sides. The refresh drawer keeps its existing behavior, and the combat log opens over the board without changing the forest dimensions.
 
-Use **Larger view** for a larger, scrollable portrait board and **Fit screen** to return. Dialogs remain at normal browser size for readability.
+Use **Larger view** for a larger, scrollable portrait board and **Fit screen** to return. Optional Ember spending opens a compact popup above the selected slab only when Embers are available; the battle stays visible. Spells without an Ember choice cast directly, and mandatory all-Ember spending remains automatic.
 
 ## Implemented rules
 

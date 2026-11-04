@@ -240,6 +240,18 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .ember-input { display: flex; align-items: center; justify-content: center; gap: 14px; color: #ffe2a0; font-size: 15px; font-weight: bold; margin-top: 20px; }
 .ember-input input { width: 100px; padding: 9px; border: 1px solid #b98847; background: #11192c; color: #fff1be; border-radius: 4px; font: bold 20px monospace; }
 .game-dialog .input-error { min-height: 18px; font-size: 12px; color: #ffb99e; }
+/* A spending choice stays beside its slab, leaving the battle visible. */
+#ember-choice.ember-popover { position: fixed; inset: auto; z-index: 30; margin: 0; width: min(260px,calc(100vw - 16px)); max-width: none; max-height: calc(100dvh - 16px); overflow: visible; padding: 12px; border: 2px solid #f0c56b; border-radius: 3px; background: #241e35; box-shadow: 0 0 0 2px #794423,0 6px 18px #0009; text-align: left; }
+#ember-choice.ember-popover::after { content: ''; position: absolute; bottom: -8px; left: var(--ember-arrow-left,calc(50% - 6px)); width: 12px; height: 12px; border-right: 2px solid #f0c56b; border-bottom: 2px solid #f0c56b; background: #241e35; transform: rotate(45deg); pointer-events: none; }
+#ember-choice.ember-popover .eyebrow { display: none; }
+#ember-choice.ember-popover h2 { margin: 0 0 5px; font-size: 15px; line-height: 1.25; }
+#ember-choice.ember-popover p { margin: 0 0 8px; font-size: 12px; line-height: 1.3; }
+#ember-choice.ember-popover .ember-input { justify-content: space-between; gap: 8px; margin: 0; font-size: 12px; }
+#ember-choice.ember-popover input { width: 62px; min-height: 36px; padding: 5px; font-size: 17px; }
+#ember-choice.ember-popover .input-error { min-height: 0; margin: 0; font-size: 11px; }
+#ember-choice.ember-popover .input-error:not(:empty) { margin-top: 7px; }
+#ember-choice.ember-popover .dialog-actions { gap: 8px; margin-top: 10px; }
+#ember-choice.ember-popover button { min-height: 36px; padding: 7px 9px; font-size: 12px; }
 @keyframes die-tumble { from{transform:translateY(-2px) rotate(-4deg)}to{transform:translateY(2px) rotate(4deg)} }
 @keyframes resolve-pulse { from{filter:brightness(1)}to{filter:brightness(1.35);transform:scale(1.03)} }
 @keyframes refresh-reveal { from{transform:translateY(0) scale(.96);opacity:0}to{transform:translateY(calc(-100% - 8px)) scale(.96);opacity:1} }
