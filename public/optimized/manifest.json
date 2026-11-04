@@ -39,6 +39,16 @@
     "width": 1254,
     "height": 1254
   },
+  "storybookIcon": {
+    "file": "storybookIcon-3faa800db3a0.webp",
+    "source": "Wizzy Storybook Icon.png",
+    "sourceSha256": "649157e98eb95c1e510e82c936643400bd4fd9566a64385cbd7b15f7ca9cf54e",
+    "optimizedSha256": "3faa800db3a0408489419b92801fedccead78769c1ec3e8c680c55098ff6cc14",
+    "bytes": 688100,
+    "sourceBytes": 1011194,
+    "width": 1312,
+    "height": 1199
+  },
   "forest": {
     "file": "forest-ee3f83c2132f.webp",
     "source": "Forest Background.png",

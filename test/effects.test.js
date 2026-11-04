@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applySpellEffect, getEmberSpendRange, SPELL_RULES, MAX_FLOW } from '../src/effects.js';
+import { applySpellEffect, getEmberSpendRange, SPELL_RULES, MAX_FLOW, MAX_EMBERS } from '../src/effects.js';
 import { SPELL_CATALOG } from '../src/spells.js';
 
 const player = (id, overrides = {}) => ({
@@ -135,14 +135,38 @@ test('legacy excessive Flow cannot inflate Water damage or survive resolution', 
   assert.equal(result.caster.element, 5);
 });
 
-test('Water casting Neutral spells does not gain Flow, and Fire Embers have no Flow cap', () => {
+test('Water casting Neutral spells does not gain Flow, and Fire Embers stay capped', () => {
   for (const spellId of ['NEU-001', 'NEU-002', 'NEU-003', 'NEU-004']) {
     const state = { players: [player('fire'), player('water', { element: 4 })] };
     const events = applySpellEffect(state, { casterIndex: 1, spellId });
     assert.equal(state.players[1].element, 4, spellId);
     assert.ok(events.every(event => event.resource !== 'element'));
   }
-  assert.equal(resolve('FIR-002', { caster: { element: 5 } }).caster.element, 7);
+  assert.equal(resolve('FIR-002', { caster: { element: 5 } }).caster.element, 5);
+});
+
+test('all printed Fire Ember gains stop at five and report only the amount actually gained', () => {
+  assert.equal(MAX_EMBERS, 5);
+  for (const spellId of ['FIR-001', 'FIR-002', 'FIR-003', 'FIR-004', 'FIR-005', 'FIR-006', 'FIR-007', 'FIR-010', 'FIR-011']) {
+    for (const initial of [4, 5]) {
+      const result = resolve(spellId, { roll: 12, caster: { element: initial } });
+      assert.equal(result.caster.element, 5, `${spellId} from ${initial}`);
+      const gain = result.events.find(event => event.resource === 'element');
+      assert.equal(gain.amount, 5 - initial, spellId);
+      assert.match(gain.message, /maximum 5/);
+    }
+  }
+  const burn = resolve('FIR-006', { roll: 12, caster: { element: 4, shield: 3 } });
+  assert.deepEqual([burn.caster.hp, burn.caster.shield, burn.caster.element], [26, 0, 5]);
+});
+
+test('Fire spells and Neutral slabs have no automatic Ember gain', () => {
+  for (const spellId of ['FIR-008', 'FIR-009', 'FIR-012', 'NEU-001', 'NEU-002', 'NEU-003', 'NEU-004']) {
+    const result = resolve(spellId, { roll: 12, caster: { element: 4 } });
+    assert.equal(result.caster.element, 4, spellId);
+    assert.ok(result.events.every(event => event.resource !== 'element'), spellId);
+  }
+  assert.equal(resolve('FIR-002', { caster: { element: 9 } }).caster.element, 5, 'defensive clamping cannot leave legacy excess Embers behind');
 });
 
 test('incoming damage consumes Shield before HP and reports both amounts', () => {

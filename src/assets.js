@@ -6,6 +6,7 @@ export const ASSET_FILES = Object.freeze({
   seattleMap: 'Wizzy Seattle Map.png',
   iconAtlas: 'Wizzy Interface Icons.png',
   appIcon: 'Wizzy App Icon.png',
+  storybookIcon: 'Wizzy Storybook Icon.png',
   forest: 'Forest Background.png',
   fireFrame: 'Fire Stat Frame.png',
   waterFrame: 'Water Frame.png',
@@ -28,14 +29,27 @@ export const ASSET_FILES = Object.freeze({
   stoneSign: 'Mossy Pixel Stone Sign.png',
 });
 
+// Keep embedded images out of CSS custom-property size limits in standalone
+// editions. Object URLs retain the original bytes and are shared by every view.
+function embeddedAssetUrl(value) {
+  if (typeof document === 'undefined' || !value?.startsWith('data:image/')
+    || typeof URL.createObjectURL !== 'function') return value;
+  const match = /^data:([^;,]+);base64,([\s\S]+)$/.exec(value);
+  if (!match) return value;
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return URL.createObjectURL(new Blob([bytes], { type: match[1] }));
+}
+
 // Resolve from the document so both a domain root and a project subpath work.
-// Standalone builds provide these same originals as data URLs once per asset.
+// Standalone builds provide these same originals once per asset.
 export const ASSETS = Object.freeze(Object.fromEntries(
   Object.entries(ASSET_FILES).map(([key, filename]) => {
     const assetPath = OPTIMIZED_ART[key]
       ? `./public/optimized/${OPTIMIZED_ART[key].file}`
       : `./public/graphics/${encodeURIComponent(filename)}`;
-    return [key, globalThis.WIZZY_ASSET_URLS?.[key] || (
+    return [key, embeddedAssetUrl(globalThis.WIZZY_ASSET_URLS?.[key]) || (
       typeof document === 'undefined'
         ? assetPath
         : new URL(assetPath, document.baseURI).href

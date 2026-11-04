@@ -92,7 +92,7 @@ function previewPhases(base) {
 
 test('opening stats, four-card hands and exact 30-slab deck quantities match the PDF lists', () => {
   const state = createGame(7);
-  assert.deepEqual([state.round, state.activePlayer, state.phase, SAVE_VERSION, DECK_SIZE], [1, 0, 'main', 7, 30]);
+  assert.deepEqual([state.round, state.activePlayer, state.phase, SAVE_VERSION, DECK_SIZE], [1, 0, 'main', 8, 30]);
   assert.deepEqual([state.primaryUsed, state.selectedFateCardIds], [false, []]);
   const expectedCounts = {
     fire: { 'FIR-001': 1, 'FIR-002': 2, 'FIR-004': 2, 'FIR-005': 3, 'FIR-006': 3, 'FIR-007': 2, 'FIR-010': 2, 'FIR-011': 3, 'FIR-012': 3, 'FAT-001': 3, 'FAT-002': 2, 'FAT-003': 2, 'NEU-004': 1, 'NEU-003': 1 },
@@ -626,9 +626,11 @@ test('Water casting Neutral or defending with Fate does not gain Flow', () => {
   state = resolveSpell(rollDice(state, () => 0)); assert.equal(state.players[1].element, 3); assertGame(state);
 });
 
-test('current save validation caps Water Flow while leaving Fire Embers unbounded', () => {
-  const state = createGame(22); state.players[0].element = 99; state.players[1].element = 5;
+test('current save validation caps both Fire Embers and Water Flow at five', () => {
+  const state = createGame(22); state.players[0].element = 5; state.players[1].element = 5;
   assertGame(state);
+  state.players[0].element = 6; assert.equal(validateSavedGame(state), false);
+  state.players[0].element = 5;
   state.players[1].element = 6; assert.equal(validateSavedGame(state), false);
   state.players[1].element = -1; assert.equal(validateSavedGame(state), false);
 });
@@ -677,12 +679,12 @@ test('v5 Flow upgrade validates its primary allowance and selected Fate before m
   }
 });
 
-test('older v3 and v4 saves also cap Flow without reducing Fire Embers or other progress', () => {
+test('older v3 and v4 saves cap both elemental stores without changing HP or other progress', () => {
   const preview = previewSave(); preview.players[0].element = 11; preview.players[1].element = 8;
   const older = versionFourSave(createGame(25)); older.players[0].element = 12; older.players[1].element = 7;
   for (const source of [preview, older]) {
     const migrated = migrateSavedGame(source); assertGame(migrated);
-    assert.deepEqual(migrated.players.map((p) => p.element), [source.players[0].element, 5]);
+    assert.deepEqual(migrated.players.map((p) => p.element), [5, 5]);
     assert.deepEqual(migrated.players.map((p) => p.hp), source.players.map((p) => p.hp));
   }
 });
@@ -800,7 +802,7 @@ test('v6 starter duels migrate every phase without replacing cards, resources or
     for (const player of previous.players) delete player.deckDefinition;
     const original = structuredClone(previous);
     const upgraded = migrateSavedGame(previous); assertGame(upgraded);
-    assert.equal(upgraded.version, 7);
+    assert.equal(upgraded.version, SAVE_VERSION);
     for (const key of ['round', 'activePlayer', 'phase', 'status', 'winner', 'primaryUsed', 'selectedCardId', 'selectedFateCardIds', 'pendingCardId', 'pendingSpell', 'fatePlayer', 'lastRoll', 'refreshCardIds']) assert.deepEqual(upgraded[key], previous[key], key);
     upgraded.players.forEach((player, index) => {
       const { deckDefinition, ...progress } = player;
@@ -820,4 +822,64 @@ test('v6 starter duels migrate every phase without replacing cards, resources or
     for (const player of previous.players) delete player.deckDefinition;
     mutate(previous); assert.equal(migrateSavedGame(previous), null);
   }
+});
+
+test('Fire capped gains can be spent and earned again without repeating on reload or passing', () => {
+  const base = handOf(createGame(40), 0, ['FIR-002', 'FIR-002', 'FIR-012']);
+  base.players[0].element = 4; base.players[0].mana = 20;
+  let state = cast(base, 'FIR-002');
+  assert.equal(state.players[0].element, 5);
+  assert.match(state.log.findLast(entry => entry.type === 'resource').message, /gains 1 Ember \(maximum 5\)/);
+  const saved = JSON.parse(JSON.stringify(state)); assert.equal(migrateSavedGame(saved), saved);
+  state = pass(pass(saved)); assert.equal(state.players[0].element, 5);
+  state = cast(state, 'FIR-012');
+  assert.deepEqual([state.players[0].element, state.pendingSpell.emberSpent], [0, 5]);
+  state = finishRoll(state, [6, 6]);
+  assert.deepEqual([state.players[0].element, state.players[1].hp], [0, 2]);
+  state = pass(pass(state)); state = cast(state, 'FIR-002');
+  assert.equal(state.players[0].element, 2);
+  assertGame(state);
+});
+
+test('v7 custom duels retain every phase and committed resource while excess stored Embers cap at five', () => {
+  const base = handOf(createGame(41, { fire: customDeck('fire'), water: customDeck('water') }), 0, ['FIR-004', 'FIR-002', 'FAT-001', 'FAT-003']);
+  handOf(base, 1, ['FAT-002', 'FAT-003', 'WAT-001']);
+  Object.assign(base.players[0], { hp: 22, mana: 12, element: 4, loaded: 2, loadedPending: 3 });
+  base.players[1].element = 4;
+  const attacking = cast(base, 'FIR-004');
+  const selected = selectCard(selectCard(attacking, base.players[0].hand[2].id), base.players[0].hand[3].id);
+  const defending = castFateSelected(selected);
+  const defenderSelected = selectCard(defending, base.players[1].hand[0].id);
+  const rolling = castFateSelected(defenderSelected); const resolving = rollDice(rolling, () => .5); const resolved = resolveSpell(resolving);
+  const ended = endTurn(resolved); const refresh = toggleRefreshCard(beginRefresh(ended), resolved.players[0].hand[0].id);
+  for (const current of [base, attacking, selected, defending, defenderSelected, rolling, resolving, resolved, ended, refresh, confirmRefresh(refresh), applyDamage(resolved, 1, 100)]) {
+    const previous = structuredClone(current); previous.version = 7; previous.players[0].element = 9;
+    const original = structuredClone(previous); const upgraded = migrateSavedGame(previous); assertGame(upgraded);
+    assert.equal(upgraded.version, SAVE_VERSION);
+    const expected = structuredClone(previous); expected.players[0].element = 5;
+    for (const key of ['round', 'activePlayer', 'phase', 'status', 'winner', 'primaryUsed', 'selectedCardId', 'selectedFateCardIds', 'pendingCardId', 'pendingSpell', 'fatePlayer', 'lastRoll', 'refreshCardIds', 'players']) assert.deepEqual(upgraded[key], expected[key], key);
+    assert.deepEqual(upgraded.log.slice(0, previous.log.length), previous.log);
+    assert.match(upgraded.log.at(-1).message, /capped from 9 to 5/);
+    assert.deepEqual(previous, original);
+    assert.equal(migrateSavedGame(upgraded), upgraded);
+  }
+});
+
+test('v7 migration validates custom decks and preserves already-paid pre-cap Ember spells', () => {
+  const base = createGame(42, { fire: customDeck('fire') }); base.version = 7; base.players[0].element = 9;
+  for (const mutate of [
+    state => { delete state.players[0].deckDefinition; },
+    state => { state.players[0].deckDefinition.entries[0].quantity = 4; },
+    state => { state.players[0].deckDefinition.entries[0].spellId = 'WAT-001'; },
+    state => { state.players[0].element = -1; },
+  ]) { const previous = structuredClone(base); mutate(previous); assert.equal(migrateSavedGame(previous), null); }
+  // Old Sunsetter already paid its cost before the cap update. Do not charge it
+  // again, refund it, or silently discard a legitimate pending spell on reload.
+  const before = handOf(createGame(43), 0, ['FIR-012']); before.players[0].mana = 10; before.players[0].element = 9;
+  const pending = cast(before, 'FIR-012'); pending.version = 7;
+  const upgraded = migrateSavedGame(pending); assertGame(upgraded);
+  assert.deepEqual(upgraded.pendingSpell, pending.pendingSpell);
+  assert.equal(upgraded.pendingSpell.emberSpent, 9);
+  assert.equal(upgraded.players[0].element, 0);
+  assert.equal(finishRoll(upgraded).players[1].hp, 0);
 });
