@@ -36,6 +36,8 @@ GitHub displays the live site address on that page. The anticipated project URL 
 
 Later `npm run deploy:pages` uploads update the same site. No extra hosting account, image service, custom domain, or application API key is needed for this static game. GitHub account/plan eligibility for Pages is determined by GitHub's settings page.
 
+Hosted CSS and every JavaScript module use filenames hashed from their final content, including rewritten dependency imports. This prevents a newly loaded page from mixing a new release with old cached game modules. `build-info.json`, the `wizzy-build` HTML metadata, and the build number in game Settings identify the exact release. If a page is still cached after deployment, opening the site with `?v=<build-id>` requests a fresh HTML URL without changing saved duels.
+
 For a no-install version, build the project and open **`dist/wizzy.html`** directly in a browser. This approximately **25 MB** single-file version includes all scripts, styles, and the supplied artwork. Browser saves are separate for each hosted URL or downloaded copy, and file-based storage support depends on the browser.
 
 ## Artwork and layout

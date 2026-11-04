@@ -33,7 +33,35 @@ if (webOnly) {
 await writeFile('dist/.nojekyll', '');
 
 if (webOnly) {
-  console.log('Built hosted game to dist/ with separate assets and project-subpath support.');
+  // Hash every module after rewriting its dependency paths. Hashing only the
+  // entry point would still let a browser reuse stale imported modules.
+  const emitted = new Map();
+  for (const filename of ['optimized-art.js', 'game.js', 'assets.js', 'main.js']) {
+    const original = await readFile(`src/${filename}`, 'utf8');
+    const code = original.replace(/(from\s+)(['"])(\.\/[^'"]+)\2/g, (match, prefix, quote, specifier) => {
+      const dependency = emitted.get(specifier.slice(2));
+      if (!dependency) throw new Error(`Emit dependency ${specifier} before ${filename}`);
+      return `${prefix}${quote}./${dependency}${quote}`;
+    });
+    const hash = createHash('sha256').update(code).digest('hex').slice(0, 12);
+    const outputName = filename.replace(/\.js$/, `.${hash}.js`);
+    await writeFile(`dist/src/${outputName}`, code);
+    emitted.set(filename, outputName);
+  }
+  const css = await readFile('src/style.css', 'utf8');
+  const cssHash = createHash('sha256').update(css).digest('hex').slice(0, 12);
+  const stylesheet = `./src/style.${cssHash}.css`;
+  const entry = `./src/${emitted.get('main.js')}`;
+  await writeFile(`dist/src/style.${cssHash}.css`, css);
+  let html = await readFile('index.html', 'utf8');
+  const id = createHash('sha256').update(html).update(entry).update(stylesheet).digest('hex').slice(0, 12);
+  html = html.replace('href="./src/style.css"', `href="${stylesheet}"`)
+    .replace('src="./src/main.js"', `src="${entry}"`)
+    .replace('name="wizzy-build" content="development"', `name="wizzy-build" content="${id}"`)
+    .replace('Development · portrait layout', `Build ${id} · portrait layout`);
+  await writeFile('dist/index.html', html);
+  await writeFile('dist/build-info.json', JSON.stringify({ id, layout: 'portrait-1024x1536', entry, stylesheet }, null, 2) + '\n');
+  console.log(`Built hosted game ${id} with content-hashed modules, styles, and artwork.`);
   process.exit(0);
 }
 

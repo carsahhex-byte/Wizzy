@@ -163,6 +163,7 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .rules-list { padding-left: 18px; color: #d6ccd9; font-size: 12px; line-height: 1.65; }.rules-list li { padding: 5px 0 5px 4px; }
 .prototype-note { background: #4b3b283f; border: 1px solid #8d6f3c; padding: 12px; font-size: 12px; line-height: 1.7; border-radius: 3px; color: #e4d3ba; }.prototype-note strong { display: block; }
 .game-dialog .small-copy { font-size: 11px; color: #afa4bb; line-height: 1.8; }.secondary-button { background: #2f2a45; border: 1px solid #b39456; padding: 11px 18px; font-weight: bold; border-radius: 3px; font-size: 12px; }.secondary-button:hover { background: #473653; }.dialog-actions { display: flex; gap: 12px; margin-top: 22px; }.dialog-actions button { flex: 1; }
+.game-dialog .build-version { color: #c8ac70; font: 11px monospace; margin: 18px 0; }
 @keyframes resolve-pulse { from{filter:brightness(1)}to{filter:brightness(1.35);transform:scale(1.03)} }
 @keyframes refresh-reveal { from{transform:translateY(0) scale(.96);opacity:0}to{transform:translateY(calc(-100% - 8px)) scale(.96);opacity:1} }
 .phase-end .refresh-button.is-revealed { animation: refresh-reveal .35s cubic-bezier(.2,.8,.2,1) both; }
