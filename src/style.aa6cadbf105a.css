@@ -24,6 +24,13 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .battle-navigation { min-height: 48px; padding: max(6px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left)); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #101329; border-bottom: 2px solid #4c4274; }
 .battle-navigation button { min-height: 36px; padding: 5px 12px; background: #26224a; border: 2px solid #a790d3; box-shadow: inset 0 -3px #17132e; font-weight: 800; }
 .battle-navigation span { color: #b7adcc; font: 10px monospace; text-align: center; }
+.battle-session { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.battle-session small { max-width: 100%; color: #a8d9d5; font: 9px/1.3 monospace; overflow-wrap: anywhere; }
+.battle-mode-option { display: flex; flex-direction: column; gap: 7px; width: 100%; min-height: 72px; margin-top: 14px; padding: 15px; border: 2px solid #948ac0; background: #252343; text-align: left; box-shadow: inset 0 -4px #17142c; }
+.battle-mode-option strong { color: #ffe3a1; font-size: 17px; }
+.battle-mode-option span { color: #c8c9e1; font-size: 12px; line-height: 1.5; }
+.battle-mode-option:hover { background: #39315b; }
+[hidden].battle-mode-option { display: none; }
 .game-shell { position: absolute; top: 0; left: 0; width: 1024px; height: 1536px; transform: scale(var(--board-scale, 1)); transform-origin: top left; }
 .game-board { position: absolute; inset: 0; isolation: isolate; background: var(--forest) center top / contain no-repeat; image-rendering: pixelated; }
 .topbar { position: absolute; top: 18px; left: 18px; right: 18px; height: 72px; display: flex; align-items: flex-start; justify-content: space-between; z-index: 8; pointer-events: none; }
@@ -209,7 +216,7 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .deck-group h3>span { color: #ada1b6; font-size: 11px; font-weight: normal; }
 .deck-row { display: grid; grid-template-columns: 34px 1fr 38px 30px; align-items: center; gap: 11px; width: 100%; border: 0; border-top: 1px solid #403a4e; padding: 8px 3px; background: none; text-align: left; }
 .deck-row:hover { background: #ffffff08; }
-.deck-thumbnail { display: block; width: 34px; }
+.deck-thumbnail { display: block; position: relative; width: 34px; }
 .deck-spell-name { color: #f3e6ce; font-size: 14px; font-weight: bold; }
 .deck-spell-name>small { display: block; color: #ab9db6; font: 9px monospace; margin-top: 5px; }
 .deck-mana { color: #85d7ed; font-size: 15px; text-align: center; }

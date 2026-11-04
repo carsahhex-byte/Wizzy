@@ -1,5 +1,5 @@
 {
-  "id": "aceb1ac2ab80",
+  "id": "ee80e7d26e06",
   "layout": "portrait-1024x1536",
   "screens": [
     "title",
@@ -7,12 +7,14 @@
     "character",
     "friends",
     "decks",
+    "online",
     "battle"
   ],
-  "entry": "./src/main.25902da78652.js",
-  "stylesheet": "./src/style.1ba807610ded.css",
+  "entry": "./src/main.ef7229ba03c3.js",
+  "stylesheet": "./src/style.aa6cadbf105a.css",
   "stylesheets": [
-    "./src/style.1ba807610ded.css",
-    "./src/hub.22f698662f67.css"
+    "./src/style.aa6cadbf105a.css",
+    "./src/hub.784d88c889b8.css",
+    "./src/multiplayer.d9e93cc388fa.css"
   ]
 }

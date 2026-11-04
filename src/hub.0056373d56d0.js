@@ -1,4 +1,4 @@
-import { ASSETS, ASSET_CROPS } from './assets.0e1cae43a874.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.1a531604e0e7.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.60141befac6b.js';
 import { MAX_COPIES, createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount } from './decks.8ef89a458653.js';
 
@@ -46,7 +46,7 @@ function restoreDraft(candidate, element, fallback) {
 }
 
 /** Mobile navigation and local deck editing. The battle host owns duel state. */
-export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}, assets = {} }) {
+export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {}, onInspectSpell = () => {}, assets = {} }) {
   if (!root) throw new Error('The Wizzy hub needs a root element.');
   root.classList.add('wz-hub-root');
   root.hidden = true;
@@ -127,6 +127,8 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
   function homeHub() {
     const storyIcon = storybook ? `<span class="wz-storybook-icon" aria-hidden="true"><img alt="" draggable="false" src="${escapeHub(storybook)}"></span>` : '<span class="wz-storybook-icon wz-storybook-fallback" aria-hidden="true">▤</span>';
     return `<section class="wz-phone wz-home-screen">
+      <header class="wz-map-header"><button class="wz-small-wordmark" data-wz-action="title" aria-label="Return to Wizzy title screen">Wizzy<span>SEATTLE</span></button><button class="wz-profile-chip" data-wz-action="character">${hubHead(profile.element)}<span>${escapeHub(profile.name)}<small>${elementName(profile.element)} wizard</small></span></button></header>
+      <div class="wz-map-toolbar"><div class="wz-map-note">Seattle awaits.<strong>Drag to explore.</strong></div><div class="wz-map-view-controls" role="group" aria-label="Map view"><button type="button" data-wz-action="map-overview" aria-label="Show the whole Seattle map" title="Whole map">Fit</button><button type="button" data-wz-action="map-zoom-out" aria-label="Zoom out on map">−</button><output class="wz-map-zoom" aria-label="Map zoom">4×</output><button type="button" data-wz-action="map-zoom-in" aria-label="Zoom in on map">+</button><button type="button" data-wz-action="map-center" aria-label="Center map on South Lake Union" title="South Lake Union">${hubIcon('compass')}</button></div></div>
       <div class="wz-map-viewport" tabindex="0" role="region" aria-label="Seattle map preview, drag to explore" aria-describedby="wz-map-instructions">
         <div class="wz-map-world">
           <div class="wz-map-art" aria-hidden="true"></div>
@@ -141,11 +143,8 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
           <button class="wz-market-marker ${placeOpen ? 'wz-open' : ''}" data-wz-action="market" aria-label="View Pike Place Market starting location">${hubIcon('pin')}<span>PIKE PLACE<small>START HERE</small></span></button>
         </div>
       </div>
-      <div class="wz-map-shade"></div>
-      <header class="wz-map-header"><button class="wz-small-wordmark" data-wz-action="title" aria-label="Return to Wizzy title screen">Wizzy<span>SEATTLE</span></button><button class="wz-profile-chip" data-wz-action="character">${hubHead(profile.element)}<span>${escapeHub(profile.name)}<small>${elementName(profile.element)} wizard</small></span></button></header>
-      <div class="wz-map-view-controls" role="group" aria-label="Map view"><button type="button" data-wz-action="map-zoom-in" aria-label="Zoom in on map">+</button><output class="wz-map-zoom" aria-label="Map zoom">4×</output><button type="button" data-wz-action="map-zoom-out" aria-label="Zoom out on map">−</button><button type="button" data-wz-action="map-center" aria-label="Center map on South Lake Union">${hubIcon('compass')}</button></div>
-      <p id="wz-map-instructions" class="sr-only">Drag the map with a mouse or finger. With the map focused, use arrow keys to explore, plus and minus to zoom, or Home to center South Lake Union.</p>
-      ${placeOpen ? `<aside class="wz-place-panel"><button data-wz-action="market" class="wz-place-close" aria-label="Close Pike Place preview">×</button><p class="wz-eyebrow">THE FIRST CHAPTER</p><h2>Pike Place Market</h2><p>Every wizard needs a beginning. Yours is waiting at the Market.</p><span class="wz-preview-tag">LOCATION PREVIEW</span><small>Arrival unlocks will be connected in a later build.</small></aside>` : '<div class="wz-map-note">South Lake Union<br><strong>Drag to explore Seattle.</strong></div>'}
+      <p id="wz-map-instructions" class="sr-only">Drag the map with a mouse or finger. Fit shows the complete city. With the map focused, use arrow keys to explore, plus and minus to zoom, or Home to center South Lake Union.</p>
+      ${placeOpen ? `<aside class="wz-place-panel"><button data-wz-action="market" class="wz-place-close" aria-label="Close Pike Place preview">×</button><p class="wz-eyebrow">THE FIRST CHAPTER</p><h2>Pike Place Market</h2><p>Every wizard needs a beginning. Yours is waiting at the Market.</p><span class="wz-preview-tag">LOCATION PREVIEW</span><small>Arrival unlocks will be connected in a later build.</small></aside>` : ''}
       <nav class="wz-map-controls" aria-label="Game screens"><div class="wz-left-controls"><button type="button" class="wz-map-button wz-storybook-button" data-wz-action="storybook" aria-label="Storybook, photo album coming later" title="Your photo album · coming later">${storyIcon}<span>Storybook</span></button><button class="wz-map-button wz-character-button" data-wz-action="character">${hubIcon('character')}<span>Character</span></button></div><div class="wz-right-controls"><button class="wz-map-button wz-battle-button" data-wz-action="battle">${hubIcon('battle')}<span>Battle<small>PLAYTEST</small></span></button><button class="wz-map-button" data-wz-action="friends">${hubIcon('friends')}<span>Friends</span></button><button class="wz-map-button" data-wz-action="deck">${hubIcon('deck')}<span>Deck</span></button></div></nav><p class="wz-map-preview">MAP PREVIEW · LOCATION NOT CONNECTED</p>${footerHub()}</section>`;
   }
   function characterHub() {
@@ -153,7 +152,7 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
     return `<section class="wz-phone wz-panel-screen wz-character-screen">${topHub('Your Wizzy', 'CHARACTER')}<div class="wz-page-scroll" data-wz-scroll="character"><div class="wz-character-stage wz-${profile.element}"><span class="wz-character-halo"></span>${hubArt(profile.element === 'water' ? 'waterMage' : 'fireMage', 'wz-character-art')}<div class="wz-character-plaque"><strong>${escapeHub(profile.name)}</strong><span>${elementName(profile.element)} wizard</span></div></div><div class="wz-paper-panel"><form class="wz-profile-form"><label for="wz-character-name">Wizard name</label><div class="wz-name-row"><input id="wz-character-name" name="wizardName" maxlength="24" value="${escapeHub(profile.name)}" autocomplete="nickname" data-wz-focus="wizard-name"><button class="wz-small-button" type="submit">Save</button></div></form><p class="wz-field-label">YOUR ELEMENT</p>${elementSwitch('profile')}<p class="wz-element-help">Your element chooses your wizard portrait and the deck you open first.</p><div class="wz-stat-heading">DUEL STARTING STATS</div><div class="wz-profile-stats"><div><span>HP</span><strong>30</strong></div><div><span>MANA</span><strong>3</strong></div><div><span>${profile.element === 'water' ? 'FLOW' : 'EMBERS'}</span><strong>0</strong></div></div><button class="wz-profile-deck" data-wz-action="deck">${hubIcon('deck')}<span>${elementName(profile.element)} spell deck<small>${getDeckValidation(deck).total} slabs · ready for battle</small></span><b aria-hidden="true">›</b></button></div><p class="wz-page-note">Your name, element, and decks stay on this device. Story progression will grow with the city.</p></div>${footerHub()}</section>`;
   }
   function friendsHub() {
-    return `<section class="wz-phone wz-panel-screen wz-friends-screen">${topHub('Your Party', 'FRIENDS')}<div class="wz-page-scroll" data-wz-scroll="friends"><div class="wz-party-art" aria-hidden="true"><span class="wz-party-star">✦</span>${hubIcon('friends')}<span class="wz-party-star">✧</span></div><div class="wz-empty-party"><p class="wz-eyebrow">ADVENTURES ARE BETTER TOGETHER</p><h2>A place for your party.</h2><p>Friends, battle invitations, and messages will live here when online play is connected.</p><div class="wz-friend-features"><span>${hubIcon('friends')} Add friends</span><span>${hubIcon('battle')} Challenge a wizard</span><span class="wz-message-feature"><i aria-hidden="true">▤</i> Send messages</span></div><span class="wz-preview-tag">FRIENDS SCREEN PREVIEW</span></div><div class="wz-local-play-panel"><strong>A duel is ready right now.</strong><p>Share this screen with a friend and test Fire against Water using your saved decks.</p><button class="wz-pixel-button" data-wz-action="battle">${hubIcon('battle')} Play a local battle</button></div></div>${footerHub()}</section>`;
+    return `<section class="wz-phone wz-panel-screen wz-friends-screen">${topHub('Your Party', 'FRIENDS')}<div class="wz-page-scroll" data-wz-scroll="friends"><div class="wz-party-art" aria-hidden="true"><span class="wz-party-star">✦</span>${hubIcon('friends')}<span class="wz-party-star">✧</span></div><div class="wz-empty-party"><p class="wz-eyebrow">ADVENTURES ARE BETTER TOGETHER</p><h2>A place for your party.</h2><p>Your friends list and messages will live here. For now, invite a friend to a battle with a room code.</p><div class="wz-friend-features"><span>${hubIcon('friends')} Add friends</span><span>${hubIcon('battle')} Challenge a wizard</span><span class="wz-message-feature"><i aria-hidden="true">▤</i> Send messages</span></div><span class="wz-preview-tag">FRIENDS SCREEN PREVIEW</span></div><div class="wz-local-play-panel"><strong>Bring a friend into the battle.</strong><p>Create a room or join with a code to test on two screens.</p><button class="wz-pixel-button" data-wz-action="multiplayer">${hubIcon('battle')} Create or join a battle</button><button class="wz-small-button wz-shared-screen" data-wz-action="battle">Play on this screen</button></div></div>${footerHub()}</section>`;
   }
   function deckRowsHub(draft) {
     const total = getDeckValidation(draft).total;
@@ -164,7 +163,7 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
     }).join('');
   }
   function slabHub(card) {
-    return `<div class="wz-slab-face">${hubArt(card.art)}<strong class="wz-slab-title">${escapeHub(card.name)}</strong><span class="wz-slab-copy"><b>${card.manaCost} Mana</b><span>${escapeHub(card.effectText)}</span></span></div>`;
+    return `<div class="wz-slab-face">${hubArt(card.art)}${spellArtMarkup(card.spellId, 'wz-slab-illustration')}<strong class="wz-slab-title">${escapeHub(card.name)}</strong><span class="wz-slab-copy"><b>${card.manaCost} Mana</b><span>${escapeHub(card.effectText)}</span></span></div>`;
   }
   function collectionHub(draft) {
     const eligible = new Set(getEligibleSpells(selectedElement).map(card => card.spellId));
@@ -193,12 +192,12 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
     if (!viewport || !world || !viewport.clientWidth || !viewport.clientHeight) return;
     const width = viewport.clientWidth;
     const height = viewport.clientHeight;
-    const scale = Math.max(width / 1024, height / 1536) * mapView.zoom;
+    const scale = Math.min(width / 1024, height / 1536) * mapView.zoom;
     const worldWidth = 1024 * scale;
     const worldHeight = 1536 * scale;
     const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
-    mapView.cx = clamp(mapView.cx, width / (2 * worldWidth), 1 - width / (2 * worldWidth));
-    mapView.cy = clamp(mapView.cy, height / (2 * worldHeight), 1 - height / (2 * worldHeight));
+    mapView.cx = worldWidth <= width ? .5 : clamp(mapView.cx, width / (2 * worldWidth), 1 - width / (2 * worldWidth));
+    mapView.cy = worldHeight <= height ? .5 : clamp(mapView.cy, height / (2 * worldHeight), 1 - height / (2 * worldHeight));
     world.style.transform = `translate3d(${width / 2 - mapView.cx * worldWidth}px,${height / 2 - mapView.cy * worldHeight}px,0) scale(${scale})`;
     world.style.setProperty('--wz-marker-scale', String(1 / scale));
     viewport.dataset.mapZoom = String(mapView.zoom);
@@ -210,6 +209,7 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
     const zoomOut = root.querySelector('[data-wz-action="map-zoom-out"]');
     if (zoomIn) zoomIn.disabled = mapView.zoom >= 8;
     if (zoomOut) zoomOut.disabled = mapView.zoom <= 1;
+    root.querySelector('[data-wz-action="map-overview"]')?.setAttribute('aria-pressed', String(mapView.zoom === 1));
   }
   function zoomMap(factor) {
     mapView.zoom = Math.max(1, Math.min(8, mapView.zoom * factor));
@@ -240,7 +240,7 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
       mapDrag.viewport.classList.add('wz-dragging');
     }
     event.preventDefault();
-    const scale = Math.max(mapDrag.viewport.clientWidth / 1024, mapDrag.viewport.clientHeight / 1536) * mapView.zoom;
+    const scale = Math.min(mapDrag.viewport.clientWidth / 1024, mapDrag.viewport.clientHeight / 1536) * mapView.zoom;
     mapView.cx = mapDrag.cx - dx / (1024 * scale);
     mapView.cy = mapDrag.cy - dy / (1536 * scale);
     applyMapView();
@@ -256,7 +256,7 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
   root.addEventListener('keydown', event => {
     if (!event.target.matches('.wz-map-viewport')) return;
     const viewport = event.target;
-    const scale = Math.max(viewport.clientWidth / 1024, viewport.clientHeight / 1536) * mapView.zoom;
+    const scale = Math.min(viewport.clientWidth / 1024, viewport.clientHeight / 1536) * mapView.zoom;
     const step = event.shiftKey ? 120 : 45;
     if (event.key === 'ArrowLeft') mapView.cx -= step / (1024 * scale);
     else if (event.key === 'ArrowRight') mapView.cx += step / (1024 * scale);
@@ -335,8 +335,10 @@ export function createHub({ root, onBattle = () => {}, onInspectSpell = () => {}
       case 'map-zoom-in': zoomMap(1.25); break;
       case 'map-zoom-out': zoomMap(1 / 1.25); break;
       case 'map-center': mapView = { ...mapStart }; applyMapView(); break;
+      case 'map-overview': mapView = { zoom: 1, cx: .5, cy: .5 }; applyMapView(); break;
       case 'storybook': break;
       case 'battle': battleHub(); break;
+      case 'multiplayer': onMultiplayer({ decks: getSavedDecks(), profile: getProfile() }); break;
       case 'inspect': onInspectSpell(button.dataset.wzSpell); break;
       case 'deck-element': selectedElement = button.dataset.wzElement; notice = ''; render(); break;
       case 'profile-element': profile.element = button.dataset.wzElement; selectedElement = profile.element; persistHub(); render(); break;
