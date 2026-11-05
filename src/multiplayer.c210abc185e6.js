@@ -1,4 +1,7 @@
-const ONLINE_STORAGE_KEY = 'wizzy.multiplayer.v1';
+import { SPELLBOOK_VERSION } from './spells.c2259fcc14fe.js';
+import { SAVE_VERSION } from './game.dd8c48bbfda1.js';
+
+const ONLINE_STORAGE_KEY = 'wizzy.multiplayer.v2';
 const ONLINE_STATUSES = new Set(['waiting', 'playing', 'finished']);
 const onlineEscape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const onlineClone = value => structuredClone(value);
@@ -53,7 +56,9 @@ export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ n
   endpoint = defaultEndpoint();
   try {
     const saved = JSON.parse(localStorage.getItem(ONLINE_STORAGE_KEY) || 'null');
-    if (saved?.version === 1) {
+    const previousSettings = saved || JSON.parse(localStorage.getItem('wizzy.multiplayer.v1') || 'null');
+    if(typeof previousSettings?.endpoint==='string'&&previousSettings.endpoint.trim())endpoint=normalizeOnlineEndpoint(previousSettings.endpoint);
+    if (saved?.version === 2 && saved.spellbookVersion === SPELLBOOK_VERSION) {
       if (typeof saved.endpoint === 'string' && saved.endpoint.trim()) endpoint = normalizeOnlineEndpoint(saved.endpoint);
       const previous = saved.session;
       if (previous && /^[A-Z0-9]{8}$/.test(previous.code) && typeof previous.token === 'string' && previous.token.length >= 24 && previous.token.length <= 256
@@ -67,7 +72,7 @@ export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ n
   function persistOnline() {
     try {
       const storedSession = session ? { code: session.code, token: session.token, playerIndex: session.playerIndex, element: session.element, revision: session.revision, status: session.status } : null;
-      localStorage.setItem(ONLINE_STORAGE_KEY, JSON.stringify({ version: 1, endpoint: session?.endpoint || endpoint, session: storedSession }));
+      localStorage.setItem(ONLINE_STORAGE_KEY, JSON.stringify({ version: 2, spellbookVersion: SPELLBOOK_VERSION, endpoint: session?.endpoint || endpoint, session: storedSession }));
       storageAvailable = true;
     } catch { storageAvailable = false; }
   }
@@ -118,6 +123,7 @@ export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ n
       && (view.status === 'waiting' || (view.state && Array.isArray(view.state.players) && view.state.players.length === 2));
   }
   function applyOnlineView(view, { first = false, deliver = true } = {}) {
+    if(view?.spellbookVersion!==SPELLBOOK_VERSION||(view.state&&view.state.version!==SAVE_VERSION))throw new Error('Update the game server to the Nov4 Master Spellbook before starting or joining a battle.');
     if (!validView(view)) throw new Error('The server sent an incomplete battle response.');
     if (!first && session && (view.code !== session.code || view.revision < session.revision)) return null;
     const previousRevision = session?.revision;
