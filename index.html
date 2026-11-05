@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#11172a" />
-    <meta name="wizzy-build" content="7e371f9c1acf" />
+    <meta name="wizzy-build" content="a16a6214c264" />
     <meta name="description" content="Explore a pixel Seattle, build your spell slab deck, and battle in Wizzy." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -14,7 +14,75 @@
     <link rel="stylesheet" href="./src/hub.fcaea8e7a6fd.css" />
     <link rel="stylesheet" href="./src/multiplayer.d9e93cc388fa.css" />
     <link rel="stylesheet" href="./src/accounts.5e8dfb99140d.css" />
-    <script type="module" src="./src/main.938956983187.js"></script>
+    <script>/* Hosted-only bootstrap. The builder inserts this before the game module. */
+(() => {
+  const current = document.querySelector('meta[name="wizzy-build"]')?.content;
+  if (!/^[a-f0-9]{12}$/.test(current || '') || !['http:', 'https:'].includes(location.protocol)) return;
+
+  let interacted = false;
+  let checking = false;
+  let notice = null;
+  const noteInteraction = () => { interacted = true; };
+  document.addEventListener('pointerdown', noteInteraction, { capture: true, once: true });
+  document.addEventListener('keydown', noteInteraction, { capture: true, once: true });
+
+  function offerUpdate(target) {
+    if (notice) return;
+    notice = document.createElement('aside');
+    notice.id = 'wizzy-release-update';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('aria-live', 'polite');
+    Object.assign(notice.style, {
+      position: 'fixed', top: '8px', left: '8px', right: '8px', zIndex: '2147483647',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap',
+      gap: '10px', padding: '12px', border: '2px solid #d9c5ff',
+      background: '#181d35', color: '#fff4d8', font: '14px Arial, sans-serif',
+      boxShadow: '0 4px 18px #0009',
+    });
+    const message = document.createElement('span');
+    message.textContent = 'A newer Wizzy update is ready.';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Load latest game';
+    Object.assign(button.style, {
+      minHeight: '36px', padding: '7px 12px', border: '1px solid #e6d2ff',
+      background: '#5e4388', color: '#fff', font: 'bold 14px Arial, sans-serif',
+      cursor: 'pointer',
+    });
+    button.addEventListener('click', () => location.replace(target.href));
+    notice.append(message, button);
+    const attach = () => { if (!document.getElementById(notice.id)) document.body.append(notice); };
+    if (document.body) attach();
+    else document.addEventListener('DOMContentLoaded', attach, { once: true });
+  }
+
+  async function checkRelease() {
+    if (checking) return;
+    checking = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const manifest = new URL('./build-info.json', document.baseURI);
+      manifest.searchParams.set('check', String(Date.now()));
+      const response = await fetch(manifest.href, { cache: 'no-store', credentials: 'omit', signal: controller.signal });
+      if (!response.ok) return;
+      const latest = await response.json();
+      if (!/^[a-f0-9]{12}$/.test(latest?.id || '') || latest.id === current
+        || latest.launch !== `./wizzy-${latest.id}.html`) return;
+      const target = new URL(latest.launch, document.baseURI);
+      if (target.origin !== location.origin) return;
+      target.hash = location.hash || '#title';
+      if (interacted) offerUpdate(target);
+      else location.replace(target.href);
+    } catch { /* Offline, old servers, and unavailable metadata must not block play. */ }
+    finally { clearTimeout(timeout); checking = false; }
+  }
+
+  checkRelease();
+  window.addEventListener('pageshow', event => { if (event.persisted) checkRelease(); });
+})();
+</script>
+    <script type="module" src="./src/main.85447268f077.js"></script>
   </head>
   <body>
     <main id="hub" class="hub-root" aria-label="Wizzy"></main>
@@ -35,7 +103,8 @@
       <button class="close-dialog" aria-label="Close battle options" data-close="battle-mode">×</button>
       <p class="eyebrow">CHOOSE YOUR DUEL</p>
       <h2 id="battle-mode-title">How will you battle?</h2>
-      <button class="battle-mode-option" id="choose-local"><strong>Share this screen</strong><span>Take turns on this device with your saved Fire and Water decks.</span></button>
+      <button class="battle-mode-option" id="choose-local"><strong>Start new shared-screen duel</strong><span>Deal 5 slabs to each player. Draw up to 6 on later turns and hand refreshes.</span></button>
+      <button class="battle-mode-option" id="resume-local" hidden><strong>Resume saved shared-screen duel</strong><span id="resume-local-detail">Continue your existing duel with a six-slab hand limit.</span></button>
       <button class="battle-mode-option" id="choose-online"><strong>Play on two screens</strong><span>Create or join a room. Each wizard keeps a private hand.</span></button>
       <button class="battle-mode-option" id="resume-online" hidden><strong>Resume your online battle</strong><span>Return to your current room.</span></button>
     </dialog>
@@ -70,7 +139,7 @@
       </ul>
       <div class="prototype-note"><strong>Fate sequence: roll → defender → caster → final defender response if the caster played Fate.</strong> Shared-screen games use handoffs. Two-screen games let each player respond on their own device. Empty eligible Fate hands are skipped automatically. Next-turn Loaded bonuses do not affect the spell that earned them.</div>
       <p class="small-copy">Build decks from Home: exactly 30 slabs, up to 3 copies per spell, and Fire or Water plus Fate. New deck slots start empty. Upload deck loads a JSON draft for review; Save deck makes it playable, and Download deck exports a complete deck. The November 4 spellbook supplies all 31 spell definitions. Fate retains its previous 0 Mana cost because the PDF leaves it unspecified. Select a slab and choose Read slab for full text. Click Spell Tower to review this battle’s composition.</p>
-      <p class="build-version" id="build-version">Build 7e371f9c1acf · portrait layout</p>
+      <p class="build-version" id="build-version">Build a16a6214c264 · portrait layout</p>
       <button class="secondary-button" id="settings-deck">View spell slab decks</button>
       <button class="secondary-button" id="request-restart">Start a new duel</button>
     </dialog>
