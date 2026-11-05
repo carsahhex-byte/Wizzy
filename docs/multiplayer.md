@@ -40,16 +40,16 @@ Use this locally served HTTP address for the nearby test. The HTTPS GitHub Pages
 ## Create an account and sync decks
 
 1. Open **Account** from the title or Character screen and use the same server address on both devices.
-2. Register a username and password. Usernames contain 3–24 letters, digits, underscores, or hyphens and are case insensitive. Passwords contain 10–128 characters. Registration imports that device's current saved profile and legal decks.
+2. Register a username and password. Usernames contain 3–24 letters, digits, underscores, or hyphens and are case insensitive. Passwords contain 10–128 characters. Registration imports that device's current saved profile and current-spellbook deck slots. An element slot may remain empty while you build its deck.
 3. On another device, sign in with the same credentials. The account's profile and saved decks load into the same UI and editor.
-4. Edit a deck and press **Save deck**. Valid saved decks and profile changes sync while signed in. Incomplete editor drafts remain on the device, and changing decks does not alter a match already in progress.
+4. Open **Deck**, build a 30-slab Fire or Water deck, and press **Save deck**. **Upload deck** loads a compatible JSON decklist into the editor for review, and **Download deck** exports a complete legal deck. Valid saved decks and profile changes sync while signed in. Incomplete editor drafts remain on the device, and changing decks does not alter a match already in progress.
 5. Each friend creates their own account. Signing out returns to the device's guest profile/decks.
 
 The server stores salted password hashes and hashed 30-day session tokens, not plaintext passwords. The browser stores its private session token so it can reconnect; passwords are not saved in browser storage. Do not share account or room tokens. The short battle room code is the part intended to be shared.
 
 This beta has no email provider or automated password recovery. Choose credentials you can retain. Persistent account storage is required for accounts to survive hosting restarts or redeploys.
 
-Guest play remains available. Guest matches use this device's saved deck; signed-in matches use the corresponding account deck stored by the server. Both routes enforce exactly 30 slabs, at most three copies per spell, and one element plus Neutral and Fate.
+Guest play remains available. Guest matches use this device's saved deck; signed-in matches use the corresponding account deck stored by the server. Both routes enforce exactly 30 slabs, at most three copies per spell, and one element plus Fate. There are no generated starter decks or Neutral spells in the November 4 catalog. Empty account slots are allowed, but a room seat requires a complete legal deck for its role.
 
 ## Remote hosting with persistent accounts
 
@@ -90,12 +90,13 @@ Back up the data directory separately from the source repository. For a simple c
 
 ## Create and join a battle
 
-1. Sign in if you want account-backed decks, or continue as a guest. Save legal Fire and Water decks in the editor.
+1. Sign in if you want account-backed decks, or continue as a guest. Build and save a legal deck for the element you will play. Shared-screen duels need both saved decks; each two-screen player only needs their chosen role's saved deck.
 2. Open **Battle → Two Screens**, or the room option in Friends. Both devices use the same server address.
 3. The host chooses Fire or Water and creates a room. Share its code. The other player joins as the opposite element using that role's saved deck.
 4. Each player rolls **one d6** to decide who starts. Higher goes first; ties reroll both. Fate and Loaded do not affect initiative.
 5. Both start with four slabs. The second player draws **one extra slab when their first own turn begins**, normally reaching five. If they already used Fate, the bonus adds one to the remaining hand rather than filling it to five. Neither player gains the later-turn +2 mana on their opening turn.
-6. During a rolling spell, the attacker chooses Fate, then the defender responds. The server rolls and resolves the spell. A round ends after both wizards have played, even when Water goes first.
+6. Both wizards start at **100 HP** with **3 Mana**. Mana is capped at **10**, Shield at **30**, and Embers/Flow at **5**. After the opening turn, each wizard gains two Mana at the beginning of their own turn.
+7. Each current primary spell pays its printed cost and rolls **2d6 before Fate**. The defender chooses Fate first, then the caster. A caster skip resolves the spell; a caster Fate batch permits one final defender response before resolution. A player without eligible Fate is skipped automatically. The server owns the roll and applies Fate to that same Modified Roll, with no reroll. Fortune is caster-only (+4), Misfortune defender-only (−4), and either player chooses +2 or −2 for each Twist. A round ends after both wizards have played, even when Water goes first.
 
 Each player sees only their own hand and can act only at the appropriate step. Room revisions and request IDs prevent stale or retried requests from applying a move twice.
 
@@ -109,7 +110,7 @@ Account data and room data have different lifetimes:
 
 Keep the same browser profile to reconnect to the same room seat. Clearing browser storage removes that device's room token; signing back into an account restores its decks, not a lost room seat. Normal and private windows do not share these tokens.
 
-Existing v8 local duels migrate without a retroactive initiative roll and retain their original Fire-first order. Their second-player opening bonus is pending only if Water has not begun its first turn. Start a new duel to use the new opening-roll flow.
+The November 4 catalog uses combat save version **10**. Old-catalog local duels and room sessions are not resumed with the replacement spells. Previous browser deck data stays separate; account migration retains credentials and archives replaced old deck data. Build new Fire/Water decks before entering a new match. A server deployment also replaces the in-memory rooms, so both players should reload the current interface.
 
 This release does not add friend lists, messaging, photo uploads, matchmaking, or turn timeouts. Storybook remains a placeholder.
 

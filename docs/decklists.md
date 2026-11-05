@@ -1,111 +1,90 @@
-# Fire and Water spell slab decklists
+# Master Spellbook and custom decks
 
-These tables reproduce the supplied initial-test starter deck compositions. Each physical copy receives its own game instance ID while retaining the canonical master spell ID below. They remain available as presets in the deck builder.
+The current catalog comes from **Wizzy Master Spellbook Nov4.pdf**, *Wizzy / Master Spellbook V2.1*, dated November 4, 2026. It contains **31 unique spells: 14 Fire, 14 Water, and 3 Fate**. The previous Fire, Water, and Neutral catalog and its prescribed decklists are no longer playable. Earth and Air are outside this update.
 
-## Source documents
+Printed Fire/Water costs and effect text come from that PDF. The user's combat instructions take precedence over the PDF's older pre-roll Fate paragraph and its note about retaining the earlier approved spellbook. This update replaces that earlier spellbook and applies Fate **after** rolling.
 
-- **Spell definitions:** the uploaded `Wizzy_Complete_Master_Spellbook_WAT001_to_FAT003.pdf`, *Wizzy / Master Spellbook*, which identifies `MASTER_SPELLBOOK.xlsx` as its source. The spreadsheet itself was not uploaded. The PDF's mana costs and full effect text are canonical for the imported metadata.
-- **Fire composition:** `Wizzy Fire Decklist Nov3.pdf`, version **2.2**, revised **November 3, 2026**.
-- **Water composition:** `Wizzy_Water_Deck_v1_0_Final.pdf`, version **1.0**, finalized composition.
+## Build and save a deck
 
-Only Fire, Water, Neutral, and Fate definitions are imported. The active-scope catalog contains **29** spells: Fire 12, Water 10, Neutral 4, and Fate 3. All **26 Fire/Water/Neutral effects** and **3 Fate effects** are implemented, including catalog spells with no copies in these decks. The starter decks use **25 distinct spells** in total. All 29 imported definitions are available in the deck builder subject to the construction rules below. Earth and Air are outside this update and have no new effect logic.
+Each element starts with an empty deck slot. No starter composition is generated. Open **Deck**, choose Fire or Water, and select spells from the collection. The selected list and quantities occupy the upper half; the collection shows four slabs per row below it. Filters cover All, Fire, Water, Fate, and **In Deck**.
 
-## Custom deck construction
+A playable saved deck must contain:
 
-Every saved deck contains **exactly 30 slabs**, with **at most 3 copies of one spell**. Choose **Fire or Water** as its main element; it may include that element's spells plus any Neutral and Fate spells. Fire and Water elemental spells cannot be mixed. There is no required category split: **21 Elemental / 2 Neutral / 7 Fate** describes the supplied starter presets only.
+- Exactly **30 slabs**.
+- At most **3 copies of any spell**.
+- One main element, **Fire or Water**, plus any Fate spells.
 
-The builder keeps the selected list and quantities in the upper half and selectable slab collection in the lower half, with **four cards per collection row**. It supports element/category filters and an **In Deck** filter. Checking a slab adds its first copy; quantity controls handle further copies, and unchecking removes all copies. Valid saved Fire and Water decks and incomplete editor drafts are retained separately on the current device. Signed-in users sync their saved decks to the account server and can use the same editor on another device; incomplete drafts stay local. Starting a new battle uses the saved decks; editing a deck does not change an existing duel.
+Fire and Water spells cannot be mixed. There are no Neutral spells or mandatory category quotas in this spellbook. The PDF's three physical copies of each Fate spell describe the copy limit, not a requirement to include all nine Fate slabs in a deck.
 
-## Card categories and artwork
+Checking a slab adds its first copy; quantity controls add or remove copies, and unchecking removes all copies. Incomplete drafts remain editable and are retained on this device. **Save deck** stores a legal 30-slab deck for battle. Saving a deck does not alter an ongoing duel; start a new duel to use the saved composition.
 
-| Category | Slab type | Artwork |
-| --- | --- | --- |
-| Elemental | Fire | Pixel-Art Fiery Comet Spell Card 2 |
-| Elemental | Water | Pixel Art Cresting Wave Card |
-| Neutral | Neutral | White Neutral card |
-| Fate | Fate | Purple Galaxy Vortex Card Frame |
+Shared-screen play needs both saved element decks. For a two-screen room, each player needs the legal saved deck for their chosen role. Accounts can hold an empty slot while the other element's saved deck is ready; incomplete editor drafts remain local.
 
-Every slab uses its own name, printed mana cost, and verbatim `effectText` from the master spellbook. The same artwork is reused for all slabs of the corresponding type. Slab colors identify the types without extra element labels; the hand places three slabs in the top row and up to two in the bottom row.
+## Upload and download decklists
 
-## Fire v2.2
+Use **Download deck** to export a complete legal deck and **Upload deck** to import one. Uploading loads a compatible decklist into the matching element's editor **as a draft for review**; press **Save deck** to make it playable. **Save & battle** saves the valid draft and opens battle choices.
 
-| Master ID | Spell slab | Category | Mana | Copies |
-| --- | --- | --- | ---: | ---: |
-| FIR-001 | Spark Shot | Elemental (Fire) | 1 | 1 |
-| FIR-002 | Kindle | Elemental (Fire) | 1 | 2 |
-| FIR-004 | Fireblast | Elemental (Fire) | 2 | 2 |
-| FIR-005 | Flameguard | Elemental (Fire) | 1 | 3 |
-| FIR-006 | Burn | Elemental (Fire) | 1 | 3 |
-| FIR-007 | Blast Burn | Elemental (Fire) | 3 | 2 |
-| FIR-010 | Heatbox | Elemental (Fire) | 0 | 2 |
-| FIR-011 | Inferno | Elemental (Fire) | 3 | 3 |
-| FIR-012 | Sunsetter | Elemental (Fire) | 4 | 3 |
-| FAT-001 | Fortune | Fate | 0 | 3 |
-| FAT-002 | Misfortune | Fate | 0 | 2 |
-| FAT-003 | Twist | Fate | 0 | 2 |
-| NEU-004 | Mana Shield | Neutral | 0 | 1 |
-| NEU-003 | Legacy Shield | Neutral | 1 | 1 |
+The JSON format is:
 
-**Playable total: 30 slabs, 14 distinct spells.**
+```json
+{
+  "format": "wizzy-deck",
+  "version": 1,
+  "spellbook": "nov4-v2.1",
+  "element": "fire",
+  "entries": [
+    { "spellId": "Fire-1", "quantity": 3 }
+  ]
+}
+```
 
-| Category | Copies |
-| --- | ---: |
-| Elemental | 21 |
-| Neutral | 2 |
-| Fate | 7 |
-| **Total** | **30** |
+The example shows the file structure only; a playable file must list **30 slabs in total**. Files are limited to **64 KB**. Imports validate the format, spellbook version, element, known spell IDs, total, and three-copy limit. A malformed, oversized, outdated, or illegal file shows an error instead of replacing the current draft. Old-catalog IDs are rejected rather than being interpreted as new spells. A decklist contains spell quantities, not an account login, private room token, or shuffled draw order.
 
-## Water v1.0
+## Current catalog
 
-| Master ID | Spell slab | Category | Mana | Copies |
-| --- | --- | --- | ---: | ---: |
-| WAT-001 | Ripple | Elemental (Water) | 1 | 2 |
-| WAT-002 | Pacific | Elemental (Water) | 2 | 2 |
-| WAT-003 | Stillwater | Elemental (Water) | 1 | 1 |
-| WAT-004 | Undertow | Elemental (Water) | 2 | 3 |
-| WAT-005 | Restoration | Elemental (Water) | 2 | 2 |
-| WAT-006 | Water Jet | Elemental (Water) | 1 | 2 |
-| WAT-007 | Sea Surge | Elemental (Water) | 2 | 2 |
-| WAT-008 | Riptide | Elemental (Water) | 3 | 1 |
-| WAT-009 | Tsunami | Elemental (Water) | 3 | 3 |
-| WAT-010 | Poseidon's Rift | Elemental (Water) | 4 | 3 |
-| NEU-001 | Ward | Neutral | 2 | 0 |
-| NEU-002 | Meditate | Neutral | 1 | 1 |
-| NEU-003 | Legacy Shield | Neutral | 1 | 0 |
-| NEU-004 | Mana Shield | Neutral | 0 | 1 |
-| FAT-001 | Fortune | Fate | 0 | 3 |
-| FAT-002 | Misfortune | Fate | 0 | 2 |
-| FAT-003 | Twist | Fate | 0 | 2 |
+| Spell ID | Mana | Spell ID | Mana |
+| --- | ---: | --- | ---: |
+| Fire-1 | 1 | Water-1 | 1 |
+| Fire-2 | 1 | Water-2 | 1 |
+| Fire-3 | 2 | Water-3 | 2 |
+| Fire-4 | 2 | Water-4 | 2 |
+| Fire-5 | 3 | Water-5 | 3 |
+| Fire-6 | 5 | Water-6 | 5 |
+| Fire-7 | 7 | Water-7 | 7 |
+| Fire-8 | 2 | Water-8 | 2 |
+| Fire-9 | 2 | Water-9 | 2 |
+| Fire-10 | 3 | Water-10 | 3 |
+| Fire-11 | 3 | Water-11 | 3 |
+| Fire-12 | 4 | Water-12 | 4 |
+| Fire-13 | 6 | Water-13 | 6 |
+| Fire-14 | 8 | Water-14 | 8 |
 
-**Playable total: 30 slabs, 15 distinct spells.**
+| Fate ID | Name | Effect | Playable role |
+| --- | --- | --- | --- |
+| FAT-001 | Fortune | +4 to the Modified Roll | Caster |
+| FAT-002 | Misfortune | −4 to the Modified Roll | Defender |
+| FAT-003 | Twist | Choose +2 or −2 to the Modified Roll | Either |
 
-| Category | Copies |
-| --- | ---: |
-| Elemental | 21 |
-| Neutral | 2 |
-| Fate | 7 |
-| **Total** | **30** |
+The PDF leaves Fate Mana unspecified. This implementation retains the previous **0 Mana** cost pending a different ruling; that cost is an implementation assumption, not a printed PDF value. Each selected Twist has its own explicit sign choice. Multiple eligible Fate slabs can be selected and cast together.
 
-Ward (`NEU-001`) and Legacy Shield (`NEU-003`) have **zero copies** in the Water PDF. They are not instantiated in the Water starter deck, but both are available as Neutral choices in the deck builder.
+## Combat rules
 
-## Playable rules
+- Each wizard begins with **100 HP**, **3 Mana**, zero Shield, zero Embers/Flow, and zero Loaded. Maximums are **100 HP, 10 Mana, 30 Shield, and 5 Embers/Flow**.
+- Shuffle each saved 30-slab deck and draw four opening slabs, leaving 26 in its Spell Tower. Each wizard rolls one opening d6; higher starts and ties reroll both. Fate and Loaded do not affect initiative. The second player draws exactly one extra slab when their first own turn begins, up to the five-slab hand limit.
+- On each own turn after the opening turn, gain **2 Mana** up to the cap and draw up to five slabs. Unspent Mana carries over. One round contains one turn from each wizard, starting with the initiative winner.
+- Each wizard may commit **one primary spell per own turn**. Fire and Water slabs are primary spells; Fate does not consume this allowance. Printed Mana and any optional Ember spending are paid on commitment. Fire-7 and Fire-14 automatically spend all available Embers.
+- Every current Fire/Water spell includes a roll threshold, so each rolls **2d6**. The roll and eligible Loaded bonus are displayed before Fate. Higher thresholds replace lower outcomes of the same effect unless the text specifies an additional effect.
+- The **defender** first casts a batch of eligible Fate or skips. The **caster** then casts a batch or skips. If the caster skips, resolve the spell. If the caster plays Fate, the defender gets one final response, then resolve. Empty or ineligible Fate hands are skipped automatically; there are no further response rounds.
+- Fortune is caster-only and Misfortune defender-only. Either player may choose **+2 or −2** for each Twist. Fate updates the Modified Roll without rerolling the dice. Negative modified totals are permitted.
+- Incoming opponent damage consumes Shield before HP. **Self-damage bypasses the caster's Shield.** Shield-removal effects happen before their spell's damage. Healing cannot exceed 100 HP; reaching zero HP ends the duel.
+- Fire gains only printed Embers. Gains stop at five; spending happens before spell resolution. Optional spending uses a compact popup above the selected slab when Embers are available.
+- Water damage and healing use **Flow before the spell resolves**. After the effects, each Water spell grants **1 Flow**. A printed **additional Flow** gain adds to that default, capped at five. For example, Water-2 at 8+ gains two Flow total; Water-9 always gains two Flow total. Fate grants no automatic Flow.
+- New Loaded bonuses queue for the caster's **next own turn**, stack, and apply once to that turn's first roll. Unused bonuses expire at that turn's end. A bonus earned this turn does not modify this turn's roll.
+- After resolution, Cast Spell stays disabled. End Turn reveals Hand Refresh and turns red; End Turn again passes without refreshing. Hand Refresh lets the player select any number of slabs, including zero. Confirming it discards the selections, draws up to five, and passes immediately. End Turn during selection passes without applying those discards.
+- The Spell Tower and discard counts follow card movement. Read Slab shows the complete rules; the tower view shows the saved composition without revealing draw order. If the tower is empty, draws stop; no reshuffle or fatigue rule is invented.
 
-- Each wizard shuffles its own 30-slab deck, draws four opening slabs, and begins with **26** in the Spell Tower. Both roll **one d6** before a new duel; the higher result starts, ties reroll both dice, and Fate/Loaded do not apply. The second player draws **exactly one extra slab at the beginning of their first own turn**, normally reaching five cards. Earlier Fate use can leave fewer than five after that one-card bonus. Later turn-start drawing and optional hand refresh retain the five-slab hand limit. A round ends after both wizards have played, regardless of which element won the opening roll.
-- Each wizard starts with **3 mana** and gains **2 mana at the beginning of each own turn after their opening turn**. Printed mana costs are enforced when casting, with unspent mana carried forward.
-- Each wizard may commit **one primary spell per own turn**. Elemental and Neutral slabs are primary spells; Fate slabs do not consume this allowance. The allowance is spent when the primary spell is committed, before Fate decisions, and **Cast Spell** stays greyed out after resolution until that wizard's next own turn. Slabs can still be inspected.
-- All imported Fire, Water, and Neutral effects execute their printed damage, Shield, healing, resource gains, Ember spending, and threshold effects. Both enemy damage and self-damage consume Shield first; healing cannot exceed 30 HP. Spending choices are made before committing the spell, and Sunsetter spends all available Embers.
-- Fire Embers are capped at **5**. Only printed effects grant Embers; there is no automatic gain for casting a Fire slab. A gain adds only the amount that fits below the cap, and spending removes the chosen amount before resolution.
-- Water elemental spells calculate effects and Flow damage using the Flow available before resolution. After all spell effects resolve, the caster gains **1 Flow**, or the spell's printed Flow gain instead if it specifies one. Printed gains replace the default; they do not stack with it. The Flow counter is capped at **5**. Neutral and Fate slabs do not trigger this automatic gain. These timing and resource rules leave the printed spellbook text unchanged.
-- Only spells with roll thresholds open Fate decisions and use **2d6**. Other spells resolve immediately, without Fate decisions, dice, or consuming Loaded.
-- The attacker first selects any number of eligible **Fortune** (+4) or **Twist** (+2) slabs, then clicks **Cast Fate** to play the whole batch and advance immediately. A local handoff then gives the defender a window to select any number of **Misfortune** (−4) or **Twist** (−2) slabs; **Cast Fate** plays that batch and advances to the roll. Selecting eligible Fate slabs changes the action to the supplied **Cast Fate** graphic; clicking a selected slab again deselects it. Non-Fate and ineligible Fate slabs are greyed out. **Skip Fate** clears staged selections and advances without playing them. There is no extra Skip Fate click after casting a batch and no per-turn limit on Fate slabs. Cast Fate slabs move to their owner's discard.
-- After both windows close, the dice roll is displayed and the modified total resolves the spell. The total is **raw 2d6 + eligible Loaded + attacking Fate + defending Fate**; it can be negative. The players do not alternate Fate responses within these two successive windows.
-- New Loaded bonuses queue for the caster's **next own turn**, stack, and are consumed by the first roll on that turn. If no roll uses them, they expire at that turn's end. New bonuses cannot affect rolls on the turn when they are gained.
-- After spell resolution, clicking **End Turn** reveals **Hand Refresh** and turns **End Turn** red. Clicking **End Turn** again passes without refreshing. Clicking **Hand Refresh** enters selection and also turns it red; select any number of slabs, including zero, then click **Hand Refresh** again to discard them, draw up to five, and immediately pass. **End Turn** during refresh selection instead passes without refreshing or discarding staged selections. A turn cannot end while a spell or Fate decisions are pending.
-- **Read Slab** exposes the full text of a selected slab. The Spell Tower composition view lists the entire deck and quantities without revealing draw order.
-- Version **9** saves retain opening initiative, the starting player and second-player bonus alongside each wizard's complete starting deck definition alongside the current card zones, primary-spell allowance, and selected Fate batches. Version 8 upgrades keep the original Fire-first order and progress without rerolling initiative; the opening bonus is pending only if Water has not begun its first turn. Version 7 upgrades preserve custom decks, paid spell and Fate decisions, dice, refresh selections, and all other progress while capping stored Fire Embers at 5. Version 6 upgrades retain progress and add the original starter definitions. Version 5 upgrades preserve progress and cap any stored Water Flow above 5. Version 4 upgrades retain stats, resources, queued Loaded, card zones, pending paid spells, and Fate/dice progress. A selected Fate slab becomes a batch selection; pending spells or the current turn's cast log determine whether its primary allowance has already been spent. Valid version 3 preview saves retain stats, turn progress, and their card zones. Any unfinished unpaid preview spell is safely cancelled without retroactive charges, card movement, or effects. Valid older 24-card sample saves first receive six additional slabs in each tower and actual decklist identities. Every older-save upgrade caps stored Embers and Flow at 5; the log records upgrades.
+## Save compatibility
 
-## Verification
+Combat saves use **version 10** and the `nov4-v2.1` catalog. Old-catalog duels are not resumed under the new effects, and old deck IDs are not converted into unrelated new cards. Build new Fire and Water decks in the workshop. Prior browser data is kept separate, and account migration retains credentials while archiving replaced old deck data.
 
-`src/spells.js` was compared programmatically against the text extracted from the supplied PDFs. All 29 imported spell names, elements, categories, mana costs, and complete effect texts matched the master spellbook. Both playable ID-to-copy maps matched their decklists exactly. Zero-copy Water reference rows are intentionally excluded from playable copies.
-
-Automated coverage includes opening-roll ties and both starter orders, second-player opening draws, full and draft deck validation, element restrictions, three-copy limits, custom-deck card conservation, printed costs, threshold branches, Shield and self-damage, healing limits, Ember-spending choices and its five-point cap, Flow timing, replacement gains and its five-point cap, Fate roles and batch order, the one-primary-per-turn limit, next-turn Loaded use and expiry, refresh confirmation and passing, and save migration. Custom construction leaves the starter preset quantities above unchanged.
+`src/spells.js` contains the canonical metadata, `src/effects.js` implements spell effects, `src/game.js` owns combat timing, and `src/decks.js` validates saved and uploaded compositions.

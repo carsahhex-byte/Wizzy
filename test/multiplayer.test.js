@@ -5,7 +5,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMultiplayerServer } from '../server/room-server.js';
 import { createGame, rollInitiative } from '../src/game.js';
-import { createStarterDeck, normalizeDeck } from '../src/decks.js';
+import { normalizeDeck } from '../src/decks.js';
+import { SPELLBOOK_VERSION } from '../src/spells.js';
+
+const legalDeck = element => ({ element, entries: [
+  ...Array.from({ length: 7 }, (_, i) => ({ spellId: `${element === 'fire' ? 'Fire' : 'Water'}-${i + 1}`, quantity: 3 })),
+  ...['FAT-001', 'FAT-002', 'FAT-003'].map(spellId => ({ spellId, quantity: 3 })),
+] });
 
 function arrangeHand(state, playerIndex, spellIds) {
   const player = state.players[playerIndex];
@@ -23,8 +29,8 @@ function fixtureMatch(decks) {
   let state = createGame(19, decks);
   state = rollInitiative(state, 0, () => .99);
   state = rollInitiative(state, 1, () => 0);
-  arrangeHand(state, 0, ['FIR-004', 'FAT-001', 'NEU-004', 'FIR-001']);
-  arrangeHand(state, 1, ['FAT-002', 'FAT-003', 'NEU-002', 'WAT-001']);
+  arrangeHand(state, 0, ['Fire-4', 'FAT-001', 'Fire-2', 'Fire-1']);
+  arrangeHand(state, 1, ['FAT-002', 'FAT-003', 'Water-2', 'Water-1']);
   return state;
 }
 
@@ -40,11 +46,11 @@ async function service(t, options = {}) {
     let data; try { data = JSON.parse(text); } catch { data = text; }
     return { status: response.status, data, headers: response.headers };
   };
-  const create = async (element = 'fire', deck = createStarterDeck(element)) => {
+  const create = async (element = 'fire', deck = legalDeck(element)) => {
     const result = await request('/api/rooms', { method: 'POST', body: { name: 'Host', element, deck } });
     assert.equal(result.status, 201); return result.data;
   };
-  const join = async (host, deck = createStarterDeck(host.element === 'fire' ? 'water' : 'fire')) => {
+  const join = async (host, deck = legalDeck(host.element === 'fire' ? 'water' : 'fire')) => {
     const result = await request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { name: 'Guest', deck } });
     assert.equal(result.status, 200); return result.data;
   };
@@ -62,7 +68,7 @@ async function service(t, options = {}) {
 
 test('room creation, opposite-element joins and private player views support two independent screens', async t => {
   const api = await service(t);
-  assert.deepEqual((await api.request('/api/health')).data, { ok: true, service: 'wizzy-multiplayer', storage: 'memory', accounts: { enabled: true, storage: 'memory' } });
+  assert.deepEqual((await api.request('/api/health')).data, { ok: true, service: 'wizzy-multiplayer', storage: 'memory', spellbookVersion: SPELLBOOK_VERSION, accounts: { enabled: true, storage: 'memory' } });
   const host = await api.create();
   assert.match(host.code, /^[A-Z2-9]{8}$/); assert.match(host.token, /^[A-Za-z0-9_-]{43}$/);
   assert.deepEqual([host.revision, host.status, host.state, host.playerIndex], [0, 'waiting', null, 0]);
@@ -86,37 +92,47 @@ test('room creation, opposite-element joins and private player views support two
     assert.equal(JSON.stringify(view).includes('tokenHash'), false);
   }
   assert.deepEqual((await api.get(host)).state, fire.state, 'reconnect gets the current private view');
-  assert.equal((await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { name: 'Third', deck: createStarterDeck('water') } })).status, 409);
+  assert.equal((await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { name: 'Third', deck: legalDeck('water') } })).status, 409);
 });
 
 test('server controls roles, selections, Fate, secure dice totals, one primary and refresh passing', async t => {
   const api = await service(t), host = await api.create(), guest = await api.join(host);
   let fire = await api.get(host);
   assert.equal((await api.action(guest, 'endTurn')).status, 403);
-  const primary = fire.state.players[0].hand.find(card => card.spellId === 'FIR-004');
+  const primary = fire.state.players[0].hand.find(card => card.spellId === 'Fire-4');
   assert.equal((await api.action(host, 'selectCard', { cardId: primary.id })).status, 200);
   const hiddenSelection = await api.get(guest); assert.equal(hiddenSelection.state.selectedCardId, null);
   let result = await api.action(host, 'castSpell'); assert.equal(result.status, 200);
   assert.deepEqual([result.data.state.phase, result.data.state.players[0].mana, result.data.state.primaryUsed], ['fate', 1, true]);
   const publicSpell = (await api.get(guest)).state.pendingSpell;
-  assert.equal(publicSpell.spellId, 'FIR-004'); assert.equal(publicSpell.cardId, undefined);
-  const fortune = result.data.state.players[0].hand.find(card => card.spellId === 'FAT-001');
-  await api.action(host, 'selectCard', { cardId: fortune.id });
-  result = await api.action(host, 'castFate'); assert.equal(result.data.state.fatePlayer, 1);
+  assert.equal(publicSpell.spellId, 'Fire-4'); assert.equal(publicSpell.cardId, undefined);
+  assert.deepEqual(result.data.state.lastRoll.dice, [4, 4], 'raw dice are visible before Fate');
+  assert.equal(result.data.state.lastRoll.total, 8);
+  assert.equal(result.data.state.fatePlayer, 1, 'defender decides first after the roll');
   assert.equal((await api.action(host, 'skipFate')).status, 403);
   const defending = await api.get(guest);
-  for (const spellId of ['FAT-002', 'FAT-003']) {
-    const card = defending.state.players[1].hand.find(entry => entry.spellId === spellId);
-    assert.equal((await api.action(guest, 'selectCard', { cardId: card.id })).status, 200);
-  }
+  const misfortune = defending.state.players[1].hand.find(entry => entry.spellId === 'FAT-002');
+  const twist = defending.state.players[1].hand.find(entry => entry.spellId === 'FAT-003');
+  await api.action(guest, 'selectCard', { cardId: misfortune.id });
   result = await api.action(guest, 'castFate');
+  assert.equal(result.status, 200); assert.equal(result.data.state.fatePlayer, 0);
+  assert.equal(result.data.state.lastRoll.total, 4);
+  const fortune = (await api.get(host)).state.players[0].hand.find(card => card.spellId === 'FAT-001');
+  await api.action(host, 'selectCard', { cardId: fortune.id });
+  result = await api.action(host, 'castFate');
+  assert.equal(result.status, 200); assert.equal(result.data.state.fatePlayer, 1, 'caster Fate gives defender a final response');
+  assert.equal(result.data.state.lastRoll.total, 8);
+  await api.action(guest, 'selectCard', { cardId: twist.id });
+  assert.equal((await api.action(guest, 'castFate', { twistDirections: { [twist.id]: 4 } })).status, 400);
+  assert.equal((await api.action(guest, 'castFate', { twistDirections: { forged: -2 } })).status, 400);
+  result = await api.action(guest, 'castFate', { twistDirections: { [twist.id]: -2 } });
   assert.equal(result.status, 200); assert.equal(result.data.state.phase, 'main');
-  assert.deepEqual(result.data.state.lastRoll.dice, [4, 4]);
-  assert.equal(result.data.state.lastRoll.total, 6, '8 dice +4 Fortune -4 Misfortune -2 Twist');
-  assert.equal(result.data.state.players[1].hp, 27);
+  assert.deepEqual(result.data.state.lastRoll.dice, [4, 4], 'Fate never rerolls raw dice');
+  assert.equal(result.data.state.lastRoll.total, 6, '8 dice -4 Misfortune +4 Fortune -2 Twist');
+  assert.equal(result.data.state.players[1].hp, 95);
   assert.deepEqual(result.data.state.players.map(player => player.handCount), [2, 2]);
   fire = await api.get(host);
-  const spark = fire.state.players[0].hand.find(card => card.spellId === 'FIR-001');
+  const spark = fire.state.players[0].hand.find(card => card.spellId === 'Fire-1');
   await api.action(host, 'selectCard', { cardId: spark.id });
   assert.equal((await api.action(host, 'castSpell')).status, 422, 'a second primary is rejected');
   assert.equal((await api.action(host, 'endTurn')).data.state.phase, 'end');
@@ -131,8 +147,8 @@ test('server controls roles, selections, Fate, secure dice totals, one primary a
 });
 
 test('stale and repeated network requests cannot duplicate moves or apply client-supplied state', async t => {
-  const api = await service(t), host = await api.create(); await api.join(host);
-  const initial = await api.get(host), card = initial.state.players[0].hand.find(entry => entry.spellId === 'FIR-001');
+  const api = await service(t), host = await api.create(), guest = await api.join(host);
+  const initial = await api.get(host), card = initial.state.players[0].hand.find(entry => entry.spellId === 'Fire-1');
   const request = { type: 'selectCard', payload: { cardId: card.id }, revision: initial.revision, requestId: 'select-once' };
   const send = body => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body });
   const selected = await send(request); assert.equal(selected.status, 200);
@@ -145,24 +161,27 @@ test('stale and repeated network requests cannot duplicate moves or apply client
   const cast = { type: 'castSpell', payload: {}, revision: selected.data.revision, requestId: 'cast-once' };
   const castResult = await send(cast); assert.equal(castResult.status, 200);
   assert.equal((await send(cast)).data.revision, castResult.data.revision);
-  assert.equal((await api.get(host)).state.players[0].discard.length, 1);
-  assert.equal((await send({ type: 'rollDice', payload: { dice: [6, 6] }, revision: castResult.data.revision, requestId: 'fake-dice' })).status, 400);
+  const committed = (await api.get(host)).state;
+  assert.equal(committed.players[0].discard.length, 0, 'committed primary stays in hand until post-roll Fate finishes');
+  assert.equal(committed.players[0].mana, 2, 'retried cast pays exactly once');
+  assert.equal(committed.pendingSpell.spellId, 'Fire-1');
+  assert.equal((await api.action(guest, 'rollDice', { dice: [6, 6] })).status, 400, 'even the acting defender cannot supply dice');
   assert.equal((await send({ type: 'endTurn', payload: {}, state: { hp: 99 }, revision: castResult.data.revision, requestId: 'fake-state' })).status, 400);
 });
 
 test('custom deck legality and opposite seats are checked before creating a match', async t => {
   const api = await service(t, { createMatch: decks => createGame(32, decks) });
-  const custom = createStarterDeck('fire');
-  custom.entries.find(entry => entry.spellId === 'FIR-006').quantity -= 1;
-  custom.entries.push({ spellId: 'FIR-003', quantity: 1 });
+  const custom = legalDeck('fire');
+  custom.entries.find(entry => entry.spellId === 'Fire-6').quantity -= 1;
+  custom.entries.push({ spellId: 'Fire-8', quantity: 1 });
   const host = await api.create('fire', custom), guest = await api.join(host);
   assert.deepEqual((await api.get(host)).state.players[0].deckDefinition, normalizeDeck(custom));
   assert.equal((await api.get(guest)).state.players[0].deckDefinition, null);
-  const bad = createStarterDeck('fire'); bad.entries[0].quantity = 4;
+  const bad = legalDeck('fire'); bad.entries[0].quantity = 4;
   assert.equal((await api.request('/api/rooms', { method: 'POST', body: { name: 'Bad', element: 'fire', deck: bad } })).status, 400);
   const waterHost = await api.create('water');
   assert.deepEqual((await api.request(`/api/rooms/${waterHost.code}/info`)).data, { code: waterHost.code, status: 'waiting', joiningElement: 'fire' });
-  assert.equal((await api.request(`/api/rooms/${waterHost.code}/join`, { method: 'POST', body: { name: 'Wrong', deck: createStarterDeck('water') } })).status, 400);
+  assert.equal((await api.request(`/api/rooms/${waterHost.code}/join`, { method: 'POST', body: { name: 'Wrong', deck: legalDeck('water') } })).status, 400);
   const fireGuest = await api.join(waterHost);
   assert.deepEqual([fireGuest.playerIndex, fireGuest.element, fireGuest.state.activePlayer], [0, 'fire', 0]);
 });
@@ -171,7 +190,7 @@ test('room expiry, capacity, CORS and bounded request bodies fail clearly', asyn
   let clock = 100000;
   const api = await service(t, { now: () => clock, roomTtlMs: 1000, maxRooms: 1 });
   const host = await api.create();
-  assert.equal((await api.request('/api/rooms', { method: 'POST', body: { name: 'Another', element: 'fire', deck: createStarterDeck('fire') } })).status, 503);
+  assert.equal((await api.request('/api/rooms', { method: 'POST', body: { name: 'Another', element: 'fire', deck: legalDeck('fire') } })).status, 503);
   clock += 1001;
   assert.equal((await api.request(`/api/rooms/${host.code}`, { token: host.token })).status, 404);
   await api.create();

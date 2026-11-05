@@ -3,7 +3,8 @@ import { randomBytes, randomUUID, createHash, scrypt, scryptSync, timingSafeEqua
 import { mkdirSync, chmodSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { normalizeDeck } from '../src/decks.js';
+import { normalizeDeckSlot } from '../src/decks.js';
+import { SPELLBOOK_VERSION } from '../src/spells.js';
 
 const derive = promisify(scrypt);
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
@@ -31,18 +32,19 @@ function password(value, login = false) {
 }
 
 function savedData(value) {
+  if (value?.spellbookVersion !== undefined && value.spellbookVersion !== SPELLBOOK_VERSION) fail(400, 'spellbook_changed', 'Update Wizzy and build decks from the current spellbook.');
   const profile = value?.profile;
   if (!record(profile) || typeof profile.name !== 'string' || !['fire', 'water'].includes(profile.element)) fail(400, 'invalid_profile', 'Choose a wizard name and Fire or Water element.');
   const name = profile.name.replace(/[\u0000-\u001f\u007f]/g, '').trim();
   if (!name || name.length > 24) fail(400, 'invalid_profile', 'Wizard names must contain 1 to 24 characters.');
-  if (!record(value?.decks)) fail(400, 'invalid_deck', 'Save both a Fire and Water deck.');
+  if (!record(value?.decks)) fail(400, 'invalid_deck', 'Provide Fire and Water deck slots.');
   const decks = {};
   try {
     for (const element of ['fire', 'water']) {
-      decks[element] = normalizeDeck(value.decks[element]);
+      decks[element] = normalizeDeckSlot(value.decks[element]);
       if (decks[element].element !== element) throw new Error(`The ${element} deck has the wrong main element.`);
     }
-  } catch (error) { fail(400, 'invalid_deck', error.message || 'Choose legal 30-slab decks.'); }
+  } catch (error) { fail(400, 'invalid_deck', error.message || 'A saved deck must be empty or contain 30 legal slabs.'); }
   return { profile: { name, element: profile.element }, decks };
 }
 
@@ -69,6 +71,7 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
       name TEXT NOT NULL,
       element TEXT NOT NULL,
       decks_json TEXT NOT NULL,
+      spellbook_version TEXT NOT NULL DEFAULT '',
       revision INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     );
@@ -79,19 +82,51 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
     );
     CREATE INDEX IF NOT EXISTS account_sessions_expiry ON account_sessions(expires_at);
   `);
+  if (!db.prepare('PRAGMA table_info(accounts)').all().some(column => column.name === 'spellbook_version')) {
+    db.exec("ALTER TABLE accounts ADD COLUMN spellbook_version TEXT NOT NULL DEFAULT '';");
+  }
+  db.exec(`CREATE TABLE IF NOT EXISTS account_deck_archives (
+    id INTEGER PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    spellbook_version TEXT NOT NULL,
+    decks_json TEXT NOT NULL,
+    archived_at INTEGER NOT NULL
+  );`);
   secureFiles();
   const dummySalt = randomBytes(16).toString('hex');
   const dummyHash = scryptSync(randomBytes(32).toString('hex'), dummySalt, 64);
 
-  function publicAccount(row) {
-    return { id: row.id, username: row.username, profile: { name: row.name, element: row.element }, decks: JSON.parse(row.decks_json), revision: row.revision };
+  function currentAccount(row) {
+    if (row.spellbook_version === SPELLBOOK_VERSION) return row;
+    const empty = { fire: { element: 'fire', entries: [] }, water: { element: 'water', entries: [] } };
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      const fresh = db.prepare('SELECT * FROM accounts WHERE id = ?').get(row.id);
+      if (fresh.spellbook_version !== SPELLBOOK_VERSION) {
+        db.prepare('INSERT INTO account_deck_archives (account_id, spellbook_version, decks_json, archived_at) VALUES (?, ?, ?, ?)')
+          .run(fresh.id, fresh.spellbook_version || 'legacy', fresh.decks_json, now());
+        db.prepare('UPDATE accounts SET decks_json = ?, spellbook_version = ?, revision = revision + 1 WHERE id = ?')
+          .run(JSON.stringify(empty), SPELLBOOK_VERSION, fresh.id);
+      }
+      db.exec('COMMIT;');
+    } catch (error) { db.exec('ROLLBACK;'); throw error; }
+    secureFiles();
+    return db.prepare('SELECT * FROM accounts WHERE id = ?').get(row.id);
+  }
+  function publicAccount(value) {
+    const row = currentAccount(value);
+    const archived = db.prepare('SELECT 1 FROM account_deck_archives WHERE account_id = ? LIMIT 1').get(row.id);
+    const decks = JSON.parse(row.decks_json);
+    return { id: row.id, username: row.username, profile: { name: row.name, element: row.element }, decks, revision: row.revision,
+      spellbookVersion: SPELLBOOK_VERSION,
+      ...(archived && Object.values(decks).some(deck => deck.entries.length === 0) ? { migrationMessage: 'The spellbook has changed. Previous decks were archived; build and save new 30-slab decks.' } : {}) };
   }
   function rowForToken(token) {
     if (typeof token !== 'string' || !TOKEN.test(token)) fail(401, 'account_unauthorized', 'Log in to your Wizzy account again.');
     db.prepare('DELETE FROM account_sessions WHERE expires_at <= ?').run(now());
     const row = db.prepare('SELECT a.* FROM accounts a JOIN account_sessions s ON s.account_id = a.id WHERE s.token_hash = ? AND s.expires_at > ?').get(digest(token), now());
     if (!row) fail(401, 'account_unauthorized', 'Your account session expired. Log in again.');
-    return row;
+    return currentAccount(row);
   }
   function sessionFor(row) {
     const token = randomBytes(32).toString('base64url');
@@ -109,8 +144,8 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
       const hash = await derive(secret, salt, 64);
       const id = randomUUID();
       try {
-        db.prepare('INSERT INTO accounts (id, username, password_salt, password_hash, name, element, decks_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-          .run(id, loginName, salt, hash.toString('hex'), data.profile.name, data.profile.element, JSON.stringify(data.decks), now());
+        db.prepare('INSERT INTO accounts (id, username, password_salt, password_hash, name, element, decks_json, spellbook_version, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .run(id, loginName, salt, hash.toString('hex'), data.profile.name, data.profile.element, JSON.stringify(data.decks), SPELLBOOK_VERSION, now());
       } catch (error) {
         if (db.prepare('SELECT id FROM accounts WHERE username = ?').get(loginName)) fail(409, 'username_taken', 'That username is already taken.');
         throw error;

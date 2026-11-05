@@ -4,10 +4,17 @@ import { mkdtemp, readFile, stat, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMultiplayerServer } from '../server/room-server.js';
-import { createStarterDeck, normalizeDeck } from '../src/decks.js';
+import { normalizeDeck } from '../src/decks.js';
+import { SPELLBOOK_VERSION } from '../src/spells.js';
+import { DatabaseSync } from 'node:sqlite';
+
+const legalDeck = element => ({ element, entries: [
+  ...Array.from({ length: 7 }, (_, i) => ({ spellId: `${element === 'fire' ? 'Fire' : 'Water'}-${i + 1}`, quantity: 3 })),
+  ...['FAT-001', 'FAT-002', 'FAT-003'].map(spellId => ({ spellId, quantity: 3 })),
+] });
 
 const profile = { name: 'Seattle Wizzy', element: 'fire' };
-const decks = () => ({ fire: createStarterDeck('fire'), water: createStarterDeck('water') });
+const decks = () => ({ fire: legalDeck('fire'), water: legalDeck('water') });
 const registration = (username = 'seattle_wizzy') => ({ username, password: 'Wizzy-test-password-2026', profile: { ...profile }, decks: decks() });
 
 async function service(t, options = {}) {
@@ -59,8 +66,8 @@ test('account registration, independent logins and logout use private bearer ses
 test('saved decks synchronize across logins while stale or illegal saves cannot overwrite them', async t => {
   const api = await service(t), first = await api.register(), second = await api.login();
   const custom = decks();
-  custom.fire.entries.find(entry => entry.spellId === 'FIR-006').quantity -= 1;
-  custom.fire.entries.push({ spellId: 'FIR-003', quantity: 1 });
+  custom.fire.entries.find(entry => entry.spellId === 'Fire-6').quantity -= 1;
+  custom.fire.entries.push({ spellId: 'Fire-8', quantity: 1 });
   const next = { profile: { name: 'My Saved Wizzy', element: 'water' }, decks: custom, revision: 0 };
   const saved = await api.request('/api/accounts/me', { method: 'PUT', token: first.token, body: next });
   assert.equal(saved.status, 200); assert.equal(saved.data.account.revision, 1);
@@ -76,6 +83,26 @@ test('saved decks synchronize across logins while stale or illegal saves cannot 
   const privateRead = await api.request(`/api/accounts/me?id=${first.account.id}`, { token: other.token });
   assert.equal(privateRead.data.account.id, other.account.id, 'a supplied account ID never changes authenticated identity');
   assert.notDeepEqual(privateRead.data.account.decks, saved.data.account.decks);
+});
+
+test('accounts allow empty slots and one completed deck while battle seats still require 30 slabs', async t => {
+  const api = await service(t);
+  const empty = { fire: { element: 'fire', entries: [] }, water: { element: 'water', entries: [] } };
+  const account = await api.register({ ...registration('fresh_builder'), decks: empty });
+  assert.deepEqual(account.account.decks, empty);
+  assert.equal(account.account.spellbookVersion, SPELLBOOK_VERSION);
+  assert.equal((await api.request('/api/rooms', { method: 'POST', token: account.token, body: { element: 'fire' } })).status, 400);
+  const completed = { fire: legalDeck('fire'), water: empty.water };
+  const save = await api.request('/api/accounts/me', { method: 'PUT', token: account.token,
+    body: { profile, decks: completed, revision: 0, spellbookVersion: SPELLBOOK_VERSION } });
+  assert.equal(save.status, 200);
+  assert.deepEqual(save.data.account.decks, { fire: normalizeDeck(completed.fire), water: empty.water });
+  assert.equal((await api.request('/api/rooms', { method: 'POST', token: account.token, body: { element: 'fire' } })).status, 201);
+  assert.equal((await api.request('/api/rooms', { method: 'POST', token: account.token, body: { element: 'water' } })).status, 400);
+  const partial = { fire: { element: 'fire', entries: [{ spellId: 'Fire-1', quantity: 1 }] }, water: empty.water };
+  assert.equal((await api.request('/api/accounts/me', { method: 'PUT', token: account.token, body: { profile, decks: partial, revision: 1 } })).status, 400);
+  assert.equal((await api.request('/api/accounts/me', { method: 'PUT', token: account.token,
+    body: { profile, decks: completed, revision: 1, spellbookVersion: 'old-spellbook' } })).status, 400);
 });
 
 test('SQLite accounts, saved decks and hashed sessions survive restart and expire on schedule', async t => {
@@ -99,16 +126,46 @@ test('SQLite accounts, saved decks and hashed sessions survive restart and expir
   await second.stop();
 });
 
+test('old account databases archive replaced decks without losing identities or active sessions', async t => {
+  const folder = await mkdtemp(path.join(tmpdir(), 'wizzy-legacy-accounts-'));
+  t.after(() => rm(folder, { recursive: true, force: true }));
+  const dbPath = path.join(folder, 'accounts.sqlite');
+  const first = await service(t, { accountDbPath: dbPath });
+  const registered = await first.register();
+  await first.stop();
+  const oldDecks = { fire: { element: 'fire', entries: [{ spellId: 'FIR-001', quantity: 30 }] }, water: { element: 'water', entries: [{ spellId: 'WAT-001', quantity: 30 }] } };
+  const db = new DatabaseSync(dbPath);
+  db.exec('ALTER TABLE accounts DROP COLUMN spellbook_version;');
+  db.prepare('UPDATE accounts SET decks_json = ?, revision = 7 WHERE id = ?').run(JSON.stringify(oldDecks), registered.account.id);
+  db.close();
+  const second = await service(t, { accountDbPath: dbPath });
+  const migrated = await second.request('/api/accounts/me', { token: registered.token });
+  assert.equal(migrated.status, 200);
+  assert.equal(migrated.data.account.id, registered.account.id);
+  assert.equal(migrated.data.account.revision, 8);
+  assert.equal(migrated.data.account.spellbookVersion, SPELLBOOK_VERSION);
+  assert.match(migrated.data.account.migrationMessage, /archived/);
+  assert.deepEqual(migrated.data.account.decks, { fire: { element: 'fire', entries: [] }, water: { element: 'water', entries: [] } });
+  assert.equal((await second.login()).account.id, registered.account.id);
+  assert.equal((await second.request('/api/accounts/me', { token: registered.token })).data.account.revision, 8, 'migration only happens once');
+  await second.stop();
+  const saved = new DatabaseSync(dbPath);
+  const archives = saved.prepare('SELECT decks_json FROM account_deck_archives WHERE account_id = ?').all(registered.account.id);
+  assert.equal(archives.length, 1);
+  assert.deepEqual(JSON.parse(archives[0].decks_json), oldDecks);
+  saved.close();
+});
+
 test('authenticated rooms use account-owned decks and identities rather than submitted guest data', async t => {
   const api = await service(t);
   const fireInput = registration('fire_wizzy');
   fireInput.profile.name = 'Real Fire';
-  fireInput.decks.fire.entries.find(entry => entry.spellId === 'FIR-006').quantity -= 1;
-  fireInput.decks.fire.entries.push({ spellId: 'FIR-003', quantity: 1 });
+  fireInput.decks.fire.entries.find(entry => entry.spellId === 'Fire-6').quantity -= 1;
+  fireInput.decks.fire.entries.push({ spellId: 'Fire-8', quantity: 1 });
   const fireAccount = await api.register(fireInput), waterAccount = await api.register(registration('water_wizzy'));
-  const made = await api.request('/api/rooms', { method: 'POST', token: fireAccount.token, body: { element: 'fire', name: 'Forged Name', deck: createStarterDeck('water') } });
+  const made = await api.request('/api/rooms', { method: 'POST', token: fireAccount.token, body: { element: 'fire', name: 'Forged Name', deck: legalDeck('water') } });
   assert.equal(made.status, 201); assert.equal(made.data.players[0].name, 'Real Fire');
-  const joined = await api.request(`/api/rooms/${made.data.code}/join`, { method: 'POST', token: waterAccount.token, body: { name: 'Forged Guest', deck: createStarterDeck('fire') } });
+  const joined = await api.request(`/api/rooms/${made.data.code}/join`, { method: 'POST', token: waterAccount.token, body: { name: 'Forged Guest', deck: legalDeck('fire') } });
   assert.equal(joined.status, 200); assert.equal(joined.data.players[1].name, 'Seattle Wizzy');
   const own = await api.request(`/api/rooms/${made.data.code}`, { token: made.data.token });
   assert.deepEqual(own.data.state.players[0].deckDefinition, normalizeDeck(fireInput.decks.fire));
@@ -120,8 +177,8 @@ test('authenticated rooms use account-owned decks and identities rather than sub
 test('both remote players roll server-controlled opening dice and the second starter draws once', async t => {
   const samples = [1.5 / 6, 5.5 / 6];
   const api = await service(t, { initiativeRandom: () => samples.shift() });
-  const fire = await api.request('/api/rooms', { method: 'POST', body: { name: 'Fire', element: 'fire', deck: createStarterDeck('fire') } });
-  const water = await api.request(`/api/rooms/${fire.data.code}/join`, { method: 'POST', body: { name: 'Water', deck: createStarterDeck('water') } });
+  const fire = await api.request('/api/rooms', { method: 'POST', body: { name: 'Fire', element: 'fire', deck: legalDeck('fire') } });
+  const water = await api.request(`/api/rooms/${fire.data.code}/join`, { method: 'POST', body: { name: 'Water', deck: legalDeck('water') } });
   let serial = 0;
   const act = async (player, type, payload = {}) => {
     const current = await api.request(`/api/rooms/${player.code}`, { token: player.token });

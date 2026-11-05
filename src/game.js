@@ -1,30 +1,18 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.js';
-import { normalizeDeck, createStarterDeck } from './decks.js';
-import { MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
+import { normalizeDeck, validateDeck } from './decks.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
-/** A committed rolling spell stays in hand until both Fate windows and its roll finish. */
-export const SAVE_VERSION = 9;
-export const PHASES = Object.freeze(['initiative', 'main', 'fate', 'rolling', 'resolving', 'end', 'refresh', 'ready-to-pass']);
-const PRE_INITIATIVE_PHASES = PHASES.filter((phase) => phase !== 'initiative');
-const PREVIEW_PHASES = PRE_INITIATIVE_PHASES.filter((phase) => phase !== 'rolling');
+/** A committed slab stays in hand through its roll and post-roll Fate responses. */
+export const SAVE_VERSION = 10;
+export const PHASES = Object.freeze(['setup', 'initiative', 'main', 'rolling', 'fate', 'resolving', 'end', 'refresh', 'ready-to-pass']);
 const PENDING_PHASES = ['fate', 'rolling', 'resolving'];
 const LOG_TYPES = ['info', 'turn', 'round', 'cast', 'fate', 'resolve', 'refresh', 'damage', 'victory', 'dice', 'resource', 'heal', 'shield', 'loaded'];
 
 export const CARD_CATALOG = Object.freeze({
-  fire: Object.freeze(DECK_LISTS.fire.map(({ spellId }) => SPELL_CATALOG[spellId])),
-  water: Object.freeze(DECK_LISTS.water.map(({ spellId }) => SPELL_CATALOG[spellId])),
-});
-
-const LEGACY_DECK_SIZE = 24;
-const LEGACY_SPELLS = Object.freeze({
-  fire: Object.freeze({ spellId: 'fiery-comet', name: 'Fiery Comet', art: 'comet' }),
-  water: Object.freeze({ spellId: 'cresting-wave', name: 'Cresting Wave', art: 'wave' }),
-});
-const VERSION_ONE_SPELL_IDS = Object.freeze({
-  fire: ['spark-shot', 'kindle', 'fortune', 'heatbox', 'mana-shield', 'sunsetter'],
-  earth: ['stone-shot', 'rootbound', 'earth-fortune', 'runestone', 'earth-mana-shield', 'mountain-call'],
+  fire: Object.freeze(Object.values(SPELL_CATALOG).filter(card => card.element === 'Fire' || card.category === 'Fate')),
+  water: Object.freeze(Object.values(SPELL_CATALOG).filter(card => card.element === 'Water' || card.category === 'Fate')),
 });
 
 function randomGenerator(seed) {
@@ -38,26 +26,18 @@ function randomGenerator(seed) {
   };
 }
 
-function makeDeckCards(owner, preview = false, deckDefinition = null) {
-  return (deckDefinition?.entries ?? DECK_LISTS[owner]).flatMap(({ spellId, quantity }) => {
+function makeDeckCards(owner, deckDefinition) {
+  return deckDefinition.entries.flatMap(({ spellId, quantity }) => {
     const spell = SPELL_CATALOG[spellId];
     return Array.from({ length: quantity }, (_, copy) => ({
       ...spell, id: `${owner}-${spellId}-${copy}`,
-      cost: preview ? 0 : spell.manaCost, effectPending: preview, description: spell.effectText,
+      cost: spell.manaCost, effectPending: false, description: spell.effectText,
     }));
   });
 }
 
-function makeLegacyDeck(owner) {
-  const spell = LEGACY_SPELLS[owner];
-  return Array.from({ length: LEGACY_DECK_SIZE }, (_, copy) => ({
-    ...spell, id: `${owner}-${spell.spellId}-${copy}`,
-    cost: 0, effectPending: true, description: 'Spell effect coming soon.',
-  }));
-}
-
-function makeDeck(owner, random, deckDefinition = null) {
-  const deck = makeDeckCards(owner, false, deckDefinition);
+function makeDeck(owner, random, deckDefinition) {
+  const deck = makeDeckCards(owner, deckDefinition);
   for (let index = deck.length - 1; index > 0; index -= 1) {
     const other = Math.floor(random() * (index + 1));
     [deck[index], deck[other]] = [deck[other], deck[index]];
@@ -85,31 +65,36 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
     || Object.keys(deckConfigs).some((key) => !['fire', 'water'].includes(key))) {
     throw new Error('Deck configurations must be keyed by fire or water.');
   }
+  const definitions = Object.fromEntries(['fire', 'water'].map(id => {
+    const input = deckConfigs[id];
+    if (validateDeck(input) && input.element !== id) throw new Error(`The ${id} wizard requires a ${id} deck.`);
+    return [id, validateDeck(input) ? normalizeDeck(input) : { element: id, entries: [] }];
+  }));
+  const ready = ['fire', 'water'].every(id => validateDeck(definitions[id]));
   const random = randomGenerator(seed);
   const players = ['fire', 'water'].map((id) => {
-    const configured = Object.hasOwn(deckConfigs, id);
-    const deckDefinition = normalizeDeck(configured ? deckConfigs[id] : createStarterDeck(id));
-    if (deckDefinition.element !== id) throw new Error(`The ${id} wizard requires a ${id} deck.`);
-    // Preserve the published starter shuffle and legacy zone mapping by default.
-    const deck = makeDeck(id, random, configured ? deckDefinition : null);
+    const deckDefinition = definitions[id];
+    const deck = ready ? makeDeck(id, random, deckDefinition) : [];
     return {
       id, name: id === 'fire' ? 'Fire' : 'Water',
       elementName: id === 'fire' ? 'Embers' : 'Flow',
-      hp: 30, maxHp: 30, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
+      hp: MAX_HP, maxHp: MAX_HP, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
       turnsStarted: 0, deckDefinition,
       hand: deck.splice(0, 4), deck, discard: [],
     };
   });
   const state = {
     version: SAVE_VERSION, round: 1, activePlayer: 0,
-    phase: 'initiative', primaryUsed: false, selectedCardId: null, selectedFateCardIds: [], pendingCardId: null, pendingSpell: null,
+    phase: ready ? 'initiative' : 'setup', primaryUsed: false, selectedCardId: null, selectedFateCardIds: [], pendingCardId: null, pendingSpell: null,
     fatePlayer: null, lastRoll: null, refreshCardIds: [],
     startingPlayer: null, secondPlayerOpeningDrawPending: true,
     initiative: { round: 1, rolls: [null, null], history: [], winner: null, legacy: false },
     status: 'playing', winner: null, players, log: [],
   };
-  addLog(state, 'The duel begins. Both wizards receive 30 HP, 3 mana, and 4 spell slabs.');
-  addLog(state, 'Each wizard rolls one die to decide who starts. Ties are rerolled.');
+  if (ready) {
+    addLog(state, `The duel begins. Both wizards receive ${MAX_HP} HP, 3 mana, and 4 spell slabs.`);
+    addLog(state, 'Each wizard rolls one die to decide who starts. Ties are rerolled.');
+  } else addLog(state, 'Build and save a legal 30-slab Fire deck and Water deck to begin. Previous spellbook decks are not used.');
   return state;
 }
 
@@ -147,13 +132,20 @@ export function getActingPlayerIndex(state) {
   return state.phase === 'fate' ? state.fatePlayer : state.activePlayer;
 }
 
-function fateModifier(state, card) {
+function fateModifier(state, card, playerIndex = state.fatePlayer, twistDirection = null) {
   if (card.category !== 'Fate') return null;
-  const attacking = state.fatePlayer === state.activePlayer;
+  const attacking = playerIndex === state.activePlayer;
   if (card.spellId === 'FAT-001') return attacking ? 4 : null;
   if (card.spellId === 'FAT-002') return attacking ? null : -4;
-  if (card.spellId === 'FAT-003') return attacking ? 2 : -2;
+  if (card.spellId === 'FAT-003') return twistDirection ?? (attacking ? 2 : -2);
   return null;
+}
+
+/** Whether a player can afford a role-eligible Fate slab for this spell. */
+export function canPlayFate(state, playerIndex) {
+  if (![0, 1].includes(playerIndex) || !state.pendingSpell) return false;
+  const player = state.players[playerIndex];
+  return player.hand.some(card => fateModifier(state, card, playerIndex) !== null && player.mana >= card.manaCost);
 }
 
 /** An unaffordable spell may still be selected for reading, but cannot be committed. */
@@ -190,7 +182,7 @@ export function selectCard(state, cardId) {
   return { ...state, selectedCardId: state.selectedCardId === cardId ? null : cardId };
 }
 
-/** Pay resources now; only threshold spells open the two successive Fate windows. */
+/** Pay once and capture Loaded before the dice roll. Fate follows the result. */
 export function castSelected(state, { emberSpend = 0 } = {}) {
   if (!inPhase(state, 'main') || !canCastSelected(state)) return state;
   const player = state.players[state.activePlayer];
@@ -211,6 +203,7 @@ export function castSelected(state, { emberSpend = 0 } = {}) {
     loadedBonus: rule.requiresRoll ? caster.loaded : 0,
     attackingFate: 0, defendingFate: 0,
     attackingFateCardIds: [], defendingFateCardIds: [],
+    fateStep: null, fatePlays: [], fateHistory: [],
   };
   next.selectedCardId = null;
   next.selectedFateCardIds = [];
@@ -218,56 +211,81 @@ export function castSelected(state, { emberSpend = 0 } = {}) {
   if (rule.requiresRoll) {
     caster.loaded = 0;
     next.lastRoll = null;
-    next.phase = 'fate';
-    next.fatePlayer = next.activePlayer;
-    addLog(next, `${caster.name} may play attacking Fate before the defender responds.`, 'fate', caster.id);
+    next.phase = 'rolling';
+    addLog(next, 'Roll the dice, then the defender has the first Fate response.', 'dice', caster.id);
     return next;
   }
   // Immediate spells deliberately skip Fate, dice and animation-only pending states.
   return completeSpell(next, null);
 }
 
-/** Cast every selected Fate slab together, then advance to the next response or roll. */
-export function castFateSelected(state) {
+/** Commit a selected Fate batch; each Twist may choose either sign. */
+export function castFateSelected(state, { twistDirections = {} } = {}) {
   if (!inPhase(state, 'fate') || !canCastSelected(state)) return state;
+  if (!twistDirections || typeof twistDirections !== 'object' || Array.isArray(twistDirections)
+    || ![Object.prototype, null].includes(Object.getPrototypeOf(twistDirections))) return state;
+  const selected = state.players[state.fatePlayer].hand.filter(card => state.selectedFateCardIds.includes(card.id));
+  if (Object.entries(twistDirections).some(([id, direction]) => !selected.some(card => card.id === id && card.spellId === 'FAT-003') || ![2, -2].includes(direction))) return state;
   const next = structuredClone(state);
   const player = next.players[next.fatePlayer];
   const attacking = next.fatePlayer === next.activePlayer;
+  const playedIds = [...next.selectedFateCardIds];
   for (const id of next.selectedFateCardIds) {
     const index = player.hand.findIndex((card) => card.id === id);
     const [card] = player.hand.splice(index, 1);
-    const modifier = fateModifier(next, card);
+    const modifier = fateModifier(next, card, next.fatePlayer, twistDirections[id]);
     player.mana -= card.manaCost;
     player.discard.push(card);
     next.pendingSpell[attacking ? 'attackingFate' : 'defendingFate'] += modifier;
     next.pendingSpell[attacking ? 'attackingFateCardIds' : 'defendingFateCardIds'].push(card.id);
-    addLog(next, `${player.name} casts ${card.name}: ${modifier > 0 ? '+' : ''}${modifier} to the pending roll.`, 'fate', player.id);
+    next.pendingSpell.fatePlays.push({ cardId: card.id, spellId: card.spellId, playerIndex: next.fatePlayer, modifier, step: next.pendingSpell.fateStep });
+    addLog(next, `${player.name} casts ${card.name}: ${modifier > 0 ? '+' : ''}${modifier} to the rolled total.`, 'fate', player.id);
   }
-  return advanceFate(next, false);
+  updateModifiedRoll(next);
+  return advanceFate(next, 'cast', playedIds);
 }
 
-function advanceFate(next, skipped) {
+function updateModifiedRoll(next) {
+  const pending = next.pendingSpell;
+  next.lastRoll.attackingFate = pending.attackingFate;
+  next.lastRoll.defendingFate = pending.defendingFate;
+  next.lastRoll.total = next.lastRoll.rawTotal + pending.loadedBonus + pending.attackingFate + pending.defendingFate;
+}
+
+function openFateStep(next, step) {
+  next.pendingSpell.fateStep = step;
+  next.phase = 'fate';
+  next.fatePlayer = step === 'attacker' ? next.activePlayer : 1 - next.activePlayer;
+  if (!canPlayFate(next, next.fatePlayer)) {
+    addLog(next, `${next.players[next.fatePlayer].name} has no playable Fate; this response is skipped.`, 'fate', next.players[next.fatePlayer].id);
+    return advanceFate(next, 'auto-skip');
+  }
+  addLog(next, `${next.players[next.fatePlayer].name} may respond with ${step === 'attacker' ? 'attacking' : 'defending'} Fate to the rolled total ${next.lastRoll.total}.`, 'fate', next.players[next.fatePlayer].id);
+  return next;
+}
+
+function advanceFate(next, action, cardIds = []) {
   const player = next.players[next.fatePlayer];
+  const step = next.pendingSpell.fateStep;
+  next.pendingSpell.fateHistory.push({ step, playerIndex: next.fatePlayer, action, cardIds });
   next.selectedCardId = null;
   next.selectedFateCardIds = [];
-  const action = skipped ? 'skips Fate' : 'finishes Fate';
-  if (next.fatePlayer === next.activePlayer) {
-    next.fatePlayer = 1 - next.activePlayer;
-    addLog(next, `${player.name} ${action}. ${next.players[next.fatePlayer].name} may play defending Fate.`, 'fate', player.id);
-  } else {
-    next.fatePlayer = null;
-    next.phase = 'rolling';
-    addLog(next, `${player.name} ${action}. Roll the dice.`, 'fate', player.id);
-  }
+  if (action === 'skip') addLog(next, `${player.name} skips Fate.`, 'fate', player.id);
+  if (step === 'defender-first') return openFateStep(next, 'attacker');
+  if (step === 'attacker' && action === 'cast') return openFateStep(next, 'defender-final');
+  next.fatePlayer = null;
+  next.pendingSpell.fateStep = 'complete';
+  next.phase = 'resolving';
+  addLog(next, `Fate responses finish at Modified Roll ${next.lastRoll.total}. The spell resolves.`, 'fate');
   return next;
 }
 
 export function skipFate(state) {
   if (!inPhase(state, 'fate')) return state;
-  return advanceFate(structuredClone(state), true);
+  return advanceFate(structuredClone(state), 'skip');
 }
 
-/** Capture two genuine d6 results exactly once, after both players finish Fate. */
+/** Capture two d6 exactly once, then offer the defender post-roll Fate. */
 export function rollDice(state, random = Math.random) {
   if (!inPhase(state, 'rolling')) return state;
   const samples = [random(), random()];
@@ -282,9 +300,8 @@ export function rollDice(state, random = Math.random) {
     total: rawTotal + pending.loadedBonus + pending.attackingFate + pending.defendingFate,
     spellId: pending.spellId, casterIndex: pending.casterIndex,
   };
-  next.phase = 'resolving';
   addLog(next, `${next.players[next.activePlayer].name} rolls ${dice.join(' + ')} = ${rawTotal}; Loaded ${pending.loadedBonus >= 0 ? '+' : ''}${pending.loadedBonus}, attacking Fate +${pending.attackingFate}, defending Fate ${pending.defendingFate}: total ${next.lastRoll.total}.`, 'dice', next.players[next.activePlayer].id);
-  return next;
+  return openFateStep(next, 'defender-first');
 }
 
 function clearPending(state) {
@@ -372,10 +389,11 @@ export function endTurn(state) {
     if (next.activePlayer !== next.startingPlayer) next.secondPlayerOpeningDrawPending = false;
     addLog(next, `${player.name} takes their opening turn${count ? ', draws 1 extra slab for going second' : ''}; ${player.hand.length} spell slabs in hand.`, 'turn', player.id);
   } else {
-    player.mana += 2;
+    const gainedMana = Math.min(2, MAX_MANA - player.mana);
+    player.mana += gainedMana;
     const count = drawToFive(player);
     const emptyNote = player.deck.length === 0 && player.hand.length < 5 ? ' Spell Tower is empty.' : '';
-    addLog(next, `${player.name}'s turn. Gained 2 mana and drew ${count} ${count === 1 ? 'slab' : 'slabs'}; ${player.hand.length} in hand.${emptyNote}`, 'turn', player.id);
+    addLog(next, `${player.name}'s turn. Gained ${gainedMana} mana and drew ${count} ${count === 1 ? 'slab' : 'slabs'}; ${player.hand.length} in hand.${emptyNote}`, 'turn', player.id);
   }
   if (player.loaded > 0) addLog(next, `${player.name}'s queued Loaded +${player.loaded} is available until their turn ends or their first roll uses it.`, 'loaded', player.id);
   return next;
@@ -416,12 +434,12 @@ export function confirmRefresh(state) {
   return endTurn(next);
 }
 
-/** Shield absorbs self-damage and opposing damage by the same rule. */
-export function applyDamage(state, targetIndex, amount) {
-  if (state.status !== 'playing' || state.phase === 'initiative' || ![0, 1].includes(targetIndex) || !Number.isSafeInteger(amount) || amount <= 0) return state;
+/** Self-damage from an owner's spell bypasses Shield. */
+export function applyDamage(state, targetIndex, amount, { selfDamage = false } = {}) {
+  if (state.status !== 'playing' || ['setup', 'initiative'].includes(state.phase) || ![0, 1].includes(targetIndex) || !Number.isSafeInteger(amount) || amount <= 0) return state;
   const next = structuredClone(state);
   const target = next.players[targetIndex];
-  const absorbed = Math.min(target.shield, amount);
+  const absorbed = selfDamage ? 0 : Math.min(target.shield, amount);
   target.shield -= absorbed;
   const hpDamage = Math.min(target.hp, amount - absorbed);
   target.hp -= hpDamage;
@@ -434,341 +452,156 @@ function requireValue(condition, message) {
   if (!condition) throw new Error(`Invalid game: ${message}`);
 }
 
-function assertSavedState(state, version, deckSize, expectedDeck) {
-  const realRules = version >= 4;
-  const primaryRules = version >= 5;
-  const customDeckRules = version >= 7;
-  requireValue(state !== null && typeof state === 'object' && state.version === version, 'unsupported save');
+/** Validate only the replacement spellbook; previous duels remain archived. */
+export function assertGame(state) {
+  requireValue(state !== null && typeof state === 'object' && state.version === SAVE_VERSION, 'unsupported save');
   requireValue(Number.isSafeInteger(state.round) && state.round >= 1, 'round');
   requireValue([0, 1].includes(state.activePlayer), 'active player');
-  requireValue(['playing', 'finished'].includes(state.status), 'status');
-  requireValue((version >= 9 ? PHASES : realRules ? PRE_INITIATIVE_PHASES : PREVIEW_PHASES).includes(state.phase), 'phase');
-  if (primaryRules) requireValue(typeof state.primaryUsed === 'boolean', 'primary spell used');
+  requireValue(['playing', 'finished'].includes(state.status) && PHASES.includes(state.phase), 'status or phase');
+  requireValue(typeof state.primaryUsed === 'boolean', 'primary spell used');
   requireValue(Array.isArray(state.players) && state.players.length === 2, 'players');
+  const setup = state.phase === 'setup';
   const allIds = new Set();
   state.players.forEach((player, index) => {
-    const expectedId = index === 0 ? 'fire' : 'water';
-    requireValue(player && player.id === expectedId, 'player identity');
-    requireValue(player.name === (index === 0 ? 'Fire' : 'Water'), 'player name');
+    const id = index === 0 ? 'fire' : 'water';
+    requireValue(player && player.id === id && player.name === (index === 0 ? 'Fire' : 'Water'), 'player identity');
     requireValue(player.elementName === (index === 0 ? 'Embers' : 'Flow'), 'element name');
-    requireValue(player.maxHp === 30 && Number.isSafeInteger(player.hp) && player.hp >= 0 && player.hp <= player.maxHp, 'HP');
-    for (const key of ['mana', 'shield', 'element', 'loaded', 'turnsStarted', ...(realRules ? ['loadedPending'] : [])]) requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
-    if (version >= 6 && player.id === 'water') requireValue(player.element <= MAX_FLOW, 'Flow cap');
-    if (version >= 8 && player.id === 'fire') requireValue(player.element <= MAX_EMBERS, 'Ember cap');
+    requireValue(player.maxHp === MAX_HP && Number.isSafeInteger(player.hp) && player.hp >= 0 && player.hp <= MAX_HP, 'HP');
+    for (const key of ['mana', 'shield', 'element', 'loaded', 'loadedPending', 'turnsStarted']) {
+      requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
+    }
+    requireValue(player.mana <= MAX_MANA && player.shield <= MAX_SHIELD, 'resource cap');
+    requireValue(player.element <= (index === 0 ? MAX_EMBERS : MAX_FLOW), 'element cap');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
     requireValue(player.hand.length <= 5, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
-    requireValue(cards.length === deckSize, 'card conservation');
-    const deckDefinition = customDeckRules ? normalizeDeck(player.deckDefinition) : null;
-    if (customDeckRules) requireValue(deckDefinition.element === expectedId, 'deck element');
-    const definitions = new Map(expectedDeck(expectedId, false, deckDefinition).map((card) => [card.id, card]));
-    for (const card of cards) {
-      requireValue(card && typeof card.id === 'string' && !allIds.has(card.id), 'unique cards');
-      allIds.add(card.id);
-      const expected = definitions.get(card.id);
-      requireValue(expected !== undefined, 'card identity');
-      for (const [key, value] of Object.entries(expected)) requireValue(card[key] === value, 'spell definition');
+    requireValue(player.deckDefinition?.element === id, 'deck element');
+    if (setup) {
+      requireValue(cards.length === 0 && (validateDeck(player.deckDefinition)
+        || Array.isArray(player.deckDefinition.entries) && player.deckDefinition.entries.length === 0), 'deck setup');
+    } else {
+      const deckDefinition = normalizeDeck(player.deckDefinition);
+      requireValue(cards.length === DECK_SIZE, 'card conservation');
+      const definitions = new Map(makeDeckCards(id, deckDefinition).map(card => [card.id, card]));
+      for (const card of cards) {
+        requireValue(card && typeof card.id === 'string' && !allIds.has(card.id), 'unique cards');
+        allIds.add(card.id);
+        const expected = definitions.get(card.id);
+        requireValue(expected !== undefined, 'card identity');
+        for (const [key, value] of Object.entries(expected)) requireValue(card[key] === value, 'spell definition');
+      }
     }
   });
-  if (version >= 9) {
-    const initiative = state.initiative;
-    requireValue(initiative && typeof initiative === 'object' && !Array.isArray(initiative), 'opening initiative');
-    requireValue(typeof initiative.legacy === 'boolean' && typeof state.secondPlayerOpeningDrawPending === 'boolean', 'opening draw tracking');
-    requireValue(Array.isArray(initiative.rolls) && initiative.rolls.length === 2 && initiative.rolls.every((roll) => roll === null || (Number.isInteger(roll) && roll >= 1 && roll <= 6)), 'opening dice');
-    requireValue(Array.isArray(initiative.history), 'opening tie history');
-    if (initiative.legacy) {
-      requireValue(initiative.round === 0 && initiative.history.length === 0 && initiative.rolls.every((roll) => roll === null)
-        && initiative.winner === 0 && state.startingPlayer === 0 && state.phase !== 'initiative', 'legacy opening order');
-    } else {
-      requireValue(Number.isSafeInteger(initiative.round) && initiative.round >= 1 && initiative.history.length === initiative.round - 1, 'opening round');
-      initiative.history.forEach((entry, index) => requireValue(entry && entry.round === index + 1
-        && Array.isArray(entry.rolls) && entry.rolls.length === 2 && entry.rolls[0] === entry.rolls[1]
-        && Number.isInteger(entry.rolls[0]) && entry.rolls[0] >= 1 && entry.rolls[0] <= 6, 'tied opening dice'));
-      if (state.phase === 'initiative') {
-        requireValue(state.status === 'playing' && state.round === 1 && state.activePlayer === 0
-          && state.startingPlayer === null && initiative.winner === null && initiative.rolls.includes(null)
-          && state.secondPlayerOpeningDrawPending && !state.primaryUsed && state.players.every((player) => player.turnsStarted === 0), 'pending opening roll');
-      } else {
-        const [fire, water] = initiative.rolls;
-        requireValue(fire !== null && water !== null && fire !== water
-          && initiative.winner === (fire > water ? 0 : 1) && state.startingPlayer === initiative.winner, 'opening winner');
-      }
-    }
-    if (state.phase !== 'initiative') {
-      requireValue([0, 1].includes(state.startingPlayer) && state.players[state.startingPlayer].turnsStarted >= 1, 'starting player');
-      requireValue(state.secondPlayerOpeningDrawPending === (state.players[1 - state.startingPlayer].turnsStarted === 0), 'second opening draw status');
-    }
+  const initiative = state.initiative;
+  requireValue(initiative && initiative.legacy === false && typeof state.secondPlayerOpeningDrawPending === 'boolean', 'opening tracking');
+  requireValue(Array.isArray(initiative.rolls) && initiative.rolls.length === 2 && initiative.rolls.every(roll => roll === null
+    || Number.isInteger(roll) && roll >= 1 && roll <= 6), 'opening dice');
+  requireValue(Array.isArray(initiative.history) && Number.isSafeInteger(initiative.round) && initiative.round >= 1
+    && initiative.history.length === initiative.round - 1, 'opening tie history');
+  initiative.history.forEach((entry, index) => requireValue(entry && entry.round === index + 1
+    && Array.isArray(entry.rolls) && entry.rolls.length === 2 && entry.rolls[0] === entry.rolls[1]
+    && Number.isInteger(entry.rolls[0]) && entry.rolls[0] >= 1 && entry.rolls[0] <= 6, 'opening tie'));
+  if (setup || state.phase === 'initiative') {
+    requireValue(state.status === 'playing' && state.round === 1 && state.activePlayer === 0
+      && state.startingPlayer === null && initiative.winner === null && initiative.rolls.includes(null)
+      && state.secondPlayerOpeningDrawPending && !state.primaryUsed && state.players.every(player => player.turnsStarted === 0), 'pending opening');
+    if (setup) requireValue(state.players.some(player => !validateDeck(player.deckDefinition))
+      && initiative.round === 1 && initiative.rolls.every(roll => roll === null), 'missing battle decks');
+  } else {
+    const [fire, water] = initiative.rolls;
+    requireValue(fire !== null && water !== null && fire !== water && initiative.winner === (fire > water ? 0 : 1)
+      && state.startingPlayer === initiative.winner && state.players[state.startingPlayer].turnsStarted >= 1, 'opening winner');
+    requireValue(state.secondPlayerOpeningDrawPending === (state.players[1 - state.startingPlayer].turnsStarted === 0), 'second opening draw');
   }
+  requireValue(state.phase === 'fate' ? [0, 1].includes(state.fatePlayer) : state.fatePlayer === null, 'Fate player');
+  requireValue(state.selectedCardId === null || canSelectCard(state, state.selectedCardId), 'selected card');
+  requireValue(Array.isArray(state.selectedFateCardIds) && new Set(state.selectedFateCardIds).size === state.selectedFateCardIds.length, 'Fate selection');
+  requireValue(state.phase === 'fate'
+    ? state.selectedFateCardIds.every(id => canSelectCard(state, id))
+      && (state.selectedFateCardIds.length ? state.selectedFateCardIds.includes(state.selectedCardId) : state.selectedCardId === null)
+    : state.selectedFateCardIds.length === 0, 'selected Fate ownership');
   const hand = state.players[state.activePlayer].hand;
-  const isOwnCard = (id) => typeof id === 'string' && hand.some((card) => card.id === id);
-  if (realRules) {
-    requireValue(state.phase === 'fate' ? [0, 1].includes(state.fatePlayer) : state.fatePlayer === null, 'Fate player');
-    requireValue(state.selectedCardId === null || canSelectCard(state, state.selectedCardId), 'selected card');
-    if (primaryRules) {
-      const ids = state.selectedFateCardIds;
-      requireValue(Array.isArray(ids) && new Set(ids).size === ids.length, 'selected Fate slabs');
-      requireValue(state.phase === 'fate'
-        ? ids.every((id) => canSelectCard(state, id)) && (ids.length ? ids.includes(state.selectedCardId) : state.selectedCardId === null)
-        : ids.length === 0, 'selected Fate ownership and role');
+  const isOwnCard = id => typeof id === 'string' && hand.some(card => card.id === id);
+  if (PENDING_PHASES.includes(state.phase)) {
+    requireValue(state.primaryUsed === true, 'committed primary spell');
+    const pending = state.pendingSpell;
+    requireValue(pending && isOwnCard(state.pendingCardId) && pending.cardId === state.pendingCardId
+      && pending.casterIndex === state.activePlayer, 'pending spell');
+    const card = hand.find(entry => entry.id === pending.cardId);
+    requireValue(pending.spellId === card.spellId && SPELL_RULES[card.spellId]?.requiresRoll === true, 'rolling spell');
+    requireValue(Number.isSafeInteger(pending.emberSpent) && pending.emberSpent >= 0, 'Ember reservation');
+    const range = getEmberSpendRange(card.spellId, state.players[state.activePlayer].element + pending.emberSpent);
+    requireValue(pending.emberSpent >= range.min && pending.emberSpent <= range.max, 'Ember payment');
+    requireValue(Number.isSafeInteger(pending.loadedBonus) && pending.loadedBonus >= 0 && state.players[state.activePlayer].loaded === 0, 'captured Loaded');
+    requireValue(Array.isArray(pending.fatePlays) && Array.isArray(pending.fateHistory) && pending.fateHistory.length <= 3, 'Fate history');
+    const steps = ['defender-first', 'attacker', 'defender-final'];
+    const owners = [1 - state.activePlayer, state.activePlayer, 1 - state.activePlayer];
+    const playedIds = new Set();
+    pending.fateHistory.forEach((entry, index) => {
+      requireValue(entry && entry.step === steps[index] && entry.playerIndex === owners[index]
+        && ['cast', 'skip', 'auto-skip'].includes(entry.action) && Array.isArray(entry.cardIds)
+        && new Set(entry.cardIds).size === entry.cardIds.length, 'Fate response sequence');
+      requireValue(entry.action === 'cast' ? entry.cardIds.length > 0 : entry.cardIds.length === 0, 'Fate response action');
+      if (index === 2) requireValue(pending.fateHistory[1].action === 'cast', 'final defender trigger');
+    });
+    for (const play of pending.fatePlays) {
+      requireValue(play && [0, 1].includes(play.playerIndex) && !playedIds.has(play.cardId), 'Fate play identity');
+      playedIds.add(play.cardId);
+      const fate = state.players[play.playerIndex].discard.find(entry => entry.id === play.cardId);
+      requireValue(fate && fate.spellId === play.spellId && fateModifier(state, fate, play.playerIndex, play.modifier) !== null, 'Fate ownership and role');
+      requireValue(play.modifier === fateModifier(state, fate, play.playerIndex, fate.spellId === 'FAT-003' ? play.modifier : null)
+        && (fate.spellId !== 'FAT-003' || [2, -2].includes(play.modifier)), 'Fate direction');
+      requireValue(pending.fateHistory.some(entry => entry.action === 'cast' && entry.step === play.step
+        && entry.playerIndex === play.playerIndex && entry.cardIds.includes(play.cardId)), 'Fate commitment');
     }
-    if (PENDING_PHASES.includes(state.phase)) {
-      if (primaryRules) requireValue(state.primaryUsed === true, 'committed primary spell');
-      const pending = state.pendingSpell;
-      requireValue(pending && isOwnCard(state.pendingCardId) && pending.cardId === state.pendingCardId && pending.casterIndex === state.activePlayer, 'pending spell');
-      const card = hand.find((entry) => entry.id === pending.cardId);
-      requireValue(pending.spellId === card.spellId && SPELL_RULES[card.spellId]?.requiresRoll === true, 'rolling spell');
-      requireValue(Number.isSafeInteger(pending.emberSpent) && pending.emberSpent >= 0, 'reserved Embers');
-      const range = getEmberSpendRange(card.spellId, state.players[state.activePlayer].element + pending.emberSpent);
-      requireValue(pending.emberSpent >= range.min && pending.emberSpent <= range.max, 'Ember payment');
-      requireValue(Number.isSafeInteger(pending.loadedBonus) && pending.loadedBonus >= 0, 'captured Loaded');
-      requireValue(state.players[state.activePlayer].loaded === 0, 'Loaded consumed once');
-      for (const [kind, playerIndex, allowed] of [
-        ['attackingFate', state.activePlayer, { 'FAT-001': 4, 'FAT-003': 2 }],
-        ['defendingFate', 1 - state.activePlayer, { 'FAT-002': -4, 'FAT-003': -2 }],
-      ]) {
-        const ids = pending[`${kind}CardIds`];
-        requireValue(Array.isArray(ids) && new Set(ids).size === ids.length, 'Fate slabs');
-        let total = 0;
-        for (const id of ids) {
-          const fate = state.players[playerIndex].discard.find((entry) => entry.id === id);
-          requireValue(fate && allowed[fate.spellId] !== undefined, 'Fate ownership and role');
-          total += allowed[fate.spellId];
-        }
-        requireValue(pending[kind] === total, 'Fate total');
-      }
-      if (state.phase === 'fate' && state.fatePlayer === state.activePlayer) requireValue(pending.defendingFateCardIds.length === 0, 'Fate order');
-      if (state.phase === 'resolving') {
-        requireValue(state.lastRoll !== null, 'completed roll');
-        for (const key of ['spellId', 'casterIndex', 'loadedBonus', 'attackingFate', 'defendingFate']) requireValue(state.lastRoll[key] === pending[key], 'roll context');
-      } else requireValue(state.lastRoll === null, 'roll not yet taken');
-    } else requireValue(state.pendingCardId === null && state.pendingSpell === null, 'no pending spell');
-    if (state.lastRoll !== null) {
-      const roll = state.lastRoll;
-      requireValue(roll && Array.isArray(roll.dice) && roll.dice.length === 2 && roll.dice.every((die) => Number.isInteger(die) && die >= 1 && die <= 6), 'dice');
-      requireValue(roll.rawTotal === roll.dice[0] + roll.dice[1], 'raw roll');
-      requireValue(Number.isSafeInteger(roll.loadedBonus) && roll.loadedBonus >= 0, 'roll Loaded');
-      requireValue(Number.isSafeInteger(roll.attackingFate) && roll.attackingFate >= 0 && roll.attackingFate % 2 === 0, 'attacking modifier');
-      requireValue(Number.isSafeInteger(roll.defendingFate) && roll.defendingFate <= 0 && roll.defendingFate % 2 === 0, 'defending modifier');
-      requireValue(Number.isSafeInteger(roll.total) && roll.total === roll.rawTotal + roll.loadedBonus + roll.attackingFate + roll.defendingFate, 'modified roll');
-      requireValue([0, 1].includes(roll.casterIndex) && SPELL_RULES[roll.spellId]?.requiresRoll === true, 'roll spell');
+    requireValue(pending.fateHistory.flatMap(entry => entry.cardIds).length === pending.fatePlays.length, 'Fate play count');
+    for (const [kind, owner] of [['attackingFate', state.activePlayer], ['defendingFate', 1 - state.activePlayer]]) {
+      const plays = pending.fatePlays.filter(play => play.playerIndex === owner);
+      const ids = pending[`${kind}CardIds`];
+      requireValue(Array.isArray(ids) && ids.length === plays.length && ids.every((id, index) => id === plays[index].cardId), 'Fate card totals');
+      requireValue(pending[kind] === plays.reduce((sum, play) => sum + play.modifier, 0), 'Fate modifier total');
     }
-  } else {
-    requireValue(state.selectedCardId === null || (state.phase === 'main' && isOwnCard(state.selectedCardId)), 'selected card');
-    requireValue(['fate', 'resolving'].includes(state.phase) ? isOwnCard(state.pendingCardId) : state.pendingCardId === null, 'pending card');
+    if (state.phase === 'rolling') {
+      requireValue(state.lastRoll === null && pending.fateStep === null && pending.fateHistory.length === 0 && pending.fatePlays.length === 0, 'pre-Fate dice');
+    } else {
+      requireValue(state.lastRoll !== null, 'completed dice');
+      for (const key of ['spellId', 'casterIndex', 'loadedBonus', 'attackingFate', 'defendingFate']) requireValue(state.lastRoll[key] === pending[key], 'roll context');
+      if (state.phase === 'fate') {
+        const index = pending.fateHistory.length;
+        requireValue(index < steps.length && pending.fateStep === steps[index] && state.fatePlayer === owners[index]
+          && canPlayFate(state, state.fatePlayer), 'current Fate window');
+        if (index === 2) requireValue(pending.fateHistory[1].action === 'cast', 'final defender response');
+      } else requireValue(pending.fateStep === 'complete' && pending.fateHistory.length >= 2
+        && pending.fateHistory.length === (pending.fateHistory[1].action === 'cast' ? 3 : 2), 'finished Fate sequence');
+    }
+  } else requireValue(state.pendingCardId === null && state.pendingSpell === null, 'no pending spell');
+  if (state.lastRoll !== null) {
+    const roll = state.lastRoll;
+    requireValue(roll && Array.isArray(roll.dice) && roll.dice.length === 2 && roll.dice.every(die => Number.isInteger(die) && die >= 1 && die <= 6), 'dice');
+    requireValue(roll.rawTotal === roll.dice[0] + roll.dice[1], 'raw roll');
+    requireValue(Number.isSafeInteger(roll.loadedBonus) && roll.loadedBonus >= 0, 'roll Loaded');
+    for (const key of ['attackingFate', 'defendingFate']) requireValue(Number.isSafeInteger(roll[key]) && roll[key] % 2 === 0, 'Fate modifier');
+    requireValue(Number.isSafeInteger(roll.total) && roll.total === roll.rawTotal + roll.loadedBonus + roll.attackingFate + roll.defendingFate, 'modified roll');
+    requireValue([0, 1].includes(roll.casterIndex) && SPELL_RULES[roll.spellId]?.requiresRoll === true, 'roll spell');
   }
-  requireValue(Array.isArray(state.refreshCardIds) && new Set(state.refreshCardIds).size === state.refreshCardIds.length, 'refresh selections');
+  requireValue(Array.isArray(state.refreshCardIds) && new Set(state.refreshCardIds).size === state.refreshCardIds.length, 'refresh selection');
   requireValue(state.phase === 'refresh' ? state.refreshCardIds.every(isOwnCard) : state.refreshCardIds.length === 0, 'refresh cards');
-  if (state.status === 'playing') {
-    requireValue(state.winner === null && state.players.every((player) => player.hp > 0), 'active duel');
-  } else {
-    requireValue([0, 1].includes(state.winner) && state.players[1 - state.winner].hp === 0 && state.players[state.winner].hp > 0 && state.selectedCardId === null && state.phase === 'main', 'winner');
-  }
+  if (state.status === 'playing') requireValue(state.winner === null && state.players.every(player => player.hp > 0), 'active duel');
+  else requireValue([0, 1].includes(state.winner) && state.players[1 - state.winner].hp === 0 && state.players[state.winner].hp > 0
+    && state.selectedCardId === null && state.phase === 'main', 'winner');
   requireValue(Array.isArray(state.log) && state.log.length > 0, 'combat log');
-  for (const [index, entry] of state.log.entries()) {
+  state.log.forEach((entry, index) => {
     requireValue(entry && entry.id === index + 1 && Number.isSafeInteger(entry.round) && entry.round > 0 && entry.round <= state.round, 'log entry');
-    requireValue(typeof entry.message === 'string' && entry.message.length <= 500, 'log message');
-    requireValue((realRules ? LOG_TYPES : LOG_TYPES.slice(0, 9)).includes(entry.type), 'log type');
-    requireValue([null, 'fire', 'water'].includes(entry.playerId), 'log player');
-  }
-}
-
-/** Validate exact deck quantities and definitions, including in-progress fate/refresh saves. */
-export function assertGame(state) {
-  assertSavedState(state, SAVE_VERSION, DECK_SIZE, makeDeckCards);
+    requireValue(typeof entry.message === 'string' && entry.message.length <= 500 && LOG_TYPES.includes(entry.type)
+      && [null, 'fire', 'water'].includes(entry.playerId), 'log content');
+  });
 }
 
 export function validateSavedGame(value) {
   try { assertGame(value); return true; } catch { return false; }
 }
 
-/** Keep the previous v1 zone-order mapping before upgrading its sample deck. */
-function migrateVersionOne(value) {
-  requireValue(Array.isArray(value.players) && value.players.length === 2, 'legacy players');
-  const oldIds = new Set();
-  let selectedCardId = null;
-  const players = value.players.map((old, index) => {
-    const oldId = index === 0 ? 'fire' : 'earth';
-    const id = index === 0 ? 'fire' : 'water';
-    requireValue(old && old.id === oldId && old.name === (index === 0 ? 'Fire' : 'Earth'), 'legacy player');
-    requireValue(old.elementName === (index === 0 ? 'Embers' : 'Runes'), 'legacy element');
-    const validIds = new Set(VERSION_ONE_SPELL_IDS[oldId].flatMap((spellId) =>
-      Array.from({ length: 4 }, (_, copy) => `${oldId}-${spellId}-${copy}`)));
-    const sampleDeck = makeLegacyDeck(id);
-    let copy = 0;
-    const zones = {};
-    for (const zone of ['hand', 'deck', 'discard']) {
-      requireValue(Array.isArray(old[zone]), 'legacy zone');
-      zones[zone] = old[zone].map((oldCard) => {
-        requireValue(oldCard && validIds.has(oldCard.id) && !oldIds.has(oldCard.id), 'legacy card');
-        oldIds.add(oldCard.id);
-        const card = sampleDeck[copy++];
-        requireValue(card !== undefined, 'legacy card count');
-        if (oldCard.id === value.selectedCardId && index === value.activePlayer && zone === 'hand') selectedCardId = card.id;
-        return card;
-      });
-    }
-    requireValue(copy === LEGACY_DECK_SIZE, 'legacy card count');
-    return {
-      id, name: index === 0 ? 'Fire' : 'Water', elementName: index === 0 ? 'Embers' : 'Flow',
-      hp: old.hp, maxHp: old.maxHp, mana: old.mana, shield: old.shield, element: old.element,
-      loaded: old.loaded, turnsStarted: old.turnsStarted, ...zones,
-    };
-  });
-  requireValue(value.selectedCardId === null || selectedCardId !== null, 'legacy selection');
-  requireValue(Array.isArray(value.log), 'legacy log');
-  return {
-    version: 2, round: value.round, activePlayer: value.activePlayer,
-    phase: 'main', selectedCardId, pendingCardId: null, refreshCardIds: [],
-    status: value.status, winner: value.winner, players,
-    log: value.log.map((entry) => ({
-      ...entry, playerId: entry.playerId === 'earth' ? 'water' : entry.playerId,
-      message: entry.message.replaceAll('Earth', 'Water').replaceAll('earth', 'water').replaceAll('Runes', 'Flow'),
-    })),
-  };
-}
-
-/** Preserve the established 24-to-30 zone mapping before enabling real spell rules. */
-function upgradeSampleDeck(legacy) {
-  assertSavedState(legacy, 2, LEGACY_DECK_SIZE, makeLegacyDeck);
-  const replacements = new Map();
-  const players = legacy.players.map((player) => {
-    const deck = makeDeckCards(player.id, true);
-    makeLegacyDeck(player.id).forEach((card, copy) => replacements.set(card.id, deck[copy]));
-    const zones = Object.fromEntries(['hand', 'deck', 'discard'].map((zone) => [
-      zone, player[zone].map((card) => replacements.get(card.id)),
-    ]));
-    zones.deck.push(...deck.slice(LEGACY_DECK_SIZE));
-    return { ...player, ...zones };
-  });
-  const replaceId = (id) => id === null ? null : replacements.get(id).id;
-  const migrated = {
-    ...legacy, version: 3, players,
-    selectedCardId: replaceId(legacy.selectedCardId),
-    pendingCardId: replaceId(legacy.pendingCardId),
-    refreshCardIds: legacy.refreshCardIds.map(replaceId),
-    log: structuredClone(legacy.log),
-  };
-  addLog(migrated, 'Sample decks upgraded to the 30-slab Fire and Water decklists. Each Spell Tower received 6 additional slabs.');
-  return migrated;
-}
-
-/** Old previews never paid costs or applied effects: cancel their pending spell safely. */
-function upgradePreviewRules(preview) {
-  assertSavedState(preview, 3, DECK_SIZE, (owner) => makeDeckCards(owner, true));
-  const next = structuredClone(preview);
-  next.version = SAVE_VERSION;
-  const wasPending = ['fate', 'resolving'].includes(next.phase);
-  if (wasPending) next.phase = 'main';
-  next.players.forEach((player, index) => {
-    player.deckDefinition = normalizeDeck(createStarterDeck(player.id));
-    const eligibleNow = index === next.activePlayer && next.phase === 'main';
-    player.loadedPending = eligibleNow ? 0 : player.loaded;
-    if (!eligibleNow) player.loaded = 0;
-    const definitions = new Map(makeDeckCards(player.id).map((card) => [card.id, card]));
-    for (const zone of ['hand', 'deck', 'discard']) player[zone] = player[zone].map((card) => definitions.get(card.id));
-  });
-  next.pendingSpell = null;
-  next.pendingCardId = null;
-  next.fatePlayer = null;
-  next.lastRoll = null;
-  next.primaryUsed = false;
-  next.selectedFateCardIds = [];
-  if (wasPending || (next.selectedCardId && !canSelectCard(next, next.selectedCardId))) next.selectedCardId = null;
-  applyFlowUpgrade(next);
-  applyEmberUpgrade(next);
-  applyInitiativeUpgrade(next);
-  addLog(next, 'Spell effects, printed mana costs and two-player Fate are now active. Existing Loaded is available on the current turn or queued for its owner’s next turn.');
-  if (wasPending) addLog(next, 'The unfinished preview spell was cancelled without charging mana, spending Embers, discarding it or applying effects.');
-  assertGame(next);
-  return next;
-}
-
-/** A v4 cast log records payment even when its rolling spell is still pending. */
-function upgradePrimaryTurns(previous) {
-  assertSavedState(previous, 4, DECK_SIZE, makeDeckCards);
-  const next = structuredClone(previous);
-  next.version = 5;
-  const turnStart = next.log.findLastIndex((entry) => entry.type === 'turn');
-  const active = next.players[next.activePlayer];
-  next.primaryUsed = next.pendingSpell !== null || next.log.slice(turnStart + 1)
-    .some((entry) => entry.type === 'cast' && entry.playerId === active.id
-      && entry.message.startsWith(`${active.name} casts `)
-      && / for \d+ mana(?: and \d+ Embers)?\.$/.test(entry.message));
-  next.selectedFateCardIds = next.phase === 'fate' && next.selectedCardId ? [next.selectedCardId] : [];
-  addLog(next, 'One primary spell per turn is now active. Select all desired Fate slabs before casting them together; casting advances to the next response or roll.');
-  return upgradeFlowRules(next);
-}
-
-function applyFlowUpgrade(next) {
-  const water = next.players[1];
-  const previousFlow = water.element;
-  water.element = Math.min(previousFlow, MAX_FLOW);
-  addLog(next, `Water spells now gain Flow after resolving: printed gains replace the default +1, and Flow is capped at 5.${previousFlow > 5 ? ` Water's saved Flow was capped from ${previousFlow} to 5.` : ''}`);
-}
-
-/** Preserve published v5 progress while enforcing the newly clarified Flow cap. */
-function upgradeFlowRules(previous) {
-  assertSavedState(previous, 5, DECK_SIZE, makeDeckCards);
-  const next = structuredClone(previous);
-  next.version = 6;
-  applyFlowUpgrade(next);
-  return upgradeCustomDeckRules(next);
-}
-
-/** Existing duels retain their exact starter slabs while new duels may use saved decks. */
-function upgradeCustomDeckRules(previous) {
-  assertSavedState(previous, 6, DECK_SIZE, makeDeckCards);
-  const next = structuredClone(previous);
-  next.version = 7;
-  for (const player of next.players) player.deckDefinition = normalizeDeck(createStarterDeck(player.id));
-  addLog(next, 'Custom 30-slab decks are now supported. This duel keeps its original starter decks.');
-  return upgradeEmberRules(next);
-}
-
-function applyEmberUpgrade(next) {
-  const fire = next.players[0];
-  const previousEmbers = fire.element;
-  fire.element = Math.min(previousEmbers, MAX_EMBERS);
-  addLog(next, `Fire Embers are now capped at ${MAX_EMBERS}.${previousEmbers > MAX_EMBERS ? ` Fire's saved Embers were capped from ${previousEmbers} to ${MAX_EMBERS}.` : ''}`);
-}
-
-/** Keep custom decks and committed spells while capping the remaining Fire store. */
-function upgradeEmberRules(previous) {
-  assertSavedState(previous, 7, DECK_SIZE, makeDeckCards);
-  const next = structuredClone(previous);
-  next.version = 8;
-  applyEmberUpgrade(next);
-  return upgradeInitiativeRules(next);
-}
-
-/** Existing duels keep their historical Fire-first order without rolling again. */
-function applyInitiativeUpgrade(next) {
-  next.startingPlayer = 0;
-  next.initiative = { round: 0, rolls: [null, null], history: [], winner: 0, legacy: true };
-  next.secondPlayerOpeningDrawPending = next.players[1].turnsStarted === 0;
-  addLog(next, 'Opening dice now choose the first wizard in new duels. This duel keeps its current order; the second wizard draws one extra slab when their opening turn begins.');
-}
-
-function upgradeInitiativeRules(previous) {
-  assertSavedState(previous, 8, DECK_SIZE, makeDeckCards);
-  const next = structuredClone(previous);
-  next.version = SAVE_VERSION;
-  applyInitiativeUpgrade(next);
-  assertGame(next);
-  return next;
-}
-
+/** Old spell IDs cannot be mapped to the replacement catalog without inventing decks. */
 export function migrateSavedGame(value) {
-  if (validateSavedGame(value)) return value;
-  if (!value || ![1, 2, 3, 4, 5, 6, 7, 8].includes(value.version)) return null;
-  try {
-    if (value.version === 8) return upgradeInitiativeRules(value);
-    if (value.version === 7) return upgradeEmberRules(value);
-    if (value.version === 6) return upgradeCustomDeckRules(value);
-    if (value.version === 5) return upgradeFlowRules(value);
-    if (value.version === 4) return upgradePrimaryTurns(value);
-    const source = value.version === 1 ? migrateVersionOne(value) : value;
-    const preview = source.version === 2 ? upgradeSampleDeck(source) : source;
-    return upgradePreviewRules(preview);
-  } catch { return null; }
+  return validateSavedGame(value) ? value : null;
 }

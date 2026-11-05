@@ -8,6 +8,7 @@ import {
   toggleRefreshCard, confirmRefresh, rollInitiative,
 } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
+import { SPELLBOOK_VERSION } from '../src/spells.js';
 import { createAccountStore, AccountError } from './account-store.js';
 
 const DEFAULT_ROOT = path.resolve(import.meta.dirname, '../dist');
@@ -74,6 +75,7 @@ function roomView(room, playerIndex) {
     }
   }
   return {
+    spellbookVersion: SPELLBOOK_VERSION,
     code: room.code, playerIndex, element: playerIndex === 0 ? 'fire' : 'water',
     revision: room.revision,
     status: room.state ? room.state.status : 'waiting',
@@ -196,7 +198,14 @@ export function createMultiplayerServer(options = {}) {
         next = rollInitiative(room.state, playerIndex, initiativeRandom); break;
       case 'selectCard': next = selectCard(room.state, payload.cardId); break;
       case 'castSpell': next = castSelected(room.state, { emberSpend: payload.emberSpend ?? 0 }); break;
-      case 'castFate': next = castFateSelected(room.state); break;
+      case 'castFate': {
+        if (Object.keys(payload).some(key => key !== 'twistDirections')) fail(400, 'invalid_action', 'Only Twist directions may accompany Cast Fate.');
+        const directions = payload.twistDirections ?? {};
+        if (!isRecord(directions) || Object.entries(directions).some(([id, amount]) => id.length > 160 || ![-2, 2].includes(amount))) fail(400, 'invalid_action', 'Choose +2 or −2 for each selected Twist.');
+        const selectedTwists = new Set(room.state.players[playerIndex].hand.filter(card => card.spellId === 'FAT-003' && room.state.selectedFateCardIds.includes(card.id)).map(card => card.id));
+        if (Object.keys(directions).some(id => !selectedTwists.has(id))) fail(400, 'invalid_action', 'Twist directions must belong to your selected Twist slabs.');
+        next = castFateSelected(room.state, { twistDirections: directions }); break;
+      }
       case 'skipFate': next = skipFate(room.state); break;
       case 'endTurn': next = endTurn(room.state); break;
       case 'beginRefresh': next = beginRefresh(room.state); break;
@@ -205,8 +214,8 @@ export function createMultiplayerServer(options = {}) {
       default: fail(400, 'unknown_action', 'That battle action is not supported.');
     }
     if (next === room.state) fail(422, 'invalid_move', 'That action is not allowed in the current battle step.');
-    // Neither phone supplies dice or resolves effects locally. One accepted
-    // defender response produces exactly one server roll and spell resolution.
+    // Casting rolls the server's raw dice before the defender sees Fate.
+    // Later Fate actions update that same roll; no phone supplies dice.
     if (next.phase === 'rolling') next = rollDice(next, rollRandom);
     if (next.phase === 'resolving') next = resolveSpell(next);
     assertGame(next);
@@ -262,7 +271,7 @@ export function createMultiplayerServer(options = {}) {
       let result;
       let status = 200;
       if (url.pathname === '/api/health' && request.method === 'GET') {
-        result = { ok: true, service: 'wizzy-multiplayer', storage: 'memory', accounts: { enabled: true, storage: accounts.storage } };
+        result = { ok: true, service: 'wizzy-multiplayer', storage: 'memory', spellbookVersion: SPELLBOOK_VERSION, accounts: { enabled: true, storage: accounts.storage } };
       } else if (url.pathname.startsWith('/api/accounts/')) {
         const operation = url.pathname.slice('/api/accounts/'.length);
         if (operation === 'register' && request.method === 'POST') {

@@ -1,119 +1,116 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SPELL_CATALOG, DECK_LISTS } from '../src/spells.js';
+import { SPELL_CATALOG, SPELLBOOK_VERSION } from '../src/spells.js';
 import {
-  MAX_COPIES, createStarterDeck, getEligibleSpells, getDeckValidation,
-  validateDeck, normalizeDeck, getDeckCount, setDeckQuantity,
+  MAX_COPIES, MAX_DECK_FILE_BYTES, createStarterDeck, getEligibleSpells, getDeckValidation,
+  validateDeck, normalizeDeck, getDeckCount, setDeckQuantity, validateDeckSlot,
+  normalizeDeckSlot, serializeDeck, parseDeckList,
 } from '../src/decks.js';
 
-test('both PDF starter decks are legal independent 30-slab presets', () => {
+const legal = element => ({ element, entries: getEligibleSpells(element).slice(0, 10).map(card => ({ spellId: card.spellId, quantity: 3 })) });
+
+test('new spellbook starts with empty independent deck slots and no old cards', () => {
   assert.equal(MAX_COPIES, 3);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 31);
   for (const element of ['fire', 'water']) {
-    const deck = createStarterDeck(element);
-    assert.deepEqual(deck, { element, entries: DECK_LISTS[element] });
-    assert.deepEqual(getDeckValidation(deck), { valid: true, total: 30, errors: [] });
-    deck.entries[0].quantity = 0;
-    assert.notEqual(createStarterDeck(element).entries[0].quantity, 0);
-    assert.notEqual(DECK_LISTS[element][0].quantity, 0);
+    const empty = createStarterDeck(element);
+    assert.deepEqual(empty, { element, entries: [] });
+    assert.equal(validateDeck(empty), false);
+    assert.equal(validateDeckSlot(empty), true);
+    assert.deepEqual(normalizeDeckSlot(empty), empty);
+    empty.entries.push({ spellId: 'old-card', quantity: 1 });
+    assert.equal(createStarterDeck(element).entries.length, 0);
+    const eligible = getEligibleSpells(element);
+    assert.equal(eligible.length, 17);
+    assert.equal(eligible.filter(card => card.category === 'Fate').length, 3);
+    assert.equal(eligible.filter(card => card.category === 'Neutral').length, 0);
+    assert.ok(eligible.every(card => card.category === 'Fate' || card.element.toLowerCase() === element));
+    assert.ok(eligible.every(card => !/^(FIR|WAT|NEU)-/.test(card.spellId)));
   }
-  for (const element of ['earth', 'Fire', null, undefined, '__proto__']) {
-    assert.throws(() => createStarterDeck(element), /Fire or Water/);
-    assert.throws(() => getEligibleSpells(element), /Fire or Water/);
-  }
+  for (const value of ['earth', 'Fire', null, undefined, '__proto__']) assert.throws(() => createStarterDeck(value));
 });
 
-test('the collection includes every permitted spell and excludes the opposite element', () => {
-  for (const element of ['fire', 'water']) {
-    const spells = getEligibleSpells(element);
-    const expected = Object.values(SPELL_CATALOG).filter(spell => spell.category !== 'Elemental' || spell.element.toLowerCase() === element);
-    assert.deepEqual(spells, expected);
-    assert.equal(spells.filter(spell => spell.category === 'Neutral').length, 4);
-    assert.equal(spells.filter(spell => spell.category === 'Fate').length, 3);
-    assert.ok(spells.every(spell => spell.category !== 'Elemental' || spell.element.toLowerCase() === element));
-  }
-  assert.equal(getEligibleSpells('fire').length, 19);
-  assert.equal(getEligibleSpells('water').length, 17);
-});
-
-test('draft editing adds, changes, and removes copies without mutating earlier drafts', () => {
-  const empty = { element: 'fire', entries: [] };
-  const one = setDeckQuantity(empty, 'FIR-003', 1);
-  const three = setDeckQuantity(one, 'FIR-003', 3);
-  const removed = setDeckQuantity(three, 'FIR-003', 0);
+test('draft editing supports new elemental and Fate slabs without a fixed composition', () => {
+  const empty = createStarterDeck('fire');
+  const one = setDeckQuantity(empty, 'Fire-3', 1);
+  const three = setDeckQuantity(one, 'Fire-3', 3);
+  const removed = setDeckQuantity(three, 'Fire-3', 0);
   assert.deepEqual(empty, { element: 'fire', entries: [] });
-  assert.equal(getDeckCount(one, 'FIR-003'), 1);
-  assert.equal(getDeckCount(three, 'FIR-003'), 3);
+  assert.equal(getDeckCount(one, 'Fire-3'), 1);
+  assert.equal(getDeckCount(three, 'Fire-3'), 3);
   assert.deepEqual(removed, empty);
-  assert.deepEqual(getDeckValidation(three), { valid: false, total: 3, errors: ['A deck must contain exactly 30 slabs.'] });
-  const shared = setDeckQuantity(setDeckQuantity(three, 'NEU-001', 2), 'FAT-003', 3);
-  assert.equal(getDeckValidation(shared).total, 8);
-  assert.equal(getDeckCount(shared, 'FIR-003'), 3);
-  assert.equal(getDeckCount(shared, 'WAT-001'), 0);
-  assert.equal(getDeckCount(null, 'FIR-001'), 0);
-});
-
-test('custom decks have no mandatory Elemental/Neutral/Fate composition split', () => {
+  assert.equal(validateDeckSlot(three), false, 'partial drafts are not account battle slots');
+  assert.equal(getDeckValidation(three).total, 3);
   for (const element of ['fire', 'water']) {
-    let deck = { element, entries: [] };
-    for (const spell of getEligibleSpells(element).filter(spell => spell.category !== 'Elemental')) {
-      deck = setDeckQuantity(deck, spell.spellId, 3);
-    }
-    for (const spell of getEligibleSpells(element).filter(spell => spell.category === 'Elemental').slice(0, 3)) {
-      deck = setDeckQuantity(deck, spell.spellId, 3);
-    }
+    const deck = legal(element);
     assert.equal(validateDeck(deck), true);
-    assert.equal(deck.entries.filter(entry => SPELL_CATALOG[entry.spellId].category === 'Elemental').reduce((sum, entry) => sum + entry.quantity, 0), 9);
-    assert.equal(getDeckValidation(deck).total, 30);
+    assert.equal(validateDeckSlot(deck), true);
     const canonical = normalizeDeck(deck);
-    assert.deepEqual(canonical.entries.map(entry => entry.spellId), canonical.entries.map(entry => entry.spellId).sort());
     canonical.entries[0].quantity = 0;
-    assert.equal(validateDeck(deck), true, 'canonical output does not alias the draft');
+    assert.equal(validateDeck(deck), true, 'normalizing does not alias input');
   }
 });
 
-test('draft edits enforce the three-copy maximum and prevent cross-element or overfull additions', () => {
-  const starter = createStarterDeck('fire');
-  const original = structuredClone(starter);
-  for (const quantity of [-1, 4, 1.5, '2', NaN, Infinity, null]) {
-    assert.throws(() => setDeckQuantity(starter, 'FIR-001', quantity));
-  }
-  for (const id of ['WAT-001', 'not-a-spell', '__proto__', 'constructor']) {
-    assert.throws(() => setDeckQuantity(starter, id, 1));
-  }
-  assert.throws(() => setDeckQuantity(starter, 'FIR-001', 2), /more than 30/);
-  assert.deepEqual(starter, original);
-  const room = setDeckQuantity(starter, 'FIR-001', 0);
-  const changed = setDeckQuantity(room, 'FIR-003', 1);
-  assert.equal(validateDeck(changed), true);
-  assert.equal(getDeckCount(changed, 'FIR-003'), 1);
-  assert.equal(getDeckCount(changed, 'FIR-001'), 0);
+test('draft edits enforce copy, element and size limits and reject removed spell IDs', () => {
+  const deck = legal('fire');
+  for (const quantity of [-1, 4, 1.5, '2', NaN, Infinity, null]) assert.throws(() => setDeckQuantity(deck, 'Fire-1', quantity));
+  for (const id of ['Water-1', 'FIR-001', 'NEU-001', '__proto__', 'constructor']) assert.throws(() => setDeckQuantity(deck, id, 1));
+  assert.throws(() => setDeckQuantity(deck, 'FAT-001', 1), /more than 30/);
+  const room = setDeckQuantity(deck, 'Fire-1', 2);
+  const mixed = setDeckQuantity(room, 'FAT-003', 1);
+  assert.equal(validateDeck(mixed), true);
+  assert.equal(getDeckCount(mixed, 'FAT-003'), 1);
 });
 
-test('validation safely rejects malformed data, duplicate spell rows and illegal quantities', () => {
-  const mutations = [
-    deck => { deck.element = 'earth'; },
-    deck => { deck.entries = null; },
-    deck => { deck.entries[0] = null; },
-    deck => { deck.entries[0] = ['FIR-001', 1]; },
-    deck => { deck.entries.push({ ...deck.entries[0] }); },
-    deck => { deck.entries[0].spellId = 'WAT-001'; },
-    deck => { deck.entries[0].spellId = '__proto__'; },
-    deck => { deck.entries[0].quantity = 0; },
-    deck => { deck.entries[0].quantity = -1; },
-    deck => { deck.entries[0].quantity = 4; },
-    deck => { deck.entries[0].quantity = '1'; },
-    deck => { deck.entries[0].quantity = 1.5; },
-    deck => { deck.entries.pop(); },
-  ];
-  for (const mutate of mutations) {
-    const deck = createStarterDeck('fire'); mutate(deck);
+test('deck exports and imports round-trip both elements with an explicit spellbook version', () => {
+  for (const element of ['fire', 'water']) {
+    const deck = legal(element);
+    const encoded = serializeDeck(deck);
+    assert.equal(JSON.parse(encoded).spellbook, SPELLBOOK_VERSION);
+    assert.deepEqual(parseDeckList(encoded), normalizeDeck(deck));
+    const imported = parseDeckList(encoded);
+    imported.entries[0].quantity = 0;
+    assert.equal(validateDeck(deck), true);
+  }
+  assert.throws(() => serializeDeck(createStarterDeck('fire')), /exactly 30/);
+});
+
+test('imports reject malformed, oversized, legacy, wrong-element and illegal deck files', () => {
+  const valid = JSON.parse(serializeDeck(legal('fire')));
+  for (const mutate of [
+    data => { data.format = 'other'; },
+    data => { data.version = 2; },
+    data => { data.spellbook = 'old'; },
+    data => { data.entries[0].spellId = 'FIR-001'; },
+    data => { data.entries[0].spellId = 'Water-1'; },
+    data => { data.entries[0].quantity = 4; },
+    data => { data.entries[0].quantity = '3'; },
+    data => { data.entries.push({ ...data.entries[0] }); },
+    data => { data.entries.pop(); },
+    data => { data.element = '__proto__'; },
+  ]) {
+    const copy = structuredClone(valid); mutate(copy);
+    assert.throws(() => parseDeckList(JSON.stringify(copy)));
+  }
+  for (const input of ['{', '[]', 'null', '{}', 0, null, ' '.repeat(MAX_DECK_FILE_BYTES + 1)]) assert.throws(() => parseDeckList(input));
+});
+
+test('validation safely rejects malformed decks and duplicate rows', () => {
+  for (const mutate of [
+    data => { data.entries = null; },
+    data => { data.entries[0] = null; },
+    data => { data.entries[0] = ['Fire-1', 3]; },
+    data => { data.entries.push({ ...data.entries[0] }); },
+    data => { data.entries[0].quantity = -1; },
+  ]) {
+    const deck = legal('fire'); mutate(deck);
     assert.equal(validateDeck(deck), false);
-    assert.ok(getDeckValidation(deck).errors.length > 0);
+    assert.equal(validateDeckSlot(deck), false);
     assert.throws(() => normalizeDeck(deck));
   }
-  for (const deck of [null, undefined, [], 'deck', {}, new Date()]) {
-    assert.equal(validateDeck(deck), false);
-    assert.doesNotThrow(() => getDeckValidation(deck));
-    assert.throws(() => setDeckQuantity(deck, 'FIR-001', 1));
+  for (const value of [null, undefined, [], 'deck', {}, new Date()]) {
+    assert.equal(validateDeckSlot(value), false);
+    assert.doesNotThrow(() => getDeckValidation(value));
+    assert.throws(() => setDeckQuantity(value, 'Fire-1', 1));
   }
 });

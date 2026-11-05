@@ -161,6 +161,9 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .pile-copy { position: relative; display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 20px 14px; font-size: 26px; font-weight: 900; color: #fff5b4; text-shadow: 2px 3px #080c1b,-1px -1px #080c1b,1px -1px #080c1b; line-height: 1.05; }
 .pile-copy strong { display: block; font-size: 34px; margin-top: 6px; color: white; }.pile-copy small { font-size: 20px; }
 .hand-note { display: none; }
+.twist-choice { display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 3px 5px; font-size: 13px; }
+.twist-choice .text-button { min-width: 36px; padding: 5px 8px; border: 1px solid #9482c0; border-radius: 3px; }
+.twist-choice [aria-pressed='true'] { color: #24192c; background: #e2c0ff; border-color: #f7e7ff; }
 
 /* Controls retain their reference positions; hints use the gap above the dice. */
 .turn-controls { position: absolute; inset: 0; pointer-events: none; }

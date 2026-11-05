@@ -1,11 +1,12 @@
 import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.js';
 import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.js';
+import { validateDeck } from './decks.js';
 import { createHub } from './hub.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createAccounts } from './accounts.js';
 
-const SAVE_KEY = 'wizzy.duel.v9';
+const SAVE_KEY = 'wizzy.duel.v10';
 const app = document.querySelector('#app');
 const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
@@ -15,6 +16,7 @@ let fitScreen = true;
 let resolutionTimer;
 let diceAnimationTimer;
 let emberChoice = null;
+const twistDirections = Object.create(null);
 let pendingBattleDecks = null;
 let shouldEnterAfterRestart = false;
 let state = loadGame();
@@ -35,7 +37,7 @@ try { lastBattleMode=localStorage.getItem('wizzy.battle.mode')==='online'?'onlin
 
 const isOnlineBattle = () => battleMode === 'online';
 const displayedPlayerIndex = () => isOnlineBattle() ? onlinePlayerIndex : getActingPlayerIndex(state);
-const canActOnline = () => state.phase !== 'initiative' && (!isOnlineBattle() || (!onlineBusy && multiplayer?.isActive() && getActingPlayerIndex(state) === onlinePlayerIndex));
+const canActOnline = () => !['setup','initiative'].includes(state.phase) && (!isOnlineBattle() || (!onlineBusy && multiplayer?.isActive() && getActingPlayerIndex(state) === onlinePlayerIndex));
 const canRollOpeningOnline = () => isOnlineBattle() && !onlineBusy && multiplayer?.isActive() && state.phase === 'initiative' && state.initiative?.rolls[onlinePlayerIndex] === null;
 const deckCount = player => player.deckCount ?? player.deck.length;
 const handCount = player => player.handCount ?? player.hand.length;
@@ -47,10 +49,7 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  for(const key of ['wizzy.duel.v8','wizzy.duel.v7','wizzy.duel.v6','wizzy.duel.v5','wizzy.duel.v4','wizzy.duel.v3','wizzy.duel.v2','wizzy.duel.v1']){
-    const migrated=migrateSavedGame(readSave(key));
-    if(migrated)return migrated;
-  }
+  // Prior duels reference the retired spellbook. Leave their saved keys intact.
   return createGame();
 }
 function saveGame() {
@@ -79,6 +78,7 @@ function playerPanel(player, index) {
 }
 function phaseHint(active) {
   if (state.status === 'finished') return `${state.players[state.winner].name} wins the duel!`;
+  if(state.phase==='setup')return 'Build and save your new Fire and Water decks in the Deck workshop.';
   if(state.phase==='initiative')return isOnlineBattle()
     ? onlineBusy?'Sending your opening roll…':state.initiative.rolls[onlinePlayerIndex]===null?'Roll your opening die. The higher roll goes first.':'Your opening die is rolled. Waiting for the other wizard.'
     : 'Both wizards roll one die to decide who goes first.';
@@ -88,7 +88,7 @@ function phaseHint(active) {
     return state.phase==='fate'?`Waiting for ${actor.name} to finish Fate.`:`Waiting for ${active.name} to play or end their turn.`;
   }
   switch(state.phase) {
-    case 'fate': return `${state.pendingSpell?`${SPELL_CATALOG[state.pendingSpell.spellId].name} · `:''}${state.players[state.fatePlayer].name} · ${state.fatePlayer===state.activePlayer?'Attacking':'Defending'} Fate. Select a batch, or Skip Fate.`;
+    case 'fate': return `${state.pendingSpell?`${SPELL_CATALOG[state.pendingSpell.spellId].name} · `:''}${state.players[state.fatePlayer].name} · ${state.pendingSpell?.fateStep==='defender-final'?'Final defending':state.fatePlayer===state.activePlayer?'Attacking':'Defending'} Fate. Dice are rolled. Select a batch, or Skip Fate.`;
     case 'rolling': return 'Rolling two dice…';
     case 'resolving': return 'Resolving your spell…';
     case 'end': return 'End Turn passes. Hand Refresh lets you choose discards first.';
@@ -154,18 +154,25 @@ function renderOpeningRoll() {
 const signed=value=>`${value>=0?'+':''}${value}`;
 function diceView() {
   if(state.phase==='initiative')return `<section class="dice-area" aria-label="Opening rolls">${art('diceFrame','dice-frame')}<strong class="roll-total">Opening roll</strong><div class="dice-pair">${diceFace(state.initiative.rolls[0],0)}${diceFace(state.initiative.rolls[1],1)}</div><span class="roll-breakdown">FIRE · WATER</span><span class="dice-caption">HIGHER ROLL TAKES THE FIRST TURN</span></section>`;
-  const pending=['fate','rolling'].includes(state.phase);
-  const last=pending?null:state.lastRoll;
-  const title=state.phase==='fate'?'Fate window':state.phase==='rolling'?'Rolling…':last?`Total: ${last.total}`:'Ready to roll';
+  const last=state.phase==='rolling'?null:state.lastRoll;
+  const title=state.phase==='rolling'?'Rolling…':last?`Total: ${last.total}`:state.phase==='setup'?'Build your decks':'Ready to roll';
   const equation=last?`${last.dice[0]} + ${last.dice[1]} ${signed(last.loadedBonus)} Loaded ${signed(last.attackingFate)} Fate ${signed(last.defendingFate)} Fate`:state.pendingSpell?`Loaded ${signed(state.pendingSpell.loadedBonus)} · Attack ${signed(state.pendingSpell.attackingFate)} · Defend ${signed(state.pendingSpell.defendingFate)}`:'Two six-sided dice';
-  return `<section class="dice-area ${state.phase==='rolling'?'dice-rolling':''}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. Modified total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · LAST ROLL`:state.phase==='fate'?'CAST YOUR SELECTED FATE, OR SKIP':'ROLLS ONLY WHEN A SPELL REQUIRES THEM'}</span></section>`;
+  return `<section class="dice-area ${state.phase==='rolling'?'dice-rolling':''}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. Modified total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · ${state.phase==='fate'?'MODIFIED ROLL · FATE OPEN':'RESOLVED ROLL'}`:'ROLL FIRST · THEN DEFENDING FATE'}</span></section>`;
+}
+function selectedTwistDirections(){
+  const player=state.players[getActingPlayerIndex(state)];
+  return Object.fromEntries(player.hand.filter(card=>state.selectedFateCardIds.includes(card.id)&&card.spellId==='FAT-003').map(card=>[card.id,twistDirections[card.id]??(state.fatePlayer===state.activePlayer?2:-2)]));
+}
+function twistOptions(){
+  if(state.phase!=='fate'||!canActOnline())return '';
+  return Object.entries(selectedTwistDirections()).map(([id,value],index)=>`<div class="twist-choice" role="group" aria-label="Twist ${index+1} roll change"><span>Twist ${index+1}</span>${[-2,2].map(amount=>`<button class="text-button" type="button" data-twist-card="${escape(id)}" data-twist-value="${amount}" aria-pressed="${value===amount}">${signed(amount)}</button>`).join('')}</div>`).join('');
 }
 function hintView(active,selected) {
   if(isOnlineBattle()&&!canActOnline())return phaseHint(active);
   if(state.phase==='main'&&state.primaryUsed)return `${phaseHint(active)}${selected?'<div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button></div>':''}`;
   if(selected&&['main','fate'].includes(state.phase)){
     const label=state.phase==='fate'?`${state.selectedFateCardIds.length} Fate ${state.selectedFateCardIds.length===1?'slab':'slabs'} selected`:`${escape(selected.name)} · ${selected.manaCost} Mana${active.mana<selected.manaCost?' · Not enough mana':''}`;
-    return `<span>${label}</span><div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button>${state.phase==='fate'?'<button class="text-button" id="skip-fate">Skip Fate</button>':''}</div>`;
+    return `<span>${label}</span>${twistOptions()}<div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button>${state.phase==='fate'?'<button class="text-button" id="skip-fate">Skip Fate</button>':''}</div>`;
   }
   return phaseHint(active);
 }
@@ -253,7 +260,7 @@ function scheduleCombat() {
         });
       },90);
     }
-    resolutionTimer=setTimeout(()=>update(rollDice(state)),650);
+    resolutionTimer=setTimeout(()=>advanceFateWindow(rollDice(state)),650);
   }else if(state.phase==='resolving') {
     resolutionTimer=setTimeout(()=>{
       update(resolveSpell(state));
@@ -265,10 +272,10 @@ function showHandoff(playerIndex=state.activePlayer,kind='turn') {
   if(isOnlineBattle())return;
   clearCombatTimers();
   const player=state.players[playerIndex];
-  document.querySelector('#handoff-title').textContent=kind==='fate'?`${player.name} · defending Fate`:kind==='roll'?`${player.name} · roll the dice`:`${player.name}’s turn`;
-  document.querySelector('#handoff-description').textContent=kind==='fate'?'Pass the screen to the defender. Select any Misfortune or Twist slabs, then Cast Fate to play the batch and continue, or Skip Fate.':kind==='roll'?'Both Fate windows are complete. Return the screen to the caster to roll and resolve the spell.':`Round ${state.round}. Pass the screen to the ${player.name} wizard. Your hand is ready.`;
+  document.querySelector('#handoff-title').textContent=kind==='fate'?`${player.name} · ${playerIndex===state.activePlayer?'attacking':'defending'} Fate`:`${player.name}’s turn`;
+  document.querySelector('#handoff-description').textContent=kind==='fate'?`The dice have rolled${state.lastRoll?` ${state.lastRoll.dice.join(' + ')} for a modified total of ${state.lastRoll.total}`:''}. Pass the screen to ${player.name}. Select Fate, choose each Twist’s +2 or −2, then Cast Fate, or Skip Fate.${state.pendingSpell?.fateStep==='defender-final'?' This is the final response.':''}`:`Round ${state.round}. Pass the screen to the ${player.name} wizard. Your hand is ready.`;
   document.querySelector('#handoff-portrait').innerHTML=art(player.id==='fire'?'fireMage':'waterMage');
-  document.querySelector('#begin-turn').innerHTML=`${kind==='fate'?'Choose Fate':kind==='roll'?'Roll dice':'Begin turn'} <span aria-hidden="true">→</span>`;
+  document.querySelector('#begin-turn').innerHTML=`${kind==='fate'?'Choose Fate':'Begin turn'} <span aria-hidden="true">→</span>`;
   handoff.showModal();
 }
 function finishFateWindow() {
@@ -280,7 +287,6 @@ function advanceFateWindow(next) {
   if(next===state)return;
   update(next);
   if(state.phase==='fate'&&state.fatePlayer!==previous.fatePlayer)showHandoff(state.fatePlayer,'fate');
-  else if(state.phase==='rolling')showHandoff(state.activePlayer,'roll');
 }
 function commitSpell(emberSpend=0) {
   if(isOnlineBattle()){sendOnlineAction('castSpell',{emberSpend});return;}
@@ -329,8 +335,9 @@ function requestCast() {
   if(!canActOnline())return;
   if(state.phase==='fate'){
     if(state.selectedFateCardIds.length){
-      if(isOnlineBattle())sendOnlineAction('castFate');
-      else advanceFateWindow(castFateSelected(state));
+      const options={twistDirections:selectedTwistDirections()};
+      if(isOnlineBattle())sendOnlineAction('castFate',options);
+      else advanceFateWindow(castFateSelected(state,options));
     }
     else finishFateWindow();
     return;
@@ -364,7 +371,7 @@ function showSlab(spellId) {
   document.querySelector('#slab-definition').textContent=`${spell.spellId} · ${spell.category}${spell.category==='Elemental'?` · ${spell.element}`:''}`;
   document.querySelector('#slab-face').innerHTML=slabFace(spell);
   document.querySelector('#slab-face').dataset.slabType=spell.type;
-  document.querySelector('#slab-behavior').textContent=spell.category==='Fate'?'Play during the appropriate attacking or defending Fate window.':SPELL_RULES[spellId].requiresRoll?'Roll two dice after the attacker and defender finish their Fate choices.':'Resolves immediately, without a dice roll or Fate window.';
+  document.querySelector('#slab-behavior').textContent=spell.category==='Fate'?'Play after the dice roll in your Fate window. Twist may add 2 or subtract 2, by your choice.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds with Fate first, then the caster. A caster Fate batch allows one final defender response.':'Resolves immediately, without a dice roll or Fate window.';
   if(!dialog.open)dialog.showModal();
 }
 function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
@@ -395,6 +402,13 @@ document.querySelector('#deck-inspector').addEventListener('click',event=>{
   if(tab)showDeck(tab.dataset.deckPlayer);
 });
 app.addEventListener('click',event=>{
+  const twist=event.target.closest('[data-twist-card]');
+  if(twist){
+    twistDirections[twist.dataset.twistCard]=Number(twist.dataset.twistValue);
+    render();
+    app.querySelector(`[data-twist-card="${CSS.escape(twist.dataset.twistCard)}"][data-twist-value="${twist.dataset.twistValue}"]`)?.focus({preventScroll:true});
+    return;
+  }
   const card=event.target.closest('[data-card-id]');
   if(card){
     if(isOnlineBattle())sendOnlineAction(state.phase==='refresh'?'toggleRefreshCard':'selectCard',{cardId:card.dataset.cardId});
@@ -605,11 +619,23 @@ function openOnlineLobby(){
   multiplayer.show();
 }
 function isUntouchedBattle(){
+  if(state.phase==='setup')return true;
   if(state.phase==='initiative')return !state.initiative.history.length&&state.initiative.rolls.every(value=>value===null);
-  if(!state.initiative?.legacy)return false;
-  return state.status==='playing'&&state.phase==='main'&&state.round===1&&state.activePlayer===0&&!state.primaryUsed&&!state.selectedCardId&&state.players.every(player=>player.hp===30&&player.mana===3&&player.shield===0&&player.element===0&&player.loaded===0&&player.loadedPending===0&&player.discard.length===0&&player.hand.length===4&&player.deck.length===26)&&!state.log.some(entry=>entry.type==='cast');
+  return false;
+}
+const localDecksReady=decks=>validateDeck(decks?.fire)&&validateDeck(decks?.water);
+function showDeckSetup(decks=hub.getSavedDecks()){
+  const element=validateDeck(decks.fire)?'water':'fire';
+  leaveBattle('deck');
+  hub.showDeckSetup('Build and save a 30-slab Fire deck and Water deck before starting a shared-screen battle.',element);
 }
 function enterBattle(){
+  if(!isOnlineBattle()&&state.phase==='setup'){
+    const decks=hub.getSavedDecks();
+    if(!localDecksReady(decks)){showDeckSetup(decks);return;}
+    openingAcknowledged.local=false;
+    state=createGame(Date.now(),decks);saveGame();
+  }
   hub.hide();multiplayer?.hide();accounts?.hide();battleView.hidden=false;
   lastBattleMode=battleMode;
   try { localStorage.setItem('wizzy.battle.mode',lastBattleMode); } catch {}
@@ -624,6 +650,13 @@ function leaveBattle(screen='home'){
 }
 function requestNewBattle(decks=hub.getSavedDecks(),enterAfter=false){
   if(isOnlineBattle())return;
+  if(!localDecksReady(decks)){showDeckSetup(decks);return;}
+  if(state.phase==='setup'){
+    openingAcknowledged.local=false;
+    update(createGame(Date.now(),decks));
+    if(enterAfter)enterBattle();
+    return;
+  }
   clearCombatTimers();
   pendingBattleDecks=decks;shouldEnterAfterRestart=enterAfter;
   document.querySelector('#restart').showModal();
@@ -634,9 +667,11 @@ document.querySelector('#battle-online-lobby').addEventListener('click',openOnli
 document.querySelector('#victory-online').addEventListener('click',()=>{multiplayer.leave();openOnlineLobby();});
 document.querySelector('#choose-local').addEventListener('click',()=>{
   document.querySelector('#battle-mode').close();restoreLocalBattle();
+  const decks=pendingModeDecks||hub.getSavedDecks();
+  if(!localDecksReady(decks)){pendingModeDecks=null;showDeckSetup(decks);return;}
   if(isUntouchedBattle()){
     openingAcknowledged.local=false;
-    update(createGame(Date.now(),pendingModeDecks||hub.getSavedDecks()));
+    update(createGame(Date.now(),decks));
   }
   pendingModeDecks=null;enterBattle();
 });
