@@ -4,7 +4,7 @@ import {
   createGame, rollInitiative, selectCard, canSelectCard, canCastSelected, canPlayFate, getActingPlayerIndex,
   castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn,
   beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, applyDamage,
-  assertGame, validateSavedGame, migrateSavedGame, SPELL_CATALOG, SPELL_RULES, SAVE_VERSION, DECK_SIZE,
+  assertGame, validateSavedGame, migrateSavedGame, SPELL_CATALOG, SPELL_RULES, SAVE_VERSION, DECK_SIZE, HAND_LIMIT, OPENING_HAND_SIZE,
 } from '../src/game.js';
 
 const allCards = player => [...player.hand, ...player.deck, ...player.discard];
@@ -69,7 +69,8 @@ function fateFixture() {
 }
 
 test('replacement catalog has 31 spells, 28 rolling primary slabs and no old IDs', () => {
-  assert.equal(SAVE_VERSION, 10); assert.equal(DECK_SIZE, 30);
+  assert.equal(SAVE_VERSION, 11); assert.equal(DECK_SIZE, 30);
+  assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
   assert.equal(Object.keys(SPELL_CATALOG).length, 31);
   assert.equal(Object.keys(SPELL_RULES).length, 28);
   for (const element of ['Fire', 'Water']) for (let index = 1; index <= 14; index += 1) {
@@ -92,13 +93,13 @@ test('missing, partial or retired deck slots enter setup without inventing a dec
   for (const input of [null, [], 'decks', { earth: fixtureDeck('fire') }]) assert.throws(() => createGame(1, input));
 });
 
-test('custom decks open at 100 HP, 3 mana and exactly four slabs, with deterministic shuffling', () => {
+test('custom decks open at 100 HP, 3 mana and exactly five slabs, with deterministic shuffling', () => {
   const decks = { fire: fixtureDeck('fire'), water: fixtureDeck('water') };
   const state = createGame(17, decks);
   assert.equal(state.phase, 'initiative');
   for (const player of state.players) {
     assert.deepEqual([player.hp, player.maxHp, player.mana, player.shield, player.element, player.loaded, player.loadedPending], [100, 100, 3, 0, 0, 0, 0]);
-    assert.deepEqual([player.hand.length, player.deck.length, player.discard.length], [4, 26, 0]);
+    assert.deepEqual([player.hand.length, player.deck.length, player.discard.length], [5, 25, 0]);
     assert.equal(new Set(allCards(player).map(card => card.id)).size, 30);
   }
   assert.deepEqual(createGame(17, decks), state);
@@ -126,10 +127,10 @@ test('second starter receives exactly one slab on their first turn, with no open
   for (const first of [0, 1]) {
     let state = fresh({ first });
     state = pass(state);
-    assert.deepEqual([state.activePlayer, state.round, state.players[1 - first].hand.length, state.players[1 - first].mana], [1 - first, 1, 5, 3]);
+    assert.deepEqual([state.activePlayer, state.round, state.players[1 - first].hand.length, state.players[1 - first].mana], [1 - first, 1, 6, 3]);
     assert.equal(state.secondPlayerOpeningDrawPending, false);
     state = pass(state);
-    assert.deepEqual([state.activePlayer, state.round, state.players[first].mana, state.players[first].hand.length], [first, 2, 5, 5]);
+    assert.deepEqual([state.activePlayer, state.round, state.players[first].mana, state.players[first].hand.length], [first, 2, 5, 6]);
     state.players[first].mana = 9;
     state = pass(pass(state));
     assert.equal(state.players[first].mana, 10); assertGame(state);
@@ -270,13 +271,13 @@ test('Fate selection toggles whole batches and cannot spend the primary slot a s
   assert.equal(state.primaryUsed, true); assertGame(state);
 });
 
-test('a second player who used Fate draws one extra slab rather than refilling to five', () => {
+test('a second player who used Fate draws one extra slab rather than refilling to six', () => {
   let state = fresh({ fire: ['FAT-001'], water: ['FAT-002', 'FAT-002'] });
-  handOf(state, 0, ['Fire-1']); handOf(state, 1, ['Water-1', 'FAT-002', 'FAT-002', 'Water-2']);
+  handOf(state, 0, ['Fire-1']); handOf(state, 1, ['Water-1', 'FAT-002', 'FAT-002', 'Water-2', 'Water-3']);
   state = fate(roll(cast(state, 'Fire-1')), ['FAT-002', 'FAT-002']);
   state = resolveSpell(state);
-  assert.equal(state.players[1].hand.length, 2);
-  state = pass(state); assert.equal(state.players[1].hand.length, 3); assert.equal(state.players[1].mana, 3); assertGame(state);
+  assert.equal(state.players[1].hand.length, 3);
+  state = pass(state); assert.equal(state.players[1].hand.length, 4); assert.equal(state.players[1].mana, 3); assertGame(state);
 });
 
 test('Loaded bonuses apply to the next own turn and expire unused at its end', () => {
@@ -326,6 +327,15 @@ test('the 30 Shield cap and 100 HP cap are enforced by save validation', () => {
   state.players[0].shield = 30; state.players[0].mana = 10; assertGame(state);
 });
 
+test('a six-slab hand is valid and a seventh slab is rejected without losing cards', () => {
+  const state = fresh();
+  state.players[0].hand.push(...state.players[0].deck.splice(0, 1));
+  assert.equal(state.players[0].hand.length, 6); assertGame(state);
+  state.players[0].hand.push(...state.players[0].deck.splice(0, 1));
+  assert.equal(allCards(state.players[0]).length, 30);
+  assert.equal(validateSavedGame(state), false);
+});
+
 test('End Turn reveals refresh, refresh confirms and passes with any number of discards', () => {
   let state = complete(cast(handOf(fresh(), 0, ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4']), 'Fire-1'));
   const afterCast = state;
@@ -337,9 +347,24 @@ test('End Turn reveals refresh, refresh confirms and passes with any number of d
   state = toggleRefreshCard(state, card.id); assertGame(state);
   const cancelled = cancelRefresh(state); assert.equal(cancelled.phase, 'end'); assert.equal(cancelled.players[0].discard.length, 1);
   state = confirmRefresh(state);
-  assert.deepEqual([state.activePlayer, state.phase, state.players[0].hand.length, state.players[0].discard.length, state.primaryUsed], [1, 'main', 5, 2, false]); assertGame(state);
+  assert.deepEqual([state.activePlayer, state.phase, state.players[0].hand.length, state.players[0].discard.length, state.primaryUsed], [1, 'main', 6, 2, false]); assertGame(state);
   const zero = confirmRefresh(beginRefresh(endTurn(afterCast)));
-  assert.deepEqual([zero.players[0].hand.length, zero.players[0].discard.length, zero.activePlayer], [5, 1, 1]); assertGame(zero);
+  assert.deepEqual([zero.players[0].hand.length, zero.players[0].discard.length, zero.activePlayer], [6, 1, 1]); assertGame(zero);
+});
+
+test('refresh can replace all six slabs and passing preserves a full six-card hand', () => {
+  let state = pass(pass(fresh()));
+  assert.equal(state.players[0].hand.length, 6);
+  state = beginRefresh(endTurn(state));
+  const oldHand = state.players[0].hand.map(card => card.id);
+  for (const id of oldHand) state = toggleRefreshCard(state, id);
+  state = confirmRefresh(state);
+  assert.equal(state.players[0].hand.length, 6);
+  assert.equal(state.players[0].discard.length, 6);
+  assert.ok(state.players[0].hand.every(card => !oldHand.includes(card.id)));
+  state = pass(state);
+  assert.equal(state.players[0].hand.length, 6);
+  assertGame(state);
 });
 
 test('empty towers never fabricate cards or reshuffle the discard pile', () => {
@@ -392,6 +417,36 @@ test('old duels are rejected without silently remapping retired slabs or changin
   }
   assert.equal(migrateSavedGame(state), state);
   for (const value of [null, [], {}, 42]) assert.equal(migrateSavedGame(value), null);
+});
+
+test('version 10 duels keep their exact hands, resources and pending Fate when upgraded', () => {
+  const pending = roll(cast(fateFixture(), 'Fire-1'));
+  pending.players[0].shield = 17;
+  pending.players[1].hp = 82;
+  pending.version = 10;
+  const original = structuredClone(pending);
+  const upgraded = migrateSavedGame(pending);
+  assert.equal(upgraded.version, 11);
+  assert.deepEqual(upgraded.players, original.players, 'migration never deals or spends additional cards/resources');
+  assert.deepEqual(upgraded.pendingSpell, original.pendingSpell);
+  assert.deepEqual(upgraded.lastRoll, original.lastRoll);
+  assert.deepEqual(upgraded.initiative, original.initiative);
+  assert.equal(upgraded.phase, original.phase);
+  assert.deepEqual(pending, original, 'previous save remains unchanged');
+  assertGame(upgraded);
+  let resumed = upgraded;
+  while (resumed.phase === 'fate') resumed = skipFate(resumed);
+  resumed = resolveSpell(resumed);
+  resumed = pass(pass(resumed));
+  assert.equal(resumed.players[0].hand.length, 6);
+  assertGame(resumed);
+
+  const bad = structuredClone(original);
+  bad.players[0].deck[0].spellId = 'FIR-001';
+  assert.equal(migrateSavedGame(bad), null, 'retired IDs are never remapped');
+  const oversized = structuredClone(original);
+  oversized.players[0].hand.push(...oversized.players[0].deck.splice(0, 2));
+  assert.equal(migrateSavedGame(oversized), null, 'version 10 never allowed six-card hands');
 });
 
 test('legal simulated duels preserve exact cards and valid states through repeated combat and refresh', () => {

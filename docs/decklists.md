@@ -70,8 +70,8 @@ The PDF leaves Fate Mana unspecified. This implementation retains the previous *
 ## Combat rules
 
 - Each wizard begins with **100 HP**, **3 Mana**, zero Shield, zero Embers/Flow, and zero Loaded. Maximums are **100 HP, 10 Mana, 30 Shield, and 5 Embers/Flow**.
-- Shuffle each saved 30-slab deck and draw four opening slabs, leaving 26 in its Spell Tower. Each wizard rolls one opening d6; higher starts and ties reroll both. Fate and Loaded do not affect initiative. The second player draws exactly one extra slab when their first own turn begins, up to the five-slab hand limit.
-- On each own turn after the opening turn, gain **2 Mana** up to the cap and draw up to five slabs. Unspent Mana carries over. One round contains one turn from each wizard, starting with the initiative winner.
+- Shuffle each saved 30-slab deck and draw five opening slabs, leaving 25 in its Spell Tower. Each wizard rolls one opening d6; higher starts and ties reroll both. Fate and Loaded do not affect initiative. The second player draws exactly one extra slab when their first own turn begins, up to the six-slab hand limit.
+- On each own turn after the opening turn, gain **2 Mana** up to the cap and draw up to six slabs. Unspent Mana carries over. One round contains one turn from each wizard, starting with the initiative winner.
 - Each wizard may commit **one primary spell per own turn**. Fire and Water slabs are primary spells; Fate does not consume this allowance. Printed Mana and any optional Ember spending are paid on commitment. Fire-7 and Fire-14 automatically spend all available Embers.
 - Every current Fire/Water spell includes a roll threshold, so each rolls **2d6**. The roll and eligible Loaded bonus are displayed before Fate. Higher thresholds replace lower outcomes of the same effect unless the text specifies an additional effect.
 - The **defender** first casts a batch of eligible Fate or skips. The **caster** then casts a batch or skips. If the caster skips, resolve the spell. If the caster plays Fate, the defender gets one final response, then resolve. Empty or ineligible Fate hands are skipped automatically; there are no further response rounds.
@@ -80,7 +80,7 @@ The PDF leaves Fate Mana unspecified. This implementation retains the previous *
 - Fire gains only printed Embers. Gains stop at five; spending happens before spell resolution. Optional spending uses a compact popup above the selected slab when Embers are available.
 - Water damage and healing use **Flow before the spell resolves**. After the effects, each Water spell grants **1 Flow**. A printed **additional Flow** gain adds to that default, capped at five. For example, Water-2 at 8+ gains two Flow total; Water-9 always gains two Flow total. Fate grants no automatic Flow.
 - New Loaded bonuses queue for the caster's **next own turn**, stack, and apply once to that turn's first roll. Unused bonuses expire at that turn's end. A bonus earned this turn does not modify this turn's roll.
-- After resolution, Cast Spell stays disabled. End Turn reveals Hand Refresh and turns red; End Turn again passes without refreshing. Hand Refresh lets the player select any number of slabs, including zero. Confirming it discards the selections, draws up to five, and passes immediately. End Turn during selection passes without applying those discards.
+- After resolution, Cast Spell stays disabled. End Turn reveals Hand Refresh and turns red; End Turn again passes without refreshing. Hand Refresh lets the player select any number of slabs, including zero. Confirming it discards the selections, draws up to six, and passes immediately. End Turn during selection passes without applying those discards.
 - The Spell Tower and discard counts follow card movement. Read Slab shows the complete rules; the tower view shows the saved composition without revealing draw order. If the tower is empty, draws stop; no reshuffle or fatigue rule is invented.
 
 ## Save compatibility

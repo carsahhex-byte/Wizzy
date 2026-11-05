@@ -191,9 +191,9 @@ test('both remote players roll server-controlled opening dice and the second sta
   assert.equal((await act(fire.data, 'rollInitiative')).status, 422);
   const second = await act(water.data, 'rollInitiative'); assert.equal(second.status, 200);
   assert.deepEqual([second.data.state.startingPlayer, second.data.state.activePlayer, second.data.state.phase], [1, 1, 'main']);
-  assert.deepEqual(second.data.state.initiative.rolls, [2, 6]); assert.equal(second.data.state.players[1].handCount, 4);
+  assert.deepEqual(second.data.state.initiative.rolls, [2, 6]); assert.equal(second.data.state.players[1].handCount, 5);
   await act(water.data, 'endTurn'); const passed = await act(water.data, 'endTurn');
-  assert.deepEqual([passed.data.state.activePlayer, passed.data.state.round, passed.data.state.players[0].handCount, passed.data.state.players[0].mana], [0, 1, 5, 3]);
+  assert.deepEqual([passed.data.state.activePlayer, passed.data.state.round, passed.data.state.players[0].handCount, passed.data.state.players[0].mana], [0, 1, 6, 3]);
   assert.equal(passed.data.state.secondPlayerOpeningDrawPending, false);
   await act(fire.data, 'endTurn'); const back = await act(fire.data, 'endTurn');
   assert.deepEqual([back.data.state.activePlayer, back.data.state.round, back.data.state.players[1].mana], [1, 2, 5]);

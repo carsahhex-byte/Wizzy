@@ -29,8 +29,8 @@ function fixtureMatch(decks) {
   let state = createGame(19, decks);
   state = rollInitiative(state, 0, () => .99);
   state = rollInitiative(state, 1, () => 0);
-  arrangeHand(state, 0, ['Fire-4', 'FAT-001', 'Fire-2', 'Fire-1']);
-  arrangeHand(state, 1, ['FAT-002', 'FAT-003', 'Water-2', 'Water-1']);
+  arrangeHand(state, 0, ['Fire-4', 'FAT-001', 'Fire-2', 'Fire-1', 'Fire-3']);
+  arrangeHand(state, 1, ['FAT-002', 'FAT-003', 'Water-2', 'Water-1', 'Water-3']);
   return state;
 }
 
@@ -82,12 +82,12 @@ test('room creation, opposite-element joins and private player views support two
   const fire = await api.get(host), water = await api.get(guest);
   assert.equal(fire.token, undefined); assert.equal(water.token, undefined);
   for (const [view, own] of [[fire, 0], [water, 1]]) {
-    assert.equal(view.state.players[own].hand.length, 4);
+    assert.equal(view.state.players[own].hand.length, 5);
     assert.equal(view.state.players[1 - own].hand.length, 0);
-    assert.equal(view.state.players[1 - own].handCount, 4);
+    assert.equal(view.state.players[1 - own].handCount, 5);
     assert.equal(view.state.players[1 - own].deckDefinition, null);
     assert.ok(view.state.players[own].deckDefinition);
-    for (const player of view.state.players) assert.deepEqual([player.deck, player.deckCount], [[], 26]);
+    for (const player of view.state.players) assert.deepEqual([player.deck, player.deckCount], [[], 25]);
     assert.equal(view.players[0].name, 'Host'); assert.equal(view.players[1].name, 'Guest');
     assert.equal(JSON.stringify(view).includes('tokenHash'), false);
   }
@@ -130,7 +130,7 @@ test('server controls roles, selections, Fate, secure dice totals, one primary a
   assert.deepEqual(result.data.state.lastRoll.dice, [4, 4], 'Fate never rerolls raw dice');
   assert.equal(result.data.state.lastRoll.total, 6, '8 dice -4 Misfortune +4 Fortune -2 Twist');
   assert.equal(result.data.state.players[1].hp, 95);
-  assert.deepEqual(result.data.state.players.map(player => player.handCount), [2, 2]);
+  assert.deepEqual(result.data.state.players.map(player => player.handCount), [3, 3]);
   fire = await api.get(host);
   const spark = fire.state.players[0].hand.find(card => card.spellId === 'Fire-1');
   await api.action(host, 'selectCard', { cardId: spark.id });
@@ -140,7 +140,7 @@ test('server controls roles, selections, Fate, secure dice totals, one primary a
   assert.equal((await api.action(host, 'toggleRefreshCard', { cardId: spark.id })).status, 200);
   assert.deepEqual((await api.get(guest)).state.refreshCardIds, [], 'staged discards stay private');
   result = await api.action(host, 'confirmRefresh');
-  assert.deepEqual([result.data.state.activePlayer, result.data.state.primaryUsed, result.data.state.players[0].handCount], [1, false, 5]);
+  assert.deepEqual([result.data.state.activePlayer, result.data.state.primaryUsed, result.data.state.players[0].handCount], [1, false, 6]);
   const refreshedGuest = await api.get(guest);
   assert.equal(refreshedGuest.state.players[0].hand.length, 0);
   assert.equal((await api.action(guest, 'endTurn')).status, 200, 'opponent can act on their new turn');

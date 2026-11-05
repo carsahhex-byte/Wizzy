@@ -5,7 +5,9 @@ import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applyS
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
+export const HAND_LIMIT = 6;
+export const OPENING_HAND_SIZE = 5;
 export const PHASES = Object.freeze(['setup', 'initiative', 'main', 'rolling', 'fate', 'resolving', 'end', 'refresh', 'ready-to-pass']);
 const PENDING_PHASES = ['fate', 'rolling', 'resolving'];
 const LOG_TYPES = ['info', 'turn', 'round', 'cast', 'fate', 'resolve', 'refresh', 'damage', 'victory', 'dice', 'resource', 'heal', 'shield', 'loaded'];
@@ -53,8 +55,8 @@ function inPhase(state, ...phases) {
   return state.status === 'playing' && phases.includes(state.phase);
 }
 
-function drawToFive(player) {
-  const drawCount = Math.min(Math.max(0, 5 - player.hand.length), player.deck.length);
+function drawToHandLimit(player) {
+  const drawCount = Math.min(Math.max(0, HAND_LIMIT - player.hand.length), player.deck.length);
   player.hand.push(...player.deck.splice(0, drawCount));
   return drawCount;
 }
@@ -80,7 +82,7 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
       elementName: id === 'fire' ? 'Embers' : 'Flow',
       hp: MAX_HP, maxHp: MAX_HP, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
       turnsStarted: 0, deckDefinition,
-      hand: deck.splice(0, 4), deck, discard: [],
+      hand: deck.splice(0, OPENING_HAND_SIZE), deck, discard: [],
     };
   });
   const state = {
@@ -92,7 +94,7 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
     status: 'playing', winner: null, players, log: [],
   };
   if (ready) {
-    addLog(state, `The duel begins. Both wizards receive ${MAX_HP} HP, 3 mana, and 4 spell slabs.`);
+    addLog(state, `The duel begins. Both wizards receive ${MAX_HP} HP, 3 mana, and ${OPENING_HAND_SIZE} spell slabs.`);
     addLog(state, 'Each wizard rolls one die to decide who starts. Ties are rerolled.');
   } else addLog(state, 'Build and save a legal 30-slab Fire deck and Water deck to begin. Previous spellbook decks are not used.');
   return state;
@@ -384,15 +386,15 @@ export function endTurn(state) {
   player.loadedPending = 0;
   if (isOpeningTurn) {
     const count = next.secondPlayerOpeningDrawPending && next.activePlayer !== next.startingPlayer
-      ? Math.min(1, Math.max(0, 5 - player.hand.length), player.deck.length) : 0;
+      ? Math.min(1, Math.max(0, HAND_LIMIT - player.hand.length), player.deck.length) : 0;
     if (count) player.hand.push(...player.deck.splice(0, count));
     if (next.activePlayer !== next.startingPlayer) next.secondPlayerOpeningDrawPending = false;
     addLog(next, `${player.name} takes their opening turn${count ? ', draws 1 extra slab for going second' : ''}; ${player.hand.length} spell slabs in hand.`, 'turn', player.id);
   } else {
     const gainedMana = Math.min(2, MAX_MANA - player.mana);
     player.mana += gainedMana;
-    const count = drawToFive(player);
-    const emptyNote = player.deck.length === 0 && player.hand.length < 5 ? ' Spell Tower is empty.' : '';
+    const count = drawToHandLimit(player);
+    const emptyNote = player.deck.length === 0 && player.hand.length < HAND_LIMIT ? ' Spell Tower is empty.' : '';
     addLog(next, `${player.name}'s turn. Gained ${gainedMana} mana and drew ${count} ${count === 1 ? 'slab' : 'slabs'}; ${player.hand.length} in hand.${emptyNote}`, 'turn', player.id);
   }
   if (player.loaded > 0) addLog(next, `${player.name}'s queued Loaded +${player.loaded} is available until their turn ends or their first roll uses it.`, 'loaded', player.id);
@@ -418,7 +420,7 @@ export function cancelRefresh(state) {
   return { ...state, phase: 'end', refreshCardIds: [] };
 }
 
-/** Discard zero through all selected cards, refill to five and immediately pass. */
+/** Discard zero through all selected cards, refill to the hand limit and pass. */
 export function confirmRefresh(state) {
   if (!inPhase(state, 'refresh')) return state;
   const next = structuredClone(state);
@@ -427,9 +429,9 @@ export function confirmRefresh(state) {
   const discards = player.hand.filter((card) => selected.has(card.id));
   player.hand = player.hand.filter((card) => !selected.has(card.id));
   player.discard.push(...discards);
-  const count = drawToFive(player);
+  const count = drawToHandLimit(player);
   next.refreshCardIds = [];
-  const emptyNote = player.deck.length === 0 && player.hand.length < 5 ? ' Spell Tower is empty.' : '';
+  const emptyNote = player.deck.length === 0 && player.hand.length < HAND_LIMIT ? ' Spell Tower is empty.' : '';
   addLog(next, `${player.name} refreshes: discarded ${discards.length}, drew ${count}; ${player.hand.length} in hand.${emptyNote}`, 'refresh', player.id);
   return endTurn(next);
 }
@@ -473,7 +475,7 @@ export function assertGame(state) {
     requireValue(player.mana <= MAX_MANA && player.shield <= MAX_SHIELD, 'resource cap');
     requireValue(player.element <= (index === 0 ? MAX_EMBERS : MAX_FLOW), 'element cap');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
-    requireValue(player.hand.length <= 5, 'hand limit');
+    requireValue(player.hand.length <= HAND_LIMIT, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
     requireValue(player.deckDefinition?.element === id, 'deck element');
     if (setup) {
@@ -601,7 +603,18 @@ export function validateSavedGame(value) {
   try { assertGame(value); return true; } catch { return false; }
 }
 
-/** Old spell IDs cannot be mapped to the replacement catalog without inventing decks. */
+/** Preserve replacement-spellbook duels when increasing the hand limit. */
 export function migrateSavedGame(value) {
-  return validateSavedGame(value) ? value : null;
+  if (validateSavedGame(value)) return value;
+  if (!value || value.version !== 10) return null;
+  try {
+    // Version 10 used a five-card limit. Its current hands and pending moves
+    // remain untouched; only future normal draws and refreshes use six.
+    if (!Array.isArray(value.players) || value.players.some(player => !Array.isArray(player?.hand) || player.hand.length > 5)) return null;
+    const next = structuredClone(value);
+    next.version = SAVE_VERSION;
+    assertGame(next);
+    addLog(next, `The hand limit is now ${HAND_LIMIT}. Future turn draws and hand refreshes fill up to ${HAND_LIMIT} slabs.`);
+    return next;
+  } catch { return null; }
 }

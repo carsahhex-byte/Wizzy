@@ -116,8 +116,8 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .dice-caption { position: absolute; bottom: -21px; width: 100%; text-align: center; color: #e0d7a8; font: 11px monospace; letter-spacing: 1px; text-shadow: 2px 2px #0b1020; }
 .spell-resolving .dice-pair { animation: resolve-pulse .6s ease-in-out infinite alternate; }
 
-/* Three slabs across; two occupy a centered lower row at the five-slab limit.
-   The lower sides remain free for the tower/discard and the refresh drawer. */
+/* Six slabs use three cards in each row; five opening slabs center the lower two.
+   Both rows leave the tower/discard piles and turn controls clear. */
 .hand-chamber { position: absolute; left: 16px; top: 775px; width: 992px; height: 560px; }
 .hand-frame-shell { position: absolute; inset: 24px 0 0; pointer-events: none; }
 .hand-frame-shell .art { position: absolute; }
@@ -136,6 +136,9 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .spell-card { position: relative; grid-column: span 2; padding: 0; border: 0; border-radius: 7%; width: 170px; height: 224.39px; background: transparent; isolation: isolate; transition: transform .14s,filter .14s,box-shadow .14s; box-shadow: 0 4px 8px #080b1f66; }
 .cards-5 .spell-card:nth-child(4) { grid-column: 2 / span 2; }
 .cards-5 .spell-card:nth-child(5) { grid-column: 4 / span 2; }
+.cards-6 .spell-card:nth-child(4) { grid-column: 1 / span 2; }
+.cards-6 .spell-card:nth-child(5) { grid-column: 3 / span 2; }
+.cards-6 .spell-card:nth-child(6) { grid-column: 5 / span 2; }
 .cards-4 .spell-card:nth-child(4),.cards-1 .spell-card { grid-column: 3 / span 2; }
 .cards-2 .spell-card:first-child { grid-column: 2 / span 2; }
 .cards-2 .spell-card:last-child { grid-column: 4 / span 2; }

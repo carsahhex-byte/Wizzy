@@ -5,7 +5,7 @@ import path from 'node:path';
 import {
   createGame, assertGame, getActingPlayerIndex, selectCard, castSelected,
   castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh,
-  toggleRefreshCard, confirmRefresh, rollInitiative,
+  toggleRefreshCard, confirmRefresh, rollInitiative, OPENING_HAND_SIZE,
 } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
@@ -50,7 +50,7 @@ function secureMatch(decks) {
       const other = randomInt(index + 1);
       [cards[index], cards[other]] = [cards[other], cards[index]];
     }
-    player.hand = cards.splice(0, 4);
+    player.hand = cards.splice(0, OPENING_HAND_SIZE);
     player.deck = cards;
   }
   return state;

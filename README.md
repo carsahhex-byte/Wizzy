@@ -77,15 +77,15 @@ The battle arena uses the forest's original **1024 × 1536 (2:3 portrait)** canv
 
 The Seattle map uses one square expanded illustration with ocean and islands around the city. **Fit / 1×** fills the map panel with that artwork; panning and zooming move the ocean, city, and markers together. Controls have their own rows outside the map. The page backdrop outside the mobile app remains separate from the map panel.
 
-Wizards stand on the grass around logical y450. Stat panels begin at y480, with the hand and turn controls on the stone-and-dirt area below. The hand has three slabs in the top row and up to two centered in the bottom row, with the discard and tower signs at its sides. The refresh drawer keeps its existing behavior, and the combat log opens over the board without changing the forest dimensions.
+Wizards stand on the grass around logical y450. Stat panels begin at y480, with the hand and turn controls on the stone-and-dirt area below. The hand has three slabs in the top row and up to three in the bottom row (with two centered for a five-slab hand), with the discard and tower signs at its sides. The refresh drawer keeps its existing behavior, and the combat log opens over the board without changing the forest dimensions.
 
 Use **Larger view** for a larger, scrollable portrait board and **Fit screen** to return. Optional Ember spending opens a compact popup above the selected slab only when Embers are available; the battle stays visible. Spells without an Ember choice cast directly, and mandatory all-Ember spending remains automatic.
 
 ## Implemented rules
 
 - Both wizards start at **100 HP**, with **3 Mana**, zero Shield, zero Embers/Flow, and zero Loaded. Caps are **100 HP, 10 Mana, 30 Shield, and 5 Embers/Flow**.
-- Each saved 30-slab deck deals **4 opening slabs**, leaving 26 in its Spell Tower. Both players roll one opening d6; higher starts and ties reroll both. Fate and Loaded do not modify initiative. The second player draws exactly one extra slab when their first own turn starts, up to the five-slab hand limit.
-- A round is one turn per wizard, starting with the initiative winner. Each wizard gains **2 Mana** and draws up to five at the beginning of their own turns after their opening turn. Unspent Mana carries over up to the cap.
+- Each saved 30-slab deck deals **5 opening slabs**, leaving 25 in its Spell Tower. Both players roll one opening d6; higher starts and ties reroll both. Fate and Loaded do not modify initiative. The second player draws exactly one extra slab when their first own turn starts, up to the six-slab hand limit.
+- A round is one turn per wizard, starting with the initiative winner. Each wizard gains **2 Mana** and draws up to six at the beginning of their own turns after their opening turn. Unspent Mana carries over up to the cap.
 - Each player commits **one primary spell per own turn**. Fire and Water slabs are primary; Fate does not use this allowance. Cast Spell pays printed Mana and permitted Ember spending. Optional spending uses a compact popup above the slab when Embers are available. Fire-7 and Fire-14 automatically spend all Embers.
 - All **28 primary spells** in the current catalog have thresholds and roll **2d6**. After commitment, roll and display the raw dice plus eligible Loaded **before** either player chooses Fate. Higher thresholds replace lower outcomes of the same effect; separately printed additional effects still apply.
 - Fate follows **defender → caster → conditional final defender response**. The defender first casts an eligible batch or skips; the caster then does the same. A caster skip resolves the spell. A caster Fate batch grants the defender one final response, after which the spell resolves. A player with no eligible Fate is skipped automatically. There are no further response rounds.
@@ -94,9 +94,9 @@ Use **Larger view** for a larger, scrollable portrait board and **Fit screen** t
 - Opponent damage consumes Shield before HP. **Self-damage bypasses the caster's Shield.** Shield removal happens before damage when printed. Healing stops at 100 HP; reaching zero HP ends the duel.
 - Fire gains only printed Embers, capped at five. Chosen spending is paid before resolution. Fire does not gain an automatic Ember for casting.
 - Water damage and healing use **Flow before resolution**. After the spell's effects, every Water spell grants **1 Flow**. Printed **additional Flow** adds to that default, capped at five. Water-2 on 8+ grants two Flow total; Water-9 always grants two Flow total. Fate grants no automatic Flow.
-- After primary resolution, Cast Spell stays greyed out until the caster's next own turn. End Turn reveals Hand Refresh and turns red. End Turn again passes without refreshing. Hand Refresh turns red, lets the player select any number of slabs including zero, then discards those selections, draws up to five, and passes immediately on confirmation. End Turn during selection passes without applying staged discards.
+- After primary resolution, Cast Spell stays greyed out until the caster's next own turn. End Turn reveals Hand Refresh and turns red. End Turn again passes without refreshing. Hand Refresh turns red, lets the player select any number of slabs including zero, then discards those selections, draws up to six, and passes immediately on confirmation. End Turn during selection passes without applying staged discards.
 - Pending dice, Fate decisions, and spell resolution block ending the turn. Spell Tower and discard counts track card movement; the played primary is discarded once. Local control changes use handoffs. Read Slab shows full text, and Spell Tower lists deck composition without exposing draw order.
-- Version **10** saves use the `nov4-v2.1` catalog and validate stats, zones, pending spell, dice, Fate batches, turn allowances, and refresh progress. Old-catalog duels are not resumed under new effects. Old decks are not reinterpreted as new cards: local storage is kept separate, and account migration archives old deck data while retaining credentials. Build and save new element decks before a new battle.
+- Version **11** saves use the `nov4-v2.1` catalog and validate stats, zones, pending spell, dice, Fate batches, turn allowances, and refresh progress. Version 10 duels migrate with their current hands, zones, and resources intact; the new five-slab opening deal applies to new duels. Old-catalog duels are not resumed under new effects. Old decks are not reinterpreted as new cards: local storage is kept separate, and account migration archives old deck data while retaining credentials. Build and save new element decks before a new battle.
 
 ## Spellbook and custom decks
 
@@ -108,7 +108,7 @@ See [spell IDs, Mana costs, construction rules, and the JSON decklist format](do
 
 ## Current limits
 
-If the tower runs out, drawing stops, so automatic draws and hand refresh can produce fewer than five cards. No reshuffle or fatigue rule is invented. There is no AI opponent. Online rooms currently support Fire versus Water, use in-memory match storage, and do not add a turn-timeout rule, friend lists, chat, or photo uploads. Username/password accounts and saved decks use persistent SQLite storage when the configured database file is retained.
+If the tower runs out, drawing stops, so automatic draws and hand refresh can produce fewer than six cards. No reshuffle or fatigue rule is invented. There is no AI opponent. Online rooms currently support Fire versus Water, use in-memory match storage, and do not add a turn-timeout rule, friend lists, chat, or photo uploads. Username/password accounts and saved decks use persistent SQLite storage when the configured database file is retained.
 
 The in-game settings/handbook describes the active rules and local two-player flow.
 
