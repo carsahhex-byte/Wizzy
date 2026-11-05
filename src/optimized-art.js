@@ -30,30 +30,20 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "649157e98eb95c1e510e82c936643400bd4fd9566a64385cbd7b15f7ca9cf54e",
     "optimizedSha256": "3faa800db3a0408489419b92801fedccead78769c1ec3e8c680c55098ff6cc14"
   },
-  "fireSpellArt": {
-    "file": "fireSpellArt-eb1eaef4ff59.webp",
-    "sourceSha256": "5840da8f28b502895be27f410e01c7c6a984d119c47e552bcf89a290cdf22100",
-    "optimizedSha256": "eb1eaef4ff593f350097a79f6be8fb5687917f7d1b8821db3d844b1137e17b92"
+  "fireSlabSheet": {
+    "file": "fireSlabSheet-e353c368a94f.webp",
+    "sourceSha256": "190e2c47f9ea679c9c4cab050c9f36310fba193b40f66db062ef98ff1e8ba4b4",
+    "optimizedSha256": "e353c368a94fefdfea079c5db2bf04a855b05a427ce5c1d5afdc5a794d5f6823"
   },
-  "waterSpellArt": {
-    "file": "waterSpellArt-93cf42e522fe.webp",
-    "sourceSha256": "66b852f525501af79987d62a1518af5521c01872baff3bccb328539500ce34a3",
-    "optimizedSha256": "93cf42e522fe045d8b0e7b154856f495ce3b1801bb5e3b8ac899b08829945968"
+  "waterSlabSheet": {
+    "file": "waterSlabSheet-fcf7f0228321.webp",
+    "sourceSha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+    "optimizedSha256": "fcf7f02283217cd25668a93ac80aa3de93bda2e1a335c4f6ae90d26765dfa835"
   },
-  "neutralSpellArt": {
-    "file": "neutralSpellArt-dce98e00ddef.webp",
-    "sourceSha256": "bc01d4b68bbefe539cf90d5da93be2097412b202a835dd61f58c9db7f7db96bd",
-    "optimizedSha256": "dce98e00ddef028e718275795cb0df9f087b55ee1821117bada836af9cec52ec"
-  },
-  "fateSpellArt": {
-    "file": "fateSpellArt-96536cac218c.webp",
-    "sourceSha256": "1d32689fda2c110809db75f3ffe53e1a39a5b8a87bfa7e79eecd5681fd90c580",
-    "optimizedSha256": "96536cac218cf80ca55283b563e6872e6566eead7170cbdb356b860d745692ad"
-  },
-  "sunsetterArt": {
-    "file": "sunsetterArt-25bac1567823.webp",
-    "sourceSha256": "fe24d418bd63b8859d1e9dda91ea3d1ac9353be6415bb27bb20bc3729abd9aaa",
-    "optimizedSha256": "25bac156782368681ea1c660b71a1eaa91054d072857c630ae3abf3ec4d07ec2"
+  "fateSlabSheet": {
+    "file": "fateSlabSheet-fbad3798e7bb.webp",
+    "sourceSha256": "ddf8e4750b195727aea5ca8625e0435da6c5db260f1b11e797df79d405b3fe38",
+    "optimizedSha256": "fbad3798e7bbbfcea19b3127d647ecc3f351a766bc7c7a02e98c4e0608a718d5"
   },
   "forest": {
     "file": "forest-ee3f83c2132f.webp",

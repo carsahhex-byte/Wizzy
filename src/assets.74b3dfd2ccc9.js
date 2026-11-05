@@ -1,5 +1,5 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { OPTIMIZED_ART } from './optimized-art.af2ae35c84ea.js';
+import { OPTIMIZED_ART } from './optimized-art.606ace6d1a31.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -8,11 +8,9 @@ export const ASSET_FILES = Object.freeze({
   iconAtlas: 'Wizzy Interface Icons.png',
   appIcon: 'Wizzy App Icon.png',
   storybookIcon: 'Wizzy Storybook Icon.png',
-  fireSpellArt: 'Wizzy Fire Spell Illustrations.png',
-  waterSpellArt: 'Wizzy Water Spell Illustrations.png',
-  neutralSpellArt: 'Wizzy Neutral Spell Illustrations.png',
-  fateSpellArt: 'Wizzy Fate Spell Illustrations.png',
-  sunsetterArt: 'Wizzy Sunsetter Illustration.png',
+  fireSlabSheet: 'Pixel-Art Fire Card Collection.png',
+  waterSlabSheet: 'Pixel-Art Water Card Collection.png',
+  fateSlabSheet: 'Pixel Art Fate Cards_ Fortune, Misfortune, Twist.png',
   forest: 'Forest Background.png',
   fireFrame: 'Fire Stat Frame.png',
   waterFrame: 'Water Frame.png',
@@ -63,22 +61,56 @@ export const ASSETS = Object.freeze(Object.fromEntries(
   }),
 ));
 
-/** Each spell has its own illustration; shared atlases keep downloads small. */
-export const SPELL_ART = Object.freeze(Object.fromEntries([
-  ...Array.from({ length: 12 }, (_, index) => [`FIR-${String(index + 1).padStart(3, '0')}`, Object.freeze({ asset: 'fireSpellArt', columns: 4, rows: 3, index })]),
-  ...Array.from({ length: 10 }, (_, index) => [`WAT-${String(index + 1).padStart(3, '0')}`, Object.freeze({ asset: 'waterSpellArt', columns: 4, rows: 3, index })]),
-  ...Array.from({ length: 4 }, (_, index) => [`NEU-${String(index + 1).padStart(3, '0')}`, Object.freeze({ asset: 'neutralSpellArt', columns: 2, rows: 2, index })]),
-  ...Array.from({ length: 3 }, (_, index) => [`FAT-${String(index + 1).padStart(3, '0')}`, Object.freeze({ asset: 'fateSpellArt', columns: 3, rows: 1, index })]),
-  ['FIR-012', Object.freeze({ asset: 'sunsetterArt', columns: 1, rows: 1, index: 0 })],
+// Source cards are not evenly spaced: Water's columns have different widths,
+// and Fate has large export gutters. Explicit viewports retain every frame and
+// printed label while excluding neighboring slabs. No source bitmap is edited.
+const fireSlabCrops = [
+  [13,11,282,364], [302,11,281,364], [591,11,280,364],
+  [879,11,280,364], [1167,11,280,364], [1455,11,280,364], [1743,11,281,364],
+  [13,389,282,368], [302,389,281,368], [591,389,280,368],
+  [879,389,280,368], [1167,389,280,369], [1455,389,280,368], [1743,389,282,368],
+];
+const waterSlabCrops = [
+  [23,13,296,356], [334,13,284,356], [632,13,282,356],
+  [929,13,270,356], [1213,13,267,356], [1494,13,256,356], [1763,13,256,356],
+  [23,383,296,366], [334,383,284,366], [632,383,282,365],
+  [929,383,271,365], [1214,383,267,365], [1494,383,256,365], [1764,383,255,365],
+];
+const slab = (asset, width, height, crop, label) => Object.freeze({
+  asset, width, height, x: crop[0], y: crop[1], w: crop[2], h: crop[3], label,
+});
+
+/** Exact artwork-to-spell mapping for all 31 Nov4 spells. */
+export const SPELL_SLABS = Object.freeze(Object.fromEntries([
+  ...fireSlabCrops.map((crop,index) => [`Fire-${index+1}`, slab('fireSlabSheet',2037,772,crop,`Fire-${index+1}`)]),
+  ...waterSlabCrops.map((crop,index) => [`Water-${index+1}`, slab('waterSlabSheet',2037,772,crop,`Water-${index+1}`)]),
+  ['FAT-001', slab('fateSlabSheet',2172,724,[153,17,517,687],'Fortune')],
+  ['FAT-002', slab('fateSlabSheet',2172,724,[827,17,518,687],'Misfortune')],
+  ['FAT-003', slab('fateSlabSheet',2172,724,[1502,17,517,687],'Twist')],
 ]));
 
+const cropImage = crop => `<img alt="" draggable="false" src="${ASSETS[crop.asset]}" style="position:absolute;display:block;max-width:none;width:${crop.width/crop.w*100}%;height:${crop.height/crop.h*100}%;left:${-crop.x/crop.w*100}%;top:${-crop.y/crop.h*100}%;image-rendering:pixelated;pointer-events:none;user-select:none" />`;
+
+/** Complete supplied slab, normalized to its existing parent card's dimensions. */
+export function spellSlabMarkup(spellId, className = '') {
+  const crop = SPELL_SLABS[spellId];
+  if (!crop) return '';
+  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:#030308">${cropImage(crop)}</span>`;
+}
+
+/** Art-only viewports are available where a smaller illustration is needed. */
+export const SPELL_ART = Object.freeze(Object.fromEntries(Object.entries(SPELL_SLABS).map(([id,crop]) => {
+  const fate = id.startsWith('FAT-');
+  return [id,Object.freeze({ ...crop,
+    x: crop.x + (fate ? 36 : 13), y: crop.y + (fate ? 40 : 17),
+    w: crop.w - (fate ? 72 : 26), h: fate ? 333 : 162,
+  })];
+})));
+
 export function spellArtMarkup(spellId, className = '') {
-  const illustration = SPELL_ART[spellId];
-  if (!illustration) return '';
-  const { asset, columns, rows, index } = illustration;
-  const x = columns > 1 ? index % columns / (columns - 1) * 100 : 0;
-  const y = rows > 1 ? Math.floor(index / columns) / (rows - 1) * 100 : 0;
-  return `<span aria-hidden="true" class="spell-illustration ${className}" data-spell-art="${spellId}" style="position:absolute;left:9%;top:15%;width:82%;height:44%;background-color:#101626;background-image:url('${ASSETS[asset]}');background-size:${columns * 100}% ${rows * 100}%;background-position:${x}% ${y}%;background-repeat:no-repeat;image-rendering:pixelated;pointer-events:none;overflow:hidden;border-radius:2px"></span>`;
+  const crop = SPELL_ART[spellId];
+  if (!crop) return '';
+  return `<span aria-hidden="true" class="spell-illustration ${className}" data-spell-art="${spellId}" style="position:absolute;left:9%;top:15%;width:82%;height:44%;background:#101626;overflow:hidden;pointer-events:none;border-radius:2px">${cropImage(crop)}</span>`;
 }
 
 export const ASSET_CROPS = Object.freeze({
