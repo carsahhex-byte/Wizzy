@@ -1,4 +1,4 @@
-import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.js';
+import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE } from './game.js';
 import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.js';
 import { validateDeck } from './decks.js';
@@ -7,7 +7,7 @@ import { createHub } from './hub.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createAccounts } from './accounts.js';
 
-const SAVE_KEY = 'wizzy.duel.v10';
+const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
 const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
@@ -50,7 +50,9 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  // Prior duels reference the retired spellbook. Leave their saved keys intact.
+  const migrated=migrateSavedGame(readSave('wizzy.duel.v10'));
+  if(migrated)return migrated;
+  // Older catalogs remain retired; all previous saved keys stay intact.
   return createGame();
 }
 function saveGame() {
@@ -147,7 +149,7 @@ function renderOpeningRoll() {
     const own=!isOnlineBattle()||onlinePlayerIndex===index;
     const disabled=completed||value!==null||onlineBusy;
     return `<section class="opening-player ${player.id} ${own?'is-own':''}" aria-label="${player.name} opening roll"><strong>${player.name}${isOnlineBattle()&&own?' · YOU':''}</strong><div class="opening-die">${diceFace(value,index)}</div><span class="opening-value" data-testid="opening-value-${index}">${value===null?'Not rolled':value}</span>${own&&!completed?`<button class="secondary-button" data-opening-player="${index}" ${disabled?'disabled':''}>${value!==null?'Rolled':onlineBusy?'Rolling…':`Roll ${player.name}`}</button>`:!completed?'<span class="opening-wait">Waiting for their roll</span>':''}</section>`;
-  }).join('')}</div>${previousTie?`<p class="opening-tie">Previous round tied ${previousTie.rolls[0]}–${previousTie.rolls[1]}. Both dice reset.</p>`:''}<p class="dialog-footnote">First turn: 4 opening slabs. Second turn: draw 1 extra slab, up to 5 in hand.</p>`;
+  }).join('')}</div>${previousTie?`<p class="opening-tie">Previous round tied ${previousTie.rolls[0]}–${previousTie.rolls[1]}. Both dice reset.</p>`:''}<p class="dialog-footnote">Both players start with ${OPENING_HAND_SIZE} slabs. The second player draws 1 when their first turn begins. Hand limit: ${HAND_LIMIT}.</p>`;
   const continueButton=document.querySelector('#opening-continue');
   continueButton.hidden=!completed;
   continueButton.textContent=completed?(isOnlineBattle()?initiative.winner===onlinePlayerIndex?'Begin your turn':'View battle':`Begin ${winner.name}’s turn`):'Begin battle';
@@ -206,7 +208,7 @@ function render() {
     <div class="game-board ${active.id} phase-${state.phase}" style="--forest:url('${ASSETS.forest}')">
     <section class="battle-scene" aria-label="Fire and Water wizards in the forest ruins"><div class="game-title"><span class="title-stars" aria-hidden="true">✦ ◆ ✦</span><h1>Wizzy</h1><p>Battle Simulator</p></div><div class="combatant fire-combatant ${state.phase!=='initiative'&&state.activePlayer===0?'active-combatant':''}">${art('fireMage','mage-art')}<span class="mage-shadow"></span></div><span class="versus" aria-hidden="true">VS</span><div class="combatant water-combatant ${state.phase!=='initiative'&&state.activePlayer===1?'active-combatant':''}">${art('waterMage','mage-art')}<span class="mage-shadow"></span></div></section>
     <div class="battle-hud">${playerPanel(state.players[0],0)}${diceView()}${playerPanel(state.players[1],1)}</div>
-    <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${displayPlayer.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${isOnlineBattle()?'YOUR ':''}${displayPlayer.name.toUpperCase()} · ${isOnlineBattle()&&!canActOnline()?'WAITING':isFate?(state.fatePlayer===state.activePlayer?'ATTACKING FATE':'DEFENDING FATE'):'SPELLBOOK'}</span><span data-testid="hand-count">${handCount(displayPlayer)} / 5 SLABS</span></div>
+    <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${displayPlayer.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${isOnlineBattle()?'YOUR ':''}${displayPlayer.name.toUpperCase()} · ${isOnlineBattle()&&!canActOnline()?'WAITING':isFate?(state.fatePlayer===state.activePlayer?'ATTACKING FATE':'DEFENDING FATE'):'SPELLBOOK'}</span><span data-testid="hand-count">${handCount(displayPlayer)} / ${HAND_LIMIT} SLABS</span></div>
     <div class="cards ${displayPlayer.id} cards-${displayPlayer.hand.length}" aria-label="${displayPlayer.name} wizard’s spell slabs">${displayPlayer.hand.map(card=>cardView(card,displayPlayer,finished)).join('')||'<div class="empty-hand"><span>✧</span><p>No spells in hand.<br>Refresh your hand or draw on your next turn.</p></div>'}</div>
     <div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${displayPlayer.discard.length} <small>${displayPlayer.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${isOnlineBattle()&&!canActOnline()?'YOUR PRIVATE HAND':state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${deckCount(displayPlayer)} <small>${deckCount(displayPlayer)===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
     <div class="turn-controls"><div class="phase-hint" role="status">${hintView(active,selected)}${isOnlineBattle()&&state.pendingSpell?'<button class="text-button" id="inspect-pending">Read pending spell</button>':''}</div>
