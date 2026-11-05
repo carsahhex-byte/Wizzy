@@ -1,6 +1,6 @@
 /** Publish only the static build, preserving the source checkout and its index. */
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, stat, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -24,6 +24,18 @@ if (files.includes('wizzy.html')) throw new Error('Use npm run build:web before 
 const remoteLine = git(['ls-remote', '--heads', 'origin', 'refs/heads/gh-pages']);
 const parent = remoteLine ? remoteLine.split(/\s/)[0] : null;
 if (parent) git(['fetch', '--no-tags', 'origin', 'refs/heads/gh-pages']);
+
+// Keep previously shared launch URLs usable. A new network request to any old
+// launch path receives the current HTML; cached copies use the release checker
+// to find the latest uniquely named entry. Only small HTML aliases are retained.
+if (parent) {
+  const aliases = git(['ls-tree', '--name-only', parent]).split('\n')
+    .filter(filename => /^wizzy-[a-f0-9]{12}\.html$/.test(filename));
+  if (aliases.length) {
+    const currentHtml = await readFile(path.join(output, 'index.html'));
+    for (const filename of aliases) await writeFile(path.join(output, filename), currentHtml);
+  }
+}
 
 const temporary = await mkdtemp(path.join(tmpdir(), 'wizzy-pages-'));
 try {

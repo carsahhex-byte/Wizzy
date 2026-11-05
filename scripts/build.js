@@ -61,14 +61,20 @@ if (webOnly) {
   }
   const stylesheet = stylesheets[0];
   const entry = `./src/${emitted.get('main.js')}`;
+  const releaseCheck = await readFile('scripts/release-check.js', 'utf8');
+  execFileSync(process.execPath, ['--check', 'scripts/release-check.js'], { stdio: 'inherit' });
   let html = await readFile('index.html', 'utf8');
-  const id = createHash('sha256').update(html).update(entry).update(stylesheets.join('\n')).digest('hex').slice(0, 12);
+  const id = createHash('sha256').update(html).update(entry).update(stylesheets.join('\n')).update(releaseCheck).digest('hex').slice(0, 12);
+  const launch = `./wizzy-${id}.html`;
   styleNames.forEach((filename, index) => { html = html.replace(`href="./src/${filename}"`, `href="${stylesheets[index]}"`); });
-  html = html.replace('src="./src/main.js"', `src="${entry}"`)
+  html = html.replace('<script type="module" src="./src/main.js"></script>', () => `<script>${releaseCheck.replace(/<\/script/gi, '<\\/script')}</script>\n    <script type="module" src="${entry}"></script>`)
     .replace('name="wizzy-build" content="development"', `name="wizzy-build" content="${id}"`)
     .replace('Development · portrait layout', `Build ${id} · portrait layout`);
   await writeFile('dist/index.html', html);
-  await writeFile('dist/build-info.json', JSON.stringify({ id, layout: 'portrait-1024x1536', screens: ['title', 'home', 'character', 'friends', 'decks', 'online', 'account', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
+  // A new pathname avoids reusing a previously cached index document. Both
+  // entries live at the project root, so asset paths and hash navigation agree.
+  await writeFile(`dist/${launch.slice(2)}`, html);
+  await writeFile('dist/build-info.json', JSON.stringify({ id, launch, layout: 'portrait-1024x1536', screens: ['title', 'home', 'character', 'friends', 'decks', 'online', 'account', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
   console.log(`Built hosted game ${id} with content-hashed modules, styles, and artwork.`);
   process.exit(0);
 }

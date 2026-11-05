@@ -522,6 +522,8 @@ const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspect
 },onBattle:({decks,forceNew=false}={})=>{
   if(forceNew){restoreLocalBattle();requestNewBattle(decks,true);return;}
   pendingModeDecks=decks||hub.getSavedDecks();
+  document.querySelector('#resume-local').hidden=localState.status!=='playing'||localState.phase==='setup';
+  document.querySelector('#resume-local-detail').textContent=`Round ${localState.round}. Keep the current hands and progress. Future turn draws and refreshes fill up to ${HAND_LIMIT}.`;
   document.querySelector('#resume-online').hidden=!multiplayer?.isActive();
   document.querySelector('#battle-mode').showModal();
 }});
@@ -674,11 +676,16 @@ document.querySelector('#victory-online').addEventListener('click',()=>{multipla
 document.querySelector('#choose-local').addEventListener('click',()=>{
   document.querySelector('#battle-mode').close();restoreLocalBattle();
   const decks=pendingModeDecks||hub.getSavedDecks();
+  pendingModeDecks=null;
   if(!localDecksReady(decks)){pendingModeDecks=null;showDeckSetup(decks);return;}
   if(isUntouchedBattle()){
     openingAcknowledged.local=false;
     update(createGame(Date.now(),decks));
-  }
+    enterBattle();
+  }else requestNewBattle(decks,true);
+});
+document.querySelector('#resume-local').addEventListener('click',()=>{
+  document.querySelector('#battle-mode').close();restoreLocalBattle();
   pendingModeDecks=null;enterBattle();
 });
 document.querySelector('#choose-online').addEventListener('click',openOnlineLobby);
