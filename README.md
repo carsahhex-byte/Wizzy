@@ -2,6 +2,8 @@
 
 A mobile-first pixel-art game prototype with a title screen, a Seattle map preview, Character and Friends screens, a deck builder, and a two-player battle arena. Fire and Water can share one screen or use separate browsers connected to the room server. The **November 4 Master Spellbook** replaces the previous catalog with 14 Fire, 14 Water, and 3 Fate spells. Players build, save, upload, and download their own 30-slab decks; new element slots start empty.
 
+[Open Wizzy](https://carsahhex-byte.github.io/Wizzy/#title) starts at the title screen. A new duel starts at **100 / 100 HP, 3 / 10 Mana, and 0 / 30 Shield**; the second number is each resource's maximum.
+
 ## Run
 
 Requires Node.js 24 or later, including its built-in SQLite support for accounts. There are no npm dependencies to install. Shared-screen play needs no credentials or external services. Two-screen play needs the included room server running locally or on an HTTPS host.
@@ -67,7 +69,7 @@ The uploaded PNGs remain unmodified in `public/graphics/`, including graphics re
 
 The hosted build uses the required images from `public/optimized/`, encoded as lossless WebP with content-hashed filenames for caching. Their decoded RGBA pixels are byte-for-byte identical to the originals, and they load separately rather than being embedded in the HTML. Original and unused artwork and the large standalone download are excluded from the hosted release.
 
-Fire, Water, and Fate use category-colored slabs at the existing hand size. Names, Mana costs, and rules text are rendered from the current master metadata. Fire-1 through Fire-14 and Water-1 through Water-14 are distinct definitions; Fortune, Misfortune, and Twist keep their Fate identities. The three new labeled artwork sheets are visible in chat but their source image files have not been attached; exact per-card artwork replacement remains pending those PNGs or ZIP. The existing category frames remain available in the meantime. Selecting eligible Fate slabs uses the supplied **Cast Fate** button artwork.
+All **31 slabs** use the exact supplied artwork from `Graphics 1.2.zip` at the existing hand size. Explicit crop metadata matches Fire-1 through Fire-14, Water-1 through Water-14, Fortune, Misfortune, and Twist to their labeled cards, excluding atlas gutters and neighboring slabs. The original PNG bytes remain unchanged. Mana costs appear as a small corner badge from the spellbook metadata; the inspector also shows its complete rules as readable text. Selecting eligible Fate slabs uses the supplied **Cast Fate** button artwork.
 
 After replacing source PNGs, regenerate their optimized copies with `npm run optimize:art`. That optional authoring command requires Python and Pillow with WebP support; running, testing, building, and deploying the retained files require only Node.js and Git. The web build verifies source and optimized SHA-256 hashes and rejects stale or damaged copies.
 

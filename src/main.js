@@ -1,7 +1,8 @@
 import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES } from './game.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup } from './assets.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.js';
 import { validateDeck } from './decks.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.js';
 import { createHub } from './hub.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createAccounts } from './accounts.js';
@@ -73,7 +74,7 @@ function playerPanel(player, index) {
     ${art(player.id === 'fire' ? 'fireFrame' : 'waterFrame','stat-frame')}
     <div class="stat-heading"><span class="element-symbol" aria-hidden="true">${player.id === 'fire' ? '♨' : '◈'}</span><h2>${player.name}</h2><span class="player-label">${state.startingPlayer===null?'':state.startingPlayer===index?'1ST':'2ND'}</span>${state.phase!=='initiative'&&state.activePlayer === index ? '<span class="active-dot" aria-label="Active wizard"></span>' : ''}</div>
     <div class="stat-body"><div class="health-row"><span>HP</span><strong data-stat="${player.id}-hp">${player.hp}<small> / ${player.maxHp}</small></strong></div><div class="health-track" role="progressbar" aria-label="${player.name} HP" aria-valuemin="0" aria-valuemax="${player.maxHp}" aria-valuenow="${player.hp}"><span style="width:${player.hp/player.maxHp*100}%"></span></div>
-    <div class="resource-grid"><div class="resource mana"><i aria-hidden="true">◆</i><span>Mana</span><strong data-stat="${player.id}-mana">${player.mana}</strong></div><div class="resource shield"><i aria-hidden="true">⬟</i><span>Shield</span><strong>${player.shield}</strong></div><div class="resource element"><i aria-hidden="true">${player.id === 'fire' ? '♨' : '≈'}</i><span>${player.elementName}</span><strong>${player.element}</strong></div><div class="resource loaded"><i aria-hidden="true">⚄</i><span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
+    <div class="resource-grid"><div class="resource mana"><i aria-hidden="true">◆</i><span>Mana</span><strong data-stat="${player.id}-mana" data-current="${player.mana}" data-cap="${MAX_MANA}" aria-label="${player.mana} Mana, maximum ${MAX_MANA}">${player.mana}<small class="stat-limit"> / ${MAX_MANA}</small></strong></div><div class="resource shield"><i aria-hidden="true">⬟</i><span>Shield</span><strong data-stat="${player.id}-shield" data-current="${player.shield}" data-cap="${MAX_SHIELD}" aria-label="${player.shield} Shield, maximum ${MAX_SHIELD}">${player.shield}<small class="stat-limit"> / ${MAX_SHIELD}</small></strong></div><div class="resource element"><i aria-hidden="true">${player.id === 'fire' ? '♨' : '≈'}</i><span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${player.id==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${player.id==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div><div class="resource loaded"><i aria-hidden="true">⚄</i><span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
   </section>`;
 }
 function phaseHint(active) {
@@ -98,6 +99,8 @@ function phaseHint(active) {
   }
 }
 function slabFace(card) {
+  const slab=spellSlabMarkup(card.spellId,'card-image');
+  if(slab)return `${slab}<span class="slab-mana">${card.manaCost} Mana</span><span class="sr-only">${escape(card.name)}. ${escape(card.effectText)}</span>`;
   return `${art(card.art,'card-image')}${spellArtMarkup(card.spellId)}<span class="card-name" style="--name-size:${card.name.length>12?18:21}px">${escape(card.name)}</span><span class="card-copy"><strong class="mana-cost">${card.manaCost} Mana</strong><span class="card-effect">${escape(card.effectText)}</span></span>`;
 }
 function cardView(card, active, finished) {
@@ -371,18 +374,19 @@ function showSlab(spellId) {
   document.querySelector('#slab-definition').textContent=`${spell.spellId} · ${spell.category}${spell.category==='Elemental'?` · ${spell.element}`:''}`;
   document.querySelector('#slab-face').innerHTML=slabFace(spell);
   document.querySelector('#slab-face').dataset.slabType=spell.type;
-  document.querySelector('#slab-behavior').textContent=spell.category==='Fate'?'Play after the dice roll in your Fate window. Twist may add 2 or subtract 2, by your choice.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds with Fate first, then the caster. A caster Fate batch allows one final defender response.':'Resolves immediately, without a dice roll or Fate window.';
+  const timing=spell.category==='Fate'?'Play after the dice roll in your Fate window. Twist may add 2 or subtract 2, by your choice.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds with Fate first, then the caster. A caster Fate batch allows one final defender response.':'Resolves immediately, without a dice roll or Fate window.';
+  document.querySelector('#slab-behavior').textContent=`${spell.effectText} ${timing}`;
   if(!dialog.open)dialog.showModal();
 }
 function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
   const player=state.players.find(player=>player.id===playerId);
   if(!player?.deckDefinition||isOnlineBattle()&&player!==state.players[onlinePlayerIndex])return;
-  const groups=['Elemental','Neutral','Fate'].map(category=>{
+  const groups=['Elemental','Fate'].map(category=>{
     const entries=player.deckDefinition.entries.filter(entry=>SPELL_CATALOG[entry.spellId].category===category);
     const quantity=entries.reduce((sum,entry)=>sum+entry.quantity,0);
     return `<section class="deck-group"><h3>${category}<span>${quantity} slabs</span></h3>${entries.map(entry=>{
       const spell=SPELL_CATALOG[entry.spellId];
-      return `<button class="deck-row slab-${spell.type.toLowerCase()}" data-inspect-spell="${spell.spellId}" aria-label="Read ${escape(spell.name)}, ${entry.quantity} copies, ${spell.manaCost} Mana"><span class="deck-thumbnail">${art(spell.art)}${spellArtMarkup(spell.spellId)}</span><span class="deck-spell-name">${escape(spell.name)}<small>${spell.spellId} · ${spell.type}</small></span><span class="deck-mana">${spell.manaCost}<small>Mana</small></span><strong class="deck-quantity" data-spell-id="${spell.spellId}">×${entry.quantity}</strong></button>`;
+      return `<button class="deck-row slab-${spell.type.toLowerCase()}" data-inspect-spell="${spell.spellId}" aria-label="Read ${escape(spell.name)}, ${entry.quantity} copies, ${spell.manaCost} Mana"><span class="deck-thumbnail">${spellSlabMarkup(spell.spellId)||art(spell.art)}</span><span class="deck-spell-name">${escape(spell.name)}<small>${spell.spellId} · ${spell.type}</small></span><span class="deck-mana">${spell.manaCost}<small>Mana</small></span><strong class="deck-quantity" data-spell-id="${spell.spellId}">×${entry.quantity}</strong></button>`;
     }).join('')}</section>`;
   }).join('');
   document.querySelector('#deck-heading').textContent=`${player.name} deck · ${DECK_SIZE} spell slabs`;
