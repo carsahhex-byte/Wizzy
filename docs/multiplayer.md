@@ -17,12 +17,14 @@ TestFlight can be configured later. The browser version tests the same account a
 
 ## Nearby testing on the same Wi-Fi
 
-Get the source if it is not already on your computer:
+Install [Node.js 24 or newer](https://nodejs.org/en/download) on the Mac. There are no npm dependencies to install. Get the source if it is not already on your computer:
 
 ```sh
 git clone --branch codex/wizzy-hosting https://github.com/carsahhex-byte/Wizzy.git
 cd Wizzy
 ```
+
+If you already have a checkout of this branch, open its folder in Terminal and run `git pull --ff-only` instead of cloning again.
 
 In that folder, build the app and start its server:
 
@@ -31,11 +33,17 @@ npm run build:web
 npm run multiplayer
 ```
 
-On the computer, open `http://localhost:8787/`. On both phones, open the computer's Wi-Fi IP address with port **8787**, for example `http://192.168.1.20:8787/`. Use the real address shown in **System Settings → Wi-Fi → Details → TCP/IP** on a Mac. `localhost` on a phone refers to the phone, not your Mac.
+The multiplayer server already binds to **0.0.0.0**, so it accepts connections from other devices without a `HOST` setting. Its default `PORT` is **8787**.
+
+On the Mac, open `http://localhost:8787/`. Find its actual Wi-Fi **IP Address** in **System Settings → Wi-Fi → Details → TCP/IP**. On both phones, open Safari at that address with port **8787** and `/#title`, for example `http://192.168.1.20:8787/#title`. Replace the example with your Mac's real IP. `localhost` on a phone refers to the phone, not your Mac.
 
 Both phones must be on the same network, the computer must remain awake, and its firewall must allow Node to accept connections. Guest networks can isolate devices. Keep the terminal running while testing.
 
-Use this locally served HTTP address for the nearby test. The HTTPS GitHub Pages site cannot call an HTTP Mac address because browsers block mixed HTTPS/HTTP requests. Use a password unique to this private game during LAN testing.
+Use this locally served **HTTP** app on both phones. The HTTPS GitHub Pages site cannot call an HTTP Mac address because browsers block mixed HTTPS/HTTP requests. No account is required for guest room-code battles.
+
+The local address and GitHub Pages have separate browser storage. To reuse a deck from the website, open **Deck → Download deck** there, then open the local app's **Deck → Upload deck**, choose the JSON file, and press **Save deck**. Otherwise build and save a new 30-slab deck locally. Each phone needs the saved deck for the element it will play; it does not need both elements.
+
+On each phone, open **Battle → Play on two screens** to reach **Battle Portal**. Its **Game server address** normally fills with the local app's address, such as `http://192.168.1.20:8787`. If older saved settings show another address, replace it with the same local address on both phones. Enter a wizard name. One phone chooses Fire or Water and taps **Create battle →**; the other enters the shared eight-character **Room code** and taps **Join →**. Joining automatically takes the opposite element and uses that saved deck. Both players then complete their opening die rolls.
 
 ## Create an account and sync decks
 
@@ -91,8 +99,8 @@ Back up the data directory separately from the source repository. For a simple c
 ## Create and join a battle
 
 1. Sign in if you want account-backed decks, or continue as a guest. Build and save a legal deck for the element you will play. Shared-screen duels need both saved decks; each two-screen player only needs their chosen role's saved deck.
-2. Open **Battle → Two Screens**, or the room option in Friends. Both devices use the same server address.
-3. The host chooses Fire or Water and creates a room. Share its code. The other player joins as the opposite element using that role's saved deck.
+2. Open **Battle → Play on two screens**, or **Friends → Create or join a battle**. In Battle Portal, both devices use the same **Game server address** and enter their wizard names.
+3. The host chooses Fire or Water and taps **Create battle →**. Share the eight-character **Room code**. The other player enters it and taps **Join →**, automatically taking the opposite element and using that role's saved deck.
 4. Each player rolls **one d6** to decide who starts. Higher goes first; ties reroll both. Fate and Loaded do not affect initiative.
 5. Both start with five slabs. The second player draws **one extra slab when their first own turn begins**, normally reaching six (the hand limit). If they already used Fate, the bonus adds one to the remaining hand rather than filling it to six. Neither player gains the later-turn +2 mana on their opening turn.
 6. Both wizards start at **100 HP** with **3 Mana**. Mana is capped at **10**, Shield at **30**, and Embers/Flow at **5**. After the opening turn, each wizard gains two Mana at the beginning of their own turn.
@@ -107,9 +115,9 @@ All 33 slabs have larger live compact rules with bold roll thresholds. This read
 
 Each player sees only their own hand and can act only at the appropriate step. Room revisions and request IDs prevent stale or retried requests from applying a move twice.
 
-Both screens use the approved v2 battle animations. After Fate closes, damaging spells have a one-second caster charge, release at 1.5 seconds, impact after a one-second flight at 2.5 seconds, and finish the defender's two-second reaction at 4.5 seconds. Non-damaging spells and successful Enhancement last two seconds with results shown at 500 ms; failed Enhancement shows **MISS** without animation. Aura has 500 ms of formation plus a one-second activation hold, then its green ring loops until expiry after three subsequent owner turns, with a 500 ms fizzle. Reconnecting restores the current ring without replaying activation or old spells. Reduced motion settles action visuals immediately and displays a static active ring.
+Both screens use the approved v2 caster and projectile animations. After Fate closes, damaging spells have a one-second caster charge, release at 1.5 seconds, and impact after a one-second flight at 2.5 seconds. The target keeps its standing pose with the original quick 210 ms red flash and four 85 ms legacy impact frames; the 340 ms hit window finishes at 2.84 seconds. Non-damaging spells and successful Enhancement last two seconds with results shown at 500 ms; failed Enhancement shows **MISS** without animation. Aura has 500 ms of formation plus a one-second activation hold, then its green ring loops until expiry after three subsequent owner turns, with a 500 ms fizzle. Reconnecting restores the current ring without replaying activation or old spells. Reduced motion settles action visuals immediately and displays a static active ring.
 
-The server remains authoritative and resolves each action once. Each browser holds displayed results until impact, keeps the existing 800 ms HP easing, and blocks battle actions and victory until the presentation finishes. Spell values, IDs, Enhancement tiers, deck rules and save version are unchanged. The gallery and ZIP are references for the same approved live sheets; original PNG pixels are preserved with lossless runtime copies.
+The server remains authoritative and resolves each action once. Each browser holds displayed results until impact, keeps the existing 800 ms HP easing, and blocks battle actions and victory until the presentation finishes. Victory also waits for the losing HP bar to reach zero after the quick hit. Spell values, IDs, Enhancement tiers, deck rules and save version are unchanged. The gallery and ZIP remain artwork references, including the longer v2 hit-reaction sheet; live targets use the original quick response. Original PNG pixels are preserved with lossless runtime copies.
 
 ## Reconnecting and storage limits
 

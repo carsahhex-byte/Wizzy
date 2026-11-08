@@ -99,11 +99,11 @@ visible. Read Slab and accessible text retain the full resource words.
 
 ## Battle presentation
 
-The approved v2 sprite sheets are live in battles. Primary animations start only after any Fate chain ends; Fate itself has no animation. Damaging spells retain their Mana-based basic/simple/large tiers. Their caster charges for one second, releases at 1.5 seconds, and sends a one-second projectile flight to impact at 2.5 seconds. The defender's two-second reaction includes a one-second particle linger; controls unlock at 4.5 seconds. Shield and power-up spells last two seconds and show their results at 500 ms.
+The approved v2 caster and projectile sheets are live in battles. Primary animations start only after any Fate chain ends; Fate itself has no animation. Damaging spells retain their Mana-based basic/simple/large tiers. Their caster charges for one second, releases at 1.5 seconds, and sends a one-second projectile flight to impact at 2.5 seconds. The defender stays in its standing pose with the original quick 210 ms red flash and four 85 ms legacy impact frames. This 340 ms hit window ends the damaging animation at 2.84 seconds. Shield and power-up spells last two seconds and show their results at 500 ms.
 
 Successful Enhancement plays a two-second jump with the award shown at 500 ms; a miss displays **MISS** without animation. Aura forms for 500 ms and holds its particle loop for one second before controls unlock, then keeps a green ring underfoot until its third subsequent owner turn ends. Activation does not count, and expiry plays a 500 ms fizzle. An active ring is restored on resume without replaying formation. Reduced motion settles actions immediately and keeps Aura static.
 
-These visuals never apply combat effects twice or change spell metadata, damage tiers, deck rules or save compatibility. Costs are paid normally; results are held on screen until impact, HP bars ease over 800 ms, and battle actions and victory wait for the presentation to finish. Reloading does not replay completed actions. The unchanged source PNGs, timing reference and ZIP remain in the separate animation gallery.
+These visuals never apply combat effects twice or change spell metadata, damage tiers, deck rules or save compatibility. Costs are paid normally; results are held on screen until impact, HP bars ease over 800 ms, and battle actions and victory wait for the presentation to finish. Victory also waits until the losing HP bar reaches zero, even when the quick hit has finished. Reloading does not replay completed actions. The unchanged source PNGs, timing reference and ZIP remain in the separate animation gallery, including the longer v2 hit sheet retained as a reference.
 
 ## Save compatibility
 

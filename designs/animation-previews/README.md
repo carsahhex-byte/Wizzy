@@ -6,7 +6,10 @@ ten sheets with eight distinct held-effect frames per sequence, played at
 Aura, casts, attacks, shields, power-ups, projectiles and hit reactions. These
 approved sheets are integrated into battles, with unchanged PNG originals and
 lossless optimized runtime copies. The separate gallery and ZIP remain useful
-artwork and timing references.
+artwork and timing references. Live targets use the original quick standing-pose
+hit response: a 210 ms red flash and four 85 ms legacy impact frames. The longer
+v2 hit-reaction sheet is preserved in the approved pack and gallery but is not
+currently played in battles; other v2 animation timing is unchanged.
 
 The two earlier transparent PNGs below remain historical design references;
 the runtime mappings use the approved v2 set.
