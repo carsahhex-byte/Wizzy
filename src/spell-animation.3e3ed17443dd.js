@@ -1,5 +1,5 @@
-import { ASSETS, SPELL_ANIMATION_SHEETS } from './assets.cfb23b68fab6.js';
-import { getSpellVisual } from './spell-visuals.bf5178322ac9.js';
+import { ASSETS, SPELL_ANIMATION_SHEETS } from './assets.263d5388516b.js';
+import { getSpellVisual } from './spell-visuals.ffab9b18cbbf.js';
 
 const imageLoads = new Map();
 function preload(asset) {

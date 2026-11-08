@@ -189,9 +189,10 @@ const slab = (asset, width, height, crop, label) => Object.freeze({
   asset, width, height, x: crop[0], y: crop[1], w: crop[2], h: crop[3], label,
 });
 
-/** Original Nov4 spell slabs plus the matching basic Fire-0 slab. */
+/** Original Nov4 slabs plus resource spells with live titles and rules. */
 export const SPELL_SLABS = Object.freeze(Object.fromEntries([
   ['Fire-0', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-0')],
+  ['Fire-15', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-15')],
   ...fireSlabCrops.map((crop,index) => [`Fire-${index+1}`, slab('fireSlabSheet',2037,772,crop,`Fire-${index+1}`)]),
   ...waterSlabCrops.map((crop,index) => [`Water-${index+1}`, slab('waterSlabSheet',2037,772,crop,`Water-${index+1}`)]),
   ['FAT-001', slab('fateSlabSheet',2172,724,[153,17,517,687],'Fortune')],
@@ -215,8 +216,8 @@ export function spellSlabMarkup(spellId, className = '') {
 /** Art-only viewports are available where a smaller illustration is needed. */
 export const SPELL_ART = Object.freeze(Object.fromEntries(Object.entries(SPELL_SLABS).map(([id,crop]) => {
   const fate = id.startsWith('FAT-');
-  // The standalone Fire-0 is larger than the original sheet tiles.
-  const scale = id === 'Fire-0' ? crop.w / 282 : 1;
+  // The standalone resource slab is larger than the original sheet tiles.
+  const scale = crop.asset === 'fireZeroSlab' ? crop.w / 282 : 1;
   return [id,Object.freeze({ ...crop,
     x: crop.x + (fate ? 36 : 13 * scale), y: crop.y + (fate ? 40 : 17 * scale),
     w: crop.w - (fate ? 72 : 26 * scale), h: fate ? 333 : 162 * scale,

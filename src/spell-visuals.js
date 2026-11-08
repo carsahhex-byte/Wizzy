@@ -6,7 +6,7 @@ const DAMAGING_SPELLS = new Set([
   'Water-1', 'Water-2', 'Water-4', 'Water-5', 'Water-6', 'Water-7', 'Water-8', 'Water-9', 'Water-11', 'Water-12', 'Water-13', 'Water-14',
 ]);
 const SHIELD_SPELLS = new Set(['Fire-3', 'Fire-10', 'Water-3', 'Water-10']);
-const POWER_UP_SPELLS = new Set(['Fire-0', 'Fire-2', 'Fire-9']);
+const POWER_UP_SPELLS = new Set(['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15']);
 const PRIMARY_SPELLS = Object.values(SPELL_CATALOG).filter(spell => spell.category === 'Elemental');
 const SPELL_NAMES = new Map(PRIMARY_SPELLS.map(spell => [spell.name, spell.spellId]));
 const COMPLETIONS = new Map(PRIMARY_SPELLS.map(spell => [`${spell.name} resolves and moves to discard.`, spell.spellId]));
