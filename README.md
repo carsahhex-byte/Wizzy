@@ -75,6 +75,13 @@ The **31 original slabs** use the exact supplied artwork from `Graphics 1.2.zip`
 
 After replacing source PNGs, regenerate their optimized copies with `npm run optimize:art`. That optional authoring command requires Python and Pillow with WebP support; running, testing, building, and deploying the retained files require only Node.js and Git. The web build verifies source and optimized SHA-256 hashes and rejects stale or damaged copies.
 
+The Fire and Water stat frames use a shared rough pixel-art icon atlas for their
+element, HP, Mana, Shield and Loaded stats. Compact card rules use its flame for
+Ember/Embers and its water drop for Flow, including Flow damage formulas. Damage,
+gain, spending, multipliers and roll thresholds remain explicit. Full resource
+words remain available to accessibility tools and in Read Slab; the spell
+catalog and combat calculations are unchanged.
+
 The battle arena uses the forest's original **1024 × 1536 (2:3 portrait)** canvas. One uniform scale fits it to the available screen; the forest is never stretched or cropped to widen the board. On Mac screens, its top and bottom meet the viewport edges, with side gutters. Narrower screens fit the width and center the board vertically. The other screens use a mobile layout that adapts to the viewport, with independently scrolling deck panels.
 
 Battle wizards use the original tiny four-direction Fire and Water walk atlas. After **Continue** in a new duel's opening dialog, Fire walks in from offscreen left and Water from offscreen right, then they idle facing each other on the grass. No keyboard controls are added. Resuming a duel starts them idle; reduced motion places them there immediately. The source atlas PNG remains unmodified, with a lossless optimized copy. The larger mage portraits remain on Character and handoff screens.

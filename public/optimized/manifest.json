@@ -388,5 +388,15 @@
     "sourceBytes": 1149584,
     "width": 1199,
     "height": 1312
+  },
+  "battlePixelIcons": {
+    "file": "battlePixelIcons-fda8a7a8858d.webp",
+    "source": "Wizzy Battle Pixel Icons.png",
+    "sourceSha256": "d49fdbe6aa391357608b5cf3f94f388f31f52169f836e27221e29aa92f1c2b8b",
+    "optimizedSha256": "fda8a7a8858df6312897ad71cbff2e2b42e70d3099cbd6289b36a77cfa86dc2e",
+    "bytes": 757486,
+    "sourceBytes": 1147186,
+    "width": 1536,
+    "height": 1024
   }
 }

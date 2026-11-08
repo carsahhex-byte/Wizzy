@@ -1,3 +1,5 @@
+import { pixelIconMarkup } from './pixel-icons.js';
+
 // Display copy only. Combat and the full inspection text continue to use the
 // canonical spell catalog. Threshold lines add to the base unless they say
 // "instead"; Ember spending is chosen before the roll by the battle flow.
@@ -45,10 +47,22 @@ const escapeSlabText = value => String(value).replace(/[&<>"']/g, char => ({
 }[char]));
 const compactLines = spellId => Object.hasOwn(COMPACT_SPELL_TEXT, spellId) ? COMPACT_SPELL_TEXT[spellId] : [];
 
+
+// Only whole resource words change visually. Keep the original word alongside
+// each decorative sprite so labels, screen readers and plain text retain it.
+function resourceSymbolsMarkup(text) {
+  return text.split(/(\b(?:Embers?|Flow)\b)/g).map(fragment => {
+    const kind = fragment === 'Flow' ? 'water' : ['Ember', 'Embers'].includes(fragment) ? 'fire' : null;
+    return kind
+      ? `<span class="slab-resource-token" data-resource="${kind}">${pixelIconMarkup(kind, 'slab-resource-icon')}<span class="sr-only">${escapeSlabText(fragment)}</span></span>`
+      : escapeSlabText(fragment);
+  }).join('');
+}
+
 /** HTML lines for the live parchment layer in every slab view. */
 export function slabRulesMarkup(spellId) {
   return compactLines(spellId).map(({ threshold, text }) =>
-    `<span class="slab-rule-line">${threshold ? `<strong class="slab-rule-threshold">${escapeSlabText(threshold)}</strong> ` : ''}${escapeSlabText(text)}</span>`,
+    `<span class="slab-rule-line">${threshold ? `<strong class="slab-rule-threshold">${escapeSlabText(threshold)}</strong> ` : ''}${resourceSymbolsMarkup(text)}</span>`,
   ).join(' ');
 }
 

@@ -73,6 +73,11 @@ The PDF leaves Fate Mana unspecified. This implementation retains the previous *
 
 All 33 slabs display larger live rules on their parchment panels, with compact wording and **bold roll thresholds**. The compact copy preserves the canonical effects. **Read Slab** shows the complete spellbook wording, and the supplied artwork remains unchanged.
 
+Flame icons stand for Ember/Embers and water-drop icons stand for Flow on the
+compact cards. A drop in a damage formula uses the current Flow counter; gaining
+a drop adds Flow instead. Damage, gain, spending and multiplier wording remain
+visible. Read Slab and accessible text retain the full resource words.
+
 ## Combat rules
 
 - Each wizard begins with **100 HP**, **3 Mana**, zero Shield, zero Embers/Flow, zero Loaded, **0% Enhancement**, and no active Aura. Maximums are **100 HP, 10 Mana, 30 Shield, 5 Embers/Flow, and 30% Enhancement**. Active Aura adds a separate fixed **10%**.

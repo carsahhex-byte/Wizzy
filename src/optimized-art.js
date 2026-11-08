@@ -194,5 +194,10 @@ export const OPTIMIZED_ART = {
     "file": "stoneSign-aff5a770935f.webp",
     "sourceSha256": "e3d6e7a0a91b36077d42f2cbfe6672fec4355c0e33d3df096d5ed0d57b0b48d6",
     "optimizedSha256": "aff5a770935f50d763407a185d96f91b0aec828ee165e87b7b0593a6025bf398"
+  },
+  "battlePixelIcons": {
+    "file": "battlePixelIcons-fda8a7a8858d.webp",
+    "sourceSha256": "d49fdbe6aa391357608b5cf3f94f388f31f52169f836e27221e29aa92f1c2b8b",
+    "optimizedSha256": "fda8a7a8858df6312897ad71cbff2e2b42e70d3099cbd6289b36a77cfa86dc2e"
   }
 };
