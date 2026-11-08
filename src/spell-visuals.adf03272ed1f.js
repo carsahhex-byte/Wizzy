@@ -1,5 +1,5 @@
-import { SPELL_CATALOG } from './spells.73668f325e64.js';
-import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.04e80e3227d0.js';
+import { SPELL_CATALOG } from './spells.4c829376af9b.js';
+import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.184a4bbb1373.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
 const DAMAGING_SPELLS = new Set([
@@ -123,13 +123,28 @@ export function getResolvedSpellVisuals(previous, next) {
 
 
 function enhancementResult(message, player) {
-  const prefix = `${player.name} rolls `;
-  if (!message.startsWith(prefix)) return null;
-  const match = message.slice(prefix.length).match(/^([1-6]) \+ ([1-6]) = (\d+) for Enhancement: tier \+(10|20|30)%; gains \+(10|20|30)%; (10|20|30)% Enh\.( \(maximum 30%\))?$/);
-  if (!match) return null;
-  const [, first, second, raw, nominal, actual, bank, capped] = match;
-  const total = Number(raw), bonus = Number(nominal), gain = Number(actual), after = Number(bank), before = after - gain;
-  if (total !== Number(first) + Number(second) || bonus !== getEnhancementBonus(total)
+  const finalPrefix = `${player.name} resolves Enhancement at Modified Roll `;
+  const legacyPrefix = `${player.name} rolls `;
+  let total, nominal, actual, bank, capped;
+  if (message.startsWith(finalPrefix)) {
+    const match = message.slice(finalPrefix.length).match(/^(-?\d+) \(raw (\d+); attacking Fate ([+-]\d+); defending Fate ([+-]?\d+)\): tier \+(10|20|30)%; gains \+(10|20|30)%; (10|20|30)% Enh\.( \(maximum 30%\))?$/);
+    if (!match) return null;
+    const [, modified, raw, attack, defend, tier, gained, stored, cap] = match;
+    total = Number(modified);
+    if (!Number.isSafeInteger(total) || Number(raw) < 2 || Number(raw) > 12
+      || !Number.isSafeInteger(Number(attack)) || !Number.isSafeInteger(Number(defend))
+      || total !== Number(raw) + Number(attack) + Number(defend)) return null;
+    [nominal, actual, bank, capped] = [tier, gained, stored, cap];
+  } else if (message.startsWith(legacyPrefix)) {
+    const match = message.slice(legacyPrefix.length).match(/^([1-6]) \+ ([1-6]) = (\d+) for Enhancement: tier \+(10|20|30)%; gains \+(10|20|30)%; (10|20|30)% Enh\.( \(maximum 30%\))?$/);
+    if (!match) return null;
+    const [, first, second, raw, tier, gained, stored, cap] = match;
+    total = Number(raw);
+    if (total !== Number(first) + Number(second)) return null;
+    [nominal, actual, bank, capped] = [tier, gained, stored, cap];
+  } else return null;
+  const bonus = Number(nominal), gain = Number(actual), after = Number(bank), before = after - gain;
+  if (bonus !== getEnhancementBonus(total)
     || before < 0 || before >= MAX_ENHANCEMENT || before % ENHANCEMENT_STEP !== 0
     || after !== Math.min(MAX_ENHANCEMENT, before + bonus) || Boolean(capped) !== (gain < bonus)) return null;
   return { enhancementBonus: bonus, enhancementGain: gain, enhancementBefore: before, enhancementAfter: after };
@@ -154,7 +169,9 @@ export function getResolvedBattleVisuals(previous, next) {
         attempts[casterIndex] = { logId: entry.id, round: entry.round };
         continue;
       }
-      if (!entry.message.startsWith(`${player.name} rolls `) || !entry.message.includes(' for Enhancement')) continue;
+      const isResult = entry.message.startsWith(`${player.name} resolves Enhancement at Modified Roll `)
+        || entry.message.startsWith(`${player.name} rolls `) && entry.message.includes(' for Enhancement');
+      if (!isResult) continue;
       const attempt = attempts[casterIndex];
       attempts[casterIndex] = null;
       const reward = enhancementResult(entry.message, player);

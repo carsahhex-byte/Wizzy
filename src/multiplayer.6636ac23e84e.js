@@ -1,5 +1,5 @@
-import { SPELLBOOK_VERSION } from './spells.73668f325e64.js';
-import { SAVE_VERSION } from './game.04e80e3227d0.js';
+import { SPELLBOOK_VERSION } from './spells.4c829376af9b.js';
+import { SAVE_VERSION } from './game.184a4bbb1373.js';
 
 const ONLINE_STORAGE_KEY = 'wizzy.multiplayer.v2';
 const ONLINE_STATUSES = new Set(['waiting', 'playing', 'finished']);

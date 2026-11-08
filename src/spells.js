@@ -1,5 +1,6 @@
 /** Master Spellbook V2.1, supplied 04 Nov 2026. Combat timing follows the user's rules. */
 export const DECK_SIZE = 30;
+export const MIN_DECK_SIZE = 1;
 // Additive cards retain this compatibility family so existing decks stay playable.
 export const SPELLBOOK_VERSION = 'nov4-v2.1';
 
