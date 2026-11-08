@@ -10,7 +10,9 @@ import {
 const legal = element => ({ element, entries: getEligibleSpells(element).slice(0, 10).map(card => ({ spellId: card.spellId, quantity: 3 })) });
 
 test('new spellbook starts with empty independent deck slots and no old cards', () => {
-  assert.equal(Object.keys(SPELL_CATALOG).length, 33);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 34);
+  assert.equal(Object.values(SPELL_CATALOG).filter(card => card.element === 'Fire').length, 16);
+  assert.equal(Object.values(SPELL_CATALOG).filter(card => card.element === 'Water').length, 15);
   for (const element of ['fire', 'water']) {
     const empty = createStarterDeck(element);
     assert.deepEqual(empty, { element, entries: [] });
@@ -20,7 +22,7 @@ test('new spellbook starts with empty independent deck slots and no old cards', 
     empty.entries.push({ spellId: 'old-card', quantity: 1 });
     assert.equal(createStarterDeck(element).entries.length, 0);
     const eligible = getEligibleSpells(element);
-    assert.equal(eligible.length, element === 'fire' ? 19 : 17);
+    assert.equal(eligible.length, element === 'fire' ? 19 : 18);
     assert.equal(eligible.filter(card => card.category === 'Fate').length, 3);
     assert.equal(eligible.filter(card => card.category === 'Neutral').length, 0);
     assert.ok(eligible.every(card => card.category === 'Fate' || card.element.toLowerCase() === element));
@@ -128,7 +130,7 @@ test('Fire-0 joins Fire decks while the total limit and existing exported decks 
 });
 
 test('a 30-slab deck may contain 30 copies of one elemental or Fate spell', () => {
-  for (const [element, spellIds] of [['fire', ['Fire-0', 'Fire-1', 'Fire-15', 'FAT-001', 'FAT-002', 'FAT-003']], ['water', ['Water-1', 'FAT-001', 'FAT-002', 'FAT-003']]]) {
+  for (const [element, spellIds] of [['fire', ['Fire-0', 'Fire-1', 'Fire-15', 'FAT-001', 'FAT-002', 'FAT-003']], ['water', ['Water-0', 'Water-1', 'FAT-001', 'FAT-002', 'FAT-003']]]) {
     for (const spellId of spellIds) {
       const empty = createStarterDeck(element), deck = setDeckQuantity(empty, spellId, 30);
       assert.equal(validateDeck(deck), true, `${element} ${spellId}`); assert.equal(validateDeckSlot(deck), true);
@@ -237,4 +239,36 @@ test('removing the last slab makes an editable empty slot without changing the s
   assert.equal(validateDeckSlot(draft), true);
   assert.equal(validateDeck(saved), true);
   assert.equal(getDeckCount(saved, 'Fire-15'), 1);
+});
+
+test('Water-0 is Water-only and round-trips unrestricted copies without changing existing deck files', () => {
+  assert.equal(SPELLBOOK_VERSION, 'nov4-v2.1');
+  assert.equal(SPELL_CATALOG['Water-0'].manaCost, 0);
+  assert.equal(SPELL_CATALOG['Water-0'].effectText, 'Gain 1 Mana.');
+  assert.equal(getEligibleSpells('water').some(card => card.spellId === 'Water-0'), true);
+  assert.equal(getEligibleSpells('fire').some(card => card.spellId === 'Water-0'), false);
+  assert.throws(() => setDeckQuantity(createStarterDeck('fire'), 'Water-0', 1), /other main element/);
+  const wrongElement = { element: 'fire', entries: [{ spellId: 'Water-0', quantity: 1 }] };
+  assert.equal(validateDeck(wrongElement), false);
+  assert.throws(() => normalizeDeckSlot(wrongElement));
+  for (const quantity of [1, 4, 5, 29, 30]) {
+    const deck = setDeckQuantity(createStarterDeck('water'), 'Water-0', quantity);
+    assert.equal(getDeckValidation(deck).total, quantity);
+    assert.equal(validateDeck(deck), true);
+    assert.equal(validateDeckSlot(deck), true);
+    assert.deepEqual(normalizeDeckSlot(deck), deck);
+    const exported = JSON.parse(serializeDeck(deck));
+    assert.deepEqual([exported.format, exported.version, exported.spellbook], ['wizzy-deck', 1, 'nov4-v2.1']);
+    assert.deepEqual(parseDeckList(JSON.stringify(exported)), deck);
+    exported.element = 'fire';
+    assert.throws(() => parseDeckList(JSON.stringify(exported)), /main element/);
+  }
+  const mixed = { element: 'water', entries: [{ spellId: 'Water-0', quantity: 15 }, { spellId: 'Water-1', quantity: 10 }, { spellId: 'FAT-003', quantity: 5 }] };
+  assert.deepEqual(parseDeckList(serializeDeck(mixed)), normalizeDeck(mixed));
+  const old = { element: 'water', entries: [{ spellId: 'Water-1', quantity: 27 }, { spellId: 'FAT-003', quantity: 3 }] };
+  const original = JSON.stringify({ format: 'wizzy-deck', version: 1, spellbook: 'nov4-v2.1', ...old });
+  const restored = parseDeckList(original);
+  assert.deepEqual(restored, normalizeDeck(old));
+  assert.equal(getDeckCount(restored, 'Water-0'), 0, 'adding Water-0 never inserts it into an older deck');
+  assert.deepEqual(old.entries, [{ spellId: 'Water-1', quantity: 27 }, { spellId: 'FAT-003', quantity: 3 }]);
 });

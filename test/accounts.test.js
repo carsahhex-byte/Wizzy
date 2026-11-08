@@ -124,7 +124,7 @@ test('SQLite accounts, saved decks and hashed sessions survive restart and expir
   const shortInput = registration();
   shortInput.decks = {
     fire: { element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 1 }] },
-    water: { element: 'water', entries: [{ spellId: 'Water-1', quantity: 29 }] },
+    water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 29 }] },
   };
   const registered = await first.register(shortInput);
   await first.stop();

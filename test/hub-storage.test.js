@@ -279,3 +279,31 @@ test('a 31-slab save cannot replace an existing valid deck or its guest backup',
   assert.equal(disk.getItem(GUEST_SAVE_KEY), backup);
   assert.deepEqual(createHubStorage(disk).load().state.savedDecks, valid.savedDecks);
 });
+
+test('Water-0 short decks and unrestricted drafts survive guest backups and account caches', () => {
+  const disk = new BrowserStorage();
+  const store = createHubStorage(disk);
+  const original = snapshot('Before Water-0');
+  original.savedDecks.water = { element: 'water', entries: [{ spellId: 'Water-1', quantity: 30 }] };
+  original.drafts.water = structuredClone(original.savedDecks.water);
+  assert.equal(store.save(original), true);
+  assert.deepEqual(createHubStorage(disk).load().state.savedDecks, original.savedDecks, 'older decks retain their exact composition');
+  const guest = structuredClone(original);
+  guest.savedDecks.water = setDeckQuantity(createStarterDeck('water'), 'Water-0', 1);
+  guest.drafts.water = setDeckQuantity(createStarterDeck('water'), 'Water-0', 30);
+  assert.equal(store.save(guest), true);
+  disk.removeItem(HUB_SAVE_KEY);
+  const restored = createHubStorage(disk).load().state;
+  assert.deepEqual(restored.savedDecks, guest.savedDecks);
+  assert.deepEqual(restored.drafts, guest.drafts);
+  assert.equal(validateDeck(restored.savedDecks.water), true);
+  assert.deepEqual(restored.savedDecks.fire, original.savedDecks.fire, 'the Fire slot remains unchanged');
+  const account = { ...structuredClone(guest), accountId: 'water-zero-owner', accountUsername: 'water_zero', cloudDecks: structuredClone(guest.savedDecks) };
+  assert.equal(store.save(account), true);
+  const cached = createHubStorage(disk).readAccount(account.accountId);
+  assert.deepEqual(cached.savedDecks, account.savedDecks);
+  assert.deepEqual(cached.drafts, account.drafts);
+  assert.deepEqual(cached.cloudDecks, account.cloudDecks);
+  assert.deepEqual(createHubStorage(disk).readGuest().savedDecks, guest.savedDecks);
+  assert.deepEqual(original.savedDecks.water, { element: 'water', entries: [{ spellId: 'Water-1', quantity: 30 }] });
+});

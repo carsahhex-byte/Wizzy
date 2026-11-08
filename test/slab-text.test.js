@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { SPELL_CATALOG } from '../src/spells.js';
 import { COMPACT_SPELL_TEXT, slabRulesMarkup, slabRulesText } from '../src/slab-text.js';
 
-test('all 33 immutable display definitions retain their canonical roll thresholds', () => {
-  assert.equal(Object.keys(COMPACT_SPELL_TEXT).length, 33);
+test('all 34 immutable display definitions retain their canonical roll thresholds', () => {
+  assert.equal(Object.keys(COMPACT_SPELL_TEXT).length, 34);
   assert.deepEqual(Object.keys(COMPACT_SPELL_TEXT).sort(), Object.keys(SPELL_CATALOG).sort());
   for (const [id, spell] of Object.entries(SPELL_CATALOG)) {
     const lines = COMPACT_SPELL_TEXT[id];
@@ -18,6 +18,7 @@ test('all 33 immutable display definitions retain their canonical roll threshold
 test('compact resource and damage math distinguishes gains, replacements and extra effects', () => {
   assert.equal(slabRulesText('Fire-0'), '+1 Ember');
   assert.equal(slabRulesText('Fire-15'), '+1 Ember, +1 Mana');
+  assert.equal(slabRulesText('Water-0'), '+1 Mana');
   for (const id of ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4', 'Fire-6', 'Fire-7', 'Fire-9', 'Fire-11', 'Fire-13', 'Fire-14', 'Water-3']) assert.match(slabRulesText(id), /instead/, id);
   for (const id of ['Fire-8', 'Fire-10', 'Water-1', 'Water-6', 'Water-7', 'Water-8', 'Water-9', 'Water-10', 'Water-13', 'Water-14']) assert.match(slabRulesText(id), /extra/, id);
   assert.match(slabRulesText('Fire-7'), /Spend all Embers.*15 \+ 7×Ember spent.*9\+ 15 \+ 10×Ember instead/);

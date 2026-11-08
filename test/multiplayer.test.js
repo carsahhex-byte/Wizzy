@@ -394,6 +394,55 @@ test('Fire-15 gains independently capped Ember and Mana online without rolls, Fa
   }
 });
 
+test('Water-0 gains capped Mana and passive Flow online without dice, Fate or duplicate rewards', async t => {
+  const deck = legalDeck('water');
+  deck.entries.find(entry => entry.spellId === 'Water-6').quantity = 1;
+  deck.entries.push({ spellId: 'Water-0', quantity: 2 });
+  for (const [mana, flow, expectedMana, expectedFlow] of [[0, 0, 1, 1], [9, 4, 10, 5], [10, 4, 10, 5], [0, 5, 1, 5], [10, 5, 10, 5]]) {
+    let samples = 0;
+    const api = await service(t, { rollRandom: () => { samples += 1; return .5; }, createMatch: decks => {
+      let state = createGame(24, decks);
+      state = rollInitiative(rollInitiative(state, 0, () => 0), 1, () => .99);
+      arrangeHand(state, 0, ['FAT-002', 'Fire-1', 'Fire-2', 'Fire-3', 'Fire-4']);
+      arrangeHand(state, 1, ['Water-0', 'Water-0', 'FAT-001', 'Water-1', 'Water-3']);
+      Object.assign(state.players[1], { mana, element: flow, loaded: 4, loadedPending: 2, enhancement: 20, auraTurns: 2 });
+      return state;
+    } });
+    const host = await api.create('water', deck), guest = await api.join(host);
+    const initial = (await api.get(host)).state;
+    const [primary, second] = initial.players[1].hand.filter(card => card.spellId === 'Water-0');
+    assert.deepEqual([primary.name, primary.type, primary.manaCost, primary.effectText], ['Water-0', 'Water', 0, 'Gain 1 Mana.']);
+    assert.ok(initial.players[1].hand.some(card => card.spellId === 'FAT-001'));
+    const defending = (await api.get(guest)).state;
+    assert.ok(defending.players[0].hand.some(card => card.spellId === 'FAT-002'));
+    assert.equal((await api.action(guest, 'castSpell')).status, 403);
+    await api.action(host, 'selectCard', { cardId: primary.id });
+    const selected = await api.get(host);
+    assert.equal((await api.action(host, 'castSpell', { emberSpend: 1 })).status, 422);
+    assert.deepEqual(await api.get(host), selected, 'Water-0 cannot spend either elemental resource');
+    const request = { type: 'castSpell', payload: {}, revision: selected.revision, requestId: 'water-zero-once' };
+    const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: request });
+    const result = await send(); assert.equal(result.status, 200);
+    const state = result.data.state;
+    assert.deepEqual([state.phase, state.primaryUsed, state.primaryAction, state.players[1].mana, state.players[1].element], ['main', true, 'spell', expectedMana, expectedFlow]);
+    assert.deepEqual([state.lastRoll, state.pendingSpell, state.fatePlayer], [null, null, null]);
+    assert.deepEqual([state.players[1].loaded, state.players[1].loadedPending, state.players[1].enhancement, state.players[1].auraTurns], [4, 2, 20, 2]);
+    assert.deepEqual(state.players.map(player => [player.hp, player.shield]), [[100, 0], [100, 0]]);
+    assert.deepEqual(state.players[1].discard.map(card => card.id), [primary.id]);
+    assert.equal(state.players[1].hand.length, 4);
+    const retry = await send(); assert.equal(retry.status, 200); assert.deepEqual(retry.data, result.data);
+    const visible = (await api.get(guest)).state;
+    assert.deepEqual([visible.players[1].mana, visible.players[1].element, visible.players[1].hand, visible.players[1].handCount], [expectedMana, expectedFlow, [], 4]);
+    assert.deepEqual(visible.players[0].hand, defending.players[0].hand, 'the opponent spends no Fate');
+    assert.equal((await api.action(guest, 'skipFate')).status, 403);
+    await api.action(host, 'selectCard', { cardId: second.id });
+    assert.equal((await api.action(host, 'castSpell')).status, 422);
+    assert.equal((await api.action(host, 'enhance')).status, 422);
+    assert.equal((await api.action(host, 'aura')).status, 422);
+    assert.equal(samples, 0, 'an immediate Water slab never samples server dice');
+  }
+});
+
 test('Aura is a fixed server-authorized primary action with private hands, public duration and safe retries', async t => {
   let samples = 0;
   const api = await service(t, { rollRandom: () => { samples += 1; return .5; }, createMatch: decks => {
