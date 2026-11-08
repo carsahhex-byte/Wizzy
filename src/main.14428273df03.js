@@ -1,16 +1,16 @@
-import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.184a4bbb1373.js';
+import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.deec8a9b38d5.js';
 import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.8b93cd6c626e.js';
 import { SPELL_CATALOG } from './spells.4c829376af9b.js';
 import { validateDeck, getDeckValidation } from './decks.237d0cdac134.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.6ada99aad5f8.js';
 import { createHub } from './hub.00427d1dc01b.js';
-import { createMultiplayer } from './multiplayer.6636ac23e84e.js';
+import { createMultiplayer } from './multiplayer.c78105ebe107.js';
 import { createAccounts } from './accounts.c4a6552c42f1.js';
 import { fitSlabText } from './slab-text.37e0a9a1e4e4.js';
 import { createBattleScene } from './battle-scene.7b538bd65bbb.js';
-import { createSpellAnimator } from './spell-animation.789c9ffa91fd.js';
+import { createSpellAnimator } from './spell-animation.7235c0a5b3e7.js';
 import { createAuraAnimator } from './aura-animation.f120a081ce47.js';
-import { getResolvedBattleVisuals } from './spell-visuals.adf03272ed1f.js';
+import { getResolvedBattleVisuals } from './spell-visuals.ac1b1d2fdb87.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
 import { pixelIconMarkup } from './pixel-icons.0985f1ae2a5d.js';
 
@@ -50,6 +50,7 @@ let lastBattleMode = 'local';
 let onlinePlayerIndex = null;
 let onlineCode = null;
 let onlineBusy = false;
+let onlineActionInFlight = null;
 let onlineStatus = '';
 let pendingModeDecks = null;
 const openingAcknowledged = { local: state.phase !== 'initiative', online: true };
@@ -139,8 +140,8 @@ function phaseHint(active) {
     case 'rolling': return 'Rolling two dice…';
     case 'enhancing': return `${active.name} is rolling Enhancement. ${enhancementTiersText}. Cap ${MAX_ENHANCEMENT}%.`;
     case 'resolving': return `Resolving your ${pendingActionName()}…`;
-    case 'end': return 'End Turn passes. Hand Refresh lets you choose discards first.';
-    case 'refresh': return `${state.refreshCardIds.length} selected. Hand Refresh confirms and passes; End Turn skips refresh.`;
+    case 'end': return 'End Turn passes; Hand Refresh chooses discards. Tap background to cancel.';
+    case 'refresh': return `${state.refreshCardIds.length} selected. Refresh confirms; End Turn passes. Tap background to cancel.`;
     case 'ready-to-pass': return 'Hand refreshed. Click End Turn to pass to the next wizard.';
     default: return state.primaryUsed?(state.primaryAction==='aura'?`Aura activated: +${AURA_BONUS}% damage for your next ${active.auraTurns} own turns. The activation turn does not count. End Turn to continue.`:state.primaryAction==='enhancement'&&state.lastRoll?.kind==='enhancement'?enhancementOutcomeHint(active):'Primary spell resolved. End Turn to continue.'):`${active.name} · cast a slab, Enhance, or activate Aura.`;
   }
@@ -621,6 +622,33 @@ app.addEventListener('click',event=>{
   }
 });
 
+const battleControlSelector = 'button,a,input,select,textarea,label,summary,dialog,[contenteditable]:not([contenteditable="false"]),[role="button"],[role="link"],[role="checkbox"],[role="tab"],[tabindex]:not([tabindex="-1"])';
+const stagedOnlineAction = type => ['selectCard','toggleRefreshCard','beginRefresh'].includes(type)
+  || type === 'endTurn' && state.phase === 'main';
+function canApplyQueuedCancel(request) {
+  return !battleView.hidden && isOnlineBattle() && onlineCode === request.code
+    && onlinePlayerIndex === request.playerIndex && state.round === request.round
+    && state.activePlayer === request.activePlayer
+    && state.phase === request.expectedPhase
+    && (request.phase !== 'fate' || state.fatePlayer === request.fatePlayer && state.pendingSpell?.fateStep === request.fateStep)
+    && request.completedRevision !== null && multiplayer.getSession()?.revision === request.completedRevision
+    && canActOnline() && canCancelStagedAction(state) && !document.querySelector('dialog[open]');
+}
+document.addEventListener('click',event=>{
+  if (battleView.hidden || event.defaultPrevented || event.button !== 0
+    || spellVisualBusy() || document.querySelector('dialog[open]')) return;
+  // The original event path survives a control's synchronous board rerender.
+  if (event.composedPath().some(node => node instanceof Element && node.matches(battleControlSelector))) return;
+  if (isOnlineBattle() && onlineBusy) {
+    const request = onlineActionInFlight;
+    if (request?.staged) request.cancelRequested = true;
+    return;
+  }
+  if (!canActOnline() || !canCancelStagedAction(state)) return;
+  if (isOnlineBattle()) void sendOnlineAction('cancelStagedAction');
+  else update(cancelStagedAction(state),'Staged choice canceled. Choose your next action.');
+});
+
 document.querySelector('#begin-turn').addEventListener('click',()=>{handoff.close();scheduleCombat();app.querySelector('.spell-card:not(:disabled)')?.focus({preventScroll:true});});
 document.querySelector('#opening-roll').addEventListener('click',event=>{
   const button=event.target.closest('[data-opening-player]');
@@ -762,7 +790,7 @@ function openAccountScreen(){
 }
 function restoreLocalBattle(){
   if(isOnlineBattle()){clearCombatTimers();state=localState;}
-  battleMode='local';onlineBusy=false;
+  battleMode='local';onlineBusy=false;onlineActionInFlight=null;
 }
 function receiveOnlineView(view,enter=false){
   if(!view?.state||![0,1].includes(view.playerIndex))return;
@@ -779,16 +807,30 @@ function receiveOnlineView(view,enter=false){
 async function sendOnlineAction(type,payload={}){
   if(!isOnlineBattle()||(type==='rollInitiative'?!canRollOpeningOnline():!canActOnline()))return;
   const openingRound=type==='rollInitiative'?state.initiative.round:null;
+  const request={code:onlineCode,playerIndex:onlinePlayerIndex,activePlayer:state.activePlayer,
+    round:state.round,phase:state.phase,fatePlayer:state.fatePlayer,fateStep:state.pendingSpell?.fateStep,
+    expectedPhase:type==='endTurn'?'end':type==='beginRefresh'?'refresh':state.phase,
+    staged:stagedOnlineAction(type),cancelRequested:false,completedRevision:null};
+  onlineActionInFlight=request;
   onlineBusy=true;render();
   try {
     const result=await multiplayer.action(type,payload);
+    request.completedRevision=result?.revision??null;
     // Both opening dice may be requested together. A stale response refreshes
     // the view; retry this player's still-unrolled die only in that same round.
     if(!result&&type==='rollInitiative'&&isOnlineBattle()&&state.phase==='initiative'
       &&state.initiative.round===openingRound&&state.initiative.rolls[onlinePlayerIndex]===null)await multiplayer.action(type,payload);
   }
   catch(error){onlineStatus=error?.message||'Your move could not be sent. Try again.';}
-  finally { onlineBusy=false;if(isOnlineBattle())render(); }
+  finally {
+    if(onlineActionInFlight===request){
+      onlineActionInFlight=null;onlineBusy=false;
+      if(isOnlineBattle())render();
+      // Finish a reversible request before clearing its resulting staged state.
+      // Casts, Fate responses and confirmed passes never enter this queue.
+      if(request.cancelRequested&&canApplyQueuedCancel(request))void sendOnlineAction('cancelStagedAction');
+    }
+  }
 }
 function openOnlineLobby(){
   cancelSpellPresentation();

@@ -463,21 +463,36 @@ export function resolveSpell(state) {
   return completeSpell(structuredClone(state), state.lastRoll.total);
 }
 
+/** Background taps only cancel choices that have not committed an effect or pass. */
+export function canCancelStagedAction(state) {
+  if (!inPhase(state, 'main', 'fate', 'end', 'refresh')) return false;
+  if (state.phase === 'end' || state.phase === 'refresh') return true;
+  return state.selectedCardId !== null
+    || state.phase === 'fate' && state.selectedFateCardIds.length > 0;
+}
+
+export function cancelStagedAction(state) {
+  if (!canCancelStagedAction(state)) return state;
+  return { ...state,
+    phase: state.phase === 'end' || state.phase === 'refresh' ? 'main' : state.phase,
+    selectedCardId: null, selectedFateCardIds: [], refreshCardIds: [],
+  };
+}
+
 /** First click reveals the optional refresh; a later click passes the turn. */
 export function endTurn(state) {
   if (!inPhase(state, 'main', 'end', 'refresh', 'ready-to-pass')) return state;
   const next = structuredClone(state);
   next.selectedCardId = null;
   if (next.phase === 'main') {
-    const player = next.players[next.activePlayer];
-    if (player.loaded > 0) addLog(next, `${player.name}'s unused Loaded +${player.loaded} expires.`, 'loaded', player.id);
-    player.loaded = 0;
     next.phase = 'end';
     return next;
   }
   // The first End Turn click only reveals refresh. The activation's existing
   // primary marker also survives refresh, so only subsequent owner passes tick Aura.
   const endingPlayer = next.players[next.activePlayer];
+  if (endingPlayer.loaded > 0) addLog(next, `${endingPlayer.name}'s unused Loaded +${endingPlayer.loaded} expires.`, 'loaded', endingPlayer.id);
+  endingPlayer.loaded = 0;
   if (endingPlayer.auraTurns > 0 && next.primaryAction !== 'aura') {
     endingPlayer.auraTurns -= 1;
     addLog(next, endingPlayer.auraTurns > 0
