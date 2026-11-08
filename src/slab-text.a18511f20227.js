@@ -57,8 +57,8 @@ export function slabRulesText(spellId) {
 }
 
 /**
- * Maximize live rules inside each visible parchment. Call after rendering or
- * resizing; the host owns those lifecycle events. client/offset dimensions
+ * Use one standard rules size, shrinking only descriptions that do not fit.
+ * Call after rendering or resizing; client/offset dimensions
  * deliberately stay in layout pixels when the battle board is transformed.
  */
 export function fitSlabText(root) {
@@ -113,7 +113,8 @@ export function fitSlabText(root) {
     }
 
     let low = cardWidth * 8 / 170;
-    let high = cardWidth * .22;
+    // All slabs share 17px text at a 170px card width, including short spells.
+    let high = cardWidth * .10;
     let best = low;
     if (fits(high)) best = high;
     else {

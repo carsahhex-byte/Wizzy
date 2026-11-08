@@ -1,12 +1,12 @@
 import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.63c75a1c0d65.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.c9238899e623.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.cb333cab7db4.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.29cc03f8c6f5.js';
 import { validateDeck } from './decks.c47034088730.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.7946353e2359.js';
-import { createHub } from './hub.4e0369aa1698.js';
+import { createHub } from './hub.58eae2a587cb.js';
 import { createMultiplayer } from './multiplayer.35b434c91713.js';
 import { createAccounts } from './accounts.92dd638f4166.js';
-import { fitSlabText } from './slab-text.112d4977b217.js';
+import { fitSlabText } from './slab-text.a18511f20227.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');

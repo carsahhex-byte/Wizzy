@@ -1,9 +1,9 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.c9238899e623.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.cb333cab7db4.js';
 import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.29cc03f8c6f5.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.7946353e2359.js';
 import { MAX_COPIES, createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.c47034088730.js';
 import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.a65c5fd19bc8.js';
-import { fitSlabText } from './slab-text.112d4977b217.js';
+import { fitSlabText } from './slab-text.a18511f20227.js';
 
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck']);
 // The square artwork includes ocean around the city. Its artwork and labels
