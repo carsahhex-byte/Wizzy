@@ -586,3 +586,38 @@ test('static hosting serves only public build files and never traverses into sou
   assert.notEqual((await api.request('/%2e%2e%2fsecret.txt')).status, 200);
   assert.equal((await api.request('/src/game.js')).status, 404);
 });
+
+test('server Enhancement tiers award 10,20 or30 from raw dice and retries preserve the actual capped gain', async t => {
+  let bank = 0, values = [], samples = 0;
+  const api = await service(t, { rollRandom: () => { samples += 1; return values.shift(); }, createMatch: decks => {
+    const state = fixtureMatch(decks);
+    Object.assign(state.players[0], { enhancement: bank, mana: 0, loaded: 4, loadedPending: 2, element: 3, auraTurns: 2 });
+    return state;
+  } });
+  const cases = [[0, [2, 3], 0, 0], [0, [3, 3], 10, 10], [0, [4, 4], 10, 10], [0, [3, 6], 20, 20], [0, [5, 6], 20, 20], [0, [6, 6], 30, 30], [10, [6, 6], 30, 20], [20, [3, 6], 20, 10], [20, [6, 6], 30, 10]];
+  for (const [index, [starting, dice, bonus, gain]] of cases.entries()) {
+    bank = starting; values = dice.map(die => (die - 1) / 6);
+    const host = await api.create(), guest = await api.join(host), before = await api.get(host), priorSamples = samples;
+    assert.equal((await api.action(host, 'enhance', { enhancementBonus: 30 })).status, 400, 'clients cannot choose their tier');
+    const request = { type: 'enhance', payload: {}, revision: before.revision, requestId: `tier-once-${index}` };
+    const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: request });
+    const result = await send(); assert.equal(result.status, 200);
+    const state = result.data.state;
+    assert.deepEqual([state.lastRoll.enhancementRule, state.lastRoll.enhancementBonus, state.lastRoll.enhancementGain], ['tiered-v1', bonus, gain]);
+    assert.deepEqual([state.lastRoll.enhancementBefore, state.lastRoll.enhancementAfter, state.players[0].enhancement], [starting, starting + gain, starting + gain]);
+    assert.deepEqual(state.lastRoll.dice, dice); assert.equal(state.lastRoll.rawTotal, dice[0] + dice[1]);
+    assert.equal(state.lastRoll.total, state.lastRoll.rawTotal); assert.equal(state.lastRoll.success, bonus > 0);
+    assert.deepEqual([state.players[0].mana, state.players[0].loaded, state.players[0].loadedPending, state.players[0].element, state.players[0].auraTurns], [0, 4, 2, 3, 2]);
+    assert.deepEqual([state.primaryUsed, state.primaryAction, state.pendingSpell, state.fatePlayer], [true, 'enhancement', null, null]);
+    const duplicate = await send(); assert.equal(duplicate.status, 200);
+    assert.deepEqual(duplicate.data, result.data); assert.equal(samples, priorSamples + 2, 'the retry neither rolls nor awards again');
+    const visible = (await api.get(guest)).state;
+    assert.equal(visible.players[0].hand.length, 0); assert.equal(visible.players[0].enhancement, starting + gain);
+    assert.deepEqual(visible.lastRoll, state.lastRoll);
+  }
+  bank = 30; values = [0, 0];
+  const host = await api.create(); await api.join(host);
+  const before = await api.get(host), priorSamples = samples;
+  assert.equal((await api.action(host, 'enhance')).status, 422);
+  assert.equal(samples, priorSamples); assert.deepEqual(await api.get(host), before, 'a full bank cannot spend the primary or roll');
+});

@@ -33,6 +33,9 @@ if (webOnly) {
 } else {
   await cp('public', 'dist/public', { recursive: true });
 }
+// Review-only sprites are delivered separately. The game does not register,
+// request or play these sheets until their later approved integration.
+execFileSync(process.execPath,['scripts/package-animation-review.js','dist/previews/combat-linger-v2'],{stdio:'inherit'});
 await writeFile('dist/.nojekyll', '');
 
 if (webOnly) {

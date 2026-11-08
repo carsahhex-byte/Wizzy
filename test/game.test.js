@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createGame, rollInitiative, selectCard, canSelectCard, canCastSelected, canPlayFate, getActingPlayerIndex,
   castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn,
-  canEnhance, activateEnhancement, rollEnhancement, MAX_ENHANCEMENT, ENHANCEMENT_STEP, ENHANCEMENT_THRESHOLD,
+  canEnhance, activateEnhancement, rollEnhancement, getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, ENHANCEMENT_THRESHOLD, ENHANCEMENT_ROLL_RULE,
   canActivateAura, activateAura, AURA_COST, AURA_DURATION, AURA_BONUS,
   beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, applyDamage,
   assertGame, validateSavedGame, migrateSavedGame, SPELL_CATALOG, SPELL_RULES, SAVE_VERSION, DECK_SIZE, HAND_LIMIT, OPENING_HAND_SIZE,
@@ -529,7 +529,7 @@ test('legal simulated duels preserve exact cards and valid states through repeat
 
 test('Enhancement succeeds on raw 6, fails on raw 5, and uses the primary action either way', () => {
   assert.deepEqual([MAX_ENHANCEMENT, ENHANCEMENT_STEP, ENHANCEMENT_THRESHOLD], [30, 10, 6]);
-  for (const [dice, expected] of [[[2, 3], 0], [[3, 3], 10], [[6, 6], 10]]) {
+  for (const [dice, expected] of [[[2, 3], 0], [[3, 3], 10], [[6, 6], 30]]) {
     const initial = fateFixture(); initial.players[0].mana = 0; initial.players[0].loaded = 4;
     initial.players[0].loadedPending = 2; initial.players[0].element = 3;
     const snapshot = structuredClone(initial);
@@ -1014,5 +1014,108 @@ test('Fire-15 caps Mana and Embers independently and rejects all Ember spending 
     const state = castSelected(selected);
     assert.deepEqual([state.players[0].element, state.players[0].mana], [Math.min(5, element + 1), Math.min(10, mana + 1)]);
     assert.deepEqual([state.players[0].discard.length, allCards(state.players[0]).length], [1, 30]); assertGame(state);
+  }
+});
+
+test('Enhancement tier helper defines exact raw boundaries without coercing invalid totals', () => {
+  for (const [total, bonus] of [[2, 0], [5, 0], [6, 10], [8, 10], [9, 20], [11, 20], [12, 30], [13, 30]]) {
+    assert.equal(getEnhancementBonus(total), bonus);
+  }
+  for (const value of [NaN, Infinity, '12', null, undefined, 6.5]) assert.equal(getEnhancementBonus(value), 0);
+});
+
+test('all 36 raw Enhancement dice pairs stack tiers over banks 0,10,20 and cap 30 without Mana, Loaded or Fate', () => {
+  const base = fateFixture();
+  for (const bank of [0, 10, 20, 30]) for (let first = 1; first <= 6; first += 1) for (let second = 1; second <= 6; second += 1) {
+    const initial = structuredClone(base);
+    Object.assign(initial.players[0], { enhancement: bank, mana: 0, loaded: 4, loadedPending: 2, element: 3, auraTurns: 2 });
+    const total = first + second, bonus = total < 6 ? 0 : total < 9 ? 10 : total < 12 ? 20 : 30;
+    const snapshot = structuredClone(initial), pending = activateEnhancement(initial);
+    let calls = 0;
+    const random = () => ([first, second][calls++] - 1) / 6;
+    if (bank === 30) {
+      assert.equal(pending, initial); assert.equal(rollEnhancement(pending, random), initial);
+      assert.equal(calls, 0); assert.equal(initial.primaryUsed, false); assertGame(initial); continue;
+    }
+    const state = rollEnhancement(pending, random), after = Math.min(30, bank + bonus);
+    assert.equal(calls, 2);
+    assert.deepEqual([state.players[0].enhancement, state.lastRoll.enhancementBefore, state.lastRoll.enhancementAfter], [after, bank, after]);
+    assert.deepEqual([state.lastRoll.enhancementRule, state.lastRoll.enhancementBonus, state.lastRoll.enhancementGain], ['tiered-v1', bonus, after - bank]);
+    assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.total, state.lastRoll.success], [total, total, bonus > 0]);
+    assert.deepEqual(state.lastRoll.dice, [first, second]);
+    assert.deepEqual([state.lastRoll.loadedBonus, state.lastRoll.attackingFate, state.lastRoll.defendingFate], [0, 0, 0]);
+    assert.deepEqual([state.players[0].mana, state.players[0].loaded, state.players[0].loadedPending, state.players[0].element, state.players[0].auraTurns], [0, 4, 2, 3, 2]);
+    assert.deepEqual([state.phase, state.primaryUsed, state.primaryAction, state.pendingSpell, state.fatePlayer], ['main', true, 'enhancement', null, null]);
+    assert.deepEqual(state.players[0].hand, initial.players[0].hand); assert.deepEqual(state.players[1], initial.players[1]);
+    assert.deepEqual(initial, snapshot);
+    assert.equal(rollEnhancement(state, random), state); assert.equal(calls, 2, 'a completed attempt cannot sample again');
+    assertGame(state); assert.equal(validateSavedGame(JSON.parse(JSON.stringify(state))), true);
+  }
+});
+
+function tierRoll(state, dice) {
+  let index = 0;
+  return rollEnhancement(activateEnhancement(state), () => (dice[index++] - 1) / 6);
+}
+function legacyFlatEnhancement(bank, dice) {
+  const initial = fresh(); initial.players[0].enhancement = bank;
+  const state = tierRoll(initial, dice), oldAward = dice[0] + dice[1] >= 6 ? 10 : 0;
+  delete state.lastRoll.enhancementRule; delete state.lastRoll.enhancementBonus; delete state.lastRoll.enhancementGain;
+  state.lastRoll.enhancementAfter = bank + oldAward; state.players[0].enhancement = bank + oldAward;
+  state.log.at(-1).message = `Fire rolls ${dice.join(' + ')} for Enhancement: gains +${oldAward}%; ${bank + oldAward}% Enh.`;
+  return state;
+}
+
+test('old flat 10 v13 rolls at 9 and 12 remain loadable without recalculating their bank or result', () => {
+  for (const bank of [0, 10, 20]) for (const dice of [[1, 1], [2, 3], [3, 3], [4, 4], [3, 6], [5, 6], [6, 6]]) {
+    const old = legacyFlatEnhancement(bank, dice), saved = JSON.parse(JSON.stringify(old)), snapshot = structuredClone(saved);
+    assert.equal(saved.version, 13); assert.equal(validateSavedGame(saved), true);
+    assert.equal(migrateSavedGame(saved), saved);
+    assert.deepEqual(saved, snapshot, 'legacy dice, rewards, stats, hands and decks remain untouched');
+    assert.equal(Object.hasOwn(saved.lastRoll, 'enhancementRule'), false);
+    assert.equal(saved.players[0].enhancement, bank + (dice[0] + dice[1] >= 6 ? 10 : 0));
+  }
+  const saved = JSON.parse(JSON.stringify(legacyFlatEnhancement(0, [6, 6])));
+  const next = tierRoll(pass(pass(saved)), [6, 6]);
+  assert.deepEqual([next.lastRoll.enhancementBefore, next.lastRoll.enhancementBonus, next.lastRoll.enhancementGain, next.players[0].enhancement], [10, 30, 20, 30]);
+  assert.equal(next.lastRoll.enhancementRule, ENHANCEMENT_ROLL_RULE); assertGame(next);
+  const previous12 = version12Save(legacyFlatEnhancement(0, [3, 6]));
+  const migrated = migrateSavedGame(previous12);
+  assert.ok(migrated); assert.equal(migrated.players[0].enhancement, 10);
+  assert.deepEqual(migrated.lastRoll, previous12.lastRoll);
+});
+
+test('new tier-marked saves reject wrong nominal awards, cap gains, rules or legacy masquerading', () => {
+  const initial = fresh(); initial.players[0].enhancement = 20;
+  const state = tierRoll(initial, [3, 6]);
+  assert.deepEqual([state.lastRoll.enhancementBonus, state.lastRoll.enhancementGain, state.players[0].enhancement], [20, 10, 30]);
+  assert.match(state.log.at(-1).message, /tier \+20%; gains \+10%; 30% Enh.*maximum 30%/);
+  const mutations = [
+    value => { value.lastRoll.enhancementBonus = 10; },
+    value => { value.lastRoll.enhancementGain = 20; },
+    value => { value.lastRoll.enhancementAfter = 40; },
+    value => { value.lastRoll.enhancementRule = 'unknown'; },
+    value => { value.lastRoll.enhancementRule = undefined; },
+    value => { delete value.lastRoll.enhancementRule; },
+    value => { delete value.lastRoll.enhancementBonus; },
+    value => { delete value.lastRoll.enhancementGain; },
+    value => { value.lastRoll.success = false; },
+  ];
+  for (const mutate of mutations) {
+    const copy = structuredClone(state); mutate(copy); assert.equal(validateSavedGame(copy), false, mutate.toString());
+  }
+  const unmarkedWrongAward = legacyFlatEnhancement(0, [6, 6]); unmarkedWrongAward.lastRoll.enhancementAfter = 30;
+  assert.equal(validateSavedGame(unmarkedWrongAward), false, 'unmarked records still require their historical flat 10 outcome');
+});
+
+test('new 20 and 30 tier rewards survive nondamaging turns and are spent by the next damaging spell', () => {
+  for (const [dice, bank, damage] of [[[3, 6], 20, 7], [[6, 6], 30, 8]]) {
+    let state = handOf(fresh(), 0, ['Fire-1', 'Fire-2']);
+    state = tierRoll(state, dice); assert.equal(state.players[0].enhancement, bank);
+    state = pass(pass(state)); state = complete(cast(state, 'Fire-2'), [2, 3]);
+    assert.equal(state.players[0].enhancement, bank, 'a resource spell retains the entire awarded tier');
+    state = pass(pass(state)); state = complete(cast(state, 'Fire-1'), [2, 3]);
+    assert.equal(state.players[1].hp, 100 - damage); assert.equal(state.players[0].enhancement, 0);
+    assertGame(state); assert.equal(validateSavedGame(JSON.parse(JSON.stringify(state))), true);
   }
 });

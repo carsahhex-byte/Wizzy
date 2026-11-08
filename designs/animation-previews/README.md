@@ -1,5 +1,11 @@
 # Enhancement and Aura animation previews
 
+The complete revised combat set is in [v2-one-second](v2-one-second/README.md):
+ten sheets with eight distinct held-effect frames per sequence, played at
+125 ms each for a full one-second linger. The package includes Enhancement,
+Aura, casts, attacks, shields, power-ups, projectiles and hit reactions. These
+revised sheets also remain outside the game's runtime artwork pending review.
+
 These original transparent PNGs are design previews, kept outside the game's
 runtime artwork. They are not loaded or played by the game yet.
 
