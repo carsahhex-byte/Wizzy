@@ -49,7 +49,7 @@ The server stores salted password hashes and hashed 30-day session tokens, not p
 
 This beta has no email provider or automated password recovery. Choose credentials you can retain. Persistent account storage is required for accounts to survive hosting restarts or redeploys.
 
-Guest play remains available. Guest matches use this device's saved deck; signed-in matches use the corresponding account deck stored by the server. Both routes enforce exactly 30 slabs, at most three copies per spell, and one element plus Fate. There are no generated starter decks or Neutral spells in the November 4 catalog. Empty account slots are allowed, but a room seat requires a complete legal deck for its role.
+Guest play remains available. Guest matches use this device's saved deck; signed-in matches use the corresponding account deck stored by the server. Both routes enforce exactly 30 slabs, no per-spell copy limit, and one element plus Fate. There are no generated starter decks or Neutral spells in the November 4 catalog. Empty account slots are allowed, but a room seat requires a complete legal deck for its role.
 
 ## Remote hosting with persistent accounts
 

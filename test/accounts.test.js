@@ -126,6 +126,41 @@ test('SQLite accounts, saved decks and hashed sessions survive restart and expir
   await second.stop();
 });
 
+test('accounts save unrestricted spell quantities across login and SQLite restart without relaxing deck legality', async t => {
+  const folder = await mkdtemp(path.join(tmpdir(), 'wizzy-unrestricted-decks-'));
+  t.after(() => rm(folder, { recursive: true, force: true }));
+  const dbPath = path.join(folder, 'accounts.sqlite');
+  const first = await service(t, { accountDbPath: dbPath });
+  const input = registration('unrestricted_builder');
+  input.decks = {
+    fire: { element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 30 }] },
+    water: { element: 'water', entries: [{ spellId: 'Water-1', quantity: 30 }] },
+  };
+  const registered = await first.register(input);
+  assert.deepEqual(registered.account.decks, input.decks, 'registration accepts thirty identical elemental slabs');
+  const custom = {
+    fire: { element: 'fire', entries: [{ spellId: 'Fire-1', quantity: 12 }, { spellId: 'Fire-2', quantity: 15 }, { spellId: 'FAT-003', quantity: 3 }] },
+    water: { element: 'water', entries: [{ spellId: 'FAT-001', quantity: 30 }] },
+  };
+  const saved = await first.request('/api/accounts/me', { method: 'PUT', token: registered.token, body: { profile, decks: custom, revision: 0 } });
+  assert.equal(saved.status, 200);
+  assert.deepEqual(saved.data.account.decks, { fire: normalizeDeck(custom.fire), water: normalizeDeck(custom.water) });
+  assert.deepEqual((await first.login(input.username)).account, saved.data.account, 'a separate login retains mixed high quantities and thirty identical Fate slabs');
+  for (const invalidFire of [
+    { element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 31 }] },
+    { element: 'fire', entries: [{ spellId: 'Water-1', quantity: 30 }] },
+  ]) {
+    const rejected = await first.request('/api/accounts/me', { method: 'PUT', token: registered.token,
+      body: { profile, decks: { ...custom, fire: invalidFire }, revision: 1 } });
+    assert.equal(rejected.status, 400);
+    assert.deepEqual((await first.request('/api/accounts/me', { token: registered.token })).data.account, saved.data.account, 'invalid quantities or elements cannot overwrite the saved deck');
+  }
+  await first.stop();
+  const restarted = await service(t, { accountDbPath: dbPath });
+  assert.deepEqual((await restarted.request('/api/accounts/me', { token: registered.token })).data.account, saved.data.account);
+  assert.deepEqual((await restarted.login(input.username)).account, saved.data.account, 'unrestricted quantities survive persistent storage and a fresh login');
+});
+
 test('old account databases archive replaced decks without losing identities or active sessions', async t => {
   const folder = await mkdtemp(path.join(tmpdir(), 'wizzy-legacy-accounts-'));
   t.after(() => rm(folder, { recursive: true, force: true }));

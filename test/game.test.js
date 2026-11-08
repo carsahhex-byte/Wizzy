@@ -953,3 +953,31 @@ test('previous v13 saves with an already-progressed Aura retain their remaining 
     assertGame(next);
   }
 });
+
+test('decks with 30 identical elemental or Fate slabs conserve distinct physical cards and remain save-compatible', () => {
+  for (const [fireSpell, waterSpell] of [['Fire-0', 'Water-1'], ['FAT-003', 'FAT-002']]) {
+    const definitions = { fire: { element: 'fire', entries: [{ spellId: fireSpell, quantity: 30 }] }, water: { element: 'water', entries: [{ spellId: waterSpell, quantity: 30 }] } };
+    let state = createGame(915, definitions);
+    assert.equal(state.phase, 'initiative');
+    for (const [index, spellId] of [[0, fireSpell], [1, waterSpell]]) {
+      const player = state.players[index], cards = allCards(player);
+      assert.deepEqual([player.hand.length, player.deck.length, player.discard.length], [5, 25, 0]);
+      assert.equal(cards.length, 30); assert.equal(new Set(cards.map(card => card.id)).size, 30);
+      assert.ok(cards.every(card => card.spellId === spellId));
+      assert.deepEqual(player.deckDefinition, definitions[player.id]);
+    }
+    state = rollInitiative(rollInitiative(state, 0, () => .9), 1, () => 0);
+    if (fireSpell === 'Fire-0') state = cast(state, fireSpell);
+    else state = rollEnhancement(activateEnhancement(state), () => .5);
+    state = confirmRefresh(beginRefresh(endTurn(state)));
+    state = pass(state);
+    for (const player of state.players) {
+      assert.equal(allCards(player).length, 30); assert.equal(new Set(allCards(player).map(card => card.id)).size, 30);
+      assert.equal(player.hand.length, 6);
+    }
+    assertGame(state);
+    const saved = JSON.parse(JSON.stringify(state));
+    assert.equal(validateSavedGame(saved), true); assert.equal(migrateSavedGame(saved), saved);
+    assert.equal(saved.version, SAVE_VERSION);
+  }
+});

@@ -480,6 +480,35 @@ test('custom deck legality and opposite seats are checked before creating a matc
   assert.deepEqual([fireGuest.playerIndex, fireGuest.element, fireGuest.state.activePlayer], [0, 'fire', 0]);
 });
 
+test('rooms accept unlimited spell copies within thirty slabs while preserving element checks and private hands', async t => {
+  const api = await service(t, { createMatch: decks => createGame(32, decks) });
+  const repeated = (element, spellId, quantity = 30) => ({ element, entries: [{ spellId, quantity }] });
+  const pairs = [
+    [repeated('fire', 'Fire-0'), repeated('water', 'Water-1')],
+    [repeated('fire', 'FAT-001'), repeated('water', 'FAT-002')],
+    [
+      { element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 10 }, { spellId: 'Fire-1', quantity: 12 }, { spellId: 'FAT-003', quantity: 8 }] },
+      { element: 'water', entries: [{ spellId: 'Water-2', quantity: 10 }, { spellId: 'Water-3', quantity: 16 }, { spellId: 'FAT-003', quantity: 4 }] },
+    ],
+  ];
+  assert.equal((await api.request('/api/rooms', { method: 'POST', body: { element: 'fire', deck: repeated('fire', 'Fire-0', 31) } })).status, 400);
+  for (const [fireDeck, waterDeck] of pairs) {
+    const host = await api.create('fire', fireDeck);
+    assert.equal((await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { deck: repeated('water', 'Fire-0') } })).status, 400, 'thirty copies do not allow the other element');
+    assert.equal((await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { deck: repeated('water', 'Water-1', 31) } })).status, 400, 'joining also requires exactly thirty slabs');
+    const guest = await api.join(host, waterDeck);
+    for (const [player, ownIndex, expected] of [[host, 0, fireDeck], [guest, 1, waterDeck]]) {
+      const state = (await api.get(player)).state;
+      assert.deepEqual(state.players[ownIndex].deckDefinition, normalizeDeck(expected));
+      assert.equal(state.players[ownIndex].hand.length, 5);
+      assert.equal(new Set(state.players[ownIndex].hand.map(card => card.id)).size, 5, 'repeated spells still have distinct physical slab IDs');
+      assert.ok(state.players[ownIndex].hand.every(card => expected.entries.some(entry => entry.spellId === card.spellId)));
+      assert.deepEqual([state.players[1 - ownIndex].hand, state.players[1 - ownIndex].handCount, state.players[1 - ownIndex].deckDefinition], [[], 5, null]);
+      assert.deepEqual(state.players.map(entry => [entry.deck, entry.deckCount]), [[[], 25], [[], 25]]);
+    }
+  }
+});
+
 test('room expiry, capacity, CORS and bounded request bodies fail clearly', async t => {
   let clock = 100000;
   const api = await service(t, { now: () => clock, roomTtlMs: 1000, maxRooms: 1 });

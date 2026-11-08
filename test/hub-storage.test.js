@@ -197,7 +197,7 @@ test('ownerless legacy account caches only restore their explicitly requested ac
 test('draft and payload validation reject malformed data without deleting raw storage', () => {
   const fallback = legal('fire');
   for (const candidate of [null, [], { element: 'water', entries: [] },
-    { element: 'fire', entries: [{ spellId: 'Fire-1', quantity: 4 }] },
+    { element: 'fire', entries: [{ spellId: 'Fire-1', quantity: 31 }] },
     { element: 'fire', entries: [{ spellId: 'Fire-1', quantity: 1 }, { spellId: 'Fire-1', quantity: 1 }] },
     { element: 'fire', entries: [{ spellId: 'FIR-001', quantity: 1 }] }]) {
     assert.deepEqual(restoreHubDraft(candidate, 'fire', fallback), fallback);
@@ -211,4 +211,24 @@ test('draft and payload validation reject malformed data without deleting raw st
   assert.equal(disk.getItem(HUB_SAVE_KEY), '{');
   disk.blockReads = true;
   assert.equal(createHubStorage(disk).load().available, false);
+});
+
+test('unrestricted saved quantities and drafts survive local reload, guest backup and account cache', () => {
+  const disk = new BrowserStorage(), store = createHubStorage(disk);
+  const guest = snapshot('Many slabs');
+  guest.savedDecks.fire = { element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 30 }] };
+  guest.savedDecks.water = { element: 'water', entries: [{ spellId: 'FAT-003', quantity: 30 }] };
+  guest.drafts.fire = { element: 'fire', entries: [{ spellId: 'FAT-001', quantity: 4 }, { spellId: 'Fire-0', quantity: 26 }] };
+  guest.drafts.water = { element: 'water', entries: [{ spellId: 'Water-1', quantity: 4 }] };
+  assert.equal(store.save(guest), true);
+  let restored = createHubStorage(disk).load().state;
+  assert.deepEqual(restored.savedDecks, guest.savedDecks); assert.deepEqual(restored.drafts, guest.drafts);
+  assert.deepEqual(restoreHubDraft(guest.drafts.water, 'water'), guest.drafts.water);
+  disk.removeItem(HUB_SAVE_KEY);
+  restored = createHubStorage(disk).load().state;
+  assert.deepEqual(restored.savedDecks, guest.savedDecks); assert.deepEqual(restored.drafts, guest.drafts);
+  const account = { ...structuredClone(guest), accountId: 'many-slabs', accountUsername: 'many_slabs', cloudDecks: structuredClone(guest.savedDecks) };
+  assert.equal(store.save(account), true);
+  assert.deepEqual(createHubStorage(disk).readAccount('many-slabs').savedDecks, guest.savedDecks);
+  assert.deepEqual(createHubStorage(disk).readGuest().savedDecks, guest.savedDecks);
 });

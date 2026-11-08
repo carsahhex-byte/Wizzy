@@ -35,7 +35,7 @@ The title screen opens a Home map showing a rough pixel-art Seattle, with Northg
 
 The deck builder places a scrollable selected-deck list in the upper half and a slab collection in the lower half, with four cards per collection row. Check a slab to add its first copy, use the quantity controls to add or remove further copies, and uncheck it to remove all copies. Filters cover All, Fire, Water, Fate, and slabs currently in the deck. All 32 spells can be inspected; only slabs eligible for the chosen main element can be added.
 
-A saved deck must contain **exactly 30 slabs**, with **at most 3 copies of any spell**, and choose **one main element: Fire or Water**. Fate slabs are allowed with either element. Fire and Water cannot be mixed, Neutral spells are absent from this catalog, and there are no category quotas or generated starter decks. Incomplete drafts may be edited, but only valid full decks can be saved for battle. Fire and Water drafts and saved decks are retained separately in local browser storage. Signed-in saved decks also sync to that account on the server; an unused element slot may remain empty, and incomplete drafts stay on the device. Saving a deck does not alter an ongoing duel; starting a fresh duel uses the saved compositions. Shared-screen play requires both saved decks; each two-screen player needs the ready saved deck for their chosen role. **Upload deck** validates a versioned JSON file and loads a draft for review. **Download deck** exports a complete legal deck; **Save deck** commits it, and **Save & battle** saves it before opening battle choices. See [deck format and construction rules](docs/decklists.md).
+A saved deck must contain **exactly 30 slabs**, with **no per-spell copy limit**, and choose **one main element: Fire or Water**. Fate slabs are allowed with either element. Fire and Water cannot be mixed, Neutral spells are absent from this catalog, and there are no category quotas or generated starter decks. Incomplete drafts may be edited, but only valid full decks can be saved for battle. Fire and Water drafts and saved decks are retained separately in local browser storage. Signed-in saved decks also sync to that account on the server; an unused element slot may remain empty, and incomplete drafts stay on the device. Saving a deck does not alter an ongoing duel; starting a fresh duel uses the saved compositions. Shared-screen play requires both saved decks; each two-screen player needs the ready saved deck for their chosen role. **Upload deck** validates a versioned JSON file and loads a draft for review. **Download deck** exports a complete legal deck; **Save deck** commits it, and **Save & battle** saves it before opening battle choices. See [deck format and construction rules](docs/decklists.md).
 
 The Battle shortcut offers shared-screen or two-screen play and provides a route back to Home. Guest two-screen matches use each device's saved deck; signed-in matches use the account's saved role deck. Each player keeps a private hand, with server-validated actions, server-side shuffling and dice, and reconnecting by player token. The first room prototype pairs Fire against Water and keeps matches in server memory; a process restart or sleeping free instance can erase a room. Native iPhone packaging, signing, and TestFlight distribution remain a later step.
 
@@ -128,7 +128,7 @@ The in-game settings/handbook describes the active rules and local two-player fl
 ## Project structure
 
 - `src/spells.js` — current master spell metadata, catalog version, and PDF source references.
-- `src/decks.js` — deck construction, empty/ready slot validation, JSON import/export, and copy limits.
+- `src/decks.js` — deck construction, empty/ready slot validation, JSON import/export, and the 30-slab total.
 - `src/effects.js` — executable Fire and Water effects, roll requirements, and Ember-spending choices.
 - `src/game.js` — pure game-state transitions, post-roll Fate/refresh phases, slab instances, and versioned save validation.
 - `src/main.js` — battle rendering, local/remote interactions, browser persistence, and hub integration.
@@ -145,7 +145,7 @@ The in-game settings/handbook describes the active rules and local two-player fl
 - `public/optimized/` — pixel-identical, hashed WebP copies and generation manifest.
 - `public/art/` — earlier prototype art and the application favicon.
 - `test/game.test.js` — phase locks, refresh, conservation, drawing, damage, victory, and save tests.
-- `test/decks.test.js` — full-deck and draft validation, element restrictions, quantities, and copy limits.
+- `test/decks.test.js` — full-deck and draft validation, element restrictions, quantities, and the 30-slab total.
 - `docs/decklists.md` — current catalog reference, custom-deck construction, portable format, and combat rules.
 - `docs/multiplayer.md` — two-device local setup, remote hosting resources, room flow, and troubleshooting.
 - `server/` — authoritative room server, private player views, SQLite accounts/decks/sessions, validation, and built-frontend serving.

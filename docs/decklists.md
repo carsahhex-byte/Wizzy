@@ -11,10 +11,10 @@ Each element starts with an empty deck slot. No starter composition is generated
 A playable saved deck must contain:
 
 - Exactly **30 slabs**.
-- At most **3 copies of any spell**.
+- **No per-spell copy limit** within the 30-slab deck.
 - One main element, **Fire or Water**, plus any Fate spells.
 
-Fire and Water spells cannot be mixed. There are no Neutral spells or mandatory category quotas in this spellbook. The PDF's three physical copies of each Fate spell describe the copy limit, not a requirement to include all nine Fate slabs in a deck.
+Fire and Water spells cannot be mixed. There are no Neutral spells or mandatory category quotas in this spellbook. Printed copy counts do not constrain custom decks; players may choose any number of eligible elemental or Fate slabs within the 30-slab total.
 
 Checking a slab adds its first copy; quantity controls add or remove copies, and unchecking removes all copies. Incomplete drafts remain editable and are retained on this device. **Save deck** stores a legal 30-slab deck for battle. Saving a deck does not alter an ongoing duel; start a new duel to use the saved composition.
 
@@ -35,12 +35,12 @@ The JSON format is:
   "spellbook": "nov4-v2.1",
   "element": "fire",
   "entries": [
-    { "spellId": "Fire-1", "quantity": 3 }
+    { "spellId": "Fire-1", "quantity": 30 }
   ]
 }
 ```
 
-The example shows the file structure only; a playable file must list **30 slabs in total**. Files are limited to **64 KB**. Imports validate the format, spellbook version, element, known spell IDs, total, and three-copy limit. A malformed, oversized, outdated, or illegal file shows an error instead of replacing the current draft. Old-catalog IDs are rejected rather than being interpreted as new spells. A decklist contains spell quantities, not an account login, private room token, or shuffled draw order.
+The example is a playable deck of 30 Fire-1 slabs; any playable file must list **30 slabs in total**. Files are limited to **64 KB**. Imports validate the format, spellbook version, element, known spell IDs, and 30-slab total. A malformed, oversized, outdated, or illegal file shows an error instead of replacing the current draft. Old-catalog IDs are rejected rather than being interpreted as new spells. A decklist contains spell quantities, not an account login, private room token, or shuffled draw order.
 
 ## Current catalog
 
