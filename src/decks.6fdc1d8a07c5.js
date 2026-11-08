@@ -1,6 +1,5 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELLBOOK_VERSION } from './spells.29cc03f8c6f5.js';
 
-export const MAX_COPIES = 3;
 export const MAX_DECK_FILE_BYTES = 65536;
 
 const isDeckRecord = value => value !== null && typeof value === 'object'
@@ -39,8 +38,8 @@ function inspectDeck(deck, requireFull) {
     }
     if (seen.has(spellId)) errors.push('List each spell once and use its quantity for copies.');
     seen.add(spellId);
-    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_COPIES) {
-      errors.push(`Spell quantities must be whole numbers from 1 to ${MAX_COPIES}.`);
+    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+      errors.push('Spell quantities must be positive whole numbers.');
     }
     if (Number.isSafeInteger(quantity) && quantity >= 0) total += quantity;
   }
@@ -122,8 +121,8 @@ export function setDeckQuantity(deck, spellId, quantity) {
   if (!current.valid) throw new TypeError(current.errors.join(' '));
   if (!deckSpellExists(spellId)) throw new TypeError('Choose a spell from the slab collection.');
   if (!isSpellEligibleForDeck(SPELL_CATALOG[spellId], deck.element)) throw new TypeError('That spell belongs to the other main element.');
-  if (!Number.isSafeInteger(quantity) || quantity < 0 || quantity > MAX_COPIES) {
-    throw new RangeError(`Choose a whole-number quantity from 0 to ${MAX_COPIES}.`);
+  if (!Number.isSafeInteger(quantity) || quantity < 0) {
+    throw new RangeError('Choose a nonnegative whole-number quantity.');
   }
   const entries = deck.entries.filter(entry => entry.spellId !== spellId);
   if (quantity > 0) entries.push({ spellId, quantity });
