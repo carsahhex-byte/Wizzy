@@ -5,7 +5,7 @@ import {
   castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn,
   canEnhance, activateEnhancement, rollEnhancement as rollEnhancementAction, getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, ENHANCEMENT_THRESHOLD, ENHANCEMENT_ROLL_RULE,
   canActivateAura, activateAura, AURA_COST, AURA_DURATION, AURA_BONUS,
-  beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, applyDamage,
+  beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, applyDamage,
   assertGame, validateSavedGame, migrateSavedGame, SPELL_CATALOG, SPELL_RULES, SAVE_VERSION, DECK_SIZE, HAND_LIMIT, OPENING_HAND_SIZE,
 } from '../src/game.js';
 
@@ -308,7 +308,8 @@ test('Loaded bonuses apply to the next own turn and expire unused at its end', (
   assert.deepEqual([state.players[0].loaded, state.players[0].loadedPending], [0, 2]);
   state = pass(state); assert.deepEqual([state.players[0].loaded, state.players[0].loadedPending], [0, 2]);
   state = pass(state); assert.deepEqual([state.players[0].loaded, state.players[0].loadedPending], [2, 0]);
-  const ending = endTurn(state); assert.equal(ending.players[0].loaded, 0); assertGame(ending);
+  const ending = endTurn(state); assert.equal(ending.players[0].loaded, 2); assertGame(ending);
+  assert.equal(endTurn(ending).players[0].loaded, 0);
   state = roll(cast(state, 'Fire-1'), [2, 3]);
   assert.equal(state.lastRoll.total, 7); assert.equal(state.players[0].loaded, 0); assertGame(state);
 });
@@ -552,7 +553,8 @@ test('Enhancement succeeds on raw 6, fails on raw 5, and uses the primary action
     const selected = selectCard(state, state.players[0].hand.find(card => card.category !== 'Fate').id);
     assert.equal(canCastSelected(selected), false); assert.equal(castSelected(selected), selected);
     const ending = endTurn(state);
-    assert.equal(ending.players[0].loaded, 0, 'unused Loaded still expires normally when ending the turn');
+    assert.equal(ending.players[0].loaded, 4, 'first End Turn click only stages the pass');
+    assert.equal(endTurn(ending).players[0].loaded, 0, 'unused Loaded expires on the actual pass');
     assert.equal(ending.players[0].loadedPending, 2); assertGame(ending);
   }
 });
@@ -702,7 +704,8 @@ test('Fire-0 resolves for zero Mana immediately, gains one Ember and consumes th
   for (const action of [rollDice, skipFate, castFateSelected, resolveSpell, activateEnhancement]) assert.equal(action(state), state);
   assert.equal(state.log.filter(entry => entry.type === 'resource').at(-1).message, 'Fire gains 1 Ember.');
   assert.ok(!state.log.slice(initial.log.length).some(entry => ['dice', 'fate', 'damage'].includes(entry.type)));
-  assert.equal(endTurn(state).players[0].loaded, 0, 'Loaded expires at end turn rather than on this immediate spell');
+  assert.equal(endTurn(state).players[0].loaded, 4, 'staging End Turn does not expire Loaded');
+  assert.equal(pass(state).players[0].loaded, 0, 'Loaded expires on the actual pass rather than on this immediate spell');
   assertGame(state); assert.equal(validateSavedGame(JSON.parse(JSON.stringify(state))), true);
 });
 
@@ -1328,4 +1331,157 @@ test('ending a duel during Enhancement Fate never awards a bonus or discards a n
   assert.equal(ended.pendingSpell, null); assert.equal(ended.lastRoll, null);
   assert.deepEqual(ended.players.map(player => player.discard), [[], []]);
   assert.equal(ended.players[0].enhancement, 0); assertGame(ended);
+});
+
+test('background cancellation clears a main selection without spending or changing anything else', () => {
+  const initial = fateFixture();
+  Object.assign(initial.players[0], { loaded: 4, loadedPending: 2, enhancement: 20, auraTurns: 2 });
+  assert.equal(canCancelStagedAction(initial), false); assert.equal(cancelStagedAction(initial), initial);
+  const selected = selectCard(initial, initial.players[0].hand[0].id), snapshot = structuredClone(selected);
+  assert.equal(canCancelStagedAction(selected), true);
+  const cancelled = cancelStagedAction(selected);
+  assert.deepEqual(cancelled, initial); assert.deepEqual(selected, snapshot);
+  assert.equal(canCancelStagedAction(cancelled), false); assert.equal(cancelStagedAction(cancelled), cancelled);
+  assert.equal(canCastSelected(selectCard(cancelled, cancelled.players[0].hand[0].id)), true);
+  assertGame(cancelled);
+});
+
+test('End Turn and refresh staging can be cancelled repeatedly without Loaded expiry, Aura ticks or draws', () => {
+  const initial = fateFixture();
+  Object.assign(initial.players[0], { loaded: 4, loadedPending: 2, enhancement: 20, auraTurns: 2 });
+  let state = initial;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    let staged = endTurn(state);
+    assert.equal(staged.phase, 'end'); assert.equal(canCancelStagedAction(staged), true);
+    assert.deepEqual(staged.players, initial.players); assert.deepEqual(staged.log, initial.log);
+    if (attempt % 2) {
+      staged = beginRefresh(staged);
+      for (const card of staged.players[0].hand) staged = toggleRefreshCard(staged, card.id);
+      assert.ok(staged.refreshCardIds.length > 0);
+    }
+    const snapshot = structuredClone(staged);
+    state = cancelStagedAction(staged);
+    assert.deepEqual(state, initial); assert.deepEqual(staged, snapshot);
+    assert.equal(cancelStagedAction(state), state); assertGame(state);
+  }
+  const passed = endTurn(endTurn(state));
+  assert.deepEqual([passed.activePlayer, passed.players[0].loaded, passed.players[0].loadedPending, passed.players[0].auraTurns], [1, 0, 2, 1]);
+  assert.equal(passed.log.filter(entry => entry.type === 'loaded' && /unused Loaded.*expires/.test(entry.message)).length, 1);
+  assert.equal(passed.log.filter(entry => entry.type === 'aura').length, 1);
+  assert.equal(cancelStagedAction(passed), passed); assertGame(passed);
+});
+
+test('cancelling staged End Turn lets the same unspent Loaded bonus be used, but never restores consumed Loaded', () => {
+  const initial = fateFixture(); initial.players[0].loaded = 4;
+  const restored = cancelStagedAction(endTurn(initial));
+  let committed = cast(restored, 'Fire-1');
+  assert.deepEqual([committed.players[0].loaded, committed.pendingSpell.loadedBonus], [0, 4]);
+  assert.equal(cancelStagedAction(committed), committed, 'a committed spell cannot be undone');
+  committed = complete(committed, [1, 1]);
+  assert.equal(committed.lastRoll.total, 6);
+  const cancelled = cancelStagedAction(endTurn(committed));
+  assert.equal(cancelled.players[0].loaded, 0); assert.deepEqual(cancelled.players, committed.players);
+  assert.equal(cancelled.primaryUsed, true); assert.equal(cancelled.primaryAction, 'spell');
+  assert.equal(canEnhance(cancelled), false); assertGame(cancelled);
+});
+
+test('background cancellation preserves committed primary spells, Enhancement, Aura and resource rewards', () => {
+  for (const commit of [state => complete(cast(state, 'Fire-1')), state => cast(state, 'Fire-0'),
+    state => cast(state, 'Fire-15'), state => rollEnhancement(activateEnhancement(state), () => .5), activateAura]) {
+    const source = fresh({ fire: ['Fire-0', 'Fire-15'] });
+    handOf(source, 0, ['Fire-1', 'Fire-0', 'Fire-15', 'Fire-2']);
+    Object.assign(source.players[0], { loaded: 4, loadedPending: 2, enhancement: 10 });
+    const committed = commit(source), snapshot = structuredClone(committed);
+    assert.equal(committed.primaryUsed, true);
+    for (const refreshing of [false, true]) {
+      let staged = endTurn(committed);
+      if (refreshing) {
+        staged = beginRefresh(staged);
+        staged = toggleRefreshCard(staged, staged.players[0].hand[0].id);
+      }
+      const cancelled = cancelStagedAction(staged);
+      assert.deepEqual(cancelled, committed); assert.deepEqual(committed, snapshot);
+      assert.equal(cancelled.primaryUsed, true); assert.equal(cancelled.primaryAction, committed.primaryAction);
+      assert.equal(canEnhance(cancelled), false); assert.equal(canActivateAura(cancelled), false);
+      const selected = selectCard(cancelled, cancelled.players[0].hand.find(card => card.category !== 'Fate').id);
+      assert.equal(canCastSelected(selected), false); assert.equal(castSelected(selected), selected);
+      assert.deepEqual(cancelStagedAction(selected), committed); assertGame(cancelled);
+    }
+  }
+});
+
+test('background cancellation clears only the selected Fate link in either a spell or Enhancement chain', () => {
+  for (const kind of ['spell', 'enhancement']) {
+    const source = fateFixture(); source.players[0].loaded = 4;
+    const waiting = kind === 'spell' ? roll(cast(source, 'Fire-1')) : rollEnhancementAction(activateEnhancement(source), () => .5);
+    const defenderCard = waiting.players[1].hand.find(card => card.spellId === 'FAT-002');
+    const selected = selectCard(waiting, defenderCard.id), snapshot = structuredClone(selected);
+    assert.equal(canCancelStagedAction(selected), true);
+    const cancelled = cancelStagedAction(selected);
+    assert.deepEqual(cancelled, waiting); assert.deepEqual(selected, snapshot);
+    assert.equal(cancelStagedAction(cancelled), cancelled); assert.equal(cancelled.fatePlayer, 1);
+    assert.equal(cancelled.pendingSpell.fateHistory.length, 0);
+    const casted = castFateSelected(selectCard(cancelled, defenderCard.id));
+    assert.equal(casted.players[1].discard.at(-1).id, defenderCard.id);
+    assert.equal(casted.lastRoll.defendingFate, -4); assert.equal(casted.fatePlayer, 0);
+    assert.equal(cancelStagedAction(casted), casted, 'casting Fate already committed the response');
+    const attackerCard = casted.players[0].hand.find(card => card.spellId === 'FAT-001');
+    assert.deepEqual(cancelStagedAction(selectCard(casted, attackerCard.id)), casted);
+    const skipped = skipFate(casted);
+    assert.equal(skipped.pendingSpell.fateHistory.at(-1).action, 'skip');
+    assert.equal(cancelStagedAction(skipped), skipped, 'a Fate pass is already committed');
+    assertGame(cancelled); assertGame(casted); assertGame(skipped);
+  }
+});
+
+test('confirmed refreshes and actual turn passes are never undone by a later background tap', () => {
+  const initial = fateFixture(); initial.players[0].loaded = 4; initial.players[0].auraTurns = 2;
+  const staged = beginRefresh(endTurn(initial));
+  const selected = toggleRefreshCard(staged, staged.players[0].hand[0].id);
+  const refreshed = confirmRefresh(selected), snapshot = structuredClone(refreshed);
+  assert.equal(refreshed.activePlayer, 1); assert.equal(refreshed.players[0].discard.length, 1);
+  assert.equal(refreshed.players[0].loaded, 0); assert.equal(refreshed.players[0].auraTurns, 1);
+  assert.equal(canCancelStagedAction(refreshed), false); assert.equal(cancelStagedAction(refreshed), refreshed);
+  assert.deepEqual(refreshed, snapshot);
+  const passed = pass(initial); assert.equal(cancelStagedAction(passed), passed);
+  assertGame(refreshed); assertGame(passed);
+});
+
+test('cancellation is unavailable during committed roll phases, finished games and legacy ready-to-pass', () => {
+  const initial = fateFixture();
+  const rolling = cast(initial, 'Fire-1'), resolving = completePending(roll(rolling));
+  const initiative = createGame(9, { fire: fixtureDeck('fire'), water: fixtureDeck('water') });
+  const ready = { ...endTurn(initial), phase: 'ready-to-pass' };
+  for (const state of [createGame(), initiative, activateEnhancement(initial), rolling, resolving,
+    applyDamage(initial, 1, 100), ready]) {
+    const snapshot = structuredClone(state);
+    assert.equal(canCancelStagedAction(state), false); assert.equal(cancelStagedAction(state), state);
+    assert.deepEqual(state, snapshot); assertGame(state);
+  }
+  function completePending(state) { while (state.phase === 'fate') state = skipFate(state); return state; }
+});
+
+test('v14 staged saves retain unspent Loaded and cancellation never refunds old expired Loaded', () => {
+  const initial = fateFixture(); initial.players[0].loaded = 4; initial.players[0].auraTurns = 2;
+  for (const staged of [endTurn(initial), beginRefresh(endTurn(initial))]) {
+    const saved = JSON.parse(JSON.stringify(staged));
+    assert.equal(saved.version, 14); assert.equal(validateSavedGame(saved), true);
+    assert.equal(migrateSavedGame(saved), saved); assert.deepEqual(cancelStagedAction(saved), initial);
+  }
+  const old = version13Save(endTurn(initial)); old.players[0].loaded = 0;
+  old.log.push({ id: old.log.length + 1, round: old.round, playerId: 'fire', type: 'loaded', message: "Fire's unused Loaded +4 expires." });
+  const migrated = migrateSavedGame(old); assert.ok(migrated);
+  const cancelled = cancelStagedAction(migrated);
+  assert.equal(cancelled.phase, 'main'); assert.equal(cancelled.players[0].loaded, 0);
+  assert.deepEqual(cancelled.log, old.log); assert.equal(cancelled.players[0].auraTurns, 2);
+  assertGame(cancelled);
+});
+
+test('cancelling End Turn after Aura activation preserves its primary marker and full three subsequent turns', () => {
+  const activated = activateAura(fresh());
+  const cancelled = cancelStagedAction(beginRefresh(endTurn(activated)));
+  assert.deepEqual(cancelled, activated); assert.equal(cancelled.primaryAction, 'aura');
+  let state = pass(cancelled); assert.equal(state.players[0].auraTurns, 3);
+  state = pass(state); assert.equal(state.players[0].auraTurns, 3);
+  state = pass(state); assert.equal(state.players[0].auraTurns, 2); assertGame(state);
 });

@@ -153,6 +153,91 @@ test('server controls roles, selections, Fate, secure dice totals, one primary a
   assert.equal((await api.action(guest, 'endTurn')).status, 200, 'opponent can act on their new turn');
 });
 
+test('background cancellation clears only the acting player selection and retries cannot clear a later selection', async t => {
+  const api = await service(t, { createMatch: fixtureWithoutFate });
+  const host = await api.create(), guest = await api.join(host);
+  const initial = await api.get(host);
+  const [first, second] = initial.state.players[0].hand;
+  await api.action(host, 'selectCard', { cardId: first.id });
+  const selected = await api.get(host);
+  assert.equal((await api.action(guest, 'cancelStagedAction')).status, 403);
+  assert.equal((await api.action(host, 'cancelStagedAction', { cardId: first.id })).status, 400);
+  assert.deepEqual(await api.get(host), selected, 'invalid cancellation leaves the staged choice untouched');
+  const request = { type: 'cancelStagedAction', payload: {}, revision: selected.revision, requestId: 'cancel-selection-once' };
+  const cancel = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: request });
+  const result = await cancel(); assert.equal(result.status, 200);
+  assert.equal(result.data.state.selectedCardId, null);
+  assert.deepEqual(result.data.state.players, initial.state.players);
+  assert.deepEqual(result.data.state.log, initial.state.log);
+  const noOp = await api.action(host, 'cancelStagedAction');
+  assert.equal(noOp.status, 200); assert.deepEqual(noOp.data, result.data, 'extra background taps do not create revisions');
+  await api.action(host, 'selectCard', { cardId: second.id });
+  const later = await api.get(host);
+  const duplicate = await cancel(); assert.equal(duplicate.status, 200);
+  assert.deepEqual(duplicate.data, later, 'retrying an old cancellation cannot clear the new selected slab');
+  const cast = await api.action(host, 'castSpell'); assert.equal(cast.status, 200);
+  assert.equal(cast.data.state.primaryUsed, true);
+  const after = await api.action(host, 'cancelStagedAction');
+  assert.equal(after.status, 200); assert.deepEqual(after.data, cast.data, 'a committed cast is never undone');
+});
+
+test('cancelled End Turn and Hand Refresh preserve cards and bonuses until an actual pass', async t => {
+  const api = await service(t, { createMatch: decks => {
+    const state = fixtureWithoutFate(decks);
+    Object.assign(state.players[0], { loaded: 4, loadedPending: 2, auraTurns: 2 });
+    return state;
+  } });
+  const host = await api.create(), guest = await api.join(host);
+  const before = (await api.get(host)).state;
+  let result = await api.action(host, 'endTurn');
+  assert.equal(result.data.state.phase, 'end');
+  assert.equal(result.data.state.players[0].loaded, 4, 'opening End Turn does not expire Loaded');
+  result = await api.action(host, 'cancelStagedAction');
+  assert.equal(result.data.state.phase, 'main');
+  assert.deepEqual(result.data.state.players, before.players);
+  assert.deepEqual(result.data.state.log, before.log);
+  await api.action(host, 'endTurn'); await api.action(host, 'beginRefresh');
+  for (const card of before.players[0].hand.slice(0, 2)) await api.action(host, 'toggleRefreshCard', { cardId: card.id });
+  result = await api.action(host, 'cancelStagedAction');
+  assert.deepEqual([result.data.state.phase, result.data.state.refreshCardIds, result.data.state.activePlayer], ['main', [], 0]);
+  assert.deepEqual(result.data.state.players, before.players, 'cancelling refresh neither discards nor draws');
+  assert.deepEqual(result.data.state.log, before.log);
+  await api.action(host, 'endTurn'); await api.action(host, 'beginRefresh');
+  await api.action(host, 'toggleRefreshCard', { cardId: before.players[0].hand[0].id });
+  result = await api.action(host, 'confirmRefresh');
+  assert.deepEqual([result.data.state.activePlayer, result.data.state.players[0].loaded, result.data.state.players[0].auraTurns], [1, 0, 1]);
+  assert.deepEqual([result.data.state.players[0].handCount, result.data.state.players[0].discard.length], [6, 1]);
+  assert.equal((await api.action(host, 'cancelStagedAction')).status, 403, 'the previous player cannot undo the confirmed pass');
+  const current = await api.get(guest);
+  assert.deepEqual((await api.action(guest, 'cancelStagedAction')).data, current, 'a background tap on the new turn cannot undo the refresh');
+});
+
+test('clearing a selected Fate slab never passes priority or undoes Cast Fate and Skip Fate', async t => {
+  const api = await service(t), host = await api.create(), guest = await api.join(host);
+  const card = (await api.get(host)).state.players[0].hand.find(entry => entry.spellId === 'Fire-4');
+  await api.action(host, 'selectCard', { cardId: card.id }); await api.action(host, 'castSpell');
+  const responding = (await api.get(guest)).state;
+  const fate = responding.players[1].hand.find(entry => entry.spellId === 'FAT-002');
+  await api.action(guest, 'selectCard', { cardId: fate.id });
+  let result = await api.action(guest, 'cancelStagedAction');
+  assert.deepEqual([result.data.state.phase, result.data.state.fatePlayer, result.data.state.selectedCardId, result.data.state.selectedFateCardIds], ['fate', 1, null, []]);
+  for (const key of ['players', 'pendingSpell', 'lastRoll', 'log']) assert.deepEqual(result.data.state[key], responding[key], key);
+  await api.action(guest, 'selectCard', { cardId: fate.id });
+  result = await api.action(guest, 'castFate'); assert.equal(result.status, 200);
+  const afterCast = await api.get(host);
+  assert.equal(afterCast.state.players[1].discard.length, 1);
+  assert.equal(afterCast.state.pendingSpell.defendingFate, -4);
+  assert.deepEqual((await api.action(host, 'cancelStagedAction')).data, afterCast, 'Cast Fate stays committed');
+  result = await api.action(host, 'skipFate'); assert.equal(result.status, 200);
+  const afterSkip = await api.get(guest);
+  assert.equal(afterSkip.state.pendingSpell.fatePasses, 1);
+  assert.deepEqual((await api.action(guest, 'cancelStagedAction')).data, afterSkip, 'Skip Fate stays committed');
+  result = await api.action(guest, 'skipFate');
+  assert.equal(result.data.state.phase, 'main');
+  assert.equal(result.data.state.primaryUsed, true);
+  assert.deepEqual(result.data.state.players.map(player => player.discard.length), [1, 1]);
+});
+
 test('Fate alternates after every single slab beyond three windows and skips exhausted hands privately', async t => {
   const api = await service(t, { createMatch: decks => {
     const state = fixtureMatch(decks);

@@ -5,7 +5,7 @@ import path from 'node:path';
 import {
   createGame, assertGame, getActingPlayerIndex, selectCard, castSelected,
   castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh,
-  toggleRefreshCard, confirmRefresh, rollInitiative, OPENING_HAND_SIZE,
+  toggleRefreshCard, confirmRefresh, cancelStagedAction, rollInitiative, OPENING_HAND_SIZE,
   activateEnhancement, rollEnhancement, activateAura,
 } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
@@ -218,9 +218,21 @@ export function createMultiplayerServer(options = {}) {
       case 'beginRefresh': next = beginRefresh(room.state); break;
       case 'toggleRefreshCard': next = toggleRefreshCard(room.state, payload.cardId); break;
       case 'confirmRefresh': next = confirmRefresh(room.state); break;
+      case 'cancelStagedAction':
+        if (Object.keys(payload).length) fail(400, 'invalid_action', 'Cancel only clears your uncommitted selection. No action details may be submitted.');
+        next = cancelStagedAction(room.state); break;
       default: fail(400, 'unknown_action', 'That battle action is not supported.');
     }
-    if (next === room.state) fail(422, 'invalid_move', 'That action is not allowed in the current battle step.');
+    if (next === room.state) {
+      // An extra background tap is harmless, including a queued tap whose
+      // selection was already cleared. Remember its ID without a new revision.
+      if (body.type === 'cancelStagedAction') {
+        player.requests.set(body.requestId, signature);
+        if (player.requests.size > 128) player.requests.delete(player.requests.keys().next().value);
+        return roomView(room, playerIndex);
+      }
+      fail(422, 'invalid_move', 'That action is not allowed in the current battle step.');
+    }
     // Spells and Enhancement roll once before the defender sees Fate.
     // Later Fate actions update that same roll; no phone supplies dice.
     if (next.phase === 'rolling') next = rollDice(next, rollRandom);
