@@ -1,7 +1,8 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { OPTIMIZED_ART } from './optimized-art.df806bc36ad2.js';
+import { resolveAssetUrl } from './asset-url.e920f2d4a01b.js';
 import { SPELL_CATALOG } from './spells.73668f325e64.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.059472547f5d.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.225c4c14014b.js';
+import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.f10ba2dbbb9c.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -43,6 +44,7 @@ export const ASSET_FILES = Object.freeze({
   fateCard: 'Purple Galaxy Vortex Card Frame.png',
   neutralCard: 'Neutral card.png',
   stoneSign: 'Mossy Pixel Stone Sign.png',
+  battlePixelIcons: PIXEL_ICON_FILE,
 });
 
 /** Original overworld wizards: fixed logical cells, source PNG left intact. */
@@ -142,32 +144,10 @@ export const SPELL_ANIMATION_SHEETS = Object.freeze({
   ]),
 });
 
-// Keep embedded images out of CSS custom-property size limits in standalone
-// editions. Object URLs retain the original bytes and are shared by every view.
-function embeddedAssetUrl(value) {
-  if (typeof document === 'undefined' || !value?.startsWith('data:image/')
-    || typeof URL.createObjectURL !== 'function') return value;
-  const match = /^data:([^;,]+);base64,([\s\S]+)$/.exec(value);
-  if (!match) return value;
-  const binary = atob(match[2]);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return URL.createObjectURL(new Blob([bytes], { type: match[1] }));
-}
-
 // Resolve from the document so both a domain root and a project subpath work.
 // Standalone builds provide these same originals once per asset.
 export const ASSETS = Object.freeze(Object.fromEntries(
-  Object.entries(ASSET_FILES).map(([key, filename]) => {
-    const assetPath = OPTIMIZED_ART[key]
-      ? `./public/optimized/${OPTIMIZED_ART[key].file}`
-      : `./public/graphics/${encodeURIComponent(filename)}`;
-    return [key, embeddedAssetUrl(globalThis.WIZZY_ASSET_URLS?.[key]) || (
-      typeof document === 'undefined'
-        ? assetPath
-        : new URL(assetPath, document.baseURI).href
-    )];
-  }),
+  Object.entries(ASSET_FILES).map(([key, filename]) => [key,resolveAssetUrl(key,filename)]),
 ));
 
 // Source cards are not evenly spaced: Water's columns have different widths,
@@ -267,4 +247,12 @@ export const ASSET_CROPS = Object.freeze({
   fateCard: { width: 1086, height: 1448, x: 68, y: 69, w: 952, h: 1253 },
   neutralCard: { width: 1086, height: 1448, x: 68, y: 70, w: 952, h: 1252 },
   stoneSign: { width: 1199, height: 1312, x: 61, y: 88, w: 1073, h: 1032 },
+  battlePixelIcons: { width: 1536, height: 1024, x: 0, y: 0, w: 1536, h: 1024 },
+  // Square viewports keep inline resource symbols proportional in a 1em box.
+  iconFire: PIXEL_ICON_CROPS.fire,
+  iconWater: PIXEL_ICON_CROPS.water,
+  iconHeart: PIXEL_ICON_CROPS.heart,
+  iconMana: PIXEL_ICON_CROPS.mana,
+  iconShield: PIXEL_ICON_CROPS.shield,
+  iconDie: PIXEL_ICON_CROPS.die,
 });

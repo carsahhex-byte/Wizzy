@@ -1,4 +1,4 @@
-import { ASSETS, SPELL_ANIMATION_SHEETS } from './assets.263d5388516b.js';
+import { ASSETS, SPELL_ANIMATION_SHEETS } from './assets.78ea8e497353.js';
 import { getSpellVisual } from './spell-visuals.ffab9b18cbbf.js';
 
 const imageLoads = new Map();
