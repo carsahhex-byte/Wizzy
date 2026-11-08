@@ -1,0 +1,111 @@
+{
+  "format": "wizzy-idle-review",
+  "version": 1,
+  "previewOnly": true,
+  "title": "Wizzy idle wizard preview",
+  "description": "Stationary Fire and Water idle loops with breathing, a blink, hat and robe settling, and tiny ambient embers or bubbles. Review only; not installed in battle.",
+  "file": "idle-wizards.png",
+  "sourceWidth": 1254,
+  "sourceHeight": 1254,
+  "columns": 4,
+  "rows": 4,
+  "frameMs": 160,
+  "sequenceMs": 1280,
+  "sourceBodyHeight": 233.5,
+  "bodyHeight": 144,
+  "targetBodyHeight": 144,
+  "displayScale": 0.6167023554603854,
+  "frameAnchors": [
+    {
+      "x": 0.5119617224880383,
+      "y": 0.9122807017543859
+    },
+    {
+      "x": 0.5199362041467305,
+      "y": 0.9122807017543859
+    },
+    {
+      "x": 0.518341307814992,
+      "y": 0.9122807017543859
+    },
+    {
+      "x": 0.5199362041467305,
+      "y": 0.9122807017543859
+    },
+    {
+      "x": 0.518341307814992,
+      "y": 0.9106858054226475
+    },
+    {
+      "x": 0.5199362041467305,
+      "y": 0.9106858054226475
+    },
+    {
+      "x": 0.5151515151515151,
+      "y": 0.9106858054226475
+    },
+    {
+      "x": 0.518341307814992,
+      "y": 0.9106858054226475
+    },
+    {
+      "x": 0.5119617224880383,
+      "y": 0.9090909090909091
+    },
+    {
+      "x": 0.5135566188197768,
+      "y": 0.9059011164274322
+    },
+    {
+      "x": 0.5103668261562998,
+      "y": 0.9090909090909091
+    },
+    {
+      "x": 0.5167464114832536,
+      "y": 0.9090909090909091
+    },
+    {
+      "x": 0.5167464114832536,
+      "y": 0.9074960127591707
+    },
+    {
+      "x": 0.5199362041467305,
+      "y": 0.9074960127591707
+    },
+    {
+      "x": 0.5167464114832536,
+      "y": 0.9074960127591707
+    },
+    {
+      "x": 0.5167464114832536,
+      "y": 0.9074960127591707
+    }
+  ],
+  "animations": {
+    "fire": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "water": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ]
+  },
+  "sourceSha256": "98422ce6c1840c4ba789aa72fd91d64b4ffaaa90e5822c24ef713e657efb327b",
+  "anchorUnits": "Normalized cell coordinates; measured at feet to keep both wizards stationary.",
+  "integration": "preview-only",
+  "sha256": "98422ce6c1840c4ba789aa72fd91d64b4ffaaa90e5822c24ef713e657efb327b",
+  "bytes": 875728
+}

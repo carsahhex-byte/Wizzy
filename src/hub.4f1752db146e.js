@@ -1,9 +1,9 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.59dbf86de54f.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.e1b6f9f8fe31.js';
 import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.73668f325e64.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.328375369225.js';
 import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.2273f98625f9.js';
 import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.94d75be10057.js';
-import { fitSlabText } from './slab-text.177902e850c4.js';
+import { fitSlabText } from './slab-text.37e0a9a1e4e4.js';
 
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck']);
 // The square artwork includes ocean around the city. Its artwork and labels
@@ -168,7 +168,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   }
   function slabHub(card) {
     const slab=spellSlabMarkup(card.spellId);
-    if(slab)return `<div class="wz-slab-face">${slab}<span class="slab-mana">${card.manaCost} Mana</span><span class="sr-only">${escapeHub(card.name)}. ${escapeHub(card.effectText)}</span></div>`;
+    if(slab)return `<div class="wz-slab-face">${slab}<span class="slab-mana" role="img" aria-label="${card.manaCost} Mana">${card.manaCost}</span><span class="sr-only">${escapeHub(card.name)}. ${escapeHub(card.effectText)}</span></div>`;
     return `<div class="wz-slab-face">${hubArt(card.art)}${spellArtMarkup(card.spellId, 'wz-slab-illustration')}<strong class="wz-slab-title">${escapeHub(card.name)}</strong><span class="wz-slab-copy"><b>${card.manaCost} Mana</b><span>${escapeHub(card.effectText)}</span></span></div>`;
   }
   function collectionHub(draft) {
@@ -180,7 +180,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
       const count = getDeckCount(draft, card.spellId);
       const allowed = eligible.has(card.spellId);
       const full = total >= DECK_SIZE && count === 0;
-      return `<article class="wz-library-card wz-type-${card.type.toLowerCase()} ${count ? 'wz-in-deck' : ''} ${!allowed ? 'wz-other-element' : ''}" data-wz-library-spell="${card.spellId}"><button class="wz-read-slab" data-wz-action="inspect" data-wz-spell="${card.spellId}" aria-label="Read ${escapeHub(card.name)}">${slabHub(card)}<span class="wz-read-tag">READ SLAB ↗</span></button><label class="wz-card-check"><input type="checkbox" data-wz-card-check="${card.spellId}" data-wz-focus="check-${card.spellId}" aria-label="Include ${escapeHub(card.name)} in your ${elementName(selectedElement)} deck" ${count ? 'checked' : ''} ${!allowed || full ? 'disabled' : ''}><span>${!allowed ? `${card.type} deck only` : count ? `${count} in deck` : full ? 'Deck full' : 'Add to deck'}</span></label></article>`;
+      return `<article class="wz-library-card wz-type-${card.type.toLowerCase()} ${count ? 'wz-in-deck' : ''} ${!allowed ? 'wz-other-element' : ''}" data-wz-library-spell="${card.spellId}"><button class="wz-read-slab" data-wz-action="inspect" data-wz-spell="${card.spellId}" aria-label="Read ${escapeHub(card.name)}. ${escapeHub(card.effectText)}">${slabHub(card)}<span class="wz-read-tag">READ SLAB ↗</span></button><label class="wz-card-check"><input type="checkbox" data-wz-card-check="${card.spellId}" data-wz-focus="check-${card.spellId}" aria-label="Include ${escapeHub(card.name)} in your ${elementName(selectedElement)} deck" ${count ? 'checked' : ''} ${!allowed || full ? 'disabled' : ''}><span>${!allowed ? `${card.type} deck only` : count ? `${count} in deck` : full ? 'Deck full' : 'Add to deck'}</span></label></article>`;
     }).join('');
   }
   function deckHub() {

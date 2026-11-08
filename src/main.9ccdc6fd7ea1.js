@@ -1,18 +1,18 @@
 import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.04e80e3227d0.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.59dbf86de54f.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.e1b6f9f8fe31.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.73668f325e64.js';
 import { validateDeck } from './decks.2273f98625f9.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.328375369225.js';
-import { createHub } from './hub.b29f2261056f.js';
+import { createHub } from './hub.4f1752db146e.js';
 import { createMultiplayer } from './multiplayer.ffa6ae5450c6.js';
 import { createAccounts } from './accounts.bd7a3221b35c.js';
-import { fitSlabText } from './slab-text.177902e850c4.js';
-import { createBattleScene } from './battle-scene.4ffa09bb0beb.js';
-import { createSpellAnimator } from './spell-animation.351a50dcbf48.js';
-import { createAuraAnimator } from './aura-animation.f17086744bea.js';
+import { fitSlabText } from './slab-text.37e0a9a1e4e4.js';
+import { createBattleScene } from './battle-scene.92a016464599.js';
+import { createSpellAnimator } from './spell-animation.5efb6795ac9f.js';
+import { createAuraAnimator } from './aura-animation.5c1989702827.js';
 import { getResolvedBattleVisuals } from './spell-visuals.31c8300db921.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
-import { pixelIconMarkup } from './pixel-icons.95aac262d1e6.js';
+import { pixelIconMarkup } from './pixel-icons.0985f1ae2a5d.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
@@ -145,7 +145,7 @@ function phaseHint(active) {
 }
 function slabFace(card) {
   const slab=spellSlabMarkup(card.spellId,'card-image');
-  if(slab)return `${slab}<span class="slab-mana">${card.manaCost} Mana</span><span class="sr-only">${escape(card.name)}. ${escape(card.effectText)}</span>`;
+  if(slab)return `${slab}<span class="slab-mana" role="img" aria-label="${card.manaCost} Mana">${card.manaCost}</span><span class="sr-only">${escape(card.name)}. ${escape(card.effectText)}</span>`;
   return `${art(card.art,'card-image')}${spellArtMarkup(card.spellId)}<span class="card-name" style="--name-size:${card.name.length>12?18:21}px">${escape(card.name)}</span><span class="card-copy"><strong class="mana-cost">${card.manaCost} Mana</strong><span class="card-effect">${escape(card.effectText)}</span></span>`;
 }
 function cardView(card, active, finished) {

@@ -141,20 +141,20 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .cards-2 .spell-card:first-child { grid-column: 2 / span 2; }
 .cards-2 .spell-card:last-child { grid-column: 4 / span 2; }
 .card-image { width: 100%; height: 100%; }
-.spell-slab-art { container-type: inline-size; }
-.slab-live-paper { position: absolute; inset: 50.5% 6.5% 4.5%; display: flex; flex-direction: column; justify-content: center; padding: .8cqw .6cqw; background: linear-gradient(115deg,#ffebbb,#ffe0a0 70%,#ffe8b7); color: #28160d; text-shadow: none; text-align: center; overflow: hidden; }
+.spell-card,.wz-slab-face,.large-slab,.spell-slab-art { container-type: inline-size; }
+.slab-live-paper { position: absolute; inset: 50.5% 5.7% 3.5%; display: flex; flex-direction: column; justify-content: flex-start; padding: .4cqw .5cqw; background: linear-gradient(115deg,#ffebbb,#ffe0a0 70%,#ffe8b7); color: #28160d; text-shadow: none; text-align: center; overflow: visible; }
+[data-copy-type='Fire'] .slab-live-paper { top: 49.5%; }
 [data-copy-type='Fate'] .slab-live-paper { top: 55%; }
-.slab-live-paper .slab-live-title { display: block; flex: 0 0 auto; margin: 0 0 .6cqw; color: #28160d; font: 900 9.8cqw/1.04 'Trebuchet MS',Arial,sans-serif; text-align: center; }
-.slab-live-rules { display: block; min-height: 0; font: 700 10cqw/1.08 Arial,sans-serif; letter-spacing: -.1px; }
+.slab-live-paper .slab-live-title { display: block; flex: 0 0 auto; margin: 0 0 .3cqw; color: #28160d; font: 900 10cqw/1 'Trebuchet MS',Arial,sans-serif; text-align: center; }
+.slab-live-rules { display: block; flex: 0 0 auto; min-height: 0; margin-block: auto; font: 700 10cqw/1.08 Arial,sans-serif; letter-spacing: -.1px; }
 .slab-rule-line { display: block; margin: 0; }
 .slab-rule-line:last-child { margin-bottom: 0; }
 .pixel-icon { position: relative; display: inline-block; flex: 0 0 auto; width: 1em; height: 1em; overflow: hidden; vertical-align: -.12em; line-height: 1; text-shadow: none; }
 .pixel-icon > img { position: absolute; display: block; max-width: none; image-rendering: pixelated; pointer-events: none; user-select: none; }
-.slab-resource-token { display: inline-block; white-space: nowrap; vertical-align: baseline; }
-.slab-resource-icon { width: .98em; height: .98em; vertical-align: -.13em; }
+.slab-symbol { display: inline; white-space: nowrap; }
+.slab-rule-icon { width: .88em; height: .88em; vertical-align: -.06em; }
 .slab-live-paper .slab-rule-threshold { color: #48152e; font-weight: 950; background: #e5b96e66; padding: 0 .5cqw; }
-.slab-mana { position: absolute; top: 6%; left: 8%; z-index: 1; padding: 3px 5px; border: 1px solid #d6c5ff; border-radius: 3px; color: #fff4d8; background: #15172ce8; font: 700 13px/1.15 'Trebuchet MS', Arial, sans-serif; white-space: nowrap; text-shadow: none; pointer-events: none; }
-.large-slab .slab-mana { font-size: 16px; padding: 5px 8px; }
+.slab-mana { position: absolute; top: 4.5%; left: 7%; z-index: 1; padding: 0; color: #ffe16b; font: 900 16cqw/1 'Trebuchet MS',Arial,sans-serif; white-space: nowrap; -webkit-text-stroke: .4px #391b12; text-shadow: 1px 1px #241228, -1px -1px #241228; pointer-events: none; }
 .spell-card:hover:not(:disabled):not(.discard-selected) { transform: translateY(-5px); filter: brightness(1.1); }
 .spell-card.selected { transform: translateY(-5px); box-shadow: 0 0 0 3px #fff6b4, 0 0 0 6px #ffcc3e, 0 0 20px #ffd94c66; }
 .card-name { position: absolute; top: 6.5%; left: 10%; right: 10%; font: 900 var(--name-size,21px) 'Trebuchet MS', sans-serif; color: white; text-shadow: 2px 2px #120c1e, -1px -1px #120c1e, 1px -1px #120c1e, -1px 1px #120c1e; line-height: 1.1; }

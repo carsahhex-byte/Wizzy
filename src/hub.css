@@ -133,7 +133,6 @@
 @media (prefers-reduced-motion: reduce) { .wz-hub-root *, .wz-hub-root *::before, .wz-hub-root *::after { transition: none !important; scroll-behavior: auto !important; } }
 
 /* Four overview cards per row; open a slab to read its complete spell text. */
-.wz-collection-grid .slab-mana { padding: 2px 3px; font-size: clamp(6px, 1.6vw, 9px); }
 .wz-collection-grid .wz-slab-title { top: 6%; font-size: clamp(7px, 1.9vw, 10px); line-height: 1.05; }
 .wz-collection-grid .wz-slab-copy { font-size: clamp(5px, 1.3vw, 7px); line-height: 1.08; }
 .wz-collection-grid .wz-slab-copy > b { margin-bottom: 1px; font-size: clamp(7px, 1.9vw, 9px); }
