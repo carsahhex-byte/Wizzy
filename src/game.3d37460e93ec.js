@@ -355,7 +355,7 @@ export function rollEnhancement(state, random = Math.random) {
 }
 
 
-/** Aura is a fixed damage bonus lasting three owner turns, including activation. */
+/** Aura grants a fixed bonus through the next three owner turns after activation. */
 export function canActivateAura(state, playerIndex = state.activePlayer) {
   return playerIndex === state.activePlayer && inPhase(state, 'main') && !state.primaryUsed
     && state.players[playerIndex]?.mana >= AURA_COST && state.players[playerIndex]?.auraTurns === 0;
@@ -372,7 +372,7 @@ export function activateAura(state) {
   next.selectedCardId = null;
   next.selectedFateCardIds = [];
   next.lastRoll = null;
-  addLog(next, `${player.name} activates Aura for ${AURA_COST} Mana: +${AURA_BONUS}% damage for ${AURA_DURATION} of their turns, including this turn.`, 'aura', player.id);
+  addLog(next, `${player.name} activates Aura for ${AURA_COST} Mana: +${AURA_BONUS}% damage through their next ${AURA_DURATION} turns. The activation turn does not count.`, 'aura', player.id);
   return next;
 }
 
@@ -440,10 +440,10 @@ export function endTurn(state) {
     next.phase = 'end';
     return next;
   }
-  // The first End Turn click only reveals refresh. Aura advances once when
-  // this owner's turn actually passes, including the activation turn.
+  // The first End Turn click only reveals refresh. The activation's existing
+  // primary marker also survives refresh, so only subsequent owner passes tick Aura.
   const endingPlayer = next.players[next.activePlayer];
-  if (endingPlayer.auraTurns > 0) {
+  if (endingPlayer.auraTurns > 0 && next.primaryAction !== 'aura') {
     endingPlayer.auraTurns -= 1;
     addLog(next, endingPlayer.auraTurns > 0
       ? `${endingPlayer.name}'s Aura has ${endingPlayer.auraTurns} owner turns remaining.`
@@ -751,7 +751,7 @@ export function migrateSavedGame(value) {
       }
     }
     assertGame(next);
-    addLog(next, 'Aura is available for 1 Mana and lasts three owner turns. Enhancement is consumed after an outgoing damaging spell resolves.');
+    addLog(next, 'Aura is available for 1 Mana and lasts three owner turns after activation. Enhancement is consumed after an outgoing damaging spell resolves.');
     return next;
   } catch { return null; }
 }

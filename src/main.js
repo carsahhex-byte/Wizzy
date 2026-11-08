@@ -10,6 +10,7 @@ import { fitSlabText } from './slab-text.js';
 import { createBattleScene } from './battle-scene.js';
 import { createSpellAnimator } from './spell-animation.js';
 import { getResolvedSpellVisuals } from './spell-visuals.js';
+import { createHealthBars } from './health-bars.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
@@ -17,6 +18,7 @@ const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
 const battleScene = createBattleScene();
 const spellAnimator = createSpellAnimator({root:battleScene.element});
+const healthBars = createHealthBars({onSettled:()=>showPendingVictory()});
 let spellVisualQueue = [];
 let activeSpellVisual = null;
 let presentedPlayers = null;
@@ -102,7 +104,7 @@ function playerPanel(player, index) {
   return `<section class="stat-panel ${player.id} ${state.phase!=='initiative'&&state.activePlayer === index ? 'is-active' : ''}" aria-label="${player.name} wizard stats">
     ${art(player.id === 'fire' ? 'fireFrame' : 'waterFrame','stat-frame')}
     <div class="stat-heading"><span class="element-symbol" aria-hidden="true">${player.id === 'fire' ? '♨' : '◈'}</span><h2>${player.name}</h2><span class="player-label">${state.startingPlayer===null?'':state.startingPlayer===index?'1ST':'2ND'}</span>${state.phase!=='initiative'&&state.activePlayer === index ? '<span class="active-dot" aria-label="Active wizard"></span>' : ''}</div>
-    <div class="stat-body"><div class="health-row"><span>HP</span><strong data-stat="${player.id}-hp">${player.hp}<small> / ${player.maxHp}</small></strong></div><div class="health-track" role="progressbar" aria-label="${player.name} HP" aria-valuemin="0" aria-valuemax="${player.maxHp}" aria-valuenow="${player.hp}"><span style="width:${player.hp/player.maxHp*100}%"></span></div>
+    <div class="stat-body"><div class="health-row"><span>HP</span><strong data-stat="${player.id}-hp">${player.hp}<small> / ${player.maxHp}</small></strong></div><div data-health-bar-slot="${index}"></div>
     <div class="resource-grid"><div class="resource mana"><i aria-hidden="true">◆</i><span>Mana</span><strong data-stat="${player.id}-mana" data-current="${player.mana}" data-cap="${MAX_MANA}" aria-label="${player.mana} Mana, maximum ${MAX_MANA}">${player.mana}<small class="stat-limit"> / ${MAX_MANA}</small></strong></div><div class="resource shield"><i aria-hidden="true">⬟</i><span>Shield</span><strong data-stat="${player.id}-shield" data-current="${player.shield}" data-cap="${MAX_SHIELD}" aria-label="${player.shield} Shield, maximum ${MAX_SHIELD}">${player.shield}<small class="stat-limit"> / ${MAX_SHIELD}</small></strong></div><div class="resource element"><i aria-hidden="true">${player.id === 'fire' ? '♨' : '≈'}</i><span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${player.id==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${player.id==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div><div class="resource loaded"><i aria-hidden="true">⚄</i><span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
   </section>`;
 }
@@ -127,7 +129,7 @@ function phaseHint(active) {
     case 'end': return 'End Turn passes. Hand Refresh lets you choose discards first.';
     case 'refresh': return `${state.refreshCardIds.length} selected. Hand Refresh confirms and passes; End Turn skips refresh.`;
     case 'ready-to-pass': return 'Hand refreshed. Click End Turn to pass to the next wizard.';
-    default: return state.primaryUsed?(state.primaryAction==='aura'?`Aura activated: +${AURA_BONUS}% damage for ${active.auraTurns} own turns, including this turn. End Turn to continue.`:state.primaryAction==='enhancement'&&state.lastRoll?.kind==='enhancement'?`${state.lastRoll.success?'Enhancement gained!':'Enhancement missed.'} ${active.enhancement}% for your next damaging spell. End Turn to continue.`:'Primary spell resolved. End Turn to continue.'):`${active.name} · cast a slab, Enhance, or activate Aura.`;
+    default: return state.primaryUsed?(state.primaryAction==='aura'?`Aura activated: +${AURA_BONUS}% damage for your next ${active.auraTurns} own turns. The activation turn does not count. End Turn to continue.`:state.primaryAction==='enhancement'&&state.lastRoll?.kind==='enhancement'?`${state.lastRoll.success?'Enhancement gained!':'Enhancement missed.'} ${active.enhancement}% for your next damaging spell. End Turn to continue.`:'Primary spell resolved. End Turn to continue.'):`${active.name} · cast a slab, Enhance, or activate Aura.`;
   }
 }
 function slabFace(card) {
@@ -159,7 +161,7 @@ function enhancementWidgets(){
   const description=maxed?'MAX 30%':state.phase==='enhancing'?'ROLLING…':`${player.name.toUpperCase()} · 0 MANA · ${ENHANCEMENT_THRESHOLD}+`;
   const auraAvailable=canActOnline()&&canActivateAura(state,index)&&(!isOnlineBattle()||onlinePlayerIndex===index);
   const auraCaption=player.auraTurns?`ACTIVE · +${AURA_BONUS}% · ${player.auraTurns} TURNS`:`${AURA_COST} MANA · ${AURA_DURATION} OWN TURNS`;
-  return `<div class="enhancement-status" aria-label="Both wizards’ damage bonuses">${state.players.map((wizard,i)=>displayedStats(wizard,i)).map((wizard,i)=>`<div class="enhancement-label ${wizard.id}" data-enhancement-player="${i}" data-enhancement="${wizard.enhancement}" aria-label="${wizard.name}: ${wizard.enhancement}% Enhancement; ${wizard.auraTurns?`${AURA_BONUS}% Aura, ${wizard.auraTurns} own turns remaining`:'Aura inactive'}"><small>${wizard.name.toUpperCase()}</small><strong>${wizard.enhancement}% Enh.</strong><span class="aura-status" data-aura-turns-player="${i}" data-aura-turns="${wizard.auraTurns}">${wizard.auraTurns?`+${AURA_BONUS}% Aura · ${wizard.auraTurns} turns`:'Aura inactive'}</span></div>`).join('')}</div><div class="enhance-controls" aria-label="${player.name} primary actions"><button type="button" class="enhance-button ${player.id}" data-enhance-player="${index}" data-focus="enhance-${index}" aria-label="${player.name} Enhancement. ${maxed?'Maximum 30% reached.':`Roll 2d6: ${ENHANCEMENT_THRESHOLD}+ gains 10% for your next damaging spell, instead of a primary spell. Zero Mana. Current ${player.enhancement}%.`}" title="Instead of a primary spell: roll ${ENHANCEMENT_THRESHOLD}+ to gain 10% for your next damaging spell. 0 Mana." ${enhancementAvailable(index)?'':'disabled'}>${art('enhanceButtons','enhance-button-art',ASSET_CROPS[player.id==='fire'?'enhanceFire':'enhanceWater'])}<span class="enhance-button-caption">${description}</span></button><button type="button" class="enhance-button aura-button" data-aura-player="${index}" data-focus="aura-${index}" aria-label="${player.name} Aura. ${player.auraTurns?`Active: 10% damage, ${player.auraTurns} own turns remaining.`:`Spend ${AURA_COST} Mana for 10% damage for ${AURA_DURATION} own turns including activation. Uses your primary action. No dice.`}" title="${player.auraTurns?'Aura is already active':`1 Mana: +10% damage for 3 own turns including this turn. Uses your primary action.`}" ${auraAvailable?'':'disabled'}>${art('auraButton','enhance-button-art aura-button-art')}<span class="enhance-button-caption">${auraCaption}</span></button></div>`;
+  return `<div class="enhancement-status" aria-label="Both wizards’ damage bonuses">${state.players.map((wizard,i)=>displayedStats(wizard,i)).map((wizard,i)=>`<div class="enhancement-label ${wizard.id}" data-enhancement-player="${i}" data-enhancement="${wizard.enhancement}" aria-label="${wizard.name}: ${wizard.enhancement}% Enhancement; ${wizard.auraTurns?`${AURA_BONUS}% Aura, ${wizard.auraTurns} own turns remaining`:'Aura inactive'}"><small>${wizard.name.toUpperCase()}</small><strong>${wizard.enhancement}% Enh.</strong><span class="aura-status" data-aura-turns-player="${i}" data-aura-turns="${wizard.auraTurns}">${wizard.auraTurns?`+${AURA_BONUS}% Aura · ${wizard.auraTurns} turns`:'Aura inactive'}</span></div>`).join('')}</div><div class="enhance-controls" aria-label="${player.name} primary actions"><button type="button" class="enhance-button ${player.id}" data-enhance-player="${index}" data-focus="enhance-${index}" aria-label="${player.name} Enhancement. ${maxed?'Maximum 30% reached.':`Roll 2d6: ${ENHANCEMENT_THRESHOLD}+ gains 10% for your next damaging spell, instead of a primary spell. Zero Mana. Current ${player.enhancement}%.`}" title="Instead of a primary spell: roll ${ENHANCEMENT_THRESHOLD}+ to gain 10% for your next damaging spell. 0 Mana." ${enhancementAvailable(index)?'':'disabled'}>${art('enhanceButtons','enhance-button-art',ASSET_CROPS[player.id==='fire'?'enhanceFire':'enhanceWater'])}<span class="enhance-button-caption">${description}</span></button><button type="button" class="enhance-button aura-button" data-aura-player="${index}" data-focus="aura-${index}" aria-label="${player.name} Aura. ${player.auraTurns?`Active: 10% damage, ${player.auraTurns} own turns remaining.`:`Spend ${AURA_COST} Mana for 10% damage for ${AURA_DURATION} subsequent own turns; activation does not count. Uses your primary action. No dice.`}" title="${player.auraTurns?'Aura is already active':`1 Mana: +10% damage for your next 3 own turns. Activation does not count. Uses your primary action.`}" ${auraAvailable?'':'disabled'}>${art('auraButton','enhance-button-art aura-button-art')}<span class="enhance-button-caption">${auraCaption}</span></button></div>`;
 }
 const pipPositions={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 function pips(value) {
@@ -209,7 +211,7 @@ function diceView() {
   const aura=immediate&&state.primaryAction==='aura';
   const title=rolling?'Rolling…':last?`Total: ${last.total}`:aura?'Aura active':immediate?'Spell resolved':state.phase==='setup'?'Build your decks':'Ready to roll';
   const equation=enhancement?`${last.dice[0]} + ${last.dice[1]} · ${ENHANCEMENT_THRESHOLD}+ NEEDED · ${last.success?'SUCCESS':'MISS'}`:last?`${last.dice[0]} + ${last.dice[1]} ${signed(last.loadedBonus)} Loaded ${signed(last.attackingFate)} Fate ${signed(last.defendingFate)} Fate`:state.phase==='enhancing'?`RAW 2d6 · ${ENHANCEMENT_THRESHOLD}+ GAINS 10%`:state.pendingSpell?`Loaded ${signed(state.pendingSpell.loadedBonus)} · Attack ${signed(state.pendingSpell.attackingFate)} · Defend ${signed(state.pendingSpell.defendingFate)}`:immediate?'No dice required':'Two six-sided dice';
-  const caption=enhancement?`${state.players[last.casterIndex].name.toUpperCase()} · ENHANCEMENT ${last.enhancementBefore}% → ${last.enhancementAfter}%`:last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · ${state.phase==='fate'?'FATE CHAIN OPEN':'RESOLVED ROLL'}`:state.phase==='enhancing'?'ENHANCEMENT · NO FATE OR LOADED':aura?`+${AURA_BONUS}% DAMAGE · ${state.players[state.activePlayer].auraTurns} OWN TURNS`:immediate?'IMMEDIATE SPELL · NO FATE':'ROLL FIRST · THEN DEFENDING FATE';
+  const caption=enhancement?`${state.players[last.casterIndex].name.toUpperCase()} · ENHANCEMENT ${last.enhancementBefore}% → ${last.enhancementAfter}%`:last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · ${state.phase==='fate'?'FATE CHAIN OPEN':'RESOLVED ROLL'}`:state.phase==='enhancing'?'ENHANCEMENT · NO FATE OR LOADED':aura?`+${AURA_BONUS}% DAMAGE · ${state.players[state.activePlayer].auraTurns} UPCOMING OWN TURNS`:immediate?'IMMEDIATE SPELL · NO FATE':'ROLL FIRST · THEN DEFENDING FATE';
   return `<section class="dice-area ${rolling?'dice-rolling':''}" data-roll-kind="${state.phase==='enhancing'||enhancement?'enhancement':aura?'aura':'spell'}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. ${enhancement?'Enhancement':'Modified'} total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${caption}</span></section>`;
 }
 function selectedTwistDirections(){
@@ -270,6 +272,7 @@ function render() {
   else battleScene.finishEntrance();
   battleScene.setActive(state.phase === 'initiative' ? null : state.activePlayer);
   app.querySelector('[data-battle-scene-slot]').replaceWith(battleScene.element);
+  healthBars.mount(app,state.players.map((player,index)=>displayedStats(player,index)));
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   scheduleCombat();
@@ -305,9 +308,10 @@ function cancelSpellPresentation() {
   spellVisualQueue=[];
   presentedPlayers=null;
   pendingVictory=false;
+  healthBars.reset();
 }
 function showPendingVictory() {
-  if(!pendingVictory || spellVisualBusy() || battleView.hidden || state.status!=='finished')return;
+  if(!pendingVictory || spellVisualBusy() || healthBars.isAnimating() || battleView.hidden || state.status!=='finished')return;
   pendingVictory=false;
   document.querySelector('#victory-title').textContent=`${state.players[state.winner].name} wins!`;
   document.querySelector('#victory-description').textContent=`The opposing wizard has reached 0 HP. The duel is complete after ${state.round} ${state.round===1?'round':'rounds'}.`;

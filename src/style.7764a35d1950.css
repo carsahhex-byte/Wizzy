@@ -86,7 +86,7 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .health-row strong { font-size: 42px; font-variant-numeric: tabular-nums; }
 .health-row small { font-size: 30px; }
 .health-track { height: 10px; border: 2px solid #ffeacb; border-radius: 3px; background: #171325; margin: 5px 0 9px; box-shadow: 0 2px #070d19; overflow: hidden; }
-.health-track>span { display: block; height: 100%; background: linear-gradient(#ff9c59,#f34642); transition: width .3s; }
+.health-track>span { display: block; height: 100%; background: linear-gradient(#ff9c59,#f34642); }
 .water .health-track>span { background: linear-gradient(#a5f4ff,#279cfa); }
 .resource-grid { display: grid; grid-template-columns: 1fr; gap: 2px; }
 .resource { min-width: 0; display: flex; align-items: center; gap: 10px; font-size: 22px; line-height: 1.1; text-shadow: 2px 2px #090b1c; }
