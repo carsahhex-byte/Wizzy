@@ -7,11 +7,16 @@ import { createHub } from './hub.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createAccounts } from './accounts.js';
 import { fitSlabText } from './slab-text.js';
+import { createBattleScene } from './battle-scene.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
 const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
+const battleScene = createBattleScene();
+let arenaSequence = 0;
+let localEntranceKey = null;
+const onlineEntranceRooms = new Set();
 let storageAvailable = true;
 let logOpen = false;
 let fitScreen = true;
@@ -41,6 +46,15 @@ const isOnlineBattle = () => battleMode === 'online';
 const displayedPlayerIndex = () => isOnlineBattle() ? onlinePlayerIndex : getActingPlayerIndex(state);
 const canActOnline = () => !['setup','initiative'].includes(state.phase) && (!isOnlineBattle() || (!onlineBusy && multiplayer?.isActive() && getActingPlayerIndex(state) === onlinePlayerIndex));
 const canRollOpeningOnline = () => isOnlineBattle() && !onlineBusy && multiplayer?.isActive() && state.phase === 'initiative' && state.initiative?.rolls[onlinePlayerIndex] === null;
+function createLocalGame(decks) {
+  localEntranceKey = `local-${++arenaSequence}`;
+  return createGame(Date.now(),decks);
+}
+function arenaEntranceKey() {
+  if (!isOnlineBattle()) return localEntranceKey;
+  if (state.phase === 'initiative' && onlineCode) onlineEntranceRooms.add(onlineCode);
+  return onlineEntranceRooms.has(onlineCode) ? `online-${onlineCode}` : null;
+}
 const deckCount = player => player.deckCount ?? player.deck.length;
 const handCount = player => player.handCount ?? player.hand.length;
 
@@ -228,7 +242,7 @@ function render() {
   app.innerHTML = `<div class="game-shell">
     <header class="topbar"><span class="wordmark">WIZZY <small>BATTLE SIMULATOR</small></span><span class="save-state">${storageAvailable ? '✦ DUEL SAVED' : 'SAVING UNAVAILABLE'}</span><button class="view-toggle" id="toggle-fit" aria-label="${fitScreen?'Switch to larger view':'Fit game to screen'}">${fitScreen?'Larger view ↗':'Fit screen ↙'}</button><button class="settings-button" id="open-settings" aria-label="Open settings and game rules">⚙</button></header>
     <div class="game-board ${active.id} phase-${state.phase}" style="--forest:url('${ASSETS.forest}')">
-    <section class="battle-scene" aria-label="Fire and Water wizards in the forest ruins"><div class="game-title"><span class="title-stars" aria-hidden="true">✦ ◆ ✦</span><h1>Wizzy</h1><p>Battle Simulator</p></div><div class="combatant fire-combatant ${state.phase!=='initiative'&&state.activePlayer===0?'active-combatant':''}">${art('fireMage','mage-art')}<span class="mage-shadow"></span></div><span class="versus" aria-hidden="true">VS</span><div class="combatant water-combatant ${state.phase!=='initiative'&&state.activePlayer===1?'active-combatant':''}">${art('waterMage','mage-art')}<span class="mage-shadow"></span></div></section>
+    <div data-battle-scene-slot></div>
     <div class="battle-hud">${playerPanel(state.players[0],0)}${diceView()}${playerPanel(state.players[1],1)}</div>
     <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${displayPlayer.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${isOnlineBattle()?'YOUR ':''}${displayPlayer.name.toUpperCase()} · ${isOnlineBattle()&&!canActOnline()?'WAITING':isFate?(state.fatePlayer===state.activePlayer?'ATTACKING FATE':'DEFENDING FATE'):'SPELLBOOK'}</span><span data-testid="hand-count">${handCount(displayPlayer)} / ${HAND_LIMIT} SLABS</span></div>
     <div class="cards ${displayPlayer.id} cards-${displayPlayer.hand.length}" aria-label="${displayPlayer.name} wizard’s spell slabs">${displayPlayer.hand.map(card=>cardView(card,displayPlayer,finished)).join('')||'<div class="empty-hand"><span>✧</span><p>No spells in hand.<br>Refresh your hand or draw on your next turn.</p></div>'}</div>
@@ -239,6 +253,11 @@ function render() {
     <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh and pass, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh||!canActOnline()?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button ${ending?'is-ending':''}" id="end-turn" data-focus="end" aria-label="${['end','refresh','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||!canActOnline()||(isOnlineBattle()&&state.activePlayer!==onlinePlayerIndex)||['fate','rolling','enhancing','resolving'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
     <details class="combat-log" ${logOpen?'open':''}><summary aria-label="View combat log">${art('combatLog','log-button')}<span class="log-count">${state.log.length}</span><span class="chevron" aria-hidden="true">⌄</span></summary><ol>${state.log.slice().reverse().map(entry=>`<li><span class="log-round">R${entry.round}</span><span>${escape(entry.message)}</span></li>`).join('')}</ol></details>
     <footer class="game-footer"><span>${isOnlineBattle()?'TWO SCREENS · YOUR HAND IS PRIVATE':'LOCAL DUEL · TWO WIZARDS, ONE SCREEN'}</span><span>FIRE · WATER · FATE</span></footer></div></div>`;
+  const entranceKey = arenaEntranceKey();
+  if (entranceKey) battleScene.prepareEntrance(entranceKey);
+  else battleScene.finishEntrance();
+  battleScene.setActive(state.phase === 'initiative' ? null : state.activePlayer);
+  app.querySelector('[data-battle-scene-slot]').replaceWith(battleScene.element);
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   scheduleCombat();
@@ -515,6 +534,7 @@ document.querySelector('#opening-continue').addEventListener('click',()=>{
   if(state.phase==='initiative')return;
   openingAcknowledged[battleMode]=true;
   document.querySelector('#opening-roll').close();
+  battleScene.startEntrance(arenaEntranceKey());
   app.querySelector('.spell-card:not(:disabled)')?.focus({preventScroll:true});
 });
 document.querySelector('#opening-home').addEventListener('click',()=>leaveBattle('home'));
@@ -532,7 +552,7 @@ function restartGame() {
   pendingBattleDecks=null;
   if(shouldEnterAfterRestart){shouldEnterAfterRestart=false;enterBattle();}
   openingAcknowledged.local=false;
-  update(createGame(Date.now(),decks),'A new duel has begun with your saved decks. Roll to decide who starts.');
+  update(createLocalGame(decks),'A new duel has begun with your saved decks. Roll to decide who starts.');
 }
 document.querySelector('#confirm-restart').addEventListener('click',restartGame);
 document.querySelector('#victory-restart').addEventListener('click',restartGame);
@@ -634,6 +654,7 @@ function discardOnlineIdentity(){
   }
 }
 function openAccountScreen(){
+  battleScene.hide();
   clearCombatTimers();
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
   restoreLocalBattle();hub.hide();multiplayer?.hide();battleView.hidden=true;
@@ -670,6 +691,7 @@ async function sendOnlineAction(type,payload={}){
   finally { onlineBusy=false;if(isOnlineBattle())render(); }
 }
 function openOnlineLobby(){
+  battleScene.hide();
   clearCombatTimers();
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
   restoreLocalBattle();hub.hide();accounts?.hide();battleView.hidden=true;
@@ -692,8 +714,9 @@ function enterBattle(){
     const decks=hub.getSavedDecks();
     if(!localDecksReady(decks)){showDeckSetup(decks);return;}
     openingAcknowledged.local=false;
-    state=createGame(Date.now(),decks);saveGame();
+    state=createLocalGame(decks);saveGame();
   }
+  if(!isOnlineBattle() && state.phase === 'initiative' && !localEntranceKey) localEntranceKey = `local-${++arenaSequence}`;
   hub.hide();multiplayer?.hide();accounts?.hide();battleView.hidden=false;
   lastBattleMode=battleMode;
   try { localStorage.setItem('wizzy.battle.mode',lastBattleMode); } catch {}
@@ -701,6 +724,7 @@ function enterBattle(){
   render();document.querySelector('#battle-home').focus({preventScroll:true});
 }
 function leaveBattle(screen='home'){
+  battleScene.hide();
   clearCombatTimers();
   pendingBattleDecks=null;shouldEnterAfterRestart=false;
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
@@ -711,7 +735,7 @@ function requestNewBattle(decks=hub.getSavedDecks(),enterAfter=false){
   if(!localDecksReady(decks)){showDeckSetup(decks);return;}
   if(state.phase==='setup'){
     openingAcknowledged.local=false;
-    update(createGame(Date.now(),decks));
+    update(createLocalGame(decks));
     if(enterAfter)enterBattle();
     return;
   }
@@ -730,7 +754,7 @@ document.querySelector('#choose-local').addEventListener('click',()=>{
   if(!localDecksReady(decks)){pendingModeDecks=null;showDeckSetup(decks);return;}
   if(isUntouchedBattle()){
     openingAcknowledged.local=false;
-    update(createGame(Date.now(),decks));
+    update(createLocalGame(decks));
     enterBattle();
   }else requestNewBattle(decks,true);
 });

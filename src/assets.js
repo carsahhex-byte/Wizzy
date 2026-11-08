@@ -31,11 +31,30 @@ export const ASSET_FILES = Object.freeze({
   combatLog: 'View Combat Log Button.png',
   fireMage: 'Fire Wizzy Pixel Mage.png',
   waterMage: 'Water Wizzy Pixel Mage.png',
+  wizardWalkAtlas: 'Wizzy Wizard Walk Atlas.png',
   fireCard: 'Pixel-Art Fiery Comet Spell Card 2.png',
   waterCard: 'Pixel Art Cresting Wave Card.png',
   fateCard: 'Purple Galaxy Vortex Card Frame.png',
   neutralCard: 'Neutral card.png',
   stoneSign: 'Mossy Pixel Stone Sign.png',
+});
+
+/** Original overworld wizards: fixed logical cells, source PNG left intact. */
+export const WIZARD_SPRITES = Object.freeze({
+  asset: 'wizardWalkAtlas',
+  sourceWidth: 887,
+  sourceHeight: 1774,
+  columns: 4,
+  rows: 8,
+  cellWidth: 64,
+  cellHeight: 64,
+  anchor: Object.freeze({ x: 32, y: 60 }),
+  idleFrame: 0,
+  walkFrames: Object.freeze([0, 1, 2, 3]),
+  directions: Object.freeze({
+    fire: Object.freeze({ down: 0, left: 1, right: 2, up: 3 }),
+    water: Object.freeze({ down: 4, left: 5, right: 6, up: 7 }),
+  }),
 });
 
 // Keep embedded images out of CSS custom-property size limits in standalone
@@ -149,6 +168,7 @@ export const ASSET_CROPS = Object.freeze({
   // Ignore near-invisible export residue so the wizard's feet align with Water.
   fireMage: { width: 1218, height: 1292, x: 15, y: 117, w: 1166, h: 954 },
   waterMage: { width: 1218, height: 1292, x: 32, y: 114, w: 1141, h: 976 },
+  wizardWalkAtlas: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
   fireCard: { width: 1086, height: 1448, x: 69, y: 72, w: 947, h: 1250 },
   // Faint alpha extends to this export's canvas; align to the visible card border.
   waterCard: { width: 1086, height: 1448, x: 69, y: 72, w: 948, h: 1250 },

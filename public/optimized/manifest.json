@@ -269,6 +269,16 @@
     "width": 1218,
     "height": 1292
   },
+  "wizardWalkAtlas": {
+    "file": "wizardWalkAtlas-0f0af57f3f99.webp",
+    "source": "Wizzy Wizard Walk Atlas.png",
+    "sourceSha256": "b96127f2bf70106db5512427e7fc978a8b73fcf8d7a78d8fd204cc2ffa10ff06",
+    "optimizedSha256": "0f0af57f3f997091cf380002b88c727febeab4d8be9a33acaa08c50ce3e92050",
+    "bytes": 828574,
+    "sourceBytes": 995954,
+    "width": 887,
+    "height": 1774
+  },
   "fireCard": {
     "file": "fireCard-cd414243acb0.webp",
     "source": "Pixel-Art Fiery Comet Spell Card 2.png",
