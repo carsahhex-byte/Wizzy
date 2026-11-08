@@ -140,6 +140,36 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "b96127f2bf70106db5512427e7fc978a8b73fcf8d7a78d8fd204cc2ffa10ff06",
     "optimizedSha256": "0f0af57f3f997091cf380002b88c727febeab4d8be9a33acaa08c50ce3e92050"
   },
+  "wizardSimpleCast": {
+    "file": "wizardSimpleCast-d7e92b078532.webp",
+    "sourceSha256": "e584ad3741eda711b74ae2f15726793ec945c0fe51b9a16f1853978a3f768c62",
+    "optimizedSha256": "d7e92b078532b7d6725f9fb2e6ab56dbd70e85b36c2b99b44a6616a974797984"
+  },
+  "wizardLargeCast": {
+    "file": "wizardLargeCast-9f15713f59a2.webp",
+    "sourceSha256": "04a06890e2768db189ce59dcdd9e0fc375f5664f50e3bff6cb7ce591299df954",
+    "optimizedSha256": "9f15713f59a2ffc6665cbdf7552e7fa4f018d14ed544c2136770323ddfdea052"
+  },
+  "wizardBasicAttack": {
+    "file": "wizardBasicAttack-2bce93f64853.webp",
+    "sourceSha256": "ed469de2dc4725e5d508bb350b44046169c9c7589dbf6dfda10c18dcb26b53ef",
+    "optimizedSha256": "2bce93f648534f3148c7486d75f34647ceaf104eedb469d693549fd40a5504f8"
+  },
+  "wizardElementalShield": {
+    "file": "wizardElementalShield-a7f027d08228.webp",
+    "sourceSha256": "3447f6b06d47f98adb854d1b6ac42ad364bf03d838704674faed94c2eaba92fd",
+    "optimizedSha256": "a7f027d082286f5751598b5fe99d90b10bcec7f593263d24dbe1850ff1a53d2f"
+  },
+  "wizardFirePowerUp": {
+    "file": "wizardFirePowerUp-16d6693aff8f.webp",
+    "sourceSha256": "15299069a09bd949617501e10bca96581a29fe277a992fbd6dd8db72891caabd",
+    "optimizedSha256": "16d6693aff8f249fec01c073e1e2cc28ff21ed3fe79cd0d51cc52cd099f2a2d1"
+  },
+  "wizardLargeProjectiles": {
+    "file": "wizardLargeProjectiles-11a7e86635d5.webp",
+    "sourceSha256": "f2e44d2b806b93d6829b2b7ac5a54d5cf76899283cad8169f464ee7fac59b0e1",
+    "optimizedSha256": "11a7e86635d589d9c0958c9c63a48dfa5c02635148ff1ee5de6c79fc0230011d"
+  },
   "fireCard": {
     "file": "fireCard-cd414243acb0.webp",
     "sourceSha256": "08f0f489f06c6a25b02f7b0308d281e5d801f58e9155068c6ffcb2790ce0b792",

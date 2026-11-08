@@ -32,6 +32,12 @@ export const ASSET_FILES = Object.freeze({
   fireMage: 'Fire Wizzy Pixel Mage.png',
   waterMage: 'Water Wizzy Pixel Mage.png',
   wizardWalkAtlas: 'Wizzy Wizard Walk Atlas.png',
+  wizardSimpleCast: 'Wizzy Simple Cast Sprite Sheet.png',
+  wizardLargeCast: 'Wizzy Exaggerated Cast Sprite Sheet.png',
+  wizardBasicAttack: 'Wizzy Basic Attack Sprite Sheet.png',
+  wizardElementalShield: 'Wizzy Basic Elemental Shield Sprite Sheet.png',
+  wizardFirePowerUp: 'Wizzy Basic Fire Power Up Sprite Sheet.png',
+  wizardLargeProjectiles: 'Wizzy Large Projectile Effects.png',
   fireCard: 'Pixel-Art Fiery Comet Spell Card 2.png',
   waterCard: 'Pixel Art Cresting Wave Card.png',
   fateCard: 'Purple Galaxy Vortex Card Frame.png',
@@ -55,6 +61,85 @@ export const WIZARD_SPRITES = Object.freeze({
     fire: Object.freeze({ down: 0, left: 1, right: 2, up: 3 }),
     water: Object.freeze({ down: 4, left: 5, right: 6, up: 7 }),
   }),
+});
+
+// Frame anchors use normalized cell coordinates. displayScale converts source
+// pixels to battle coordinates, keeping each standing body about 144px high.
+// Feet are measured separately in every frame so source-sheet drift stays out
+// of the arena. Isolated effects use their core/visible center instead.
+function spellAnimationSheet(metadata, anchorPixels) {
+  const cellWidth = metadata.sourceWidth / metadata.columns;
+  const cellHeight = metadata.sourceHeight / metadata.rows;
+  return Object.freeze({
+    ...metadata,
+    animations: Object.freeze(Object.fromEntries(Object.entries(metadata.animations)
+      .map(([name, frames]) => [name, Object.freeze(frames)]))),
+    frameAnchors: Object.freeze(anchorPixels.map(([x, y]) => Object.freeze({
+      x: x / cellWidth, y: y / cellHeight,
+    }))),
+  });
+}
+
+export const SPELL_ANIMATION_SHEETS = Object.freeze({
+  simpleCast: spellAnimationSheet({
+    asset: 'wizardSimpleCast', sourceWidth: 2172, sourceHeight: 724, columns: 8, rows: 2,
+    sourceBodyHeight: 119, targetBodyHeight: 144, displayScale: 144 / 119,
+    animations: { fire: [0,1,2,3,4,5,6,7], water: [8,9,10,11,12,13,14,15] },
+  }, [
+    [150.5,251], [145.5,251], [145,251], [137.5,251],
+    [131.5,251], [129,251], [128,251], [124,251],
+    [143.5,249], [143,249], [137,249], [138,249],
+    [141.5,249], [133.5,249], [128.5,249], [123.5,249],
+  ]),
+  largeCast: spellAnimationSheet({
+    asset: 'wizardLargeCast', sourceWidth: 1254, sourceHeight: 1254, columns: 4, rows: 4,
+    sourceBodyHeight: 161, targetBodyHeight: 144, displayScale: 144 / 161,
+    animations: { fire: [0,1,2,3,4,5,6,7], water: [8,9,10,11,12,13,14,15] },
+  }, [
+    [125,254], [118.5,254], [131.5,254], [124,254],
+    [111.5,254.5], [97.5,254.5], [106,254.5], [125.5,254.5],
+    [184.5,254], [186.5,254], [172.5,254], [180.5,254],
+    [203.5,254.5], [220.5,254.5], [215.5,254.5], [192.5,254.5],
+  ]),
+  basicAttack: spellAnimationSheet({
+    asset: 'wizardBasicAttack', sourceWidth: 1254, sourceHeight: 1254, columns: 4, rows: 4,
+    sourceBodyHeight: 199, targetBodyHeight: 144, displayScale: 144 / 199,
+    animations: {
+      fire: [0,1,2,3], projectile: [4,5,6,7], waterHit: [8,9,10,11], impact: [12,13,14,15],
+    },
+  }, [
+    [156,271], [145,271], [142,271], [144,271],
+    [182,164.5], [185.5,164.5], [182,164.5], [180,163.5],
+    [169,266], [168.5,266], [149.5,266], [151.5,266],
+    [158,157], [158.5,155.5], [143,158.5], [153.5,159.5],
+  ]),
+  elementalShield: spellAnimationSheet({
+    asset: 'wizardElementalShield', sourceWidth: 1254, sourceHeight: 1254, columns: 4, rows: 4,
+    sourceBodyHeight: 139, targetBodyHeight: 144, displayScale: 144 / 139,
+    animations: { fire: [0,1,2,3,4,5,6,7], water: [8,9,10,11,12,13,14,15] },
+  }, [
+    [160.5,259], [160.5,259], [146,259], [146.5,256],
+    [147,256.5], [151,259.5], [154,259.5], [160.5,259.5],
+    [155.5,259], [155,259], [155.5,259], [155,258],
+    [156,258.5], [154.5,259.5], [155,259.5], [155,259.5],
+  ]),
+  firePowerUp: spellAnimationSheet({
+    asset: 'wizardFirePowerUp', sourceWidth: 1774, sourceHeight: 887, columns: 4, rows: 2,
+    sourceBodyHeight: 279, targetBodyHeight: 144, displayScale: 144 / 279,
+    animations: { fire: [0,1,2,3,4,5,6,7] },
+  }, [
+    [225.5,369], [229,369], [228.5,369], [228.5,369],
+    [228.5,369.5], [229,369.5], [228.5,369.5], [225,369.5],
+  ]),
+  largeProjectiles: spellAnimationSheet({
+    asset: 'wizardLargeProjectiles', sourceWidth: 1774, sourceHeight: 887, columns: 4, rows: 2,
+    displayScale: 0.6,
+    animations: { fire: [0,1,2,3], water: [4,5,6,7] },
+  }, [
+    // Fire's bright core and Water's leading curl land on the hit point.
+    [316,298.5], [320,294.5], [318,291], [327,295.5],
+    [79.83,266.1], [79.83,266.1], [79.83,266.1], [79.83,266.1],
+  ]),
 });
 
 // Keep embedded images out of CSS custom-property size limits in standalone
@@ -169,6 +254,12 @@ export const ASSET_CROPS = Object.freeze({
   fireMage: { width: 1218, height: 1292, x: 15, y: 117, w: 1166, h: 954 },
   waterMage: { width: 1218, height: 1292, x: 32, y: 114, w: 1141, h: 976 },
   wizardWalkAtlas: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  wizardSimpleCast: { width: 2172, height: 724, x: 0, y: 0, w: 2172, h: 724 },
+  wizardLargeCast: { width: 1254, height: 1254, x: 0, y: 0, w: 1254, h: 1254 },
+  wizardBasicAttack: { width: 1254, height: 1254, x: 0, y: 0, w: 1254, h: 1254 },
+  wizardElementalShield: { width: 1254, height: 1254, x: 0, y: 0, w: 1254, h: 1254 },
+  wizardFirePowerUp: { width: 1774, height: 887, x: 0, y: 0, w: 1774, h: 887 },
+  wizardLargeProjectiles: { width: 1774, height: 887, x: 0, y: 0, w: 1774, h: 887 },
   fireCard: { width: 1086, height: 1448, x: 69, y: 72, w: 947, h: 1250 },
   // Faint alpha extends to this export's canvas; align to the visible card border.
   waterCard: { width: 1086, height: 1448, x: 69, y: 72, w: 948, h: 1250 },
