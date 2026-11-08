@@ -1,9 +1,9 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.8b93cd6c626e.js';
-import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.4c829376af9b.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.6ada99aad5f8.js';
-import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.237d0cdac134.js';
-import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.5b827471b397.js';
-import { fitSlabText } from './slab-text.37e0a9a1e4e4.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.badcbf3104c2.js';
+import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.4bc9cedcaabc.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.83dd974820b3.js';
+import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.7eaf2934a702.js';
+import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.0f8120846f04.js';
+import { fitSlabText } from './slab-text.24236dc32206.js';
 
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck']);
 // The square artwork includes ocean around the city. Its artwork and labels

@@ -335,6 +335,7 @@ export const SPELL_SLABS = Object.freeze(Object.fromEntries([
   ['Fire-0', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-0')],
   ['Fire-15', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-15')],
   ...fireSlabCrops.map((crop,index) => [`Fire-${index+1}`, slab('fireSlabSheet',2037,772,crop,`Fire-${index+1}`)]),
+  ['Water-0', slab('waterSlabSheet',2037,772,waterSlabCrops[9],'Water-0')],
   ...waterSlabCrops.map((crop,index) => [`Water-${index+1}`, slab('waterSlabSheet',2037,772,crop,`Water-${index+1}`)]),
   ['FAT-001', slab('fateSlabSheet',2172,724,[153,17,517,687],'Fortune')],
   ['FAT-002', slab('fateSlabSheet',2172,724,[827,17,518,687],'Misfortune')],

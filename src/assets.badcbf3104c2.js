@@ -1,7 +1,7 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
 import { resolveAssetUrl } from './asset-url.450924c1ce63.js';
-import { SPELL_CATALOG } from './spells.4c829376af9b.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.37e0a9a1e4e4.js';
+import { SPELL_CATALOG } from './spells.4bc9cedcaabc.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.24236dc32206.js';
 import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.0985f1ae2a5d.js';
 
 export const ASSET_FILES = Object.freeze({
@@ -335,6 +335,7 @@ export const SPELL_SLABS = Object.freeze(Object.fromEntries([
   ['Fire-0', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-0')],
   ['Fire-15', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-15')],
   ...fireSlabCrops.map((crop,index) => [`Fire-${index+1}`, slab('fireSlabSheet',2037,772,crop,`Fire-${index+1}`)]),
+  ['Water-0', slab('waterSlabSheet',2037,772,waterSlabCrops[9],'Water-0')],
   ...waterSlabCrops.map((crop,index) => [`Water-${index+1}`, slab('waterSlabSheet',2037,772,crop,`Water-${index+1}`)]),
   ['FAT-001', slab('fateSlabSheet',2172,724,[153,17,517,687],'Fortune')],
   ['FAT-002', slab('fateSlabSheet',2172,724,[827,17,518,687],'Misfortune')],

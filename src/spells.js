@@ -28,6 +28,7 @@ const fire = [
   [15, 0, 'Gain 1 Ember and 1 Mana.'],
 ];
 const water = [
+  [0, 0, 'Gain 1 Mana.'],
   [1, 1, 'Deal 6 damage. On a 7+, deal 3 additional damage.'],
   [2, 1, 'Deal 4 + 2 × Flow damage. On an 8+, gain 1 additional Flow after resolution.'],
   [3, 2, 'Gain 10 Shield. On a 7+, heal 5 HP. On a 10+, heal 10 instead.'],
@@ -52,7 +53,7 @@ const fate = (id, name, role, effectText) => Object.freeze({
 });
 export const SPELL_CATALOG = Object.freeze(Object.fromEntries([
   ...fire.map(([number, mana, text]) => spell(`Fire-${number}`, 'Fire', mana, text, [0, 15].includes(number) ? 'Resource preparation' : purposes[(number - 1) % 7])),
-  ...water.map(([number, mana, text]) => spell(`Water-${number}`, 'Water', mana, text, purposes[(number - 1) % 7])),
+  ...water.map(([number, mana, text]) => spell(`Water-${number}`, 'Water', mana, text, number === 0 ? 'Resource preparation' : purposes[(number - 1) % 7])),
   fate('FAT-001', 'Fortune', 'Attacking', '+4 to the Modified Roll when attacking.'),
   fate('FAT-002', 'Misfortune', 'Defending', '−4 to the Modified Roll when defending.'),
   fate('FAT-003', 'Twist', 'Flexible', 'Choose +2 or −2 to the Modified Roll.'),
@@ -61,8 +62,8 @@ export const SPELL_CATALOG = Object.freeze(Object.fromEntries([
 /** No supplied starter compositions: players build their own current-spellbook decks. */
 export const DECK_LISTS = Object.freeze({ fire: Object.freeze([]), water: Object.freeze([]) });
 export const SOURCE_INFO = Object.freeze({
-  additionalSpells: Object.freeze(['Fire-0', 'Fire-15']),
-  playableSpellCount: 33,
+  additionalSpells: Object.freeze(['Fire-0', 'Fire-15', 'Water-0']),
+  playableSpellCount: 34,
   spellbook: Object.freeze({
     file: 'Wizzy Master Spellbook Nov4.pdf', title: 'Wizzy / Master Spellbook V2.1',
     version: SPELLBOOK_VERSION, revised: '2026-11-04', librarySpellCount: 31,

@@ -1,4 +1,4 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.4c829376af9b.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.4bc9cedcaabc.js';
 
 export const MAX_DECK_FILE_BYTES = 65536;
 
