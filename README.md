@@ -71,20 +71,24 @@ The uploaded PNGs remain unmodified in `public/graphics/`, including graphics re
 
 The hosted build uses the required images from `public/optimized/`, encoded as lossless WebP with content-hashed filenames for caching. Their decoded RGBA pixels are byte-for-byte identical to the originals, and they load separately rather than being embedded in the HTML. Original and unused artwork and the large standalone download are excluded from the hosted release.
 
-The **31 original slabs** use the exact supplied artwork from `Graphics 1.2.zip` at the existing hand size. Explicit crop metadata matches Fire-1 through Fire-14, Water-1 through Water-14, Fortune, Misfortune, and Twist to their labeled cards, excluding atlas gutters and neighboring slabs. **Fire-0** has a matching rough pixel-art slab, reused by **Fire-15** with its own live name and effect text. The original PNG bytes remain unchanged. All **33 slabs** have larger live text on their parchment panels, with compact rules and **bold roll thresholds**. This display copy preserves the canonical effects; Read Slab retains the complete spellbook wording. Mana costs use the spellbook metadata. Selecting eligible Fate slabs uses the supplied **Cast Fate** button artwork.
+The **31 original slabs** use the exact supplied artwork from `Graphics 1.2.zip` at the existing hand size. Explicit crop metadata matches Fire-1 through Fire-14, Water-1 through Water-14, Fortune, Misfortune, and Twist to their labeled cards, excluding atlas gutters and neighboring slabs. **Fire-0** has a matching rough pixel-art slab, reused by **Fire-15** with its own live name and effect text. The original PNG bytes remain unchanged. All **33 slabs** share one proportional rules size: **17 px at a 170 px card width**, without shrinking dense descriptions. Heavy titles stay at the top of the parchment; compact rules sit centered below them, with **bold roll thresholds**. The larger yellow number in the upper-left corner is the Mana cost; accessible labels retain “N Mana.” Read Slab keeps the complete spellbook wording. Selecting eligible Fate slabs uses the supplied **Cast Fate** button artwork.
 
 After replacing source PNGs, regenerate their optimized copies with `npm run optimize:art`. That optional authoring command requires Python and Pillow with WebP support; running, testing, building, and deploying the retained files require only Node.js and Git. The web build verifies source and optimized SHA-256 hashes and rejects stale or damaged copies.
 
-The Fire and Water stat frames use a shared rough pixel-art icon atlas for their
-element, HP, Mana, Shield and Loaded stats. Compact card rules use its flame for
-Ember/Embers and its water drop for Flow, including Flow damage formulas. Damage,
-gain, spending, multipliers and roll thresholds remain explicit. Full resource
-words remain available to accessibility tools and in Read Slab; the spell
+The Fire and Water stat frames use rough pixel-art icons for element, HP, Mana,
+Shield and Loaded. Compact card rules use a sword for outgoing damage, a heart
+for healing, and matching Shield, Mana and die symbols; flames mean Embers and
+water drops mean Flow. Short formulas preserve base values, multipliers,
+optional spending, “extra” versus “instead,” and after-spell Flow timing. Fate
+shows its modifier beside the die symbol, still changing the Modified Roll.
+Full words remain available to accessibility tools and in Read Slab; the spell
 catalog and combat calculations are unchanged.
 
 The battle arena uses the forest's original **1024 × 1536 (2:3 portrait)** canvas. One uniform scale fits it to the available screen; the forest is never stretched or cropped to widen the board. On Mac screens, its top and bottom meet the viewport edges, with side gutters. Narrower screens fit the width and center the board vertically. The other screens use a mobile layout that adapts to the viewport, with independently scrolling deck panels.
 
 Battle wizards use the original tiny four-direction Fire and Water walk atlas. After **Continue** in a new duel's opening dialog, Fire walks in from offscreen left and Water from offscreen right, then they idle facing each other on the grass. No keyboard controls are added. Resuming a duel starts them idle; reduced motion places them there immediately. The source atlas PNG remains unmodified, with a lossless optimized copy. The larger mage portraits remain on Character and handoff screens.
+
+The new [idle wizard animations](designs/idle-previews/README.md) are **preview only and are not played in battle**. Their separate gallery and offline ZIP at `previews/idle-wizards/` show eight Fire frames and eight Water frames, with subtle breathing, blinking and elemental particles on a 1.28-second loop. Runtime artwork and idle behavior remain unchanged.
 
 Primary spell animations play after any Fate chain ends, using the approved v2 caster and projectile sheets. Damaging spells costing **0–3 Mana** use a basic attack; **4–5 Mana** use a simple cast; **6+ Mana** use a large cast. The caster has 500 ms of windup, a **one-second moving-particle charge**, and 500 ms of recovery. A one-second projectile flight starts at release (1.5 seconds) and hits at 2.5 seconds. The defender keeps its standing pose with the original quick **210 ms red flash** and **four 85 ms legacy impact frames**; this 340 ms hit window ends the damaging animation at **2.84 seconds**. Large Fire drops a meteor from above Fire toward Water; large Water sends a wave from behind Water toward Fire. Fire-3, Fire-10, Water-3 and Water-10 use elemental shields; Fire-0, Fire-2, Fire-9 and Fire-15 use power-ups. These non-damaging sequences last two seconds, with results shown at 500 ms. **Fate has no animation.**
 

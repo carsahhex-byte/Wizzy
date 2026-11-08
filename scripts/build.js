@@ -35,6 +35,8 @@ if (webOnly) {
 }
 // Preserve the approved source-sheet gallery and ZIP alongside the live game.
 execFileSync(process.execPath,['scripts/package-animation-review.js','dist/previews/combat-linger-v2'],{stdio:'inherit'});
+// Idle sprites stay in a separate review gallery until they are approved for battle.
+execFileSync(process.execPath,['scripts/package-idle-review.js','dist/previews/idle-wizards'],{stdio:'inherit'});
 await writeFile('dist/.nojekyll', '');
 
 if (webOnly) {

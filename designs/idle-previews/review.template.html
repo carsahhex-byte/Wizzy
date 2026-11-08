@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Wizzy · Idle wizard preview</title>
+  <link rel="stylesheet" href="./style.css">
+  <script id="idle-metadata" type="application/json">__IDLE_METADATA__</script>
+  <script src="./viewer.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Wizzy · Art review</p>
+      <h1>Idle wizard preview</h1>
+      <p>Gentle movement while the wizards wait for their next spell.</p>
+      <p class="preview-note">Preview only · These animations have not been added to battle.</p>
+    </header>
+
+    <section class="controls" aria-label="Animation playback">
+      <button id="play-toggle" type="button" aria-pressed="true">Pause</button>
+      <button id="restart" type="button">Restart</button>
+      <label for="speed">Speed
+        <select id="speed">
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.5">1.5×</option>
+          <option value="2">2×</option>
+        </select>
+      </label>
+      <span id="timing" class="timing">Loading preview…</span>
+    </section>
+
+    <p id="load-error" class="load-error" role="alert" hidden></p>
+
+    <section class="wizard-grid" aria-label="Fire and Water idle animations">
+      <article class="wizard-card fire">
+        <h2>Fire</h2>
+        <canvas id="fire-canvas" width="320" height="260" role="img" aria-label="Fire wizard standing and moving gently, facing right"></canvas>
+        <p id="fire-frame" class="frame-state">Loading…</p>
+      </article>
+      <article class="wizard-card water">
+        <h2>Water</h2>
+        <canvas id="water-canvas" width="320" height="260" role="img" aria-label="Water wizard standing and moving gently, facing left"></canvas>
+        <p id="water-frame" class="frame-state">Loading…</p>
+      </article>
+    </section>
+
+    <nav class="downloads" aria-label="Download artwork">
+      <a class="primary-link" id="download-zip" href="./idle-wizard-preview.zip" download>Download preview ZIP</a>
+      <a id="download-png" href="./idle-wizards.png" download>Download sprite sheet</a>
+      <a id="view-atlas" href="./idle-wizards.png" target="_blank" rel="noopener">Open full sheet</a>
+    </nav>
+
+    <details class="atlas">
+      <summary>View all frames</summary>
+      <p id="sheet-details"></p>
+      <img id="atlas-image" alt="Complete Fire and Water idle animation sprite sheet">
+    </details>
+    <footer>Shown at battle scale. Original PNG pixels are preserved.</footer>
+  </main>
+</body>
+</html>

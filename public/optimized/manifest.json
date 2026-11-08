@@ -498,5 +498,15 @@
     "sourceBytes": 1147186,
     "width": 1536,
     "height": 1024
+  },
+  "battleSwordIcon": {
+    "file": "battleSwordIcon-cf53c7c1b7d0.webp",
+    "source": "Wizzy Pixel Sword Icon.png",
+    "sourceSha256": "018ee1b0e60886f2023aa5fdb0b9807793da50cab59f875eea41922708dd1dd9",
+    "optimizedSha256": "cf53c7c1b7d01a77abcdcdd88a8da97edfdad4d691f0f704be28a935d4f50781",
+    "bytes": 209856,
+    "sourceBytes": 415139,
+    "width": 1254,
+    "height": 1254
   }
 }

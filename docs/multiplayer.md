@@ -111,7 +111,7 @@ Back up the data directory separately from the source repository. For a simple c
 
 The server accepts `enhance` and `aura` actions with empty payloads. It rolls Enhancement itself and enforces Aura's fixed cost, bonus and duration. Out-of-turn actions, reuse of a spent main action, Enhancement at 30%, and recasting active Aura are rejected. Both players receive the resulting bonuses, Aura countdowns and damage breakdown. The hand frame's right side shows one active wizard's Fire-red or Water-blue Enhancement button, with a green Aura button below. Both wizards' Enhancement labels and Aura countdowns sit on the left. All three main-action controls disable after one is used. Update the running server as well as the interface for these rules.
 
-All 33 slabs have larger live compact rules with bold roll thresholds. This readable display text preserves canonical effects; Read Slab still shows the complete wording.
+Both screens show all 33 slabs with one proportional rules size—17 px at a 170 px card width—without shrinking longer descriptions. Titles stay above the centered rules, thresholds remain bold, and a large yellow number at the upper left shows Mana cost. Compact math and damage/healing/resource/die symbols preserve canonical effects, including optional spending, replacement versus extra outcomes, and Flow timing. Accessible text retains full words and Mana labels; Read Slab shows the complete wording. Spell values, roles and battle timing are unchanged.
 
 Each player sees only their own hand and can act only at the appropriate step. Room revisions and request IDs prevent stale or retried requests from applying a move twice.
 

@@ -55,6 +55,7 @@ export const ASSET_FILES = Object.freeze({
   neutralCard: 'Neutral card.png',
   stoneSign: 'Mossy Pixel Stone Sign.png',
   battlePixelIcons: PIXEL_ICON_FILE,
+  battleSwordIcon: 'Wizzy Pixel Sword Icon.png',
 });
 
 /** Original overworld wizards: fixed logical cells, source PNG left intact. */

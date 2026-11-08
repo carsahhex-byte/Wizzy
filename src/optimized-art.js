@@ -249,5 +249,10 @@ export const OPTIMIZED_ART = {
     "file": "battlePixelIcons-fda8a7a8858d.webp",
     "sourceSha256": "d49fdbe6aa391357608b5cf3f94f388f31f52169f836e27221e29aa92f1c2b8b",
     "optimizedSha256": "fda8a7a8858df6312897ad71cbff2e2b42e70d3099cbd6289b36a77cfa86dc2e"
+  },
+  "battleSwordIcon": {
+    "file": "battleSwordIcon-cf53c7c1b7d0.webp",
+    "sourceSha256": "018ee1b0e60886f2023aa5fdb0b9807793da50cab59f875eea41922708dd1dd9",
+    "optimizedSha256": "cf53c7c1b7d01a77abcdcdd88a8da97edfdad4d691f0f704be28a935d4f50781"
   }
 };

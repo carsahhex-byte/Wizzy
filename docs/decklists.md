@@ -71,12 +71,15 @@ The example is a playable deck of 30 Fire-1 slabs; any playable file must list *
 
 The PDF leaves Fate Mana unspecified. This implementation retains the previous **0 Mana** cost pending a different ruling; that cost is an implementation assumption, not a printed PDF value. Play one eligible Fate slab per response; each Twist has its own explicit sign choice. Any number of responses may be played as the chain alternates, while cards remain available.
 
-All 33 slabs display larger live rules on their parchment panels, with compact wording and **bold roll thresholds**. The compact copy preserves the canonical effects. **Read Slab** shows the complete spellbook wording, and the supplied artwork remains unchanged.
+All 33 slabs use the same proportional rules font, **17 px at a 170 px card width**, without reducing it for longer descriptions. Titles stay at the parchment's top and the rules are centered in the remaining space, with **bold roll thresholds**. The upper-left yellow number is the Mana cost; its accessible label still says “N Mana.” **Read Slab** shows the complete spellbook wording, and supplied artwork remains unchanged.
 
-Flame icons stand for Ember/Embers and water-drop icons stand for Flow on the
-compact cards. A drop in a damage formula uses the current Flow counter; gaining
-a drop adds Flow instead. Damage, gain, spending and multiplier wording remain
-visible. Read Slab and accessible text retain the full resource words.
+Compact rules use swords for outgoing damage, hearts for healing, and matching
+Shield, Mana and die icons. Flames mean Ember/Embers; drops mean Flow. A drop in
+a formula uses the current Flow counter, while `+1` drop adds Flow. Short
+formulas retain base damage and per-Ember scaling; optional spending,
+“extra”/“instead,” and after-spell Flow timing remain explicit. Fate modifiers
+beside the die still affect the Modified Roll. Accessible text and Read Slab
+retain full words, and these display changes alter no spell effects.
 
 ## Combat rules
 

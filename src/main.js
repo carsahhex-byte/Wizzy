@@ -145,7 +145,7 @@ function phaseHint(active) {
 }
 function slabFace(card) {
   const slab=spellSlabMarkup(card.spellId,'card-image');
-  if(slab)return `${slab}<span class="slab-mana">${card.manaCost} Mana</span><span class="sr-only">${escape(card.name)}. ${escape(card.effectText)}</span>`;
+  if(slab)return `${slab}<span class="slab-mana" role="img" aria-label="${card.manaCost} Mana">${card.manaCost}</span><span class="sr-only">${escape(card.name)}. ${escape(card.effectText)}</span>`;
   return `${art(card.art,'card-image')}${spellArtMarkup(card.spellId)}<span class="card-name" style="--name-size:${card.name.length>12?18:21}px">${escape(card.name)}</span><span class="card-copy"><strong class="mana-cost">${card.manaCost} Mana</strong><span class="card-effect">${escape(card.effectText)}</span></span>`;
 }
 function cardView(card, active, finished) {
