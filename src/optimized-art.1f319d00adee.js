@@ -135,6 +135,11 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "8cd72c86ca61b07b6517f86377f4384f9a7c3521dd1cc3600e5810b5eb0c568e",
     "optimizedSha256": "86ab04226601fd06626ce5cd71a6e8151143f2a389c187133b977b689620ab4d"
   },
+  "wizardWalkAtlas": {
+    "file": "wizardWalkAtlas-0f0af57f3f99.webp",
+    "sourceSha256": "b96127f2bf70106db5512427e7fc978a8b73fcf8d7a78d8fd204cc2ffa10ff06",
+    "optimizedSha256": "0f0af57f3f997091cf380002b88c727febeab4d8be9a33acaa08c50ce3e92050"
+  },
   "fireCard": {
     "file": "fireCard-cd414243acb0.webp",
     "sourceSha256": "08f0f489f06c6a25b02f7b0308d281e5d801f58e9155068c6ffcb2790ce0b792",

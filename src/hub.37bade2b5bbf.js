@@ -1,4 +1,4 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.cb333cab7db4.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.55ffd76c7b43.js';
 import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.29cc03f8c6f5.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.7946353e2359.js';
 import { MAX_COPIES, createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.c47034088730.js';

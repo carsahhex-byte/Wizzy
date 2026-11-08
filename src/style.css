@@ -56,17 +56,15 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .view-toggle { color: #e0d3b2; font: 18px 'Trebuchet MS', sans-serif; border: 2px solid #a7864f; background: #152134df; padding: 10px 13px; border-radius: 5px; }
 
 /* The wizards' feet share the forest's grassy standing line at y450. */
-.battle-scene { position: absolute; inset: 0 0 auto; height: 470px; }
+.battle-scene { position: absolute; inset: 0 0 auto; height: 470px; overflow: hidden; pointer-events: none; }
 .game-title { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); text-align: center; z-index: 3; white-space: nowrap; filter: drop-shadow(0 4px #15201d); }
 .title-stars { font-size: 22px; color: #b4f1ff; letter-spacing: 18px; margin-left: 18px; text-shadow: 2px 2px #2b2740; }
 .game-title h1 { font: 900 108px/.98 Georgia, serif; margin: 0; color: #ffda64; -webkit-text-stroke: 1px #4d1f0c; text-shadow: 1px -2px #fff1a2, 3px 4px #be5a11, 5px 7px #182220; letter-spacing: -5px; }
 .game-title p { font: 900 34px 'Trebuchet MS', sans-serif; margin: 10px 0 0; color: #fff0b7; text-shadow: 3px 3px #151629, -2px -2px #151629; letter-spacing: 1px; }
-.combatant { position: absolute; bottom: 20px; height: 280px; z-index: 2; }
-.fire-combatant { left: 32px; width: 342.2px; }
-.water-combatant { right: 32px; width: 327.3px; }
-.mage-art { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
-.mage-shadow { position: absolute; bottom: -3px; width: 80%; left: 10%; height: 13px; border-radius: 50%; background: #14251db8; filter: blur(5px); }
-.active-combatant .mage-art { filter: drop-shadow(0 0 9px #ffe7a042); }
+.arena-wizard { position: absolute; top: 0; left: 0; width: 192px; height: 192px; z-index: 2; will-change: transform; }
+.wizard-sprite { position: absolute; inset: 0; z-index: 1; image-rendering: pixelated; }
+.mage-shadow { position: absolute; bottom: 8px; width: 72px; left: 60px; height: 9px; background: #14251d88; clip-path: polygon(12% 0,88% 0,88% 25%,100% 25%,100% 75%,88% 75%,88% 100%,12% 100%,12% 75%,0 75%,0 25%,12% 25%); }
+.active-combatant .mage-shadow { background: #102018b8; }
 .versus { position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%); font: 900 italic 30px Georgia,serif; color: #fff2b5; text-shadow: 2px 2px #202522; }
 
 /* Stats can peek into the bottom of the grass; the hand sits on stone. */
