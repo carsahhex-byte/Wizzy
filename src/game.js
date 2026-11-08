@@ -9,6 +9,7 @@ export const SAVE_VERSION = 13;
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
+export const ENHANCEMENT_ROLL_RULE = 'tiered-v1';
 export const AURA_COST = 1;
 export const AURA_DURATION = 3;
 export const AURA_BONUS = 10;
@@ -316,6 +317,12 @@ export function rollDice(state, random = Math.random) {
   return openFateStep(next, 1 - next.activePlayer);
 }
 
+/** Nominal percentage-point award before the existing 30% bank cap. */
+export function getEnhancementBonus(total) {
+  if (!Number.isSafeInteger(total)) return 0;
+  return total >= 12 ? 30 : total >= 9 ? 20 : total >= ENHANCEMENT_THRESHOLD ? 10 : 0;
+}
+
 /** The zero-Mana Enhancement attempt uses this turn's primary action. */
 export function canEnhance(state, playerIndex = state.activePlayer) {
   return playerIndex === state.activePlayer && inPhase(state, 'main') && !state.primaryUsed
@@ -344,13 +351,16 @@ export function rollEnhancement(state, random = Math.random) {
   const rawTotal = dice[0] + dice[1];
   const player = next.players[next.activePlayer];
   const enhancementBefore = player.enhancement;
-  const success = rawTotal >= ENHANCEMENT_THRESHOLD;
-  if (success) player.enhancement = Math.min(MAX_ENHANCEMENT, player.enhancement + ENHANCEMENT_STEP);
+  const enhancementBonus = getEnhancementBonus(rawTotal);
+  const success = enhancementBonus > 0;
+  player.enhancement = Math.min(MAX_ENHANCEMENT, enhancementBefore + enhancementBonus);
+  const enhancementGain = player.enhancement - enhancementBefore;
   next.lastRoll = { kind: 'enhancement', spellId: null, casterIndex: next.activePlayer,
     dice, rawTotal, total: rawTotal, loadedBonus: 0, attackingFate: 0, defendingFate: 0,
-    success, enhancementBefore, enhancementAfter: player.enhancement };
+    success, enhancementBefore, enhancementAfter: player.enhancement,
+    enhancementRule: ENHANCEMENT_ROLL_RULE, enhancementBonus, enhancementGain };
   next.phase = 'main';
-  addLog(next, `${player.name} rolls ${dice.join(' + ')} = ${rawTotal} for Enhancement (6+): ${success ? `gains +10% damage; ${player.enhancement}% Enh.` : `no increase; ${player.enhancement}% Enh.`}`, 'enhancement', player.id);
+  addLog(next, `${player.name} rolls ${dice.join(' + ')} = ${rawTotal} for Enhancement: ${success ? `tier +${enhancementBonus}%; gains +${enhancementGain}%; ${player.enhancement}% Enh.${enhancementGain < enhancementBonus ? ' (maximum 30%)' : ''}` : `no increase; ${player.enhancement}% Enh.`}`, 'enhancement', player.id);
   return next;
 }
 
@@ -676,8 +686,18 @@ export function assertGame(state) {
       requireValue(roll.spellId === null && roll.loadedBonus === 0 && roll.attackingFate === 0 && roll.defendingFate === 0
         && roll.success === (roll.rawTotal >= ENHANCEMENT_THRESHOLD), 'Enhancement dice');
       requireValue(Number.isInteger(roll.enhancementBefore) && roll.enhancementBefore >= 0 && roll.enhancementBefore < MAX_ENHANCEMENT
-        && roll.enhancementBefore % ENHANCEMENT_STEP === 0
-        && roll.enhancementAfter === roll.enhancementBefore + (roll.success ? ENHANCEMENT_STEP : 0), 'Enhancement outcome');
+        && roll.enhancementBefore % ENHANCEMENT_STEP === 0, 'Enhancement starting bank');
+      if (Object.hasOwn(roll, 'enhancementRule')) {
+        const bonus = getEnhancementBonus(roll.rawTotal);
+        requireValue(roll.enhancementRule === ENHANCEMENT_ROLL_RULE && roll.enhancementBonus === bonus
+          && roll.enhancementAfter === Math.min(MAX_ENHANCEMENT, roll.enhancementBefore + bonus)
+          && roll.enhancementGain === roll.enhancementAfter - roll.enhancementBefore, 'tiered Enhancement outcome');
+      } else {
+        // Earlier v13/v12 records awarded a flat 10 on any successful roll.
+        // Keep their historical outcome and bank; only future rolls use tiers.
+        requireValue(!Object.hasOwn(roll, 'enhancementBonus') && !Object.hasOwn(roll, 'enhancementGain')
+          && roll.enhancementAfter === roll.enhancementBefore + (roll.success ? ENHANCEMENT_STEP : 0), 'legacy Enhancement outcome');
+      }
     } else requireValue(roll.kind === 'spell' && SPELL_RULES[roll.spellId]?.requiresRoll === true, 'roll spell');
   }
   if (state.phase === 'enhancing') requireValue(state.status === 'playing' && state.primaryUsed && state.primaryAction === 'enhancement' && state.lastRoll === null

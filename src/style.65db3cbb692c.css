@@ -182,6 +182,9 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .enhance-button { position: relative; display: block; width: 170px; height: 94px; border: 0; padding: 0; background: transparent; color: #fff4d9; cursor: pointer; }
 .enhance-button-art { position: absolute; left: 0; top: 4px; width: 170px; height: 60.5px; }
 .enhance-button-caption { position: absolute; left: 0; right: 0; bottom: 10px; color: #ffe5a5; font: bold 11px/1.2 monospace; letter-spacing: .2px; text-align: center; white-space: nowrap; }
+.enhancement-tier-caption { bottom: 4px; font-size: 10px; }
+.enhancement-tier-caption > span { display: block; }
+.enhancement-tier-caption .enhancement-tier-values { font-size: 9px; letter-spacing: 0; }
 .enhance-button.water .enhance-button-caption { color: #b5efff; }
 .aura-button .enhance-button-caption { color: #b8f7b0; }
 .aura-button::after { color: #dbffc4; }

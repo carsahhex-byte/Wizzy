@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#11172a" />
+    <meta name="wizzy-build" content="cedc2ab5248e" />
+    <meta name="description" content="Explore a pixel Seattle, build your spell slab deck, and battle in Wizzy." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Wizzy · Seattle Awaits</title>
+    <link rel="icon" type="image/svg+xml" href="./public/art/favicon.svg" />
+    <link rel="stylesheet" href="./src/style.65db3cbb692c.css" />
+    <link rel="stylesheet" href="./src/hub.fcaea8e7a6fd.css" />
+    <link rel="stylesheet" href="./src/multiplayer.d9e93cc388fa.css" />
+    <link rel="stylesheet" href="./src/accounts.5e8dfb99140d.css" />
+    <script>/* Hosted-only bootstrap. The builder inserts this before the game module. */
+(() => {
+  const current = document.querySelector('meta[name="wizzy-build"]')?.content;
+  if (!/^[a-f0-9]{12}$/.test(current || '') || !['http:', 'https:'].includes(location.protocol)) return;
+
+  let interacted = false;
+  let checking = false;
+  let notice = null;
+  const noteInteraction = () => { interacted = true; };
+  document.addEventListener('pointerdown', noteInteraction, { capture: true, once: true });
+  document.addEventListener('keydown', noteInteraction, { capture: true, once: true });
+
+  function offerUpdate(target) {
+    if (notice) return;
+    notice = document.createElement('aside');
+    notice.id = 'wizzy-release-update';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('aria-live', 'polite');
+    Object.assign(notice.style, {
+      position: 'fixed', top: '8px', left: '8px', right: '8px', zIndex: '2147483647',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap',
+      gap: '10px', padding: '12px', border: '2px solid #d9c5ff',
+      background: '#181d35', color: '#fff4d8', font: '14px Arial, sans-serif',
+      boxShadow: '0 4px 18px #0009',
+    });
+    const message = document.createElement('span');
+    message.textContent = 'A newer Wizzy update is ready.';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Load latest game';
+    Object.assign(button.style, {
+      minHeight: '36px', padding: '7px 12px', border: '1px solid #e6d2ff',
+      background: '#5e4388', color: '#fff', font: 'bold 14px Arial, sans-serif',
+      cursor: 'pointer',
+    });
+    button.addEventListener('click', () => location.replace(target.href));
+    notice.append(message, button);
+    const attach = () => { if (!document.getElementById(notice.id)) document.body.append(notice); };
+    if (document.body) attach();
+    else document.addEventListener('DOMContentLoaded', attach, { once: true });
+  }
+
+  async function checkRelease() {
+    if (checking) return;
+    checking = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const manifest = new URL('./build-info.json', document.baseURI);
+      manifest.searchParams.set('check', String(Date.now()));
+      const response = await fetch(manifest.href, { cache: 'no-store', credentials: 'omit', signal: controller.signal });
+      if (!response.ok) return;
+      const latest = await response.json();
+      if (!/^[a-f0-9]{12}$/.test(latest?.id || '') || latest.id === current
+        || latest.launch !== `./wizzy-${latest.id}.html`) return;
+      const target = new URL(latest.launch, document.baseURI);
+      if (target.origin !== location.origin) return;
+      target.hash = location.hash || '#title';
+      if (interacted) offerUpdate(target);
+      else location.replace(target.href);
+    } catch { /* Offline, old servers, and unavailable metadata must not block play. */ }
+    finally { clearTimeout(timeout); checking = false; }
+  }
+
+  checkRelease();
+  window.addEventListener('pageshow', event => { if (event.persisted) checkRelease(); });
+})();
+</script>
+    <script type="module" src="./src/main.7aabb0c9e530.js"></script>
+  </head>
+  <body>
+    <main id="hub" class="hub-root" aria-label="Wizzy"></main>
+    <section id="account-view" aria-label="Wizard account and saved decks" hidden></section>
+    <section id="online-view" aria-label="Two-screen battles" hidden></section>
+    <section id="battle-view" aria-label="Wizzy Battle Simulator" hidden>
+      <nav class="battle-navigation" aria-label="Battle navigation"><button id="battle-home">← Home</button><div class="battle-session"><span id="battle-session-label">LOCAL DUEL · FIRE / WATER</span><small id="battle-connection" role="status" hidden></small></div><button id="battle-new">New duel</button><button id="battle-online-lobby" hidden>Lobby</button></nav>
+      <div id="app" aria-label="Battle board"></div>
+    </section>
+    <dialog id="opening-roll" class="game-dialog opening-dialog" aria-labelledby="opening-title">
+      <p class="eyebrow">WHO TAKES THE FIRST TURN?</p>
+      <h2 id="opening-title">Roll for first turn</h2>
+      <div id="opening-roll-content"></div>
+      <button class="dialog-primary" id="opening-continue" hidden>Begin battle</button>
+      <button class="secondary-button opening-home" id="opening-home">Back to Seattle</button>
+    </dialog>
+    <dialog id="battle-mode" class="game-dialog" aria-labelledby="battle-mode-title">
+      <button class="close-dialog" aria-label="Close battle options" data-close="battle-mode">×</button>
+      <p class="eyebrow">CHOOSE YOUR DUEL</p>
+      <h2 id="battle-mode-title">How will you battle?</h2>
+      <button class="battle-mode-option" id="choose-local"><strong>Start new shared-screen duel</strong><span>Deal 5 slabs to each player. Draw up to 6 on later turns and hand refreshes.</span></button>
+      <button class="battle-mode-option" id="resume-local" hidden><strong>Resume saved shared-screen duel</strong><span id="resume-local-detail">Continue your existing duel with a six-slab hand limit.</span></button>
+      <button class="battle-mode-option" id="choose-online"><strong>Play on two screens</strong><span>Create or join a room. Each wizard keeps a private hand.</span></button>
+      <button class="battle-mode-option" id="resume-online" hidden><strong>Resume your online battle</strong><span>Return to your current room.</span></button>
+    </dialog>
+    <dialog id="handoff" class="game-dialog" aria-labelledby="handoff-title">
+      <div class="dialog-portrait" id="handoff-portrait" aria-hidden="true"></div>
+      <p class="eyebrow">THE BATTLE CONTINUES</p>
+      <h2 id="handoff-title">Water’s turn</h2>
+      <p id="handoff-description">Pass the screen to the next wizard.</p>
+      <button class="dialog-primary" id="begin-turn">Begin turn <span aria-hidden="true">→</span></button>
+      <p class="dialog-footnote">Two wizards. One screen. A little friendly rivalry.</p>
+    </dialog>
+    <dialog id="settings" class="game-dialog rules-dialog" aria-labelledby="settings-title">
+      <button class="close-dialog" aria-label="Close settings" data-close="settings">×</button>
+      <p class="eyebrow">THE WIZARD’S HANDBOOK</p>
+      <h2 id="settings-title">Fire meets Water</h2>
+      <p>Share one screen locally, or choose <strong>Play on two screens</strong> to create or join a hosted room. Each wizard has their own hand, spell tower, and discard pile.</p>
+      <ul class="rules-list">
+        <li>Start with <strong>100 HP, 3 Mana, and 5 spell slabs</strong>. Caps are <strong>100 HP, 10 Mana, and 30 Shield</strong>. Each saved deck has 30 slabs, leaving 25 in the opening tower. Shield, Embers/Flow, Loaded and Enhancement start at zero, with no active Aura.</li>
+        <li>Each wizard rolls <strong>one opening die</strong>. The higher roll takes the first turn; ties make both wizards roll again. Opening rolls use no Fate or Loaded bonuses.</li>
+        <li>The wizard going second draws <strong>one extra slab at the beginning of their first turn</strong>, normally starting that turn with 6 rather than 5. Slabs used for defending Fate before that turn remain spent. This opening draw happens once and grants no extra mana.</li>
+        <li>Both wizards take one turn per round. Each gains <strong>2 Mana at the start of their own turn after their opening turn</strong>. Unspent Mana carries over up to 10.</li>
+        <li>After each wizard’s opening turn, draw up to <strong>6 slabs at the beginning of their turn</strong>. A full hand uses three slabs on each row.</li>
+        <li>Use <strong>one main action per own turn</strong>: cast a primary spell, attempt Enhancement, or activate Aura. Fire and Water slabs are primary spells. Cast Spell pays the printed Mana cost. Ember spending choices are made before casting. Fire-7 and Fire-14 spend all Embers automatically.</li>
+        <li><strong>Fire-0 costs 0 Mana and gains 1 Ember immediately</strong>, up to 5. <strong>Fire-15 costs 0 Mana and immediately gains 1 Ember and 1 Mana</strong>, capped at 5 and 10 independently. Both use your primary action without rolling dice or opening Fate. Other current primary spells roll <strong>2d6 before Fate</strong>. The dice and eligible Loaded bonus are displayed first. Select <strong>one eligible Fate slab</strong>, then <strong>Cast Fate</strong> plays it and gives the other player a response. <strong>Skip Fate</strong> passes without playing the staged selection. Fate does not use the main action.</li>
+        <li>The <strong>defender responds first</strong>, then players alternate without a fixed window limit. Playing Fate resets the pass count; <strong>two consecutive passes</strong> resolve the spell. No eligible Fate means an automatic pass. A player who passed can respond again after another Fate is played. Fortune gives the primary caster +4; Misfortune gives the defender −4. Either player may choose +2 or −2 for Twist. Roles stay fixed, and the original dice are never rerolled.</li>
+        <li><strong>Enhancement costs 0 Mana and uses the main action.</strong> Roll raw <strong>2d6</strong>; <strong>6–8 adds 10 percentage points</strong>, <strong>9–11 adds 20</strong>, and <strong>12+ adds 30</strong>. Use only the highest qualifying tier and add it to stored Enhancement, capped at <strong>30% total</strong>. Below 6 gains nothing. Failure still uses the action. The bonus is banked until your next outgoing damaging spell resolves, then resets to <strong>0%</strong>, even if Shield absorbs it all. Non-damaging spells, Fate and self-damage preserve it. Fate and Loaded do not modify or get consumed by this roll, and it grants no Embers/Flow.</li>
+        <li><strong>Aura costs 1 Mana and uses the main action</strong>, giving a fixed <strong>10% damage bonus for the next three owner turns; activation does not count</strong>. It rolls no dice, opens no Fate window and leaves Loaded unused. Aura cannot stack or be recast while active; it can be used again after expiry. Its countdown starts decreasing after activation, only when you actually pass one of those next three turns, including a confirmed refresh. Aura and Enhancement add together, up to <strong>40%</strong>, on total outgoing spell damage including Flow/Embers. Round once before Shield, nearest whole number with halves up. Neither boosts healing, resources, Shield gains/removal or self-damage. Damage consumes Enhancement; Aura lasts until expiry.</li>
+        <li>Opponent damage consumes Shield before HP. <strong>Self-damage bypasses your Shield.</strong> Healing stops at 100 HP, and Shield gains stop at 30. Reaching 0 HP ends the duel.</li>
+        <li>Fire Embers are capped at <strong>5</strong>. Only printed spell effects grant Embers; casting a Fire slab does not grant an automatic Ember. Spending removes the chosen Embers before resolution.</li>
+        <li>Water spells use their existing Flow for effects, damage, and healing. After resolving, gain <strong>1 Flow</strong>; a printed <strong>additional Flow</strong> adds to this gain. Flow is capped at <strong>5</strong>. Fate slabs grant no automatic Flow.</li>
+        <li>A Loaded bonus earned this turn is queued for <strong>your next own turn</strong>. It applies once to your first spell roll in that turn; if unused, it expires when that turn ends. Enhancement and Aura leave it unused.</li>
+        <li><strong>End Turn</strong> turns red and reveals Hand Refresh. Click the red End Turn to pass without refreshing.</li>
+        <li>Click <strong>Hand Refresh</strong> to turn it red and select any number of slabs (including zero). Click it again to discard those selections, draw up to six, and <strong>pass immediately</strong>. Or click the red End Turn to pass without applying the refresh selections.</li>
+      </ul>
+      <div class="prototype-note"><strong>Fate sequence: spell roll → defender → caster → defender → caster → … until two consecutive passes.</strong> Play one Fate slab per response. Shared-screen games use handoffs; two-screen games let each player respond on their own device. Empty eligible Fate hands pass automatically. Both wizards' Enhancement percentages and Aura countdowns appear on the left of the hand frame. The active wizard's Enhancement button sits on the right, with green Aura below. After a primary spell, Enhancement or Aura, all main actions disable; end or refresh your turn.</div>
+      <p class="small-copy">Build decks from Home: exactly 30 slabs, no per-spell copy limit, and Fire or Water plus Fate. New deck slots start empty. Save deck stores your battle deck on this device without an account. Upload deck loads a JSON draft for review, and Download deck exports a complete deck. The collection has 31 spells from the November 4 spellbook plus Fire-0 and Fire-15, all with larger live compact rules and bold roll thresholds. Canonical effects are unchanged. Fate retains its previous 0 Mana cost because the PDF leaves it unspecified. Select a slab and choose Read slab for full text. Click Spell Tower to review this battle’s composition.</p>
+      <p class="build-version" id="build-version">Build cedc2ab5248e · portrait layout</p>
+      <button class="secondary-button" id="settings-deck">View spell slab decks</button>
+      <button class="secondary-button" id="request-restart">Start a new duel</button>
+    </dialog>
+    <dialog id="slab-inspector" class="game-dialog slab-dialog" aria-labelledby="slab-heading">
+      <button class="close-dialog" aria-label="Close spell slab" data-close="slab-inspector">×</button>
+      <p class="eyebrow">SPELL SLAB</p>
+      <h2 id="slab-heading"></h2>
+      <p id="slab-definition" class="slab-definition"></p>
+      <div class="large-slab" id="slab-face"></div>
+      <p class="small-copy" id="slab-behavior"></p>
+    </dialog>
+    <dialog id="deck-inspector" class="game-dialog deck-dialog" aria-labelledby="deck-heading">
+      <button class="close-dialog" aria-label="Close decklist" data-close="deck-inspector">×</button>
+      <p class="eyebrow">SPELL TOWER · DECK COMPOSITION</p>
+      <h2 id="deck-heading"></h2>
+      <p id="deck-summary" class="small-copy"></p>
+      <div class="deck-tabs" aria-label="Choose a deck to inspect"><button class="secondary-button" data-deck-player="fire">Fire</button><button class="secondary-button" data-deck-player="water">Water</button></div>
+      <div id="deck-entries"></div>
+      <p class="small-copy">Full deck composition, not draw order. Click a spell slab to read its full rules.</p>
+    </dialog>
+    <dialog id="ember-choice" class="game-dialog" aria-labelledby="ember-title">
+      <p class="eyebrow">PREPARE YOUR SPELL</p>
+      <h2 id="ember-title">Spend Embers?</h2>
+      <p id="ember-description"></p>
+      <label class="ember-input" for="ember-amount">Embers to spend <input id="ember-amount" type="number" min="0" step="1" value="0" required /></label>
+      <p class="input-error" id="ember-error" role="alert"></p>
+      <div class="dialog-actions"><button class="secondary-button" data-close="ember-choice">Keep slab</button><button class="gold-button" id="confirm-embers">Cast Spell</button></div>
+    </dialog>
+    <dialog id="victory" class="game-dialog" aria-labelledby="victory-title">
+      <p class="eyebrow">DUEL COMPLETE</p>
+      <h2 id="victory-title"></h2>
+      <p id="victory-description"></p>
+      <div class="dialog-actions"><button class="secondary-button" data-close="victory">View result</button><button class="gold-button" id="victory-restart">New duel</button><button class="gold-button" id="victory-online" hidden>New online room</button></div>
+    </dialog>
+    <dialog id="restart" class="game-dialog" aria-labelledby="restart-title">
+      <p class="eyebrow">A FRESH START</p>
+      <h2 id="restart-title">Begin a new duel?</h2>
+      <p>This starts with your saved Fire and Water decks. Both wizards reset, and your current duel will be replaced.</p>
+      <div class="dialog-actions"><button class="secondary-button" data-close="restart">Keep playing</button><button class="gold-button" id="confirm-restart">New duel</button></div>
+    </dialog>
+    <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+    <noscript>This game needs JavaScript enabled to play.</noscript>
+  </body>
+</html>
