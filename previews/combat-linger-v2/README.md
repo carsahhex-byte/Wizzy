@@ -1,8 +1,8 @@
-# Wizzy one-second combat animation review
+# Wizzy approved one-second combat animations
 
-This pack is for review before the new animation sheets are wired into battles.
-The live game uses the updated Enhancement dice rules, while its current
-animation sheets and playback stay unchanged.
+This approved pack is integrated into live battles. The separate gallery and
+ZIP remain references for the same source artwork and frame timing. Combat
+values, spell IDs, Enhancement tiers, decks and save compatibility are unchanged.
 
 There are ten transparent PNG sheets: Enhancement jump, Aura spiral, basic
 attack, simple cast, large cast, elemental shield, power-up, basic projectiles,
@@ -18,19 +18,33 @@ Each sixteen-frame sequence uses these relative frame numbers:
 | 4–11 | Eight moving particle / held-effect frames | 8 × 125 ms = 1,000 ms |
 | 12–15 | Release, landing, impact or fizzle | 4 × 125 ms = 500 ms |
 
-The full sixteen-frame preview lasts two seconds. The player adds a half-second
-ready pause between full-sequence previews. Its loop-only mode repeats just the
-one-second held effect. Aura's one-second ring loop is intended to repeat while
-Aura is active, through three subsequent owner turns; activation does not count.
-Its fizzle phase belongs at expiry, rather than after one second in a battle.
+The full sixteen-frame preview lasts two seconds. The gallery player adds a
+half-second ready pause between full-sequence previews; its loop-only mode
+repeats just the one-second held effect. Battle playback combines these phases:
+
+| Battle effect | Live timing |
+| --- | --- |
+| Damaging primary | Caster windup 0–500 ms, charge 500–1,500 ms, recovery to 2,000 ms. Projectile releases at 1,500 ms and flies for one second; impact at 2,500 ms begins the defender's two-second reaction, ending at 4,500 ms. |
+| Shield / power-up | Two-second sequence, results shown at 500 ms. |
+| Successful Enhancement | Two-second jump, award shown at 500 ms. Failed rolls show MISS with no animation. |
+| Aura activation | 500 ms formation plus one full second of moving particles; controls unlock at 1,500 ms, then the ring keeps looping underfoot. |
+| Aura expiry | 500 ms fizzle when its owner's third subsequent turn ends; activation does not count. |
+
+Basic/simple/large damage tiers retain the existing Mana mapping. Animations
+start after any Fate chain ends, and Fate has no animation. Projectile paths
+are added by battle playback while their sheet anchors stay fixed. Hit
+reactions use a gentle red glow rather than a rapid strobe. An active Aura
+loop is restored on reconnect without replaying formation; reduced motion
+uses a static ring and immediately completes action visuals.
 
 Original generated PNGs remain unchanged. `manifest.json` records dimensions,
 frame sequences, SHA-256 hashes, and source-pixel preview offsets that align
 poses without editing the source sheets. Enhancement offsets preserve its
 airborne peak and grounded landing; Aura offsets hold the ring center steady.
-Projectile previews show in-place particles; their arena travel paths are a
-separate part of later integration. Hit reactions use a gentle red glow rather
-than a rapid strobe.
+The engine resolves and saves each action once. Displayed spell results wait
+for impact, while committed costs are paid normally. HP bars ease over 800 ms,
+and battle actions and victory wait for the presentation to finish. Reloading
+or resuming does not replay completed actions.
 
 Open `index.html` to play the previews, view/download each full PNG, or download
 the ZIP. The ZIP contains all ten PNGs, this README, the timing/alignment

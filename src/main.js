@@ -9,7 +9,8 @@ import { createAccounts } from './accounts.js';
 import { fitSlabText } from './slab-text.js';
 import { createBattleScene } from './battle-scene.js';
 import { createSpellAnimator } from './spell-animation.js';
-import { getResolvedSpellVisuals } from './spell-visuals.js';
+import { createAuraAnimator } from './aura-animation.js';
+import { getResolvedBattleVisuals } from './spell-visuals.js';
 import { createHealthBars } from './health-bars.js';
 import { pixelIconMarkup } from './pixel-icons.js';
 
@@ -19,6 +20,7 @@ const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
 const battleScene = createBattleScene();
 const spellAnimator = createSpellAnimator({root:battleScene.element});
+const auraAnimator = createAuraAnimator({root:battleScene.element});
 const healthBars = createHealthBars({onSettled:()=>showPendingVictory()});
 let spellVisualQueue = [];
 let activeSpellVisual = null;
@@ -119,7 +121,7 @@ function enhancementOutcomeHint(active) {
 }
 function phaseHint(active) {
   const visual = activeSpellVisual || spellVisualQueue[0];
-  if (visual) return `${state.players[visual.casterIndex].name} · ${SPELL_CATALOG[visual.spellId].name} is resolving…`;
+  if (visual) return `${state.players[visual.casterIndex].name} · ${SPELL_CATALOG[visual.spellId]?.name || (visual.kind==='enhancement'?'Enhancement':'Aura')} is resolving…`;
   if (state.status === 'finished') return `${state.players[state.winner].name} wins the duel!`;
   if(state.phase==='setup')return 'Build and save your new Fire and Water decks in the Deck workshop.';
   if(state.phase==='initiative')return isOnlineBattle()
@@ -282,6 +284,9 @@ function render() {
   battleScene.setActive(state.phase === 'initiative' ? null : state.activePlayer);
   app.querySelector('[data-battle-scene-slot]').replaceWith(battleScene.element);
   healthBars.mount(app,state.players.map((player,index)=>displayedStats(player,index)));
+  auraAnimator.sync(state.players.map((player,index)=>displayedStats(player,index)),{
+    visible:!battleView.hidden && (state.status==='playing'||spellVisualBusy()),
+  });
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   scheduleCombat();
@@ -315,6 +320,7 @@ function displayedStats(player,index) {
 function cancelSpellPresentation() {
   spellVisualGeneration += 1;
   spellAnimator.cancel({settle:false});
+  auraAnimator.reset({settle:false});
   activeSpellVisual=null;
   spellVisualQueue=[];
   presentedPlayers=null;
@@ -352,13 +358,16 @@ function playNextSpellVisual() {
     }
   };
   battleScene.finishEntrance();
-  spellAnimator.play({...event,onImpact:impact,onComplete:complete})
-    .then(result=>{if(result.duplicate)complete();}).catch(complete);
+  Promise.resolve().then(()=>{
+    if(!isCurrent())return {cancelled:true};
+    const options={...event,onImpact:impact,onComplete:complete};
+    return event.kind==='aura'?auraAnimator.activate(options):spellAnimator.play(options);
+  }).then(result=>{if(result?.duplicate)complete();}).catch(complete);
 }
 function update(next,message) {
   if(next===state)return;
   const wasPlaying=state.status==='playing';
-  const visuals=battleView.hidden?[]:getResolvedSpellVisuals(state,next);
+  const visuals=battleView.hidden?[]:getResolvedBattleVisuals(state,next);
   if(visuals.length){
     // A newer online spell can arrive while the last hit is still recovering.
     if(!presentedPlayers)presentedPlayers=state.players.map((player,index)=>({

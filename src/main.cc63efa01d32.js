@@ -1,17 +1,18 @@
 import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.04e80e3227d0.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.78ea8e497353.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.59dbf86de54f.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.73668f325e64.js';
 import { validateDeck } from './decks.2273f98625f9.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.328375369225.js';
-import { createHub } from './hub.474cdcce8ee9.js';
+import { createHub } from './hub.b29f2261056f.js';
 import { createMultiplayer } from './multiplayer.ffa6ae5450c6.js';
 import { createAccounts } from './accounts.bd7a3221b35c.js';
-import { fitSlabText } from './slab-text.225c4c14014b.js';
-import { createBattleScene } from './battle-scene.97e6bf770ce5.js';
-import { createSpellAnimator } from './spell-animation.33b7ede1ff57.js';
-import { getResolvedSpellVisuals } from './spell-visuals.ffab9b18cbbf.js';
+import { fitSlabText } from './slab-text.177902e850c4.js';
+import { createBattleScene } from './battle-scene.4ffa09bb0beb.js';
+import { createSpellAnimator } from './spell-animation.0240b7c6aebc.js';
+import { createAuraAnimator } from './aura-animation.f17086744bea.js';
+import { getResolvedBattleVisuals } from './spell-visuals.31c8300db921.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
-import { pixelIconMarkup } from './pixel-icons.f10ba2dbbb9c.js';
+import { pixelIconMarkup } from './pixel-icons.95aac262d1e6.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
@@ -19,6 +20,7 @@ const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
 const battleScene = createBattleScene();
 const spellAnimator = createSpellAnimator({root:battleScene.element});
+const auraAnimator = createAuraAnimator({root:battleScene.element});
 const healthBars = createHealthBars({onSettled:()=>showPendingVictory()});
 let spellVisualQueue = [];
 let activeSpellVisual = null;
@@ -119,7 +121,7 @@ function enhancementOutcomeHint(active) {
 }
 function phaseHint(active) {
   const visual = activeSpellVisual || spellVisualQueue[0];
-  if (visual) return `${state.players[visual.casterIndex].name} · ${SPELL_CATALOG[visual.spellId].name} is resolving…`;
+  if (visual) return `${state.players[visual.casterIndex].name} · ${SPELL_CATALOG[visual.spellId]?.name || (visual.kind==='enhancement'?'Enhancement':'Aura')} is resolving…`;
   if (state.status === 'finished') return `${state.players[state.winner].name} wins the duel!`;
   if(state.phase==='setup')return 'Build and save your new Fire and Water decks in the Deck workshop.';
   if(state.phase==='initiative')return isOnlineBattle()
@@ -282,6 +284,9 @@ function render() {
   battleScene.setActive(state.phase === 'initiative' ? null : state.activePlayer);
   app.querySelector('[data-battle-scene-slot]').replaceWith(battleScene.element);
   healthBars.mount(app,state.players.map((player,index)=>displayedStats(player,index)));
+  auraAnimator.sync(state.players.map((player,index)=>displayedStats(player,index)),{
+    visible:!battleView.hidden && (state.status==='playing'||spellVisualBusy()),
+  });
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   scheduleCombat();
@@ -315,6 +320,7 @@ function displayedStats(player,index) {
 function cancelSpellPresentation() {
   spellVisualGeneration += 1;
   spellAnimator.cancel({settle:false});
+  auraAnimator.reset({settle:false});
   activeSpellVisual=null;
   spellVisualQueue=[];
   presentedPlayers=null;
@@ -352,13 +358,16 @@ function playNextSpellVisual() {
     }
   };
   battleScene.finishEntrance();
-  spellAnimator.play({...event,onImpact:impact,onComplete:complete})
-    .then(result=>{if(result.duplicate)complete();}).catch(complete);
+  Promise.resolve().then(()=>{
+    if(!isCurrent())return {cancelled:true};
+    const options={...event,onImpact:impact,onComplete:complete};
+    return event.kind==='aura'?auraAnimator.activate(options):spellAnimator.play(options);
+  }).then(result=>{if(result?.duplicate)complete();}).catch(complete);
 }
 function update(next,message) {
   if(next===state)return;
   const wasPlaying=state.status==='playing';
-  const visuals=battleView.hidden?[]:getResolvedSpellVisuals(state,next);
+  const visuals=battleView.hidden?[]:getResolvedBattleVisuals(state,next);
   if(visuals.length){
     // A newer online spell can arrive while the last hit is still recovering.
     if(!presentedPlayers)presentedPlayers=state.players.map((player,index)=>({

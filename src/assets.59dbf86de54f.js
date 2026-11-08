@@ -1,8 +1,8 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { resolveAssetUrl } from './asset-url.e920f2d4a01b.js';
+import { resolveAssetUrl } from './asset-url.ed92e0ed1e6a.js';
 import { SPELL_CATALOG } from './spells.73668f325e64.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.225c4c14014b.js';
-import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.f10ba2dbbb9c.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.177902e850c4.js';
+import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.95aac262d1e6.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -39,6 +39,16 @@ export const ASSET_FILES = Object.freeze({
   wizardElementalShield: 'Wizzy Basic Elemental Shield Sprite Sheet.png',
   wizardFirePowerUp: 'Wizzy Basic Fire Power Up Sprite Sheet.png',
   wizardLargeProjectiles: 'Wizzy Large Projectile Effects.png',
+  combatV2BasicAttack: 'Wizzy Combat V2 Basic Attack.png',
+  combatV2SimpleCast: 'Wizzy Combat V2 Simple Cast.png',
+  combatV2LargeCast: 'Wizzy Combat V2 Large Cast.png',
+  combatV2Shield: 'Wizzy Combat V2 Shield.png',
+  combatV2PowerUp: 'Wizzy Combat V2 Power Up.png',
+  combatV2Enhancement: 'Wizzy Combat V2 Enhancement.png',
+  combatV2Aura: 'Wizzy Combat V2 Aura.png',
+  combatV2BasicProjectiles: 'Wizzy Combat V2 Basic Projectiles.png',
+  combatV2LargeProjectiles: 'Wizzy Combat V2 Large Projectiles.png',
+  combatV2HitReaction: 'Wizzy Combat V2 Hit Reaction.png',
   fireCard: 'Pixel-Art Fiery Comet Spell Card 2.png',
   waterCard: 'Pixel Art Cresting Wave Card.png',
   fateCard: 'Purple Galaxy Vortex Card Frame.png',
@@ -144,6 +154,156 @@ export const SPELL_ANIMATION_SHEETS = Object.freeze({
   ]),
 });
 
+/** Approved v2 combat sheets: eight 125ms particle frames linger for one second.
+ * Anchors are normalized cell coordinates; displayScale maps source to battle px.
+ * Enhancement retains lift/hover; landing frames finish at the measured feet.
+ */
+export const COMBAT_ANIMATION_SHEETS = Object.freeze({
+  basicAttack: spellAnimationSheet({
+    asset: 'combatV2BasicAttack', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    sourceBodyHeight: 178, targetBodyHeight: 144,
+    displayScale: 144 / 178, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [109.5,200], [110.25,200], [110,200], [110.25,200],
+    [109.5,200.25], [110.25,200.25], [110,200.25], [110.25,200.25],
+    [109.5,200.5], [110.25,200.5], [109.5,200.5], [110.25,200.5],
+    [110,200.75], [109.75,199.75], [111,200.75], [110.75,199.75],
+    [112.5,201], [112.75,201], [113,201], [113.25,201],
+    [113,201.25], [113.25,201.25], [113,201.25], [113.25,201.25],
+    [113.5,201.5], [112.25,201.5], [113.5,201.5], [113.75,201.5],
+    [113,201.75], [112.75,201.75], [113.5,201.75], [113.25,201.75],
+  ]),
+  simpleCast: spellAnimationSheet({
+    asset: 'combatV2SimpleCast', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    sourceBodyHeight: 133, targetBodyHeight: 144,
+    displayScale: 144 / 133, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [115.5,205], [117.75,205], [116,205], [115.75,205],
+    [116,203.25], [115.75,203.25], [117,203.25], [117.25,203.25],
+    [115.5,203.5], [115.75,203.5], [117,203.5], [115.75,203.5],
+    [115.5,204.75], [115.75,204.75], [116,204.75], [116.25,204.75],
+    [120,206], [120.75,206], [122.5,206], [121.75,206],
+    [122,205.25], [121.75,205.25], [121.5,205.25], [121.75,205.25],
+    [123,204.5], [121.75,204.5], [122,204.5], [122.25,204.5],
+    [123,205.75], [122.25,205.75], [122,205.75], [122.25,205.75],
+  ]),
+  largeCast: spellAnimationSheet({
+    asset: 'combatV2LargeCast', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    sourceBodyHeight: 129, targetBodyHeight: 144,
+    displayScale: 144 / 129, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [111,219], [102.25,216], [98,217], [88.25,217],
+    [95.5,215.25], [92.75,215.25], [90.5,215.25], [88.25,215.25],
+    [96,215.5], [92.75,214.5], [91,215.5], [90.25,214.5],
+    [95,213.75], [82.25,211.75], [81.5,211.75], [93.75,214.75],
+    [112,208], [117.75,208], [105,208], [130.25,208],
+    [138,206.25], [137.25,206.25], [136,206.25], [135.75,206.25],
+    [138.5,205.5], [137.25,205.5], [137,205.5], [134.75,205.5],
+    [143.5,205.75], [139.75,202.75], [118,205.75], [107.25,205.75],
+  ]),
+  shield: spellAnimationSheet({
+    asset: 'combatV2Shield', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    sourceBodyHeight: 148, targetBodyHeight: 144,
+    displayScale: 144 / 148, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [109,205], [109.75,204], [109.5,205], [108.75,205],
+    [108,204.25], [108.75,204.25], [109.5,204.25], [109.25,204.25],
+    [108,204.5], [108.75,204.5], [109,204.5], [109.25,204.5],
+    [108,203.75], [108.75,203.75], [110.5,203.75], [110.75,203.75],
+    [113.5,203], [111.75,203], [113,203], [113.25,203],
+    [112.5,202.25], [111.75,202.25], [112.5,202.25], [112.75,202.25],
+    [112,202.5], [111.25,202.5], [112,202.5], [112.75,202.5],
+    [112.5,201.75], [111.75,202.75], [113.5,201.75], [113.25,201.75],
+  ]),
+  powerUp: spellAnimationSheet({
+    asset: 'combatV2PowerUp', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    sourceBodyHeight: 158, targetBodyHeight: 144,
+    displayScale: 144 / 158, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [113.5,210], [116.25,210], [116.5,210], [117.25,210],
+    [116,211.25], [117.25,211.25], [116.5,211.25], [117.75,211.25],
+    [116,210.5], [117.25,210.5], [116.5,210.5], [117.25,210.5],
+    [116,208.75], [116.25,208.75], [116.5,208.75], [114.25,208.75],
+    [110.5,209], [107.25,209], [110.5,209], [110.75,209],
+    [111,208.25], [111.75,208.25], [111.5,208.25], [112.25,208.25],
+    [110.5,208.5], [110.75,208.5], [110.5,208.5], [111.75,208.5],
+    [110.5,208.75], [110.75,208.75], [111.5,208.75], [111.75,208.75],
+  ]),
+  enhancement: spellAnimationSheet({
+    asset: 'combatV2Enhancement', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    sourceBodyHeight: 126, targetBodyHeight: 144,
+    displayScale: 144 / 126, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [111.5,203], [111.25,203], [110.5,205], [110.75,203],
+    [112,192.25], [113.25,192.25], [112.5,192.25], [112.25,192.25],
+    [112,191.5], [112.75,191.5], [112,191.5], [111.75,191.5],
+    [113,180.75], [110.75,185.75], [111.5,195.75], [113.25,195.75],
+    [109.5,199], [110.75,198], [111.5,198], [112.25,200],
+    [111.5,205.25], [112.25,205.25], [111.5,205.25], [111.25,205.25],
+    [112.5,188.5], [113.75,188.5], [112,188.5], [111.75,188.5],
+    [112,185.75], [111.75,191.75], [111.5,194.75], [110.75,194.75],
+  ]),
+  aura: spellAnimationSheet({
+    asset: 'combatV2Aura', sourceWidth: 1254, sourceHeight: 1254, columns: 4, rows: 4,
+    displayScale: 0.5, frameMs: 125, lingerMs: 1000,
+    animations: { aura: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] },
+  }, [
+    [156.75,194], [156.75,194], [156.75,194], [156.75,194],
+    [152.5,194.5], [157,197], [156.5,194], [156.5,194],
+    [157,185], [157,185], [156.5,185], [156.5,185],
+    [156.75,194], [156.75,194], [156.75,194], [156.75,194],
+  ]),
+  basicProjectiles: spellAnimationSheet({
+    asset: 'combatV2BasicProjectiles', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    displayScale: 0.5, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [115,113.5], [120.25,113], [125,111.5], [131.25,112],
+    [140,110.25], [142.25,110.25], [143,110.25], [143.75,109.75],
+    [143.5,110], [142.25,110], [143.5,110], [143.75,110],
+    [115.5,107.75], [115.75,105.25], [118,111.75], [112.75,110.25],
+    [112.5,111.5], [107.25,110.5], [88.5,111], [81.25,110.5],
+    [82,109.25], [80.25,108.75], [81,109.25], [80.25,109.75],
+    [83,110], [80.75,110.5], [81,110], [81.75,110],
+    [112.5,106.75], [114.75,103.25], [115,112.25], [113.25,112.25],
+  ]),
+  largeProjectiles: spellAnimationSheet({
+    asset: 'combatV2LargeProjectiles', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    displayScale: 1.2, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [134.5,152], [136.75,156.5], [130,155.5], [131.25,156.5],
+    [149.5,147.75], [148.75,148.75], [139,150.25], [136.25,147.75],
+    [153,140], [151.25,142.5], [140.5,143], [139.75,141.5],
+    [138.5,114.25], [117.75,115.75], [106.5,116.25], [106.75,104.25],
+    [81.4,138.95], [71.25,136.95], [59.3,137.35], [53.95,132.15],
+    [60.2,131.3], [59.45,131.3], [52.7,131.3], [51.15,131.3],
+    [62,128.55], [59.65,128.9], [52.9,129.2], [52.75,128.55],
+    [63.4,128.15], [112.25,108.25], [95.5,103.75], [104.75,106.75],
+  ]),
+  hitReaction: spellAnimationSheet({
+    asset: 'combatV2HitReaction', sourceWidth: 887, sourceHeight: 1774, columns: 4, rows: 8,
+    sourceBodyHeight: 169, targetBodyHeight: 144,
+    displayScale: 144 / 169, frameMs: 125, lingerMs: 1000,
+    animations: { fire: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], water: [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] },
+  }, [
+    [113,200], [112.25,200], [113.5,200], [113.75,200],
+    [112.5,199.25], [112.75,199.25], [112,199.25], [113.75,199.25],
+    [112.5,199.5], [112.75,199.5], [113.5,199.5], [113.25,199.5],
+    [113,200.75], [113.25,200.75], [113.5,200.75], [114.75,200.75],
+    [111.5,200], [110.25,200], [104.5,200], [108.75,200],
+    [110,199.25], [109.25,199.25], [110.5,199.25], [111.25,198.25],
+    [111.5,200.5], [110.25,200.5], [110.5,200.5], [111.25,200.5],
+    [111,199.75], [110.75,199.75], [110.5,199.75], [111.25,199.75],
+  ]),
+});
+
 // Resolve from the document so both a domain root and a project subpath work.
 // Standalone builds provide these same originals once per asset.
 export const ASSETS = Object.freeze(Object.fromEntries(
@@ -241,6 +401,16 @@ export const ASSET_CROPS = Object.freeze({
   wizardElementalShield: { width: 1254, height: 1254, x: 0, y: 0, w: 1254, h: 1254 },
   wizardFirePowerUp: { width: 1774, height: 887, x: 0, y: 0, w: 1774, h: 887 },
   wizardLargeProjectiles: { width: 1774, height: 887, x: 0, y: 0, w: 1774, h: 887 },
+  combatV2BasicAttack: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  combatV2SimpleCast: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  combatV2LargeCast: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  combatV2Shield: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  combatV2PowerUp: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  combatV2Enhancement: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  combatV2Aura: { width: 1254, height: 1254, x: 0, y: 0, w: 1254, h: 1254 },
+  combatV2BasicProjectiles: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  combatV2LargeProjectiles: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
+  combatV2HitReaction: { width: 887, height: 1774, x: 0, y: 0, w: 887, h: 1774 },
   fireCard: { width: 1086, height: 1448, x: 69, y: 72, w: 947, h: 1250 },
   // Faint alpha extends to this export's canvas; align to the visible card border.
   waterCard: { width: 1086, height: 1448, x: 69, y: 72, w: 948, h: 1250 },

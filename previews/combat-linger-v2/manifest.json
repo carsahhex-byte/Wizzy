@@ -1,7 +1,7 @@
 {
   "format": "wizzy-animation-review",
   "version": 2,
-  "integration": "review-only",
+  "integration": "approved-live",
   "frameRate": 8,
   "frameMs": 125,
   "lingerMs": 1000,

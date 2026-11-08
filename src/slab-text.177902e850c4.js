@@ -1,4 +1,4 @@
-import { pixelIconMarkup } from './pixel-icons.f10ba2dbbb9c.js';
+import { pixelIconMarkup } from './pixel-icons.95aac262d1e6.js';
 
 // Display copy only. Combat and the full inspection text continue to use the
 // canonical spell catalog. Threshold lines add to the base unless they say

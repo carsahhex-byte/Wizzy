@@ -1,4 +1,5 @@
 import { SPELL_CATALOG } from './spells.js';
+import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
 const DAMAGING_SPELLS = new Set([
@@ -28,6 +29,14 @@ const sameCard = (left, right) => left?.id === right?.id && left?.spellId === ri
 const validLog = log => Array.isArray(log) && log.length > 0 && log.every((entry, index) => entry
   && entry.id === index + 1 && Number.isSafeInteger(entry.round) && entry.round >= 1
   && typeof entry.message === 'string' && typeof entry.type === 'string');
+
+function isAppendOnlyUpdate(previous, next) {
+  return Boolean(previous && next && previous.version === next.version && previous.status !== 'finished'
+    && validLog(previous.log) && validLog(next.log) && next.log.length > previous.log.length
+    && previous.log.every((entry, index) => sameEntry(entry, next.log[index]))
+    && Number.isSafeInteger(previous.round) && Number.isSafeInteger(next.round) && next.round >= previous.round
+    && (previous.startingPlayer === null || next.startingPlayer === previous.startingPlayer));
+}
 
 function newDiscards(previous, next) {
   if (!Array.isArray(previous.players) || !Array.isArray(next.players)
@@ -78,11 +87,7 @@ function castSpellId(entry, player) {
  * identity even when cardId is null. Prefix keys with the UI's duel identity.
  */
 export function getResolvedSpellVisuals(previous, next) {
-  if (!previous || !next || previous.version !== next.version || previous.status === 'finished'
-    || !validLog(previous.log) || !validLog(next.log) || next.log.length <= previous.log.length
-    || !previous.log.every((entry, index) => sameEntry(entry, next.log[index]))
-    || !Number.isSafeInteger(previous.round) || !Number.isSafeInteger(next.round) || next.round < previous.round
-    || previous.startingPlayer !== null && next.startingPlayer !== previous.startingPlayer) return [];
+  if (!isAppendOnlyUpdate(previous, next)) return [];
   const added = newDiscards(previous, next);
   if (!added) return [];
   const commits = [null, null], usedCounts = [new Map(), new Map()], events = [];
@@ -114,4 +119,53 @@ export function getResolvedSpellVisuals(previous, next) {
     });
   }
   return events;
+}
+
+
+function enhancementResult(message, player) {
+  const prefix = `${player.name} rolls `;
+  if (!message.startsWith(prefix)) return null;
+  const match = message.slice(prefix.length).match(/^([1-6]) \+ ([1-6]) = (\d+) for Enhancement: tier \+(10|20|30)%; gains \+(10|20|30)%; (10|20|30)% Enh\.( \(maximum 30%\))?$/);
+  if (!match) return null;
+  const [, first, second, raw, nominal, actual, bank, capped] = match;
+  const total = Number(raw), bonus = Number(nominal), gain = Number(actual), after = Number(bank), before = after - gain;
+  if (total !== Number(first) + Number(second) || bonus !== getEnhancementBonus(total)
+    || before < 0 || before >= MAX_ENHANCEMENT || before % ENHANCEMENT_STEP !== 0
+    || after !== Math.min(MAX_ENHANCEMENT, before + bonus) || Boolean(capped) !== (gain < bonus)) return null;
+  return { enhancementBonus: bonus, enhancementGain: gain, enhancementBefore: before, enhancementAfter: after };
+}
+
+/**
+ * New primary completions, positive tiered Enhancement rewards and Aura starts.
+ * The same initial/reconnect/new-duel baseline contract as the primary collector
+ * applies. Legacy flat-reward logs, failed rolls, Fate and Aura duration logs do
+ * not animate. Each Enhancement result must match a same-turn zero-Mana attempt.
+ */
+export function getResolvedBattleVisuals(previous, next) {
+  if (!isAppendOnlyUpdate(previous, next) || !newDiscards(previous, next)) return [];
+  const events = getResolvedSpellVisuals(previous, next), attempts = [null, null];
+  const afterLogId = previous.log.at(-1).id;
+  for (const entry of next.log) {
+    const casterIndex = next.players.findIndex(player => player.id === entry.playerId);
+    if (casterIndex === -1) continue;
+    const player = next.players[casterIndex], element = casterIndex === 0 ? 'Fire' : 'Water';
+    if (entry.type === 'enhancement') {
+      if (entry.message === `${player.name} attempts Enhancement for 0 Mana instead of casting a primary spell.`) {
+        attempts[casterIndex] = { logId: entry.id, round: entry.round };
+        continue;
+      }
+      if (!entry.message.startsWith(`${player.name} rolls `) || !entry.message.includes(' for Enhancement')) continue;
+      const attempt = attempts[casterIndex];
+      attempts[casterIndex] = null;
+      const reward = enhancementResult(entry.message, player);
+      if (entry.id <= afterLogId || !reward || !attempt || attempt.round !== entry.round) continue;
+      events.push({ key: `enhancement:${entry.id}:${casterIndex}`, logId: entry.id, commitLogId: attempt.logId,
+        casterIndex, element, kind: 'enhancement', spellId: null, manaCost: 0, damaging: false, ...reward });
+    } else if (entry.id > afterLogId && entry.type === 'aura'
+      && entry.message === `${player.name} activates Aura for ${AURA_COST} Mana: +${AURA_BONUS}% damage through their next ${AURA_DURATION} turns. The activation turn does not count.`) {
+      events.push({ key: `aura:${entry.id}:${casterIndex}`, logId: entry.id, casterIndex, element,
+        kind: 'aura', spellId: null, manaCost: AURA_COST, damaging: false });
+    }
+  }
+  return events.sort((left, right) => left.logId - right.logId);
 }
