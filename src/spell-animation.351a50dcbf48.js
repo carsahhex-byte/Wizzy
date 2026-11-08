@@ -1,4 +1,4 @@
-import { COMBAT_ANIMATION_SHEETS } from './assets.59dbf86de54f.js';
+import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS } from './assets.59dbf86de54f.js';
 import { getSpellVisual } from './spell-visuals.31c8300db921.js';
 import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.8b2a2fe0c157.js';
 
@@ -6,8 +6,10 @@ const FRAME_MS = 125;
 const ACTOR_END = 2000;
 const RELEASE = 1500;
 const ARRIVAL = 2500;
-const FADE_END = 3000;
-const REACTION_END = 4500;
+// Original quick hit: standing-model flash, then four 85ms impact frames.
+const HIT_FLASH_MS = 210;
+const HIT_FRAME_MS = 85;
+const HIT_END = ARRIVAL + HIT_FRAME_MS * 4;
 const FEET = [{ x: 236, y: 450 }, { x: 788, y: 450 }];
 const actorSheets = { 'basic-attack': 'basicAttack', 'simple-cast': 'simpleCast', 'large-cast': 'largeCast',
   shield: 'shield', 'power-up': 'powerUp', enhancement: 'enhancement' };
@@ -44,8 +46,7 @@ export function createSpellAnimator({ root, scene } = {}) {
   const actor = createAnimationSprite(document, 'spell-animation-actor');
   const projectile = createAnimationSprite(document, 'spell-projectile');
   const impact = createAnimationSprite(document, 'spell-impact');
-  const hitActor = createAnimationSprite(document, 'spell-hit-actor');
-  element.append(actor, projectile, impact, hitActor);
+  element.append(actor, projectile, impact);
   root.append(element);
   const seen = new Set();
   let current = null, generation = 0, frameRequest = 0;
@@ -82,6 +83,19 @@ export function createSpellAnimator({ root, scene } = {}) {
     restoreProperty(job[`${name}Sprite`], 'visibility', job[`${name}Visibility`]);
     restoreData(job[name], target ? 'spellHit' : 'spellCasting', job[`${name}Flag`]);
   }
+  function hitFlash(job, visible) {
+    if (!job.targetSprite || job.flash === visible) return;
+    job.flash = visible;
+    if (visible) {
+      job.targetFilter = property(job.targetSprite, 'filter');
+      job.hitFlag = job.target.dataset.spellHit;
+      job.target.dataset.spellHit = 'true';
+      job.targetSprite.style.filter = 'brightness(1.4) sepia(1) saturate(8) hue-rotate(-45deg)';
+    } else {
+      restoreProperty(job.targetSprite, 'filter', job.targetFilter);
+      restoreData(job.target, 'spellHit', job.hitFlag);
+    }
+  }
   function finish(job, { cancelled = false, settle = true, skipped = false } = {}) {
     if (job.done) return;
     if (settle) deliverImpact(job, { cancelled, skipped });
@@ -92,8 +106,8 @@ export function createSpellAnimator({ root, scene } = {}) {
       if (frameRequest) view.cancelAnimationFrame(frameRequest);
       frameRequest = 0;
       restoreStanding(job);
-      restoreStanding(job, true);
-      for (const node of [actor, projectile, impact, hitActor]) hideAnimationSprite(node);
+      hitFlash(job, false);
+      for (const node of [actor, projectile, impact]) hideAnimationSprite(node);
       element.dataset.phase = cancelled ? 'cancelled' : 'complete';
       element.dataset.stage = cancelled ? 'cancelled' : 'complete';
       element.hidden = true;
@@ -120,7 +134,7 @@ export function createSpellAnimator({ root, scene } = {}) {
       ? { kind, element: casterIndex === 0 ? 'Fire' : 'Water', damaging: false }
       : getSpellVisual(spellId);
     const job = { key, spellId, casterIndex, kind: visual?.kind || 'none', onImpact, onComplete,
-      done: false, impacted: false, casterHidden: false, targetHidden: false };
+      done: false, impacted: false, casterHidden: false, flash: false };
     job.promise = new Promise(resolve => { job.resolve = resolve; });
     current = job;
     Object.assign(element.dataset, { animationKey: key, spellAnimation: job.kind, kind: job.kind,
@@ -134,13 +148,13 @@ export function createSpellAnimator({ root, scene } = {}) {
     const frames = sheet?.animations[type];
     const projectileSheet = COMBAT_ANIMATION_SHEETS[job.kind === 'large-cast' ? 'largeProjectiles' : 'basicProjectiles'];
     const projectileFrames = projectileSheet?.animations[type];
-    const hitSheet = COMBAT_ANIMATION_SHEETS.hitReaction;
-    const hitFrames = hitSheet?.animations[targetType];
-    if (frames?.length !== 16 || visual.damaging && (projectileFrames?.length !== 16 || hitFrames?.length !== 16)) {
+    const hitSheet = SPELL_ANIMATION_SHEETS.basicAttack;
+    const hitFrames = hitSheet?.animations.impact;
+    if (frames?.length !== 16 || visual.damaging && (projectileFrames?.length !== 16 || hitFrames?.length !== 4)) {
       finish(job, { skipped: true });
       return job.promise;
     }
-    const duration = visual.damaging ? REACTION_END : ACTOR_END;
+    const duration = visual.damaging ? HIT_END : ACTOR_END;
     const impactAt = visual.damaging ? ARRIVAL : 500;
     const mirror = (type === 'fire') !== (casterIndex === 0);
     const point = FEET[casterIndex], targetPoint = { x: FEET[1 - casterIndex].x, y: 370 };
@@ -188,9 +202,9 @@ export function createSpellAnimator({ root, scene } = {}) {
           element.dataset.phase = 'casting';
           element.dataset.stage = elapsed < 500 ? 'windup' : elapsed < RELEASE ? 'linger' : 'recover';
         } else {
-          element.dataset.phase = elapsed < RELEASE ? 'casting' : elapsed < ARRIVAL ? 'projectile' : elapsed < FADE_END ? 'impact' : 'reaction';
+          element.dataset.phase = elapsed < RELEASE ? 'casting' : elapsed < ARRIVAL ? 'projectile' : 'impact';
           element.dataset.stage = elapsed < 500 ? 'windup' : elapsed < RELEASE ? 'linger' : elapsed < ARRIVAL ? 'flight'
-            : elapsed < FADE_END ? 'impact' : elapsed < 4000 ? 'hit-linger' : 'hit-recovery';
+            : elapsed < ARRIVAL + HIT_FLASH_MS ? 'quick-hit' : 'impact-fade';
           // The actor already carries its charged orb. Only large offscreen
           // effects form separately; smaller shots appear on release itself.
           const projectileVisibleAt = job.kind === 'large-cast' ? 1000 : RELEASE;
@@ -207,19 +221,14 @@ export function createSpellAnimator({ root, scene } = {}) {
           } else hideAnimationSprite(projectile);
 
           if (elapsed >= ARRIVAL) {
-            const reactionTime = elapsed - ARRIVAL;
-            const reactionFrame = Math.min(15, Math.floor(reactionTime / FRAME_MS));
-            hideStanding(job, true);
-            paintAnimationFrame(hitActor, hitSheet, hitFrames[reactionFrame], FEET[1 - casterIndex]);
-            Object.assign(hitActor.dataset, { element: targetType, sequenceFrame: String(reactionFrame),
-              phase: reactionFrame < 4 ? 'recoil' : reactionFrame < 12 ? 'linger' : 'recover' });
-            element.dataset.hitFrame = String(hitFrames[reactionFrame]);
-            if (elapsed < FADE_END) {
-              const localFrame = 12 + Math.floor(reactionTime / FRAME_MS);
-              paintAnimationFrame(impact, projectileSheet, projectileFrames[localFrame], targetPoint,
-                { mirror, size: job.kind === 'simple-cast' ? 1.15 : 1 });
-              Object.assign(impact.dataset, { element: type, sequenceFrame: String(localFrame), phase: 'fade' });
-            } else hideAnimationSprite(impact);
+            const hitTime = elapsed - ARRIVAL;
+            const index = Math.min(3, Math.floor(hitTime / HIT_FRAME_MS));
+            hitFlash(job, hitTime < HIT_FLASH_MS);
+            paintAnimationFrame(impact, hitSheet, hitFrames[index], targetPoint,
+              { size: job.kind === 'large-cast' ? 1.7 : 1 });
+            impact.style.filter = type === 'water' ? 'hue-rotate(155deg) saturate(1.25)' : '';
+            Object.assign(impact.dataset, { element: type, sequenceFrame: String(index), phase: 'fade' });
+            element.dataset.hitFrame = String(hitFrames[index]);
           }
         }
         if (elapsed >= impactAt) deliverImpact(job);

@@ -8,7 +8,7 @@ import { createMultiplayer } from './multiplayer.ffa6ae5450c6.js';
 import { createAccounts } from './accounts.bd7a3221b35c.js';
 import { fitSlabText } from './slab-text.177902e850c4.js';
 import { createBattleScene } from './battle-scene.4ffa09bb0beb.js';
-import { createSpellAnimator } from './spell-animation.0240b7c6aebc.js';
+import { createSpellAnimator } from './spell-animation.351a50dcbf48.js';
 import { createAuraAnimator } from './aura-animation.f17086744bea.js';
 import { getResolvedBattleVisuals } from './spell-visuals.31c8300db921.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
