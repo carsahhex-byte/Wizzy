@@ -1,11 +1,12 @@
 import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.63c75a1c0d65.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.99a774ed6c94.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.c9238899e623.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.29cc03f8c6f5.js';
 import { validateDeck } from './decks.c47034088730.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.7946353e2359.js';
-import { createHub } from './hub.66897cb4bdc6.js';
+import { createHub } from './hub.4e0369aa1698.js';
 import { createMultiplayer } from './multiplayer.35b434c91713.js';
 import { createAccounts } from './accounts.92dd638f4166.js';
+import { fitSlabText } from './slab-text.112d4977b217.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
@@ -256,6 +257,8 @@ function fitBoard() {
   app.style.height=`${1536*scale}px`;
   app.style.marginTop=fitScreen?`${Math.max(0,(height-1536*scale)/2)}px`:'0px';
   positionEmberChoice();
+  fitSlabText(app);
+  document.querySelectorAll('dialog[open]').forEach(dialog=>fitSlabText(dialog));
 }
 window.addEventListener('resize',fitBoard);
 function update(next,message) {
@@ -405,6 +408,7 @@ function showSlab(spellId) {
   const timing=spell.category==='Fate'?'Play one Fate slab in your post-roll response. Players alternate until two consecutive passes. Twist may add 2 or subtract 2.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds first, then players alternate one Fate slab at a time until two consecutive passes. Your Enhancement increases outgoing damage before Shield.':'Resolves immediately, without a dice roll or Fate window.';
   document.querySelector('#slab-behavior').textContent=`${spell.effectText} ${timing}`;
   if(!dialog.open)dialog.showModal();
+  fitSlabText(dialog);
 }
 function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
   const player=state.players.find(player=>player.id===playerId);
@@ -426,6 +430,7 @@ function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
   });
   const dialog=document.querySelector('#deck-inspector');
   if(!dialog.open)dialog.showModal();
+  fitSlabText(dialog);
 }
 document.querySelector('#deck-inspector').addEventListener('click',event=>{
   const spell=event.target.closest('[data-inspect-spell]');

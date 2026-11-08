@@ -6,6 +6,7 @@ import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.js
 import { createHub } from './hub.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createAccounts } from './accounts.js';
+import { fitSlabText } from './slab-text.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
@@ -256,6 +257,8 @@ function fitBoard() {
   app.style.height=`${1536*scale}px`;
   app.style.marginTop=fitScreen?`${Math.max(0,(height-1536*scale)/2)}px`:'0px';
   positionEmberChoice();
+  fitSlabText(app);
+  document.querySelectorAll('dialog[open]').forEach(dialog=>fitSlabText(dialog));
 }
 window.addEventListener('resize',fitBoard);
 function update(next,message) {
@@ -405,6 +408,7 @@ function showSlab(spellId) {
   const timing=spell.category==='Fate'?'Play one Fate slab in your post-roll response. Players alternate until two consecutive passes. Twist may add 2 or subtract 2.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds first, then players alternate one Fate slab at a time until two consecutive passes. Your Enhancement increases outgoing damage before Shield.':'Resolves immediately, without a dice roll or Fate window.';
   document.querySelector('#slab-behavior').textContent=`${spell.effectText} ${timing}`;
   if(!dialog.open)dialog.showModal();
+  fitSlabText(dialog);
 }
 function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
   const player=state.players.find(player=>player.id===playerId);
@@ -426,6 +430,7 @@ function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
   });
   const dialog=document.querySelector('#deck-inspector');
   if(!dialog.open)dialog.showModal();
+  fitSlabText(dialog);
 }
 document.querySelector('#deck-inspector').addEventListener('click',event=>{
   const spell=event.target.closest('[data-inspect-spell]');

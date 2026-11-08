@@ -55,3 +55,80 @@ export function slabRulesMarkup(spellId) {
 export function slabRulesText(spellId) {
   return compactLines(spellId).map(({ threshold, text }) => `${threshold ? `${threshold} ` : ''}${text}`).join(' ');
 }
+
+/**
+ * Maximize live rules inside each visible parchment. Call after rendering or
+ * resizing; the host owns those lifecycle events. client/offset dimensions
+ * deliberately stay in layout pixels when the battle board is transformed.
+ */
+export function fitSlabText(root) {
+  if (!root?.querySelectorAll) return 0;
+  const slabs = [...root.querySelectorAll('.spell-slab-art')];
+  if (root.matches?.('.spell-slab-art')) slabs.unshift(root);
+  const number = value => Number.parseFloat(value) || 0;
+  let fitted = 0;
+  for (const slab of slabs) {
+    const paper = slab.querySelector('.slab-live-paper');
+    const title = slab.querySelector('.slab-live-title');
+    const rules = slab.querySelector('.slab-live-rules');
+    const view = slab.ownerDocument?.defaultView;
+    const cardWidth = slab.clientWidth;
+    if (!paper || !title || !rules || !view || cardWidth <= 0 || paper.clientHeight <= 0 || rules.clientWidth <= 0) continue;
+
+    const paperStyle = view.getComputedStyle(paper);
+    const rulesStyle = view.getComputedStyle(rules);
+    const titleStyle = view.getComputedStyle(title);
+    const paperWidth = paper.clientWidth - number(paperStyle.paddingLeft) - number(paperStyle.paddingRight);
+    const paperHeight = paper.clientHeight - number(paperStyle.paddingTop) - number(paperStyle.paddingBottom);
+    const titleHeight = title.offsetHeight + number(titleStyle.marginTop) + number(titleStyle.marginBottom);
+    const paddingX = number(rulesStyle.paddingLeft) + number(rulesStyle.paddingRight);
+    const paddingY = number(rulesStyle.paddingTop) + number(rulesStyle.paddingBottom);
+    const availableWidth = Math.min(paperWidth, rules.clientWidth) - paddingX;
+    const availableHeight = paperHeight - titleHeight - number(paperStyle.rowGap)
+      - number(rulesStyle.marginTop) - number(rulesStyle.marginBottom) - paddingY - 1;
+    if (availableWidth <= 0 || availableHeight <= 0) continue;
+
+    const lines = [...rules.children];
+    function fits(size) {
+      rules.style.fontSize = `${size}px`;
+      const current = view.getComputedStyle(rules);
+      // scrollHeight alone is unreliable for vertically centered flex items:
+      // content can overflow both above and below the visible box. Sum the
+      // natural rule lines instead; their offsets ignore ancestor transforms.
+      const height = lines.length
+        ? lines.reduce((total, element) => {
+          const style = view.getComputedStyle(element);
+          return total + element.offsetHeight + number(style.marginTop) + number(style.marginBottom);
+        }, 0) + number(current.rowGap) * Math.max(0, lines.length - 1)
+        : rules.scrollHeight - paddingY;
+      const width = lines.length
+        ? Math.max(...lines.map(element => {
+          const style = view.getComputedStyle(element);
+          return element.scrollWidth + number(style.marginLeft) + number(style.marginRight);
+        }))
+        : rules.scrollWidth - paddingX;
+      // Block line boxes fill the parent even for a single short word, and
+      // client/scroll widths are rounded integers. Allow that rounding pixel.
+      return height <= availableHeight && width <= availableWidth + 1;
+    }
+
+    let low = cardWidth * 8 / 170;
+    let high = cardWidth * .22;
+    let best = low;
+    if (fits(high)) best = high;
+    else {
+      for (let step = 0; step < 9; step += 1) {
+        const middle = (low + high) / 2;
+        if (fits(middle)) { best = middle; low = middle; }
+        else high = middle;
+      }
+    }
+    // Round down so subpixel line metrics cannot push the final line outside.
+    const size = `${Math.floor(best * 20) / 20}px`;
+    rules.style.fontSize = size;
+    rules.style.setProperty('--slab-rules-size', size);
+    slab.style.setProperty('--slab-rules-size', size);
+    fitted += 1;
+  }
+  return fitted;
+}
