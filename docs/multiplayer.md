@@ -107,6 +107,10 @@ All 33 slabs have larger live compact rules with bold roll thresholds. This read
 
 Each player sees only their own hand and can act only at the appropriate step. Room revisions and request IDs prevent stale or retried requests from applying a move twice.
 
+Both screens use the approved v2 battle animations. After Fate closes, damaging spells have a one-second caster charge, release at 1.5 seconds, impact after a one-second flight at 2.5 seconds, and finish the defender's two-second reaction at 4.5 seconds. Non-damaging spells and successful Enhancement last two seconds with results shown at 500 ms; failed Enhancement shows **MISS** without animation. Aura has 500 ms of formation plus a one-second activation hold, then its green ring loops until expiry after three subsequent owner turns, with a 500 ms fizzle. Reconnecting restores the current ring without replaying activation or old spells. Reduced motion settles action visuals immediately and displays a static active ring.
+
+The server remains authoritative and resolves each action once. Each browser holds displayed results until impact, keeps the existing 800 ms HP easing, and blocks battle actions and victory until the presentation finishes. Spell values, IDs, Enhancement tiers, deck rules and save version are unchanged. The gallery and ZIP are references for the same approved live sheets; original PNG pixels are preserved with lossless runtime copies.
+
 ## Reconnecting and storage limits
 
 Account data and room data have different lifetimes:

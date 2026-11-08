@@ -45,7 +45,7 @@ for(const [id,title,description] of definitions){
     })),
   });
 }
-const manifest={format:'wizzy-animation-review',version:2,integration:'review-only',
+const manifest={format:'wizzy-animation-review',version:2,integration:'approved-live',
   frameRate:8,frameMs:125,lingerMs:1000,sequenceMs:2000,
   aura:'The linger loop repeats while Aura is active through three subsequent owner turns, excluding activation.',
   alignment:'Preview offsets are source pixels relative to each cell, preserving the original PNGs and the Enhancement jump.',sheets};

@@ -97,6 +97,14 @@ visible. Read Slab and accessible text retain the full resource words.
 - After a spell, Enhancement attempt or Aura activation, all three main-action controls stay disabled until the next own turn. Active Aura prevents recasting it; 30% Enhancement prevents further attempts until consumed. End Turn reveals Hand Refresh and turns red; End Turn again passes without refreshing. Hand Refresh lets the player select any number of slabs, including zero. Confirming it discards the selections, draws up to six, and passes immediately. End Turn during selection passes without applying those discards.
 - The Spell Tower and discard counts follow card movement. Read Slab shows the complete rules; the tower view shows the saved composition without revealing draw order. If the tower is empty, draws stop; no reshuffle or fatigue rule is invented.
 
+## Battle presentation
+
+The approved v2 sprite sheets are live in battles. Primary animations start only after any Fate chain ends; Fate itself has no animation. Damaging spells retain their Mana-based basic/simple/large tiers. Their caster charges for one second, releases at 1.5 seconds, and sends a one-second projectile flight to impact at 2.5 seconds. The defender's two-second reaction includes a one-second particle linger; controls unlock at 4.5 seconds. Shield and power-up spells last two seconds and show their results at 500 ms.
+
+Successful Enhancement plays a two-second jump with the award shown at 500 ms; a miss displays **MISS** without animation. Aura forms for 500 ms and holds its particle loop for one second before controls unlock, then keeps a green ring underfoot until its third subsequent owner turn ends. Activation does not count, and expiry plays a 500 ms fizzle. An active ring is restored on resume without replaying formation. Reduced motion settles actions immediately and keeps Aura static.
+
+These visuals never apply combat effects twice or change spell metadata, damage tiers, deck rules or save compatibility. Costs are paid normally; results are held on screen until impact, HP bars ease over 800 ms, and battle actions and victory wait for the presentation to finish. Reloading does not replay completed actions. The unchanged source PNGs, timing reference and ZIP remain in the separate animation gallery.
+
 ## Save compatibility
 
 Combat saves use **version 13** and the `nov4-v2.1` catalog. Current-catalog version 12 saves migrate with no active Aura while retaining Enhancement, hands, resources and pending progress; version 10/11 saves additionally start at 0% Enhancement. Guest deck storage and deck compatibility are unchanged. Old-catalog duels remain retired, and old deck IDs are not converted into unrelated new cards. Build new Fire and Water decks in the workshop. Prior browser data is kept separate, and account migration retains credentials while archiving replaced old deck data.

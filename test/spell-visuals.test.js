@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getSpellVisual, getResolvedSpellVisuals } from '../src/spell-visuals.js';
+import { getSpellVisual, getResolvedSpellVisuals, getResolvedBattleVisuals } from '../src/spell-visuals.js';
 import { SPELL_CATALOG } from '../src/spells.js';
 import {
   createGame, rollInitiative, selectCard, castSelected, rollDice, skipFate, castFateSelected,
@@ -257,4 +257,138 @@ test('visual collection is pure and accepts frozen JSON snapshots', () => {
   assert.equal(JSON.stringify(previous), previousJSON); assert.equal(JSON.stringify(next), nextJSON);
   events[0].kind = 'changed';
   assert.equal(getResolvedSpellVisuals(previous, next)[0].kind, 'basic-attack');
+});
+
+function enhance(state, dice = [3, 3]) {
+  let index = 0;
+  return rollEnhancement(activateEnhancement(state), () => (dice[index++] - 1) / 6);
+}
+
+test('battle visuals emit one stable Enhancement event for every successful tier and actual capped gain', () => {
+  for (const [dice, bank, bonus, gain] of [[[3, 3], 0, 10, 10], [[3, 6], 0, 20, 20], [[6, 6], 0, 30, 30], [[6, 6], 20, 30, 10]]) {
+    const before = fresh(); before.players[0].enhancement = bank;
+    const pending = activateEnhancement(before);
+    let index = 0;
+    const after = rollEnhancement(pending, () => (dice[index++] - 1) / 6);
+    assert.deepEqual(getResolvedBattleVisuals(before, pending), []);
+    const [event] = getResolvedBattleVisuals(before, after);
+    assert.deepEqual(event, {
+      key: `enhancement:${after.log.at(-1).id}:0`, logId: after.log.at(-1).id, commitLogId: pending.log.at(-1).id,
+      casterIndex: 0, element: 'Fire', kind: 'enhancement', spellId: null, manaCost: 0, damaging: false,
+      enhancementBonus: bonus, enhancementGain: gain, enhancementBefore: bank, enhancementAfter: bank + gain,
+    });
+    assert.equal(getResolvedBattleVisuals(pending, after)[0].key, event.key);
+    assert.deepEqual(getResolvedSpellVisuals(before, after), [], 'the original primary-only API remains unchanged');
+    assert.deepEqual(getResolvedBattleVisuals(after, structuredClone(after)), []);
+    assert.deepEqual(getResolvedBattleVisuals(after, endTurn(after)), []);
+  }
+});
+
+test('Water Enhancement visuals are identical across local and either private online view', () => {
+  const before = pass(fresh()), after = enhance(before, [3, 6]);
+  const events = getResolvedBattleVisuals(before, after);
+  assert.equal(events.length, 1); assert.equal(events[0].casterIndex, 1); assert.equal(events[0].element, 'Water');
+  assert.equal(events[0].kind, 'enhancement'); assert.equal(events[0].enhancementGain, 20);
+  for (const viewer of [0, 1]) assert.deepEqual(getResolvedBattleVisuals(privateView(before, viewer), privateView(after, viewer)), events);
+});
+
+test('Aura activation animates once while its owner passes, countdown and expiry never create another activation', () => {
+  const before = fresh(), activated = activateAura(before), [event] = getResolvedBattleVisuals(before, activated);
+  assert.deepEqual(event, { key: `aura:${activated.log.at(-1).id}:0`, logId: activated.log.at(-1).id, casterIndex: 0, element: 'Fire', kind: 'aura', spellId: null, manaCost: 1, damaging: false });
+  assert.deepEqual(getResolvedBattleVisuals(activated, endTurn(activated)), []);
+  let state = pass(activated);
+  assert.equal(state.players[0].auraTurns, 3);
+  assert.deepEqual(getResolvedBattleVisuals(activated, state), []);
+  for (const remaining of [3, 2, 1]) {
+    state = pass(state);
+    assert.equal(state.players[0].auraTurns, remaining);
+    const next = pass(state);
+    assert.equal(next.players[0].auraTurns, remaining - 1);
+    assert.deepEqual(getResolvedBattleVisuals(state, next), []);
+    state = next;
+  }
+  assert.deepEqual(getResolvedBattleVisuals(activated, state), []);
+  assert.equal(getResolvedBattleVisuals(before, state).length, 1, 'even a large batch contains just the one activation');
+  const waterBefore = pass(fresh()), waterAfter = activateAura(waterBefore);
+  const waterEvent = getResolvedBattleVisuals(waterBefore, waterAfter)[0];
+  assert.equal(waterEvent.element, 'Water'); assert.equal(waterEvent.casterIndex, 1);
+  for (const viewer of [0, 1]) assert.deepEqual(getResolvedBattleVisuals(privateView(waterBefore, viewer), privateView(waterAfter, viewer)), [waterEvent]);
+});
+
+test('a batched poll merges primaries, successful Enhancement and Aura in authoritative log order', () => {
+  const before = fresh();
+  let state = enhance(before, [3, 6]); state = pass(state); state = activateAura(state);
+  state = pass(state); state = cast(state, 'Fire-0');
+  state = pass(state); state = complete(cast(state, 'Water-1'));
+  state = pass(state); state = complete(cast(state, 'Fire-1'));
+  const events = getResolvedBattleVisuals(before, state);
+  assert.deepEqual(events.map(event => [event.kind, event.casterIndex, event.spellId]), [
+    ['enhancement', 0, null], ['aura', 1, null], ['power-up', 0, 'Fire-0'], ['basic-attack', 1, 'Water-1'], ['basic-attack', 0, 'Fire-1'],
+  ]);
+  assert.equal(new Set(events.map(event => event.key)).size, 5);
+  assert.ok(events.every((event, index) => index === 0 || event.logId > events[index - 1].logId));
+  assert.deepEqual(events.filter(event => event.spellId), getResolvedSpellVisuals(before, state));
+  for (const viewer of [0, 1]) assert.deepEqual(getResolvedBattleVisuals(privateView(before, viewer), privateView(state, viewer)), events);
+  assert.deepEqual(getResolvedBattleVisuals(state, structuredClone(state)), []);
+});
+
+test('failed, capped, legacy flat Enhancement and Fate links never receive an ability animation', () => {
+  const before = fresh(), failed = enhance(before, [2, 3]);
+  assert.deepEqual(getResolvedBattleVisuals(before, failed), []);
+  const capped = fresh(); capped.players[0].enhancement = 30;
+  assert.deepEqual(getResolvedBattleVisuals(capped, enhance(capped, [6, 6])), []);
+  const legacy = enhance(before, [6, 6]);
+  legacy.players[0].enhancement = 10; legacy.lastRoll.enhancementAfter = 10;
+  delete legacy.lastRoll.enhancementRule; delete legacy.lastRoll.enhancementBonus; delete legacy.lastRoll.enhancementGain;
+  legacy.log.at(-1).message = 'Fire rolls 6 + 6 = 12 for Enhancement (6+): gains +10% damage; 10% Enh.';
+  assert.deepEqual(getResolvedBattleVisuals(before, legacy), [], 'unmarked historical reward text is never inferred as a new tier animation');
+  assert.deepEqual(getResolvedBattleVisuals(null, legacy), []);
+  const fateBefore = fresh({ fire: ['Fire-1', 'FAT-001'], water: ['Water-1', 'FAT-002'] });
+  let linked = rollDice(cast(fateBefore, 'Fire-1'), () => .5);
+  linked = castFateSelected(selectCard(linked, linked.players[1].hand.find(card => card.spellId === 'FAT-002').id));
+  assert.deepEqual(getResolvedBattleVisuals(fateBefore, linked), []);
+});
+
+test('ability visuals require unchanged history, canonical caster, cost and mathematically valid positive tier rewards', () => {
+  const before = fresh(), success = enhance(before, [3, 6]), aura = activateAura(before);
+  const invalidEnhancementMessages = [
+    'Fire rolls 3 + 6 = 8 for Enhancement: tier +20%; gains +20%; 20% Enh.',
+    'Fire rolls 3 + 6 = 9 for Enhancement: tier +10%; gains +10%; 10% Enh.',
+    'Fire rolls 3 + 6 = 9 for Enhancement: tier +20%; gains +30%; 30% Enh.',
+    'Fire rolls 3 + 6 = 9 for Enhancement: tier +20%; gains +20%; 20% Enh. (maximum 30%)',
+    'Water rolls 3 + 6 = 9 for Enhancement: tier +20%; gains +20%; 20% Enh.',
+  ];
+  for (const message of invalidEnhancementMessages) {
+    const copy = structuredClone(success); copy.log.at(-1).message = message;
+    assert.deepEqual(getResolvedBattleVisuals(before, copy), [], message);
+  }
+  const wrongCost = structuredClone(success);
+  wrongCost.log.find(entry => entry.message.includes('attempts Enhancement')).message = 'Fire attempts Enhancement for 1 Mana instead of casting a primary spell.';
+  assert.deepEqual(getResolvedBattleVisuals(before, wrongCost), []);
+  assert.deepEqual(getResolvedBattleVisuals(before, appendLog(before, 'enhancement', success.log.at(-1).message, 'fire')), [], 'a completed result needs its matching zero-Mana attempt');
+  const duplicate = appendLog(success, 'enhancement', success.log.at(-1).message, 'fire');
+  assert.equal(getResolvedBattleVisuals(before, duplicate).length, 1, 'one attempt cannot commit two reward animations');
+  for (const message of [aura.log.at(-1).message.replace('1 Mana', '0 Mana'), aura.log.at(-1).message.replace('+10%', '+20%'), aura.log.at(-1).message.replace('next 3 turns', 'next 4 turns')]) {
+    const copy = structuredClone(aura); copy.log.at(-1).message = message;
+    assert.deepEqual(getResolvedBattleVisuals(before, copy), [], message);
+  }
+  for (const next of [success, aura]) {
+    assert.deepEqual(getResolvedBattleVisuals(null, next), []);
+    assert.deepEqual(getResolvedBattleVisuals(undefined, next), []);
+    assert.deepEqual(getResolvedBattleVisuals(next, fresh()), []);
+    const changed = structuredClone(next); changed.log[0].message = 'Another duel.';
+    assert.deepEqual(getResolvedBattleVisuals(before, changed), []);
+    const truncated = structuredClone(next); truncated.log.shift();
+    assert.deepEqual(getResolvedBattleVisuals(before, truncated), []);
+    assert.deepEqual(getResolvedBattleVisuals(before, { ...next, version: next.version + 1 }), []);
+  }
+});
+
+test('the battle collector is pure for frozen snapshots and its output can be freely changed by presentation', () => {
+  const before = fresh(), after = enhance(before, [6, 6]);
+  const original = JSON.stringify([before, after]);
+  const events = getResolvedBattleVisuals(deepFreeze(before), deepFreeze(after));
+  assert.equal(events.length, 1); events[0].enhancementGain = 0;
+  assert.equal(JSON.stringify([before, after]), original);
+  assert.equal(getResolvedBattleVisuals(before, after)[0].enhancementGain, 30);
 });

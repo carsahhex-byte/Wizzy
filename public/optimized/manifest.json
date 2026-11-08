@@ -339,6 +339,106 @@
     "width": 1774,
     "height": 887
   },
+  "combatV2BasicAttack": {
+    "file": "combatV2BasicAttack-fd200368c7ff.webp",
+    "source": "Wizzy Combat V2 Basic Attack.png",
+    "sourceSha256": "7580f07dbc407ffb80889992fa03bf868d83d30f7c1cc7333a97781b1c7418c6",
+    "optimizedSha256": "fd200368c7fffe321fa38dbd657d82e54f5466244ee7a51ca510c035f99a0b48",
+    "bytes": 1021452,
+    "sourceBytes": 1285349,
+    "width": 887,
+    "height": 1774
+  },
+  "combatV2SimpleCast": {
+    "file": "combatV2SimpleCast-426f3b397058.webp",
+    "source": "Wizzy Combat V2 Simple Cast.png",
+    "sourceSha256": "fec958c50378e29d854fe70fbd959c1d6d3867187281ff1caa6608445da57db7",
+    "optimizedSha256": "426f3b397058a2a09d380947f9829a02b384c527e6456a334f87a3428f4e50f0",
+    "bytes": 768210,
+    "sourceBytes": 1026578,
+    "width": 887,
+    "height": 1774
+  },
+  "combatV2LargeCast": {
+    "file": "combatV2LargeCast-f4cd0591b968.webp",
+    "source": "Wizzy Combat V2 Large Cast.png",
+    "sourceSha256": "6247372c281e3b466f1de3438f9ad097ad6afcffbbd6fb8993785c573dcfa291",
+    "optimizedSha256": "f4cd0591b968f9a3f4e42dd6bb5a001fdb205807a45acc36188be60b7baddeb6",
+    "bytes": 1255524,
+    "sourceBytes": 1456019,
+    "width": 887,
+    "height": 1774
+  },
+  "combatV2Shield": {
+    "file": "combatV2Shield-480a71eab225.webp",
+    "source": "Wizzy Combat V2 Shield.png",
+    "sourceSha256": "6ee5085f1186d1d009c6d36a843593b3980cb5a9fd6c635f29aba9e84959cc1f",
+    "optimizedSha256": "480a71eab225e573803528abbcbd84c6600ed73946300d746b8d2a992a9ab855",
+    "bytes": 1240600,
+    "sourceBytes": 1521376,
+    "width": 887,
+    "height": 1774
+  },
+  "combatV2PowerUp": {
+    "file": "combatV2PowerUp-b14d7524c01e.webp",
+    "source": "Wizzy Combat V2 Power Up.png",
+    "sourceSha256": "9a6748a680379d89a682e56c4674b13156b0ae32ffc33aacfb9a874d3a230a86",
+    "optimizedSha256": "b14d7524c01e571b05622ec1b739a1d95b3ef710a9f97f46147b1685f31ba3e6",
+    "bytes": 934252,
+    "sourceBytes": 1150102,
+    "width": 887,
+    "height": 1774
+  },
+  "combatV2Enhancement": {
+    "file": "combatV2Enhancement-26d52bf6339d.webp",
+    "source": "Wizzy Combat V2 Enhancement.png",
+    "sourceSha256": "0eba289bb7a9d4baed8a98aeba6dbb82aef5c7aef3a4f1bac3ba1d307eb957f6",
+    "optimizedSha256": "26d52bf6339df8505e3a571d8b67dcca3b32506d55e636d22486f5280fc85ba9",
+    "bytes": 878520,
+    "sourceBytes": 1250597,
+    "width": 887,
+    "height": 1774
+  },
+  "combatV2Aura": {
+    "file": "combatV2Aura-7faf8a27acde.webp",
+    "source": "Wizzy Combat V2 Aura.png",
+    "sourceSha256": "d1b0e2bcaf61c76d2b97f260fd82cba86d9408ecbe9c5eaf37e74eb460f7b5b9",
+    "optimizedSha256": "7faf8a27acdee5b5a2ce833a7427e0f6334b0ca6867c2ce7bd39737bed327439",
+    "bytes": 525412,
+    "sourceBytes": 858944,
+    "width": 1254,
+    "height": 1254
+  },
+  "combatV2BasicProjectiles": {
+    "file": "combatV2BasicProjectiles-7f9c89079db5.webp",
+    "source": "Wizzy Combat V2 Basic Projectiles.png",
+    "sourceSha256": "0f37f504d56b74563ab40bea60c946b7eb7afa882f37ca36671d9fbb2f70d3f9",
+    "optimizedSha256": "7f9c89079db5acaa54af91843e1434c6083d52859935edde62e82f837b7bff16",
+    "bytes": 338252,
+    "sourceBytes": 461835,
+    "width": 887,
+    "height": 1774
+  },
+  "combatV2LargeProjectiles": {
+    "file": "combatV2LargeProjectiles-7f37d12cf245.webp",
+    "source": "Wizzy Combat V2 Large Projectiles.png",
+    "sourceSha256": "92be65b95a89ef9aa0bc5825a8a6575140d8b10a8d426b36ccbee20d0657a63d",
+    "optimizedSha256": "7f37d12cf24514bb41946d14f989ffe5e3044f297f6c58355dcd98654764eee5",
+    "bytes": 800300,
+    "sourceBytes": 1076480,
+    "width": 887,
+    "height": 1774
+  },
+  "combatV2HitReaction": {
+    "file": "combatV2HitReaction-ff85317cada0.webp",
+    "source": "Wizzy Combat V2 Hit Reaction.png",
+    "sourceSha256": "9b34aeb86655fc583278c8f7027d4cd2b27f6c8a14fa8b2270cddbccee56a121",
+    "optimizedSha256": "ff85317cada0b30de81e183c82a27a28576cf5ac275d238d30cae0c62cc5afb4",
+    "bytes": 800768,
+    "sourceBytes": 991979,
+    "width": 887,
+    "height": 1774
+  },
   "fireCard": {
     "file": "fireCard-cd414243acb0.webp",
     "source": "Pixel-Art Fiery Comet Spell Card 2.png",

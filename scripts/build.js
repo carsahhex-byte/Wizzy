@@ -6,7 +6,7 @@ import { OPTIMIZED_ART } from '../src/optimized-art.js';
 
 const webOnly = process.argv.includes('--web');
 // Dependencies precede their importers in both the hosted and standalone builds.
-const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'asset-url.js', 'pixel-icons.js', 'slab-text.js', 'assets.js', 'spell-visuals.js', 'battle-scene.js', 'spell-animation.js', 'health-bars.js', 'hub-storage.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
+const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'asset-url.js', 'pixel-icons.js', 'slab-text.js', 'assets.js', 'spell-visuals.js', 'battle-scene.js', 'animation-sprites.js', 'spell-animation.js', 'aura-animation.js', 'health-bars.js', 'hub-storage.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
 const styleNames = ['style.css', 'hub.css', 'multiplayer.css', 'accounts.css'];
 for (const filename of moduleNames) execFileSync(process.execPath, ['--check', `src/${filename}`], { stdio: 'inherit' });
 await rm('dist', { recursive: true, force: true });
@@ -33,8 +33,7 @@ if (webOnly) {
 } else {
   await cp('public', 'dist/public', { recursive: true });
 }
-// Review-only sprites are delivered separately. The game does not register,
-// request or play these sheets until their later approved integration.
+// Preserve the approved source-sheet gallery and ZIP alongside the live game.
 execFileSync(process.execPath,['scripts/package-animation-review.js','dist/previews/combat-linger-v2'],{stdio:'inherit'});
 await writeFile('dist/.nojekyll', '');
 
