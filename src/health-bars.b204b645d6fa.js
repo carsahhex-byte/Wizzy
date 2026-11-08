@@ -23,7 +23,11 @@ export function createHealthBars({ onSettled = () => {}, duration = 800 } = {}) 
   }
   function sample(bar, time, immediate = false) {
     if (!bar.animation) return;
-    const progress = immediate ? 1 : Math.min(1, Math.max(0, (time - bar.animation.start) / duration));
+    // A DOM update can sample performance.now() just ahead of a queued RAF's
+    // timestamp. Keep this tween's clock moving forward across both callers.
+    const sampleTime = Math.max(time, bar.animation.sampledAt ?? bar.animation.start);
+    bar.animation.sampledAt = sampleTime;
+    const progress = immediate ? 1 : Math.min(1, Math.max(0, (sampleTime - bar.animation.start) / duration));
     // Smoothstep has zero velocity at each end and accelerates in the middle.
     const eased = progress * progress * (3 - 2 * progress);
     bar.percent = bar.animation.from + (bar.target - bar.animation.from) * eased;
@@ -115,7 +119,7 @@ export function createHealthBars({ onSettled = () => {}, duration = 800 } = {}) 
           if (immediate || Math.abs(bar.percent - target) < .0000001) {
             bar.percent = target;
             bar.animation = null;
-          } else bar.animation = { from: bar.percent, start: time };
+          } else bar.animation = { from: bar.percent, start: time, sampledAt: time };
         }
       }
       paint(bar);

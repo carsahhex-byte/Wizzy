@@ -1,6 +1,6 @@
 {
-  "id": "2c90c9e29af8",
-  "launch": "./wizzy-2c90c9e29af8.html",
+  "id": "4d94f984e325",
+  "launch": "./wizzy-4d94f984e325.html",
   "layout": "portrait-1024x1536",
   "screens": [
     "title",
@@ -12,7 +12,7 @@
     "account",
     "battle"
   ],
-  "entry": "./src/main.b4619a3a8923.js",
+  "entry": "./src/main.6adf8978fa07.js",
   "stylesheet": "./src/style.7764a35d1950.css",
   "stylesheets": [
     "./src/style.7764a35d1950.css",

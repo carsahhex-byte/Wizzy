@@ -10,7 +10,7 @@ import { fitSlabText } from './slab-text.a18511f20227.js';
 import { createBattleScene } from './battle-scene.e79256b8de9d.js';
 import { createSpellAnimator } from './spell-animation.c11064fdc7c0.js';
 import { getResolvedSpellVisuals } from './spell-visuals.bf5178322ac9.js';
-import { createHealthBars } from './health-bars.c0f06b85c312.js';
+import { createHealthBars } from './health-bars.b204b645d6fa.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
