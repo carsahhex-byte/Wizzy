@@ -187,7 +187,7 @@ export function selectCard(state, cardId) {
   return { ...state, selectedCardId: state.selectedCardId === cardId ? null : cardId };
 }
 
-/** Pay once and capture Loaded before the dice roll. Fate follows the result. */
+/** Pay once; immediate spells resolve now, while rolled spells capture Loaded before Fate. */
 export function castSelected(state, { emberSpend = 0 } = {}) {
   if (!inPhase(state, 'main') || !canCastSelected(state)) return state;
   const player = state.players[state.activePlayer];
@@ -212,10 +212,10 @@ export function castSelected(state, { emberSpend = 0 } = {}) {
   };
   next.selectedCardId = null;
   next.selectedFateCardIds = [];
+  next.lastRoll = null;
   addLog(next, `${player.name} casts ${card.name} for ${card.manaCost} mana${emberSpent ? ` and ${emberSpent} Embers` : ''}.`, 'cast', player.id);
   if (rule.requiresRoll) {
     caster.loaded = 0;
-    next.lastRoll = null;
     next.phase = 'rolling';
     addLog(next, 'Roll the dice, then the defender has the first Fate response.', 'dice', caster.id);
     return next;

@@ -10,11 +10,12 @@ const rule = (emberSpend = 'none', maxEmbers) => Object.freeze({
   requiresRoll: true, emberSpend,
   ...(maxEmbers === undefined ? {} : { maxEmbers }),
 });
-/** Every current primary has a Modified Roll threshold. Spending precedes the roll. */
+/** Threshold spells roll; Fire-0 resolves immediately. Spending precedes resolution. */
 export const SPELL_RULES = Object.freeze(Object.fromEntries(
   Object.values(SPELL_CATALOG).filter(card => card.category !== 'Fate').map(card => [
     card.spellId,
-    card.spellId === 'Fire-5' ? rule('optional', 1)
+    card.spellId === 'Fire-0' ? Object.freeze({ requiresRoll: false, emberSpend: 'none' })
+      : card.spellId === 'Fire-5' ? rule('optional', 1)
       : card.spellId === 'Fire-12' ? rule('optional', 2)
         : ['Fire-7', 'Fire-14'].includes(card.spellId) ? rule('all') : rule(),
   ]),
@@ -58,7 +59,7 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   if (![0, 1].includes(casterIndex) || !state.players?.[casterIndex] || !state.players[1 - casterIndex]) {
     throw new Error('A spell requires two players and a valid caster.');
   }
-  if (!Number.isFinite(rollTotal)) throw new Error(`${definition.name} requires a resolved Modified Roll.`);
+  if (rules.requiresRoll && !Number.isFinite(rollTotal)) throw new Error(`${definition.name} requires a resolved Modified Roll.`);
   if (!Number.isInteger(emberSpent) || emberSpent < 0 || emberSpent > MAX_EMBERS
     || (rules.emberSpend === 'none' && emberSpent !== 0)
     || (rules.maxEmbers !== undefined && emberSpent > rules.maxEmbers)) {
@@ -107,6 +108,9 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
     record('heal', caster, `${name(caster)} heals ${restored} HP.`, { amount: restored });
   };
   switch (spellId) {
+    case 'Fire-0':
+      gainElement(1);
+      break;
     case 'Fire-1':
       damage(opponent, 6);
       if (rollTotal >= 7) gainElement(rollTotal >= 10 ? 2 : 1);

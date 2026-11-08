@@ -1,4 +1,4 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELLBOOK_VERSION } from './spells.c2259fcc14fe.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELLBOOK_VERSION } from './spells.29cc03f8c6f5.js';
 
 export const MAX_COPIES = 3;
 export const MAX_DECK_FILE_BYTES = 65536;

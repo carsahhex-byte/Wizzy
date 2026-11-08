@@ -1,5 +1,6 @@
 /** Master Spellbook V2.1, supplied 04 Nov 2026. Combat timing follows the user's rules. */
 export const DECK_SIZE = 30;
+// Additive cards retain this compatibility family so existing decks stay playable.
 export const SPELLBOOK_VERSION = 'nov4-v2.1';
 
 const artwork = Object.freeze({ Fire: 'fireCard', Water: 'waterCard', Fate: 'fateCard' });
@@ -8,6 +9,7 @@ const spell = (id, element, manaCost, effectText, purpose) => Object.freeze({
   slabType: element, manaCost, effectText, art: artwork[element], purpose,
 });
 const fire = [
+  [0, 0, 'Gain 1 Ember.'],
   [1, 1, 'Deal 6 damage. On a 7+, gain 1 Ember. On a 10+, gain 2 Embers instead.'],
   [2, 1, 'Gain 1 Ember. On a 7+, gain 2 Embers instead. On a 10+, gain 3 instead.'],
   [3, 2, 'Gain 12 Shield. On a 7+, gain 1 Ember. On a 10+, gain 2 instead.'],
@@ -47,7 +49,7 @@ const fate = (id, name, role, effectText) => Object.freeze({
   effectText, art: artwork.Fate, role,
 });
 export const SPELL_CATALOG = Object.freeze(Object.fromEntries([
-  ...fire.map(([number, mana, text]) => spell(`Fire-${number}`, 'Fire', mana, text, purposes[(number - 1) % 7])),
+  ...fire.map(([number, mana, text]) => spell(`Fire-${number}`, 'Fire', mana, text, number === 0 ? 'Resource preparation' : purposes[(number - 1) % 7])),
   ...water.map(([number, mana, text]) => spell(`Water-${number}`, 'Water', mana, text, purposes[(number - 1) % 7])),
   fate('FAT-001', 'Fortune', 'Attacking', '+4 to the Modified Roll when attacking.'),
   fate('FAT-002', 'Misfortune', 'Defending', '−4 to the Modified Roll when defending.'),
@@ -57,10 +59,12 @@ export const SPELL_CATALOG = Object.freeze(Object.fromEntries([
 /** No supplied starter compositions: players build their own current-spellbook decks. */
 export const DECK_LISTS = Object.freeze({ fire: Object.freeze([]), water: Object.freeze([]) });
 export const SOURCE_INFO = Object.freeze({
+  additionalSpells: Object.freeze(['Fire-0']),
+  playableSpellCount: 32,
   spellbook: Object.freeze({
     file: 'Wizzy Master Spellbook Nov4.pdf', title: 'Wizzy / Master Spellbook V2.1',
     version: SPELLBOOK_VERSION, revised: '2026-11-04', librarySpellCount: 31,
     importedSpellCount: 31, scope: Object.freeze(['Fire', 'Water', 'Fate']),
-    timing: 'User instruction: roll first, defender Fate, caster Fate, optional final defender response.',
+    timing: 'User instruction: rolled spells begin with defender Fate and alternate until two consecutive passes; immediate spells skip dice and Fate.',
   }),
 });

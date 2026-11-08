@@ -1,11 +1,11 @@
-import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD } from './game.111c93de4310.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.93bc992ca3dc.js';
-import { SPELL_CATALOG, DECK_SIZE } from './spells.c2259fcc14fe.js';
-import { validateDeck } from './decks.18630709b2df.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.de3c84f3f0d5.js';
-import { createHub } from './hub.2c0d17b02557.js';
-import { createMultiplayer } from './multiplayer.7da750591458.js';
-import { createAccounts } from './accounts.f521c540ddcc.js';
+import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD } from './game.4604e3a354e0.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.a2111f83c571.js';
+import { SPELL_CATALOG, DECK_SIZE } from './spells.29cc03f8c6f5.js';
+import { validateDeck } from './decks.c47034088730.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.9c9e3b6c6335.js';
+import { createHub } from './hub.c62c91cd4b78.js';
+import { createMultiplayer } from './multiplayer.6b3c35429340.js';
+import { createAccounts } from './accounts.92dd638f4166.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
@@ -176,9 +176,10 @@ function diceView() {
   const rolling=['rolling','enhancing'].includes(state.phase);
   const last=rolling?null:state.lastRoll;
   const enhancement=last?.kind==='enhancement';
-  const title=rolling?'Rolling…':last?`Total: ${last.total}`:state.phase==='setup'?'Build your decks':'Ready to roll';
-  const equation=enhancement?`${last.dice[0]} + ${last.dice[1]} · ${ENHANCEMENT_THRESHOLD}+ NEEDED · ${last.success?'SUCCESS':'MISS'}`:last?`${last.dice[0]} + ${last.dice[1]} ${signed(last.loadedBonus)} Loaded ${signed(last.attackingFate)} Fate ${signed(last.defendingFate)} Fate`:state.phase==='enhancing'?`RAW 2d6 · ${ENHANCEMENT_THRESHOLD}+ GAINS 10%`:state.pendingSpell?`Loaded ${signed(state.pendingSpell.loadedBonus)} · Attack ${signed(state.pendingSpell.attackingFate)} · Defend ${signed(state.pendingSpell.defendingFate)}`:'Two six-sided dice';
-  const caption=enhancement?`${state.players[last.casterIndex].name.toUpperCase()} · ENHANCEMENT ${last.enhancementBefore}% → ${last.enhancementAfter}%`:last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · ${state.phase==='fate'?'FATE CHAIN OPEN':'RESOLVED ROLL'}`:state.phase==='enhancing'?'ENHANCEMENT · NO FATE OR LOADED':'ROLL FIRST · THEN DEFENDING FATE';
+  const immediate=!rolling&&!last&&state.primaryUsed&&!state.pendingSpell;
+  const title=rolling?'Rolling…':last?`Total: ${last.total}`:immediate?'Spell resolved':state.phase==='setup'?'Build your decks':'Ready to roll';
+  const equation=enhancement?`${last.dice[0]} + ${last.dice[1]} · ${ENHANCEMENT_THRESHOLD}+ NEEDED · ${last.success?'SUCCESS':'MISS'}`:last?`${last.dice[0]} + ${last.dice[1]} ${signed(last.loadedBonus)} Loaded ${signed(last.attackingFate)} Fate ${signed(last.defendingFate)} Fate`:state.phase==='enhancing'?`RAW 2d6 · ${ENHANCEMENT_THRESHOLD}+ GAINS 10%`:state.pendingSpell?`Loaded ${signed(state.pendingSpell.loadedBonus)} · Attack ${signed(state.pendingSpell.attackingFate)} · Defend ${signed(state.pendingSpell.defendingFate)}`:immediate?'No dice required':'Two six-sided dice';
+  const caption=enhancement?`${state.players[last.casterIndex].name.toUpperCase()} · ENHANCEMENT ${last.enhancementBefore}% → ${last.enhancementAfter}%`:last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · ${state.phase==='fate'?'FATE CHAIN OPEN':'RESOLVED ROLL'}`:state.phase==='enhancing'?'ENHANCEMENT · NO FATE OR LOADED':immediate?'IMMEDIATE SPELL · NO FATE':'ROLL FIRST · THEN DEFENDING FATE';
   return `<section class="dice-area ${rolling?'dice-rolling':''}" data-roll-kind="${state.phase==='enhancing'||enhancement?'enhancement':'spell'}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. ${enhancement?'Enhancement':'Modified'} total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${caption}</span></section>`;
 }
 function selectedTwistDirections(){

@@ -1,6 +1,6 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.c2259fcc14fe.js';
-import { normalizeDeck, validateDeck } from './decks.18630709b2df.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.de3c84f3f0d5.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.29cc03f8c6f5.js';
+import { normalizeDeck, validateDeck } from './decks.c47034088730.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.9c9e3b6c6335.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
@@ -187,7 +187,7 @@ export function selectCard(state, cardId) {
   return { ...state, selectedCardId: state.selectedCardId === cardId ? null : cardId };
 }
 
-/** Pay once and capture Loaded before the dice roll. Fate follows the result. */
+/** Pay once; immediate spells resolve now, while rolled spells capture Loaded before Fate. */
 export function castSelected(state, { emberSpend = 0 } = {}) {
   if (!inPhase(state, 'main') || !canCastSelected(state)) return state;
   const player = state.players[state.activePlayer];
@@ -212,10 +212,10 @@ export function castSelected(state, { emberSpend = 0 } = {}) {
   };
   next.selectedCardId = null;
   next.selectedFateCardIds = [];
+  next.lastRoll = null;
   addLog(next, `${player.name} casts ${card.name} for ${card.manaCost} mana${emberSpent ? ` and ${emberSpent} Embers` : ''}.`, 'cast', player.id);
   if (rule.requiresRoll) {
     caster.loaded = 0;
-    next.lastRoll = null;
     next.phase = 'rolling';
     addLog(next, 'Roll the dice, then the defender has the first Fate response.', 'dice', caster.id);
     return next;

@@ -9,6 +9,7 @@ export const ASSET_FILES = Object.freeze({
   appIcon: 'Wizzy App Icon.png',
   storybookIcon: 'Wizzy Storybook Icon.png',
   fireSlabSheet: 'Pixel-Art Fire Card Collection.png',
+  fireZeroSlab: 'Wizzy Fire-0 Slab.png',
   waterSlabSheet: 'Pixel-Art Water Card Collection.png',
   fateSlabSheet: 'Pixel Art Fate Cards_ Fortune, Misfortune, Twist.png',
   forest: 'Forest Background.png',
@@ -81,8 +82,9 @@ const slab = (asset, width, height, crop, label) => Object.freeze({
   asset, width, height, x: crop[0], y: crop[1], w: crop[2], h: crop[3], label,
 });
 
-/** Exact artwork-to-spell mapping for all 31 Nov4 spells. */
+/** Original Nov4 spell slabs plus the matching basic Fire-0 slab. */
 export const SPELL_SLABS = Object.freeze(Object.fromEntries([
+  ['Fire-0', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-0')],
   ...fireSlabCrops.map((crop,index) => [`Fire-${index+1}`, slab('fireSlabSheet',2037,772,crop,`Fire-${index+1}`)]),
   ...waterSlabCrops.map((crop,index) => [`Water-${index+1}`, slab('waterSlabSheet',2037,772,crop,`Water-${index+1}`)]),
   ['FAT-001', slab('fateSlabSheet',2172,724,[153,17,517,687],'Fortune')],
@@ -102,9 +104,11 @@ export function spellSlabMarkup(spellId, className = '') {
 /** Art-only viewports are available where a smaller illustration is needed. */
 export const SPELL_ART = Object.freeze(Object.fromEntries(Object.entries(SPELL_SLABS).map(([id,crop]) => {
   const fate = id.startsWith('FAT-');
+  // The standalone Fire-0 is larger than the original sheet tiles.
+  const scale = id === 'Fire-0' ? crop.w / 282 : 1;
   return [id,Object.freeze({ ...crop,
-    x: crop.x + (fate ? 36 : 13), y: crop.y + (fate ? 40 : 17),
-    w: crop.w - (fate ? 72 : 26), h: fate ? 333 : 162,
+    x: crop.x + (fate ? 36 : 13 * scale), y: crop.y + (fate ? 40 : 17 * scale),
+    w: crop.w - (fate ? 72 : 26 * scale), h: fate ? 333 : 162 * scale,
   })];
 })));
 
