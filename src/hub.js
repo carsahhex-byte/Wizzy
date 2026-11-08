@@ -2,10 +2,8 @@ import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.j
 import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.js';
 import { MAX_COPIES, createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.js';
+import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.js';
 
-const HUB_SAVE_KEY = `wizzy.hub.${SPELLBOOK_VERSION}`;
-const GUEST_SAVE_KEY = `wizzy.hub.guest.${SPELLBOOK_VERSION}`;
-const accountSaveKey = id => `wizzy.hub.account.${SPELLBOOK_VERSION}.${id}`;
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck']);
 // The square artwork includes ocean around the city. Its artwork and labels
 // share one coordinate system, so the coast moves with every pan and zoom.
@@ -38,20 +36,6 @@ function hubIcon(name, className = '') {
   return `<span class="wz-icon ${className}" aria-hidden="true" style="--wz-icon-position:${positions[name] || positions.compass}"><span>${symbols[name] || '✦'}</span></span>`;
 }
 
-function restoreDraft(candidate, element, fallback) {
-  if (!candidate || candidate.element !== element || !Array.isArray(candidate.entries)) return cloneHub(fallback);
-  let draft = { element, entries: [] };
-  const seen = new Set();
-  try {
-    for (const entry of candidate.entries) {
-      if (!entry || seen.has(entry.spellId) || !Number.isInteger(entry.quantity) || entry.quantity < 1) throw new Error('Invalid draft');
-      seen.add(entry.spellId);
-      draft = setDeckQuantity(draft, entry.spellId, entry.quantity);
-    }
-    return draft;
-  } catch { return cloneHub(fallback); }
-}
-
 /** Mobile navigation and local deck editing. The battle host owns duel state. */
 export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {}, onAccount = () => {}, onSaveLocal = () => {}, onInspectSpell = () => {}, assets = {} }) {
   if (!root) throw new Error('The Wizzy hub needs a root element.');
@@ -68,7 +52,10 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     root.classList.add('wz-has-atlas');
   }
 
-  let storageAvailable = true;
+  let deviceStorage = null;
+  try { deviceStorage = globalThis.localStorage; } catch {}
+  const persistence = createHubStorage(deviceStorage);
+  let storageAvailable = persistence.isAvailable();
   let screen = 'title';
   let visible = false;
   let selectedElement = 'fire';
@@ -94,42 +81,26 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   let accountStatus = { state: 'guest', message: '' };
   let guestSnapshot = null;
 
-  try {
-    const raw = localStorage.getItem(HUB_SAVE_KEY);
-    const stored = raw ? JSON.parse(raw) : null;
-    if (stored?.version === 1 && stored.spellbook === SPELLBOOK_VERSION) {
-      if (typeof stored.accountId === 'string' && stored.accountId) {
-        activeAccountId = stored.accountId;
-        accountUsername = String(stored.accountUsername || '').slice(0, 24);
-        accountStatus = { state: 'offline', message: 'Saved on this device. Connect to sync your account.' };
-      }
-      if (stored.profile && ['fire', 'water'].includes(stored.profile.element)) {
-        profile.element = stored.profile.element;
-        if (typeof stored.profile.name === 'string' && stored.profile.name.trim()) profile.name = stored.profile.name.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 24) || 'Wizzy';
-      }
-      for (const element of ['fire', 'water']) {
-        if (stored.savedDecks?.[element]?.element === element && validateDeckSlot(stored.savedDecks[element])) savedDecks[element] = normalizeDeckSlot(stored.savedDecks[element]);
-        drafts[element] = restoreDraft(stored.drafts?.[element], element, savedDecks[element]);
-      }
-      if (activeAccountId) cloudDecks = ['fire', 'water'].every(id => stored.cloudDecks?.[id]?.element === id && validateDeckSlot(stored.cloudDecks[id])) ? cloneHub(stored.cloudDecks) : cloneHub(savedDecks);
-    }
-  } catch {
-    storageAvailable = false;
-    notice = 'Device storage could not be read. Build your decks for this session in Deck.';
+  const restored = persistence.load();
+  storageAvailable = restored.available;
+  if (restored.state) {
+    ({ profile, savedDecks, drafts, cloudDecks, accountId: activeAccountId, accountUsername } = restored.state);
+    if (activeAccountId) accountStatus = { state: 'offline', message: 'Saved on this device. Connect to sync your account.' };
+    if (restored.recovered) notice = 'Your saved Wizzy data was restored from this device.';
   }
+  if (!storageAvailable) notice = 'Device storage could not be read. Build your decks for this session in Deck.';
   selectedElement = profile.element;
-  try { guestSnapshot = JSON.parse(localStorage.getItem(GUEST_SAVE_KEY) || 'null'); } catch {}
-  if (!activeAccountId) guestSnapshot = snapshotHub();
+  guestSnapshot = activeAccountId ? restored.guestSnapshot : snapshotHub();
+  // Promote recovered saves to stable mirrored keys before the next update.
+  if (restored.state) persistHub();
 
   function snapshotHub() { return cloneHub({ profile, savedDecks, drafts, cloudDecks }); }
-  function cacheHub(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { storageAvailable = false; } }
 
   function persistHub() {
-    try {
-      localStorage.setItem(HUB_SAVE_KEY, JSON.stringify({ version: 1, spellbook: SPELLBOOK_VERSION, profile, savedDecks, drafts, cloudDecks, accountId: activeAccountId, accountUsername }));
-      storageAvailable = true;
-      return true;
-    } catch { storageAvailable = false; return false; }
+    const stored = persistence.save({ profile, savedDecks, drafts, cloudDecks, accountId: activeAccountId, accountUsername });
+    storageAvailable = persistence.isAvailable();
+    if (stored && !activeAccountId) guestSnapshot = snapshotHub();
+    return stored;
   }
   function messageHub(text) {
     notice = text;
@@ -340,7 +311,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   function getProfile() { return cloneHub(profile); }
   function getLocalData() { return { profile: getProfile(), decks: getSavedDecks() }; }
   function savedLocalHub() {
-    if (!activeAccountId) { guestSnapshot = snapshotHub(); cacheHub(GUEST_SAVE_KEY, guestSnapshot); }
+    if (!activeAccountId) guestSnapshot = snapshotHub();
     try { Promise.resolve(onSaveLocal(getLocalData())).catch(() => {}); } catch {}
   }
   function applyAccountData(account) {
@@ -353,10 +324,9 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     const switching = activeAccountId !== account.id;
     let prior = snapshotHub();
     if (switching) {
-      if (activeAccountId) cacheHub(accountSaveKey(activeAccountId), prior);
-      else { guestSnapshot = prior; cacheHub(GUEST_SAVE_KEY, prior); }
-      prior = null;
-      try { prior = JSON.parse(localStorage.getItem(accountSaveKey(account.id)) || 'null'); } catch {}
+      if (activeAccountId) persistence.cacheAccount(activeAccountId, prior);
+      else { guestSnapshot = prior; persistence.cacheGuest(prior); }
+      prior = persistence.readAccount(account.id);
     }
     activeAccountId = account.id;
     accountUsername = String(account.username || '').slice(0, 24);
@@ -379,8 +349,9 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   function clearAccountData() {
     deckTransferGeneration++;
     deckTransferNotice = '';
-    if (activeAccountId) cacheHub(accountSaveKey(activeAccountId), snapshotHub());
-    const guest = guestSnapshot;
+    if (!activeAccountId) return;
+    persistence.cacheAccount(activeAccountId, snapshotHub());
+    const guest = persistence.readGuest() || guestSnapshot;
     profile = guest?.profile && ['fire', 'water'].includes(guest.profile.element) ? cloneHub(guest.profile) : { name: 'Wizzy', element: 'fire' };
     savedDecks = {};
     drafts = {};
@@ -414,7 +385,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     drafts[selectedElement] = cloneHub(savedDecks[selectedElement]);
     const stored = persistHub();
     savedLocalHub();
-    messageHub(stored ? `${elementName(selectedElement)} deck saved. New battles will use these 30 slabs.` : 'Deck ready for this session. Device saving is unavailable.');
+    messageHub(stored ? `${elementName(selectedElement)} deck saved${activeAccountId ? '' : ' on this device'}. New battles will use these 30 slabs.` : 'Deck ready for this session. Device saving is unavailable.');
     render();
     if (startBattle) battleHub(true);
   }

@@ -69,15 +69,16 @@ function fateFixture() {
   return state;
 }
 
-test('replacement catalog has 31 spells, 28 rolling primary slabs and no old IDs', () => {
+test('catalog has 32 spells, 28 rolling primaries, one immediate primary and no old IDs', () => {
   assert.equal(SAVE_VERSION, 12); assert.equal(DECK_SIZE, 30);
   assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
-  assert.equal(Object.keys(SPELL_CATALOG).length, 31);
-  assert.equal(Object.keys(SPELL_RULES).length, 28);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 32);
+  assert.equal(Object.keys(SPELL_RULES).length, 29);
   for (const element of ['Fire', 'Water']) for (let index = 1; index <= 14; index += 1) {
     assert.ok(SPELL_CATALOG[`${element}-${index}`]);
     assert.equal(SPELL_RULES[`${element}-${index}`].requiresRoll, true);
   }
+  assert.deepEqual(SPELL_RULES['Fire-0'], { requiresRoll: false, emberSpend: 'none' });
   assert.equal(Object.values(SPELL_CATALOG).filter(card => card.category === 'Neutral').length, 0);
   for (const id of ['FIR-001', 'WAT-001', 'NEU-001']) assert.equal(SPELL_CATALOG[id], undefined);
 });
@@ -675,4 +676,52 @@ test('migration rejects corrupt legacy phase, sequence and unsupported Enhanceme
   }
   const impossible = legacySave(activateEnhancement(fresh()));
   assert.equal(migrateSavedGame(impossible), null);
+});
+
+test('Fire-0 resolves for zero Mana immediately, gains one Ember and consumes the primary action', () => {
+  const initial = fresh({ fire: ['Fire-0', 'FAT-001'], water: ['FAT-002'] });
+  handOf(initial, 0, ['Fire-0', 'Fire-1', 'FAT-001']); handOf(initial, 1, ['Water-1', 'FAT-002']);
+  Object.assign(initial.players[0], { mana: 0, element: 3, loaded: 4, loadedPending: 2, enhancement: 30 });
+  initial.lastRoll = rollEnhancement(activateEnhancement(fresh()), () => .5).lastRoll;
+  const snapshot = structuredClone(initial), originalCard = initial.players[0].hand[0];
+  const state = cast(initial, 'Fire-0');
+  assert.deepEqual([state.phase, state.primaryUsed, state.pendingSpell, state.pendingCardId, state.fatePlayer, state.lastRoll], ['main', true, null, null, null, null]);
+  assert.deepEqual([state.players[0].mana, state.players[0].element, state.players[0].loaded, state.players[0].loadedPending, state.players[0].enhancement], [0, 4, 4, 2, 30]);
+  assert.deepEqual([state.players[0].hp, state.players[0].shield, state.players[1].hp, state.players[1].shield], [100, 0, 100, 0]);
+  assert.deepEqual(state.players[1], initial.players[1], 'opponent never receives a Fate window or other changes');
+  assert.deepEqual(state.players[0].discard, [originalCard]);
+  assert.ok(state.players[0].hand.every(card => card.id !== originalCard.id));
+  assert.deepEqual(initial, snapshot, 'casting leaves input untouched');
+  assert.equal(canEnhance(state), false);
+  const selected = selectCard(state, state.players[0].hand.find(card => card.spellId === 'Fire-1').id);
+  assert.equal(canCastSelected(selected), false); assert.equal(castSelected(selected), selected);
+  for (const action of [rollDice, skipFate, castFateSelected, resolveSpell, activateEnhancement]) assert.equal(action(state), state);
+  assert.equal(state.log.filter(entry => entry.type === 'resource').at(-1).message, 'Fire gains 1 Ember.');
+  assert.ok(!state.log.slice(initial.log.length).some(entry => ['dice', 'fate', 'damage'].includes(entry.type)));
+  assert.equal(endTurn(state).players[0].loaded, 0, 'Loaded expires at end turn rather than on this immediate spell');
+  assertGame(state); assert.equal(validateSavedGame(JSON.parse(JSON.stringify(state))), true);
+});
+
+test('Fire-0 respects the five-Ember cap and rejects spending before any card is paid or discarded', () => {
+  for (const element of [0, 4, 5]) {
+    const initial = handOf(fresh({ fire: ['Fire-0'] }), 0, ['Fire-0']); initial.players[0].element = element;
+    const selected = selectCard(initial, initial.players[0].hand[0].id);
+    for (const emberSpend of [-1, 1, .5, '0', NaN]) assert.equal(castSelected(selected, { emberSpend }), selected);
+    const state = castSelected(selected);
+    assert.equal(state.players[0].element, Math.min(5, element + 1));
+    assert.equal(state.players[0].mana, 3); assert.equal(state.players[0].discard.length, 1);
+    assertGame(state);
+  }
+});
+
+test('additive Fire-0 preserves version-12 duels and cannot be forged into a pending dice spell', () => {
+  const previous = fresh(), snapshot = JSON.parse(JSON.stringify(previous));
+  assert.equal(SAVE_VERSION, 12); assert.equal(migrateSavedGame(previous), previous);
+  assert.equal(validateSavedGame(snapshot), true);
+  let state = handOf(fresh({ fire: ['Fire-0'] }), 0, ['Fire-0', 'Fire-1']);
+  assertGame(state); assert.equal(migrateSavedGame(state), state);
+  state = cast(state, 'Fire-1');
+  const immediate = state.players[0].hand.find(card => card.spellId === 'Fire-0');
+  state.pendingCardId = immediate.id; state.pendingSpell.cardId = immediate.id; state.pendingSpell.spellId = immediate.spellId;
+  assert.equal(validateSavedGame(state), false, 'non-roll spells never persist in a dice or Fate phase');
 });

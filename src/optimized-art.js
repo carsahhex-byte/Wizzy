@@ -35,6 +35,11 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "190e2c47f9ea679c9c4cab050c9f36310fba193b40f66db062ef98ff1e8ba4b4",
     "optimizedSha256": "e353c368a94fefdfea079c5db2bf04a855b05a427ce5c1d5afdc5a794d5f6823"
   },
+  "fireZeroSlab": {
+    "file": "fireZeroSlab-e86bf8ebc714.webp",
+    "sourceSha256": "1eaa67e131d12736c19527f403244b69e20b1d801da6e63d3f28d9dd91c3458b",
+    "optimizedSha256": "e86bf8ebc7140d7eaa822d27d4f56addb3b022eab6c3186823e19514e95b3d24"
+  },
   "waterSlabSheet": {
     "file": "waterSlabSheet-fcf7f0228321.webp",
     "sourceSha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",

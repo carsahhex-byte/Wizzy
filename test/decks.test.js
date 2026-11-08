@@ -11,7 +11,7 @@ const legal = element => ({ element, entries: getEligibleSpells(element).slice(0
 
 test('new spellbook starts with empty independent deck slots and no old cards', () => {
   assert.equal(MAX_COPIES, 3);
-  assert.equal(Object.keys(SPELL_CATALOG).length, 31);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 32);
   for (const element of ['fire', 'water']) {
     const empty = createStarterDeck(element);
     assert.deepEqual(empty, { element, entries: [] });
@@ -21,7 +21,7 @@ test('new spellbook starts with empty independent deck slots and no old cards', 
     empty.entries.push({ spellId: 'old-card', quantity: 1 });
     assert.equal(createStarterDeck(element).entries.length, 0);
     const eligible = getEligibleSpells(element);
-    assert.equal(eligible.length, 17);
+    assert.equal(eligible.length, element === 'fire' ? 18 : 17);
     assert.equal(eligible.filter(card => card.category === 'Fate').length, 3);
     assert.equal(eligible.filter(card => card.category === 'Neutral').length, 0);
     assert.ok(eligible.every(card => card.category === 'Fate' || card.element.toLowerCase() === element));
@@ -113,4 +113,16 @@ test('validation safely rejects malformed decks and duplicate rows', () => {
     assert.doesNotThrow(() => getDeckValidation(value));
     assert.throws(() => setDeckQuantity(value, 'Fire-1', 1));
   }
+});
+
+test('Fire-0 joins Fire decks with the usual three-copy limit while existing exported decks remain valid', () => {
+  const old = { element: 'fire', entries: Array.from({ length: 10 }, (_, index) => ({ spellId: `Fire-${index + 1}`, quantity: 3 })) };
+  const oldFile = { format: 'wizzy-deck', version: 1, spellbook: 'nov4-v2.1', ...old };
+  assert.deepEqual(parseDeckList(JSON.stringify(oldFile)), normalizeDeck(old));
+  const removed = setDeckQuantity(old, 'Fire-1', 0), updated = setDeckQuantity(removed, 'Fire-0', 3);
+  assert.equal(validateDeck(updated), true); assert.equal(getDeckCount(updated, 'Fire-0'), 3);
+  assert.deepEqual(parseDeckList(serializeDeck(updated)), normalizeDeck(updated));
+  assert.throws(() => setDeckQuantity(updated, 'Fire-0', 4));
+  assert.throws(() => setDeckQuantity(createStarterDeck('water'), 'Fire-0', 1), /other main element/);
+  assert.equal(getEligibleSpells('water').some(card => card.spellId === 'Fire-0'), false);
 });

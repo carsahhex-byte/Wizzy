@@ -69,6 +69,16 @@
     "width": 2037,
     "height": 772
   },
+  "fireZeroSlab": {
+    "file": "fireZeroSlab-e86bf8ebc714.webp",
+    "source": "Wizzy Fire-0 Slab.png",
+    "sourceSha256": "1eaa67e131d12736c19527f403244b69e20b1d801da6e63d3f28d9dd91c3458b",
+    "optimizedSha256": "e86bf8ebc7140d7eaa822d27d4f56addb3b022eab6c3186823e19514e95b3d24",
+    "bytes": 1063048,
+    "sourceBytes": 1778698,
+    "width": 1103,
+    "height": 1426
+  },
   "waterSlabSheet": {
     "file": "waterSlabSheet-fcf7f0228321.webp",
     "source": "Pixel-Art Water Card Collection.png",

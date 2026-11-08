@@ -212,6 +212,48 @@ test('passing does not lock out a later Fate response and two voluntary passes r
   assert.equal(result.data.state.players[1].hp, 95);
 });
 
+test('Fire-0 resolves online at zero Mana without dice or Fate, preserves Loaded and uses the primary action', async t => {
+  const deck = legalDeck('fire');
+  deck.entries.find(entry => entry.spellId === 'Fire-6').quantity = 1;
+  deck.entries.push({ spellId: 'Fire-0', quantity: 2 });
+  for (const startingEmbers of [4, 5]) {
+    let samples = 0;
+    const api = await service(t, { rollRandom: () => { samples += 1; return .5; }, createMatch: decks => {
+      const state = fixtureMatch(decks);
+      arrangeHand(state, 0, ['Fire-0', 'Fire-0', 'FAT-001', 'Fire-1', 'Fire-3']);
+      state.players[0].mana = 0;
+      state.players[0].element = startingEmbers;
+      state.players[0].loaded = 4;
+      return state;
+    } });
+    const host = await api.create('fire', deck), guest = await api.join(host);
+    const initial = (await api.get(host)).state;
+    const [primary, anotherPrimary] = initial.players[0].hand.filter(card => card.spellId === 'Fire-0');
+    assert.ok(initial.players[0].hand.some(card => card.spellId === 'FAT-001'));
+    const defending = (await api.get(guest)).state;
+    assert.ok(defending.players[1].hand.some(card => card.spellId === 'FAT-002'));
+    assert.equal((await api.action(guest, 'castSpell')).status, 403);
+    assert.equal((await api.action(host, 'selectCard', { cardId: primary.id })).status, 200);
+    const result = await api.action(host, 'castSpell'); assert.equal(result.status, 200);
+    const state = result.data.state;
+    assert.deepEqual([state.phase, state.primaryUsed, state.players[0].mana, state.players[0].element, state.players[0].loaded], ['main', true, 0, 5, 4]);
+    assert.equal(state.lastRoll, null); assert.equal(state.pendingSpell, null); assert.equal(state.fatePlayer, null);
+    assert.equal(samples, 0, 'an immediate spell never samples server dice, even with Fate in both hands');
+    assert.equal(state.players[0].hand.length, 4);
+    assert.deepEqual(state.players[0].discard.map(card => card.id), [primary.id]);
+    assert.ok(state.players[0].hand.some(card => card.spellId === 'FAT-001'));
+    const visible = (await api.get(guest)).state;
+    assert.equal(visible.players[0].element, 5); assert.equal(visible.players[0].hand.length, 0);
+    assert.equal(visible.players[0].handCount, 4);
+    assert.deepEqual(visible.players[1].hand.map(card => card.id), defending.players[1].hand.map(card => card.id), 'the defender spends no Fate');
+    assert.equal((await api.action(guest, 'skipFate')).status, 403, 'an immediate spell opens no opponent response');
+    assert.equal((await api.action(host, 'selectCard', { cardId: anotherPrimary.id })).status, 200);
+    assert.equal((await api.action(host, 'castSpell')).status, 422, 'a second zero-Mana primary is still unavailable');
+    assert.equal((await api.action(host, 'enhance')).status, 422, 'the primary action also excludes Enhancement');
+    assert.equal(samples, 0);
+  }
+});
+
 test('Enhancement rolls are server-controlled at six, consume one primary action and cannot duplicate on retry', async t => {
   let samples = 0;
   const api = await service(t, { rollRandom: () => { samples += 1; return 2.5 / 6; }, createMatch: decks => {
