@@ -16,6 +16,7 @@ function resolve(spellId, { caster = {}, opponent = {}, roll = 2, spent = 0 } = 
   return { state, caster: state.players[casterIndex], opponent: state.players[1 - casterIndex], events };
 }
 const cases = [
+  ['Fire-15 gains one Ember and one Mana without a roll', 'Fire-15', { roll: null, caster: { mana: 0 } }, { element: 1, mana: 1 }, {}],
   ['Fire-0 gains one Ember without a roll', 'Fire-0', { roll: null }, { element: 1 }, {}],
   ['Fire-0 has no roll threshold or enhanced resource gain', 'Fire-0', { roll: 12, caster: { enhancement: 30 } }, { element: 1 }, {}],
   ['Fire-1 base attack has no automatic Ember', 'Fire-1', { roll: 6 }, { element: 0 }, { hp: 94 }],
@@ -103,20 +104,20 @@ for (const [description, spellId, options, expectedCaster, expectedOpponent] of 
 
 test('the current collection completely replaces old IDs and has no starter composition', () => {
   assert.equal(SPELLBOOK_VERSION, 'nov4-v2.1');
-  assert.equal(Object.keys(SPELL_CATALOG).length, 32);
-  assert.equal(Object.keys(SPELL_RULES).length, 29);
-  assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Fire').length, 15);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 33);
+  assert.equal(Object.keys(SPELL_RULES).length, 30);
+  assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Fire').length, 16);
   assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Water').length, 14);
   assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Fate').length, 3);
   assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Neutral').length, 0);
   assert.ok(Object.keys(SPELL_CATALOG).every(id => !/^(FIR|WAT|NEU)-/.test(id)));
   assert.deepEqual(DECK_LISTS, { fire: [], water: [] });
   for (const spell of Object.values(SPELL_CATALOG).filter(s => s.category !== 'Fate')) {
-    assert.equal(SPELL_RULES[spell.id].requiresRoll, spell.id !== 'Fire-0');
+    assert.equal(SPELL_RULES[spell.id].requiresRoll, !['Fire-0', 'Fire-15'].includes(spell.id));
     assert.ok(cases.some(entry => entry[1] === spell.id), `${spell.id} has independent numerical checks`);
   }
   assert.deepEqual([MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS], [100, 10, 30, 5, 5]);
-  assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Fire').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,4,6,8]);
+  assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Fire').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,4,6,8,0]);
   assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Water').map(s => s.manaCost), [1,1,2,2,3,5,7,2,2,3,3,4,6,8]);
 });
 
@@ -404,4 +405,24 @@ test('Fire-0 has exact printed text and adds only one capped Ember without dice 
     assert.deepEqual(getEmberSpendRange('Fire-0', element), { min: 0, max: 0, mandatory: false });
   }
   assert.throws(() => resolve('Fire-0', { roll: null, spent: 1 }), /Invalid Ember spending/);
+});
+
+test('Fire-15 independently caps one Ember and one Mana without consuming or scaling other resources', () => {
+  assert.deepEqual(SPELL_RULES['Fire-15'], { requiresRoll: false, emberSpend: 'none' });
+  assert.deepEqual([SPELL_CATALOG['Fire-15'].name, SPELL_CATALOG['Fire-15'].manaCost, SPELL_CATALOG['Fire-15'].effectText], ['Fire-15', 0, 'Gain 1 Ember and 1 Mana.']);
+  for (const element of [0, 4, 5]) for (const mana of [0, 9, 10]) {
+    const state = { players: [player('fire', { element, mana, hp: 60, shield: 12, loaded: 4, loadedPending: 2, enhancement: 30, auraTurns: 2 }), player('water', { shield: 12 })] };
+    const opponent = structuredClone(state.players[1]);
+    const events = applySpellEffect(state, { casterIndex: 0, spellId: 'Fire-15' });
+    assert.deepEqual([state.players[0].element, state.players[0].mana], [Math.min(5, element + 1), Math.min(10, mana + 1)]);
+    assert.deepEqual([state.players[0].hp, state.players[0].shield, state.players[0].loaded, state.players[0].loadedPending, state.players[0].enhancement, state.players[0].auraTurns], [60, 12, 4, 2, 30, 2]);
+    assert.deepEqual(state.players[1], opponent);
+    assert.deepEqual(events.map(event => [event.type, event.resource, event.amount]), [['resource', 'element', element < 5 ? 1 : 0], ['resource', 'mana', mana < 10 ? 1 : 0]]);
+    assert.deepEqual(getEmberSpendRange('Fire-15', element), { min: 0, max: 0, mandatory: false });
+    if (element === 5) assert.match(events[0].message, /gains 0 Embers.*maximum 5/);
+    if (mana === 10) assert.match(events[1].message, /gains 0 Mana.*maximum 10/);
+  }
+  assert.throws(() => resolve('Fire-15', { roll: null, spent: 1 }), /Invalid Ember spending/);
+  const original = resolve('Fire-0', { roll: null, caster: { mana: 0 } });
+  assert.deepEqual([original.caster.element, original.caster.mana], [1, 0], 'Fire-0 retains its original one-Ember effect');
 });

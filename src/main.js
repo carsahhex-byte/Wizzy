@@ -299,7 +299,9 @@ function spellVisualBusy() {
   return Boolean(activeSpellVisual || spellVisualQueue.length);
 }
 function displayedStats(player,index) {
-  return presentedPlayers?.[index] ? {...player,...presentedPlayers[index]} : player;
+  const held=presentedPlayers?.[index];
+  // Mana gains wait for impact; committed costs remain visible immediately.
+  return held ? {...player,...held,mana:Math.min(player.mana,held.mana)} : player;
 }
 function cancelSpellPresentation() {
   spellVisualGeneration += 1;
@@ -350,9 +352,10 @@ function update(next,message) {
   const visuals=battleView.hidden?[]:getResolvedSpellVisuals(state,next);
   if(visuals.length){
     // A newer online spell can arrive while the last hit is still recovering.
-    if(!presentedPlayers)presentedPlayers=state.players.map(player=>Object.fromEntries(
-      ['hp','shield','element','loaded','loadedPending','enhancement','auraTurns'].map(key=>[key,player[key]])
-    ));
+    if(!presentedPlayers)presentedPlayers=state.players.map((player,index)=>({
+      ...Object.fromEntries(['hp','shield','element','loaded','loadedPending','enhancement','auraTurns'].map(key=>[key,player[key]])),
+      mana:Math.min(player.mana,next.players[index].mana),
+    }));
     const duelKey=isOnlineBattle()?`online-${onlineCode}`:localEntranceKey||'saved-local';
     spellVisualQueue.push(...visuals.map(event=>({...event,key:`${duelKey}:${event.key}`})));
   }

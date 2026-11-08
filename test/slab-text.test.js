@@ -4,7 +4,7 @@ import { SPELL_CATALOG } from '../src/spells.js';
 import { COMPACT_SPELL_TEXT, slabRulesMarkup, slabRulesText } from '../src/slab-text.js';
 
 test('all current slabs have immutable concise copy with every canonical roll threshold', () => {
-  assert.equal(Object.keys(COMPACT_SPELL_TEXT).length, 32);
+  assert.equal(Object.keys(COMPACT_SPELL_TEXT).length, 33);
   assert.deepEqual(Object.keys(COMPACT_SPELL_TEXT).sort(), Object.keys(SPELL_CATALOG).sort());
   for (const [id, spell] of Object.entries(SPELL_CATALOG)) {
     const lines = COMPACT_SPELL_TEXT[id];
@@ -18,6 +18,7 @@ test('all current slabs have immutable concise copy with every canonical roll th
 });
 
 test('replacement thresholds remain distinct from extra damage, Shield and healing', () => {
+  assert.equal(slabRulesText('Fire-15'), 'Gain 1 Ember and 1 Mana.');
   for (const id of ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4', 'Fire-6', 'Fire-7', 'Fire-9', 'Fire-11', 'Fire-13', 'Fire-14', 'Water-3']) {
     assert.match(slabRulesText(id), /instead/, id);
   }

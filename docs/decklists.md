@@ -1,6 +1,6 @@
 # Master Spellbook and custom decks
 
-The current catalog contains **32 unique spells: 15 Fire, 14 Water, and 3 Fate**. The 31 original spells come from **Wizzy Master Spellbook Nov4.pdf**, *Wizzy / Master Spellbook V2.1*, dated November 4, 2026. **Fire-0** is an additional user-defined spell: **0 Mana, "Gain 1 Ember."** The previous Fire, Water, and Neutral catalog and its prescribed decklists are no longer playable. Earth and Air are outside this update.
+The current catalog contains **33 unique spells: 16 Fire, 14 Water, and 3 Fate**. The 31 original spells come from **Wizzy Master Spellbook Nov4.pdf**, *Wizzy / Master Spellbook V2.1*, dated November 4, 2026. **Fire-0** is an additional user-defined spell: **0 Mana, "Gain 1 Ember."** **Fire-15** is another user-defined spell: **0 Mana, "Gain 1 Ember and 1 Mana."** The previous Fire, Water, and Neutral catalog and its prescribed decklists are no longer playable. Earth and Air are outside this update.
 
 Printed Fire/Water costs and effect text come from that PDF. The user's combat instructions take precedence over the PDF's older pre-roll Fate paragraph and its note about retaining the earlier approved spellbook. This update replaces that earlier spellbook and applies Fate **after** rolling.
 
@@ -18,7 +18,7 @@ Fire and Water spells cannot be mixed. There are no Neutral spells or mandatory 
 
 Checking a slab adds its first copy; quantity controls add or remove copies, and unchecking removes all copies. Incomplete drafts remain editable and are retained on this device. **Save deck** stores a legal 30-slab deck for battle. Saving a deck does not alter an ongoing duel; start a new duel to use the saved composition.
 
-An account is optional for device saves. Saved decks and drafts survive closing regular tabs and loading a new hosted game version in the same browser on the same origin. The game maintains backup copies and restores compatible prior device saves; signed-in account decks remain separate from guest decks. The addition of Fire-0 retains the current deck compatibility version, so existing November 4 decks and exported files stay valid. Use **Download deck** to move a deck to another browser or device.
+An account is optional for device saves. Saved decks and drafts survive closing regular tabs and loading a new hosted game version in the same browser on the same origin. The game maintains backup copies and restores compatible prior device saves; signed-in account decks remain separate from guest decks. The additions of Fire-0 and Fire-15 retain the current deck compatibility version, so existing November 4 decks and exported files stay valid. Use **Download deck** to move a deck to another browser or device.
 
 Shared-screen play needs both saved element decks. For a two-screen room, each player needs the legal saved deck for their chosen role. Accounts can hold an empty slot while the other element's saved deck is ready; incomplete editor drafts remain local.
 
@@ -61,6 +61,7 @@ The example is a playable deck of 30 Fire-1 slabs; any playable file must list *
 | Fire-12 | 4 | Water-12 | 4 |
 | Fire-13 | 6 | Water-13 | 6 |
 | Fire-14 | 8 | Water-14 | 8 |
+| Fire-15 | 0 | — | — |
 
 | Fate ID | Name | Effect | Playable role |
 | --- | --- | --- | --- |
@@ -70,7 +71,7 @@ The example is a playable deck of 30 Fire-1 slabs; any playable file must list *
 
 The PDF leaves Fate Mana unspecified. This implementation retains the previous **0 Mana** cost pending a different ruling; that cost is an implementation assumption, not a printed PDF value. Play one eligible Fate slab per response; each Twist has its own explicit sign choice. Any number of responses may be played as the chain alternates, while cards remain available.
 
-All 32 slabs display larger live rules on their parchment panels, with compact wording and **bold roll thresholds**. The compact copy preserves the canonical effects. **Read Slab** shows the complete spellbook wording, and the supplied artwork remains unchanged.
+All 33 slabs display larger live rules on their parchment panels, with compact wording and **bold roll thresholds**. The compact copy preserves the canonical effects. **Read Slab** shows the complete spellbook wording, and the supplied artwork remains unchanged.
 
 ## Combat rules
 
@@ -78,7 +79,7 @@ All 32 slabs display larger live rules on their parchment panels, with compact w
 - Shuffle each saved 30-slab deck and draw five opening slabs, leaving 25 in its Spell Tower. Each wizard rolls one opening d6; higher starts and ties reroll both. Fate and Loaded do not affect initiative. The second player draws exactly one extra slab when their first own turn begins, up to the six-slab hand limit.
 - On each own turn after the opening turn, gain **2 Mana** up to the cap and draw up to six slabs. Unspent Mana carries over. One round contains one turn from each wizard, starting with the initiative winner.
 - Each wizard may use **one main action per own turn**: commit a primary spell, attempt Enhancement, or activate Aura. Fire and Water slabs are primary spells; Fate does not consume this allowance. Printed Mana and any optional Ember spending are paid on spell commitment. Fire-7 and Fire-14 automatically spend all available Embers.
-- **Fire-0** gains 1 Ember immediately, capped at 5. It costs 0 Mana and uses the primary action without rolling, opening Fate or consuming Loaded. The other 28 Fire/Water spells roll **2d6**. The roll and eligible Loaded bonus are displayed before Fate. Higher thresholds replace lower outcomes of the same effect unless the text specifies an additional effect.
+- **Fire-0** gains 1 Ember immediately, capped at 5. It costs 0 Mana and uses the primary action without rolling, opening Fate or consuming Loaded. Fire-15 also costs 0 Mana and gains 1 Ember and 1 Mana immediately, independently capped at 5 and 10, without dice, Fate or Loaded consumption. Both use the primary action. The other 28 Fire/Water spells roll **2d6**. The roll and eligible Loaded bonus are displayed before Fate. Higher thresholds replace lower outcomes of the same effect unless the text specifies an additional effect.
 - The **defender** gets the first Fate response. Players then alternate, casting **one eligible Fate slab** or passing each time. A cast resets the consecutive-pass count; **two consecutive passes** end the chain. A player with no eligible Fate passes automatically, and a player who passed may respond again after another Fate is cast. There is no fixed response-window limit.
 - Fortune is primary-caster-only and Misfortune defender-only; these roles do not swap when a player responds. Either player may choose **+2 or −2** for each Twist. Fate updates the Modified Roll without rerolling the original dice. Negative modified totals are permitted.
 - Each player starts at **0% Enhancement**. The active player may attempt it **once instead of a primary spell or Aura**, for **0 Mana**. Roll raw **2d6**: **6+** adds **10 percentage points**, capped at **30%**. Failure still uses the action. Enhancement remains banked until an outgoing damaging primary spell resolves, then returns to **0%**, even when Shield absorbs the entire hit. Non-damaging spells, Fate and self-damage preserve it; a new duel resets it. The attempt changes no cards or Ember/Flow resources. Fate and Loaded do not modify its roll, and Loaded is not consumed by the attempt; normal end-of-turn Loaded expiry still applies.

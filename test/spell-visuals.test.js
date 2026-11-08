@@ -13,7 +13,7 @@ const EXPECTED = {
   'simple-cast': ['Fire-6', 'Fire-12', 'Water-6', 'Water-12'],
   'large-cast': ['Fire-7', 'Fire-13', 'Fire-14', 'Water-7', 'Water-13', 'Water-14'],
   shield: ['Fire-3', 'Fire-10', 'Water-3', 'Water-10'],
-  'power-up': ['Fire-0', 'Fire-2', 'Fire-9'],
+  'power-up': ['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15'],
 };
 
 const allCards = player => [...player.hand, ...player.deck, ...player.discard];
@@ -81,10 +81,10 @@ function deepFreeze(value) {
   return value;
 }
 
-test('all 29 primary spells have the specified routes and Fate has no animation', () => {
+test('all 30 primary spells have the specified routes and Fate has no animation', () => {
   const mapped = Object.values(EXPECTED).flat();
-  assert.equal(mapped.length, 29); assert.equal(new Set(mapped).size, 29);
-  assert.equal(Object.keys(SPELL_CATALOG).length, 32);
+  assert.equal(mapped.length, 30); assert.equal(new Set(mapped).size, 30);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 33);
   for (const [kind, spellIds] of Object.entries(EXPECTED)) for (const spellId of spellIds) {
     const spell = SPELL_CATALOG[spellId], damaging = !['shield', 'power-up'].includes(kind);
     assert.deepEqual(getSpellVisual(spellId), { kind, element: spell.element, manaCost: spell.manaCost, damaging }, spellId);
@@ -99,14 +99,14 @@ test('damage routing covers Mana boundaries while Shield and power-up override t
   for (const [spellId, cost, kind] of [
     ['Fire-5', 3, 'basic-attack'], ['Fire-12', 4, 'simple-cast'], ['Fire-6', 5, 'simple-cast'], ['Fire-13', 6, 'large-cast'],
     ['Water-5', 3, 'basic-attack'], ['Water-12', 4, 'simple-cast'], ['Water-6', 5, 'simple-cast'], ['Water-13', 6, 'large-cast'],
-    ['Fire-0', 0, 'power-up'], ['Fire-9', 2, 'power-up'], ['Fire-10', 3, 'shield'], ['Water-10', 3, 'shield'],
+    ['Fire-0', 0, 'power-up'], ['Fire-15', 0, 'power-up'], ['Fire-9', 2, 'power-up'], ['Fire-10', 3, 'shield'], ['Water-10', 3, 'shield'],
   ]) {
     assert.equal(getSpellVisual(spellId).manaCost, cost); assert.equal(getSpellVisual(spellId).kind, kind);
   }
 });
 
 test('unknown, retired, malformed and prototype names never produce an animation', () => {
-  for (const value of [null, undefined, 1, {}, [], 'Fire-15', 'Fire--1', 'FIR-001', 'Earth-1', 'fire-1', '__proto__', 'constructor']) {
+  for (const value of [null, undefined, 1, {}, [], 'Fire-16', 'Fire--1', 'FIR-001', 'Earth-1', 'fire-1', '__proto__', 'constructor']) {
     assert.equal(getSpellVisual(value), null);
   }
   const visual = getSpellVisual('Fire-1'); visual.kind = 'changed';
@@ -124,6 +124,19 @@ test('an immediate Fire-0 completion produces exactly one keyed primary event', 
   assert.deepEqual(getResolvedSpellVisuals(after, after), []);
   assert.deepEqual(getResolvedSpellVisuals(after, JSON.parse(JSON.stringify(after))), []);
   assert.deepEqual(getResolvedSpellVisuals(after, endTurn(after)), []);
+});
+
+test('Fire-15 gets one power-up visual for its immediate resource gain', () => {
+  const before = fresh({fire:['Fire-15'],water:['Water-1']});
+  before.players[0].mana=0;
+  const after=cast(before,'Fire-15');
+  const [event]=getResolvedSpellVisuals(before,after);
+  assert.equal(event.spellId,'Fire-15');
+  assert.equal(event.kind,'power-up');
+  assert.equal(event.damaging,false);
+  assert.equal(event.manaCost,0);
+  assert.deepEqual([after.players[0].mana,after.players[0].element],[1,1]);
+  assert.deepEqual(getResolvedSpellVisuals(after,JSON.parse(JSON.stringify(after))),[]);
 });
 
 test('rolled spells animate only on completion and the same commitment has one stable key', () => {

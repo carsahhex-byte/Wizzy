@@ -255,6 +255,53 @@ test('Fire-0 resolves online at zero Mana without dice or Fate, preserves Loaded
   }
 });
 
+test('Fire-15 gains independently capped Ember and Mana online without rolls, Fate or duplicate rewards', async t => {
+  const deck = legalDeck('fire');
+  deck.entries.find(entry => entry.spellId === 'Fire-6').quantity = 1;
+  deck.entries.push({ spellId: 'Fire-15', quantity: 2 });
+  for (const [mana, embers, expectedMana, expectedEmbers] of [[0, 4, 1, 5], [9, 4, 10, 5], [10, 4, 10, 5], [0, 5, 1, 5], [10, 5, 10, 5]]) {
+    let samples = 0;
+    const api = await service(t, { rollRandom: () => { samples += 1; return .5; }, createMatch: decks => {
+      const state = fixtureMatch(decks);
+      arrangeHand(state, 0, ['Fire-15', 'Fire-15', 'FAT-001', 'Fire-1', 'Fire-3']);
+      Object.assign(state.players[0], { mana, element: embers, loaded: 4, loadedPending: 2, enhancement: 20, auraTurns: 2 });
+      return state;
+    } });
+    const host = await api.create('fire', deck), guest = await api.join(host);
+    const [primary, anotherPrimary] = (await api.get(host)).state.players[0].hand.filter(card => card.spellId === 'Fire-15');
+    assert.deepEqual([primary.manaCost, primary.effectText], [0, 'Gain 1 Ember and 1 Mana.']);
+    const defending = (await api.get(guest)).state;
+    assert.ok(defending.players[1].hand.some(card => card.spellId === 'FAT-002'));
+    assert.equal((await api.action(guest, 'castSpell')).status, 403);
+    await api.action(host, 'selectCard', { cardId: primary.id });
+    const selected = await api.get(host);
+    assert.equal((await api.action(host, 'castSpell', { emberSpend: 1 })).status, 422, 'this spell never spends Embers');
+    assert.deepEqual(await api.get(host), selected, 'an invalid spend changes no card, resource or revision');
+    const request = { type: 'castSpell', payload: {}, revision: selected.revision, requestId: 'fire-fifteen-once' };
+    const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: request });
+    const result = await send(); assert.equal(result.status, 200);
+    const state = result.data.state;
+    assert.deepEqual([state.phase, state.primaryUsed, state.primaryAction, state.players[0].mana, state.players[0].element], ['main', true, 'spell', expectedMana, expectedEmbers]);
+    assert.deepEqual([state.players[0].loaded, state.players[0].loadedPending, state.players[0].enhancement, state.players[0].auraTurns], [4, 2, 20, 2]);
+    assert.deepEqual(state.players.map(player => [player.hp, player.shield]), [[100, 0], [100, 0]], 'a resource spell deals no damage');
+    assert.equal(state.lastRoll, null); assert.equal(state.pendingSpell, null); assert.equal(state.fatePlayer, null);
+    assert.deepEqual(state.players[0].discard.map(card => card.id), [primary.id]);
+    assert.equal(state.players[0].hand.length, 4);
+    assert.ok(state.players[0].hand.some(card => card.spellId === 'FAT-001'));
+    const duplicate = await send(); assert.equal(duplicate.status, 200);
+    assert.equal(duplicate.data.revision, result.data.revision);
+    assert.deepEqual([duplicate.data.state.players[0].mana, duplicate.data.state.players[0].element], [expectedMana, expectedEmbers], 'retry never grants resources twice');
+    const visible = (await api.get(guest)).state;
+    assert.deepEqual([visible.players[0].mana, visible.players[0].element, visible.players[0].hand, visible.players[0].handCount], [expectedMana, expectedEmbers, [], 4]);
+    assert.deepEqual(visible.players[1].hand, defending.players[1].hand, 'Fate is skipped even when the defender can respond');
+    assert.equal((await api.action(guest, 'skipFate')).status, 403);
+    await api.action(host, 'selectCard', { cardId: anotherPrimary.id });
+    assert.equal((await api.action(host, 'castSpell')).status, 422, 'the zero-Mana resource slab consumes the normal primary action');
+    assert.equal((await api.action(host, 'enhance')).status, 422);
+    assert.equal(samples, 0, 'Fire-15 never asks the server for a die roll');
+  }
+});
+
 test('Aura is a fixed server-authorized primary action with private hands, public duration and safe retries', async t => {
   let samples = 0;
   const api = await service(t, { rollRandom: () => { samples += 1; return .5; }, createMatch: decks => {

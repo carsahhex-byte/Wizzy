@@ -70,16 +70,16 @@ function fateFixture() {
   return state;
 }
 
-test('catalog has 32 spells, 28 rolling primaries, one immediate primary and no old IDs', () => {
+test('catalog has 33 spells, 28 rolling primaries, two immediate primaries and no old IDs', () => {
   assert.equal(SAVE_VERSION, 13); assert.equal(DECK_SIZE, 30);
   assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
-  assert.equal(Object.keys(SPELL_CATALOG).length, 32);
-  assert.equal(Object.keys(SPELL_RULES).length, 29);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 33);
+  assert.equal(Object.keys(SPELL_RULES).length, 30);
   for (const element of ['Fire', 'Water']) for (let index = 1; index <= 14; index += 1) {
     assert.ok(SPELL_CATALOG[`${element}-${index}`]);
     assert.equal(SPELL_RULES[`${element}-${index}`].requiresRoll, true);
   }
-  assert.deepEqual(SPELL_RULES['Fire-0'], { requiresRoll: false, emberSpend: 'none' });
+  for (const id of ['Fire-0', 'Fire-15']) assert.deepEqual(SPELL_RULES[id], { requiresRoll: false, emberSpend: 'none' });
   assert.equal(Object.values(SPELL_CATALOG).filter(card => card.category === 'Neutral').length, 0);
   for (const id of ['FIR-001', 'WAT-001', 'NEU-001']) assert.equal(SPELL_CATALOG[id], undefined);
 });
@@ -881,9 +881,9 @@ test('temporary Enhancement remains through Fate and is consumed after the whole
 });
 
 test('non-damaging spells and self damage preserve temporary Enhancement and Aura', () => {
-  for (const spellId of ['Fire-0', 'Fire-2', 'Fire-3', 'Water-3', 'Water-10']) {
+  for (const spellId of ['Fire-0', 'Fire-15', 'Fire-2', 'Fire-3', 'Water-3', 'Water-10']) {
     const index = spellId.startsWith('Water') ? 1 : 0;
-    const initial = fresh({ first: index, fire: spellId === 'Fire-0' ? ['Fire-0'] : [] });
+    const initial = fresh({ first: index, fire: ['Fire-0', 'Fire-15'].includes(spellId) ? [spellId] : [] });
     handOf(initial, index, [spellId]); Object.assign(initial.players[index], { mana: 10, hp: 60, enhancement: 20, auraTurns: 2 });
     const state = complete(cast(initial, spellId));
     assert.deepEqual([state.players[index].enhancement, state.players[index].auraTurns], [20, 2], spellId);
@@ -979,5 +979,40 @@ test('decks with 30 identical elemental or Fate slabs conserve distinct physical
     const saved = JSON.parse(JSON.stringify(state));
     assert.equal(validateSavedGame(saved), true); assert.equal(migrateSavedGame(saved), saved);
     assert.equal(saved.version, SAVE_VERSION);
+  }
+});
+
+test('Fire-15 casts at zero Mana without dice or Fate and spends the primary despite granting affordable Mana', () => {
+  const initial = fresh({ fire: ['Fire-15', 'FAT-001'], water: ['FAT-002'] });
+  handOf(initial, 0, ['Fire-15', 'Fire-1', 'FAT-001']); handOf(initial, 1, ['Water-1', 'FAT-002']);
+  Object.assign(initial.players[0], { mana: 0, element: 4, loaded: 4, loadedPending: 2, enhancement: 30, auraTurns: 2 });
+  initial.lastRoll = rollEnhancement(activateEnhancement(fresh()), () => .5).lastRoll;
+  const snapshot = structuredClone(initial), card = initial.players[0].hand[0];
+  const state = cast(initial, 'Fire-15');
+  assert.deepEqual([state.phase, state.primaryUsed, state.primaryAction, state.pendingSpell, state.pendingCardId, state.fatePlayer, state.lastRoll], ['main', true, 'spell', null, null, null, null]);
+  assert.deepEqual([state.players[0].mana, state.players[0].element, state.players[0].loaded, state.players[0].loadedPending, state.players[0].enhancement, state.players[0].auraTurns], [1, 5, 4, 2, 30, 2]);
+  assert.deepEqual(state.players[0].discard, [card]); assert.equal(state.players[0].hand.length, 2);
+  assert.deepEqual(state.players[1], initial.players[1]); assert.deepEqual(initial, snapshot);
+  const selected = selectCard(state, state.players[0].hand.find(card => card.spellId === 'Fire-1').id);
+  assert.equal(canCastSelected(selected), false, 'new Mana does not permit a second primary spell');
+  assert.equal(castSelected(selected), selected); assert.equal(canEnhance(state), false); assert.equal(canActivateAura(state), false);
+  for (const action of [rollDice, skipFate, castFateSelected, resolveSpell]) assert.equal(action(state), state);
+  assert.ok(!state.log.slice(initial.log.length).some(entry => ['dice', 'fate', 'damage', 'enhancement'].includes(entry.type)));
+  assertGame(state);
+  const saved = JSON.parse(JSON.stringify(state));
+  assert.equal(saved.version, 13); assert.equal(validateSavedGame(saved), true); assert.equal(migrateSavedGame(saved), saved);
+  assert.equal(resolveSpell(saved), saved, 'reloading never reapplies the resource reward');
+  assert.deepEqual([saved.players[0].mana, saved.players[0].element, saved.players[0].discard.length], [1, 5, 1]);
+});
+
+test('Fire-15 caps Mana and Embers independently and rejects all Ember spending before commitment', () => {
+  for (const [element, mana] of [[0, 0], [5, 0], [0, 10], [5, 10], [4, 9]]) {
+    const initial = handOf(fresh({ fire: ['Fire-15'] }), 0, ['Fire-15']);
+    Object.assign(initial.players[0], { element, mana });
+    const selected = selectCard(initial, initial.players[0].hand[0].id);
+    for (const emberSpend of [-1, 1, .5, '0', NaN]) assert.equal(castSelected(selected, { emberSpend }), selected);
+    const state = castSelected(selected);
+    assert.deepEqual([state.players[0].element, state.players[0].mana], [Math.min(5, element + 1), Math.min(10, mana + 1)]);
+    assert.deepEqual([state.players[0].discard.length, allCards(state.players[0]).length], [1, 30]); assertGame(state);
   }
 });

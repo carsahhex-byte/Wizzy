@@ -10,7 +10,7 @@ import {
 const legal = element => ({ element, entries: getEligibleSpells(element).slice(0, 10).map(card => ({ spellId: card.spellId, quantity: 3 })) });
 
 test('new spellbook starts with empty independent deck slots and no old cards', () => {
-  assert.equal(Object.keys(SPELL_CATALOG).length, 32);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 33);
   for (const element of ['fire', 'water']) {
     const empty = createStarterDeck(element);
     assert.deepEqual(empty, { element, entries: [] });
@@ -20,7 +20,7 @@ test('new spellbook starts with empty independent deck slots and no old cards', 
     empty.entries.push({ spellId: 'old-card', quantity: 1 });
     assert.equal(createStarterDeck(element).entries.length, 0);
     const eligible = getEligibleSpells(element);
-    assert.equal(eligible.length, element === 'fire' ? 18 : 17);
+    assert.equal(eligible.length, element === 'fire' ? 19 : 17);
     assert.equal(eligible.filter(card => card.category === 'Fate').length, 3);
     assert.equal(eligible.filter(card => card.category === 'Neutral').length, 0);
     assert.ok(eligible.every(card => card.category === 'Fate' || card.element.toLowerCase() === element));
@@ -128,7 +128,7 @@ test('Fire-0 joins Fire decks while the total limit and existing exported decks 
 });
 
 test('a 30-slab deck may contain 30 copies of one elemental or Fate spell', () => {
-  for (const [element, spellIds] of [['fire', ['Fire-0', 'Fire-1', 'FAT-001', 'FAT-002', 'FAT-003']], ['water', ['Water-1', 'FAT-001', 'FAT-002', 'FAT-003']]]) {
+  for (const [element, spellIds] of [['fire', ['Fire-0', 'Fire-1', 'Fire-15', 'FAT-001', 'FAT-002', 'FAT-003']], ['water', ['Water-1', 'FAT-001', 'FAT-002', 'FAT-003']]]) {
     for (const spellId of spellIds) {
       const empty = createStarterDeck(element), deck = setDeckQuantity(empty, spellId, 30);
       assert.equal(validateDeck(deck), true, `${element} ${spellId}`); assert.equal(validateDeckSlot(deck), true);
@@ -175,4 +175,19 @@ test('unlimited spell copies still require safe whole quantities and a maximum t
   const draft = setDeckQuantity(four, 'FAT-003', 25);
   assert.equal(getDeckValidation(draft).total, 29);
   assert.equal(validateDeck(setDeckQuantity(draft, 'Fire-1', 5)), true);
+});
+
+test('Fire-15 is an additive Fire-only slab with unlimited copies and unchanged deck-file compatibility', () => {
+  assert.equal(SPELLBOOK_VERSION, 'nov4-v2.1');
+  assert.equal(getEligibleSpells('fire').some(card => card.spellId === 'Fire-15'), true);
+  assert.equal(getEligibleSpells('water').some(card => card.spellId === 'Fire-15'), false);
+  assert.throws(() => setDeckQuantity(createStarterDeck('water'), 'Fire-15', 1), /other main element/);
+  const deck = setDeckQuantity(createStarterDeck('fire'), 'Fire-15', 30);
+  const exported = JSON.parse(serializeDeck(deck));
+  assert.deepEqual([exported.format, exported.version, exported.spellbook], ['wizzy-deck', 1, 'nov4-v2.1']);
+  assert.deepEqual(parseDeckList(JSON.stringify(exported)), deck);
+  const mixed = setDeckQuantity(setDeckQuantity(deck, 'Fire-15', 15), 'Fire-0', 15);
+  assert.equal(validateDeck(mixed), true); assert.deepEqual(parseDeckList(serializeDeck(mixed)), mixed);
+  const original = { format: 'wizzy-deck', version: 1, spellbook: 'nov4-v2.1', element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 30 }] };
+  assert.deepEqual(parseDeckList(JSON.stringify(original)), { element: 'fire', entries: original.entries });
 });

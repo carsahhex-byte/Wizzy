@@ -20,6 +20,7 @@ export const COMPACT_SPELL_TEXT = Object.freeze(Object.fromEntries(Object.entrie
   'Fire-12': [line('Deal 14 damage.'), line('Spend 0–2 Embers: +8 damage each.'), at('7+', 'Remove up to 10 Shield first.')],
   'Fire-13': [line('Deal 30 damage.'), at('7+', 'Deal 38 instead.'), at('10+', 'Deal 45 instead.')],
   'Fire-14': [line('Spend all Embers.'), line('Deal 20 + 9 per Ember spent.'), at('8+', 'Deal 20 + 12 per Ember instead.')],
+  'Fire-15': [line('Gain 1 Ember and 1 Mana.')],
   'Water-1': [line('Deal 6 damage.'), at('7+', 'Deal 3 extra damage.')],
   'Water-2': [line('Deal 4 + 2 × Flow damage.'), at('8+', 'Gain 1 extra Flow after resolution.')],
   'Water-3': [line('Gain 10 Shield.'), at('7+', 'Heal 5 HP.'), at('10+', 'Heal 10 HP instead.')],
