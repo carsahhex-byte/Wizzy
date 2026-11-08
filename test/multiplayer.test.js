@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMultiplayerServer } from '../server/room-server.js';
-import { createGame, rollInitiative } from '../src/game.js';
+import { createGame, rollInitiative, ENHANCEMENT_ROLL_RULE } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
 
@@ -31,6 +31,13 @@ function fixtureMatch(decks) {
   state = rollInitiative(state, 1, () => 0);
   arrangeHand(state, 0, ['Fire-4', 'FAT-001', 'Fire-2', 'Fire-1', 'Fire-3']);
   arrangeHand(state, 1, ['FAT-002', 'FAT-003', 'Water-2', 'Water-1', 'Water-3']);
+  return state;
+}
+
+function fixtureWithoutFate(decks) {
+  const state = fixtureMatch(decks);
+  arrangeHand(state, 0, ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4', 'Fire-5']);
+  arrangeHand(state, 1, ['Water-1', 'Water-2', 'Water-3', 'Water-4', 'Water-5']);
   return state;
 }
 
@@ -381,7 +388,7 @@ test('Aura requires one Mana and lasts three subsequent owner turns after activa
 test('Enhancement rolls are server-controlled at six, consume one primary action and cannot duplicate on retry', async t => {
   let samples = 0;
   const api = await service(t, { rollRandom: () => { samples += 1; return 2.5 / 6; }, createMatch: decks => {
-    const state = fixtureMatch(decks); state.players[0].loaded = 4; return state;
+    const state = fixtureWithoutFate(decks); state.players[0].loaded = 4; return state;
   } });
   const host = await api.create(), guest = await api.join(host);
   assert.equal((await api.action(guest, 'enhance')).status, 403);
@@ -415,14 +422,14 @@ test('Enhancement rolls are server-controlled at six, consume one primary action
 
 test('failed Enhancement still spends the turn action and the thirty-percent cap rejects further attempts', async t => {
   const values = [1.5 / 6, 2.5 / 6];
-  const api = await service(t, { rollRandom: () => values.shift() });
+  const api = await service(t, { rollRandom: () => values.shift(), createMatch: fixtureWithoutFate });
   const host = await api.create(), guest = await api.join(host);
   let result = await api.action(host, 'enhance'); assert.equal(result.status, 200);
   assert.deepEqual(result.data.state.lastRoll.dice, [2, 3]); assert.equal(result.data.state.lastRoll.success, false);
   assert.deepEqual([result.data.state.players[0].enhancement, result.data.state.primaryUsed, result.data.state.players[0].mana], [0, true, 3]);
   assert.equal((await api.action(host, 'enhance')).status, 422);
   const capApi = await service(t, { rollRandom: () => 2.5 / 6, createMatch: decks => {
-    const state = fixtureMatch(decks); state.players[0].enhancement = 20; return state;
+    const state = fixtureWithoutFate(decks); state.players[0].enhancement = 20; return state;
   } });
   const capHost = await capApi.create(), capGuest = await capApi.join(capHost);
   result = await capApi.action(capHost, 'enhance'); assert.equal(result.status, 200);
@@ -433,6 +440,88 @@ test('failed Enhancement still spends the turn action and the thirty-percent cap
   const capped = (await capApi.get(capHost)).state;
   assert.equal(capped.players[0].enhancement, 30); assert.equal(capped.primaryUsed, false, 'being capped does not spend a new turn action');
   assert.equal(capped.players[0].mana, 5);
+});
+
+test('Enhancement waits for the full server-controlled Fate chain and awards its final tier only once', async t => {
+  const values = [1.5 / 6, 2.5 / 6];
+  let samples = 0;
+  const api = await service(t, { rollRandom: () => { samples += 1; return values.shift(); }, createMatch: decks => {
+    const state = fixtureMatch(decks);
+    arrangeHand(state, 0, ['FAT-001', 'FAT-001', 'FAT-003', 'Fire-1', 'Fire-2']);
+    arrangeHand(state, 1, ['FAT-002', 'FAT-002', 'FAT-003', 'Water-1', 'Water-2']);
+    Object.assign(state.players[0], { loaded: 4, loadedPending: 2 });
+    return state;
+  } });
+  const host = await api.create(), guest = await api.join(host), before = await api.get(host);
+  const startRequest = { type: 'enhance', payload: {}, revision: before.revision, requestId: 'enhancement-chain-start' };
+  const sendStart = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: startRequest });
+  let result = await sendStart();
+  assert.equal(result.status, 200);
+  let state = result.data.state;
+  assert.deepEqual([state.phase, state.fatePlayer, state.pendingSpell.kind, state.pendingCardId], ['fate', 1, 'enhancement', null]);
+  assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.total, state.lastRoll.resolved, state.players[0].enhancement], [5, 5, false, 0]);
+  assert.equal(state.lastRoll.enhancementAfter, null, 'no provisional tier is awarded');
+  assert.equal((await sendStart()).status, 200); assert.equal(samples, 2, 'retrying activation cannot roll again');
+  assert.equal((await api.action(host, 'skipFate')).status, 403, 'the defender responds first');
+  await api.action(guest, 'skipFate');
+  const links = [
+    [host, 'FAT-001', null, 9],
+    [guest, 'FAT-002', null, 5],
+    [host, 'FAT-003', 2, 7],
+    [guest, 'FAT-003', -2, 5],
+    [host, 'FAT-001', null, 9],
+  ];
+  for (const [player, spellId, direction, total] of links) {
+    const view = (await api.get(player)).state;
+    assert.equal(view.fatePlayer, player.playerIndex);
+    const card = view.players[player.playerIndex].hand.find(entry => entry.spellId === spellId);
+    assert.ok(card);
+    assert.equal((await api.action(player, 'selectCard', { cardId: card.id })).status, 200);
+    result = await api.action(player, 'castFate', direction === null ? {} : { twistDirections: { [card.id]: direction } });
+    assert.equal(result.status, 200);
+    state = result.data.state;
+    assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.total, state.lastRoll.resolved, state.players[0].enhancement], [5, total, false, 0]);
+    assert.equal(state.pendingSpell.fatePasses, 0, 'every played card resets the pass count');
+    assert.equal(samples, 2, 'Fate modifies the original dice rather than rerolling');
+  }
+  const finalView = await api.get(guest);
+  const finalRequest = { type: 'skipFate', payload: {}, revision: finalView.revision, requestId: 'enhancement-final-pass' };
+  const sendFinal = () => api.request(`/api/rooms/${guest.code}/actions`, { method: 'POST', token: guest.token, body: finalRequest });
+  result = await sendFinal(); assert.equal(result.status, 200);
+  state = result.data.state;
+  assert.deepEqual([state.phase, state.pendingSpell, state.lastRoll.resolved, state.lastRoll.total], ['main', null, true, 9]);
+  assert.deepEqual([state.lastRoll.enhancementBonus, state.lastRoll.enhancementGain, state.players[0].enhancement], [20, 20, 20]);
+  assert.deepEqual([state.players[0].mana, state.players[0].loaded, state.players[0].loadedPending], [3, 4, 2]);
+  assert.deepEqual(state.players.map(player => [player.handCount, player.discard.length]), [[2, 3], [3, 2]], 'only the five Fate slabs were spent');
+  assert.equal(state.players[0].hand.length, 0, 'opponent hand remains private after the award');
+  const retry = await sendFinal(); assert.equal(retry.status, 200); assert.deepEqual(retry.data, result.data);
+  const lateStart = await sendStart(); assert.equal(lateStart.status, 200);
+  assert.equal(lateStart.data.state.players[0].enhancement, 20); assert.equal(samples, 2);
+  assert.equal((await api.action(host, 'enhance')).status, 422, 'the turn action remains spent');
+  assert.equal((await api.get(host)).state.players[0].enhancement, 20, 'polls and retries never re-award');
+});
+
+test('defending Fate can downgrade Enhancement to a lower tier or a miss', async t => {
+  for (const [dice, bank, finalTotal, bonus] of [[[6, 6], 20, 8, 10], [[3, 3], 0, 2, 0]]) {
+    const values = dice.map(die => (die - .5) / 6);
+    const api = await service(t, { rollRandom: () => values.shift(), createMatch: decks => {
+      const state = fixtureMatch(decks); state.players[0].enhancement = bank; return state;
+    } });
+    const host = await api.create(), guest = await api.join(host);
+    const start = await api.action(host, 'enhance');
+    assert.equal(start.status, 200);
+    assert.deepEqual([start.data.state.phase, start.data.state.players[0].enhancement], ['fate', bank]);
+    const card = (await api.get(guest)).state.players[1].hand.find(entry => entry.spellId === 'FAT-002');
+    await api.action(guest, 'selectCard', { cardId: card.id });
+    await api.action(guest, 'castFate');
+    await api.action(host, 'skipFate');
+    const result = await api.action(guest, 'skipFate');
+    assert.equal(result.status, 200);
+    assert.deepEqual([result.data.state.lastRoll.total, result.data.state.lastRoll.enhancementBonus, result.data.state.lastRoll.success], [finalTotal, bonus, bonus > 0]);
+    assert.equal(result.data.state.players[0].enhancement, Math.min(30, bank + bonus));
+    assert.equal(result.data.state.primaryUsed, true);
+    assert.equal(result.data.state.lastRoll.resolved, true);
+  }
 });
 
 test('the server spends damage Enhancement at resolution with one rounding step before Shield', async t => {
@@ -527,10 +616,11 @@ test('custom deck legality and opposite seats are checked before creating a matc
   assert.deepEqual([fireGuest.playerIndex, fireGuest.element, fireGuest.state.activePlayer], [0, 'fire', 0]);
 });
 
-test('rooms accept unlimited spell copies within thirty slabs while preserving element checks and private hands', async t => {
+test('rooms accept one through thirty slabs while preserving element checks and private hands', async t => {
   const api = await service(t, { createMatch: decks => createGame(32, decks) });
   const repeated = (element, spellId, quantity = 30) => ({ element, entries: [{ spellId, quantity }] });
   const pairs = [
+    ...[1, 5, 29].map(quantity => [repeated('fire', 'Fire-0', quantity), repeated('water', 'Water-1', quantity)]),
     [repeated('fire', 'Fire-0'), repeated('water', 'Water-1')],
     [repeated('fire', 'FAT-001'), repeated('water', 'FAT-002')],
     [
@@ -538,20 +628,27 @@ test('rooms accept unlimited spell copies within thirty slabs while preserving e
       { element: 'water', entries: [{ spellId: 'Water-2', quantity: 10 }, { spellId: 'Water-3', quantity: 16 }, { spellId: 'FAT-003', quantity: 4 }] },
     ],
   ];
+  assert.equal((await api.request('/api/rooms', { method: 'POST', body: { element: 'fire', deck: { element: 'fire', entries: [] } } })).status, 400);
   assert.equal((await api.request('/api/rooms', { method: 'POST', body: { element: 'fire', deck: repeated('fire', 'Fire-0', 31) } })).status, 400);
   for (const [fireDeck, waterDeck] of pairs) {
     const host = await api.create('fire', fireDeck);
     assert.equal((await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { deck: repeated('water', 'Fire-0') } })).status, 400, 'thirty copies do not allow the other element');
-    assert.equal((await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { deck: repeated('water', 'Water-1', 31) } })).status, 400, 'joining also requires exactly thirty slabs');
+    assert.equal((await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { deck: repeated('water', 'Water-1', 31) } })).status, 400, 'joining also enforces the thirty-slab maximum');
     const guest = await api.join(host, waterDeck);
     for (const [player, ownIndex, expected] of [[host, 0, fireDeck], [guest, 1, waterDeck]]) {
       const state = (await api.get(player)).state;
       assert.deepEqual(state.players[ownIndex].deckDefinition, normalizeDeck(expected));
-      assert.equal(state.players[ownIndex].hand.length, 5);
-      assert.equal(new Set(state.players[ownIndex].hand.map(card => card.id)).size, 5, 'repeated spells still have distinct physical slab IDs');
+      const ownTotal = expected.entries.reduce((sum, entry) => sum + entry.quantity, 0);
+      const ownHand = Math.min(5, ownTotal);
+      const otherTotal = [fireDeck, waterDeck][1 - ownIndex].entries.reduce((sum, entry) => sum + entry.quantity, 0);
+      assert.equal(state.players[ownIndex].hand.length, ownHand);
+      assert.equal(new Set(state.players[ownIndex].hand.map(card => card.id)).size, ownHand, 'repeated spells still have distinct physical slab IDs');
       assert.ok(state.players[ownIndex].hand.every(card => expected.entries.some(entry => entry.spellId === card.spellId)));
-      assert.deepEqual([state.players[1 - ownIndex].hand, state.players[1 - ownIndex].handCount, state.players[1 - ownIndex].deckDefinition], [[], 5, null]);
-      assert.deepEqual(state.players.map(entry => [entry.deck, entry.deckCount]), [[[], 25], [[], 25]]);
+      assert.deepEqual([state.players[1 - ownIndex].hand, state.players[1 - ownIndex].handCount, state.players[1 - ownIndex].deckDefinition], [[], Math.min(5, otherTotal), null]);
+      assert.deepEqual(state.players.map(entry => [entry.deck, entry.deckCount]), [fireDeck, waterDeck].map(deck => {
+        const total = deck.entries.reduce((sum, entry) => sum + entry.quantity, 0);
+        return [[], Math.max(0, total - 5)];
+      }));
     }
   }
 });
@@ -587,10 +684,10 @@ test('static hosting serves only public build files and never traverses into sou
   assert.equal((await api.request('/src/game.js')).status, 404);
 });
 
-test('server Enhancement tiers award 10,20 or30 from raw dice and retries preserve the actual capped gain', async t => {
+test('server Enhancement without playable Fate uses raw tiers and retries preserve the actual capped gain', async t => {
   let bank = 0, values = [], samples = 0;
   const api = await service(t, { rollRandom: () => { samples += 1; return values.shift(); }, createMatch: decks => {
-    const state = fixtureMatch(decks);
+    const state = fixtureWithoutFate(decks);
     Object.assign(state.players[0], { enhancement: bank, mana: 0, loaded: 4, loadedPending: 2, element: 3, auraTurns: 2 });
     return state;
   } });
@@ -603,7 +700,7 @@ test('server Enhancement tiers award 10,20 or30 from raw dice and retries preser
     const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: request });
     const result = await send(); assert.equal(result.status, 200);
     const state = result.data.state;
-    assert.deepEqual([state.lastRoll.enhancementRule, state.lastRoll.enhancementBonus, state.lastRoll.enhancementGain], ['tiered-v1', bonus, gain]);
+    assert.deepEqual([state.lastRoll.enhancementRule, state.lastRoll.enhancementBonus, state.lastRoll.enhancementGain], [ENHANCEMENT_ROLL_RULE, bonus, gain]);
     assert.deepEqual([state.lastRoll.enhancementBefore, state.lastRoll.enhancementAfter, state.players[0].enhancement], [starting, starting + gain, starting + gain]);
     assert.deepEqual(state.lastRoll.dice, dice); assert.equal(state.lastRoll.rawTotal, dice[0] + dice[1]);
     assert.equal(state.lastRoll.total, state.lastRoll.rawTotal); assert.equal(state.lastRoll.success, bonus > 0);

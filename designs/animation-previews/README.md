@@ -25,5 +25,6 @@ All files preserve generated source pixels and transparency. The live Aura
 forms for 500 ms, holds its moving loop for one second, and then keeps looping
 until the owner's third subsequent turn ends; activation does not count.
 Expiry has a 500 ms fizzle. Reconnecting restores the loop without formation;
-reduced motion uses a static ring. Successful Enhancement plays its two-second
-jump; a failed roll displays MISS without animation.
+reduced motion uses a static ring. After its Fate chain ends, successful
+Enhancement plays its two-second jump; a final Modified Roll below 6 displays
+MISS without animation. The preview frame timing and original artwork are unchanged.

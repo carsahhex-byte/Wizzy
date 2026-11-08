@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SPELL_CATALOG, SPELLBOOK_VERSION } from '../src/spells.js';
+import { SPELL_CATALOG, SPELLBOOK_VERSION, DECK_SIZE, MIN_DECK_SIZE } from '../src/spells.js';
 import {
   MAX_DECK_FILE_BYTES, createStarterDeck, getEligibleSpells, getDeckValidation,
   validateDeck, normalizeDeck, getDeckCount, setDeckQuantity, validateDeckSlot,
@@ -38,7 +38,7 @@ test('draft editing supports new elemental and Fate slabs without a fixed compos
   assert.equal(getDeckCount(one, 'Fire-3'), 1);
   assert.equal(getDeckCount(three, 'Fire-3'), 3);
   assert.deepEqual(removed, empty);
-  assert.equal(validateDeckSlot(three), false, 'partial drafts are not account battle slots');
+  assert.equal(validateDeckSlot(three), true, 'a short deck is a playable account slot');
   assert.equal(getDeckValidation(three).total, 3);
   for (const element of ['fire', 'water']) {
     const deck = legal(element);
@@ -72,7 +72,7 @@ test('deck exports and imports round-trip both elements with an explicit spellbo
     imported.entries[0].quantity = 0;
     assert.equal(validateDeck(deck), true);
   }
-  assert.throws(() => serializeDeck(createStarterDeck('fire')), /exactly 30/);
+  assert.throws(() => serializeDeck(createStarterDeck('fire')), /at least 1 slab/);
 });
 
 test('imports reject malformed, oversized, legacy, wrong-element and illegal deck files', () => {
@@ -86,7 +86,7 @@ test('imports reject malformed, oversized, legacy, wrong-element and illegal dec
     data => { data.entries[0].quantity = 4; },
     data => { data.entries[0].quantity = '3'; },
     data => { data.entries.push({ ...data.entries[0] }); },
-    data => { data.entries.pop(); },
+    data => { data.entries = []; },
     data => { data.element = '__proto__'; },
   ]) {
     const copy = structuredClone(valid); mutate(copy);
@@ -138,7 +138,7 @@ test('a 30-slab deck may contain 30 copies of one elemental or Fate spell', () =
       assert.throws(() => setDeckQuantity(deck, spellId, 31), /more than 30/);
       const tooLarge = { element, entries: [{ spellId, quantity: 31 }] };
       assert.equal(validateDeck(tooLarge), false); assert.equal(validateDeckSlot(tooLarge), false);
-      assert.throws(() => serializeDeck(tooLarge), /exactly 30/);
+      assert.throws(() => serializeDeck(tooLarge), /more than 30/);
       assert.deepEqual(setDeckQuantity(deck, spellId, 0), empty);
     }
   }
@@ -171,9 +171,10 @@ test('unlimited spell copies still require safe whole quantities and a maximum t
     assert.equal(validateDeck({ element: 'fire', entries: [{ spellId: 'Fire-1', quantity: value }] }), false);
   }
   const four = setDeckQuantity(empty, 'Fire-1', 4);
-  assert.equal(getDeckCount(four, 'Fire-1'), 4); assert.equal(validateDeck(four), false, 'four is a valid draft quantity but an incomplete deck');
+  assert.equal(getDeckCount(four, 'Fire-1'), 4); assert.equal(validateDeck(four), true, 'four copies form a playable short deck');
   const draft = setDeckQuantity(four, 'FAT-003', 25);
   assert.equal(getDeckValidation(draft).total, 29);
+  assert.equal(validateDeck(draft), true);
   assert.equal(validateDeck(setDeckQuantity(draft, 'Fire-1', 5)), true);
 });
 
@@ -190,4 +191,50 @@ test('Fire-15 is an additive Fire-only slab with unlimited copies and unchanged 
   assert.equal(validateDeck(mixed), true); assert.deepEqual(parseDeckList(serializeDeck(mixed)), mixed);
   const original = { format: 'wizzy-deck', version: 1, spellbook: 'nov4-v2.1', element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 30 }] };
   assert.deepEqual(parseDeckList(JSON.stringify(original)), { element: 'fire', entries: original.entries });
+});
+
+test('playable deck boundaries preserve actual quantities through normalization, export and import', () => {
+  assert.equal(MIN_DECK_SIZE, 1);
+  assert.equal(DECK_SIZE, 30, 'DECK_SIZE remains the compatible maximum');
+  for (const element of ['fire', 'water']) {
+    const spellId = element === 'fire' ? 'Fire-0' : 'Water-1';
+    for (const total of [0, 1, 5, 29, 30, 31]) {
+      const deck = { element, entries: total ? [{ spellId, quantity: total }] : [] };
+      const playable = total >= MIN_DECK_SIZE && total <= DECK_SIZE;
+      const result = getDeckValidation(deck);
+      assert.equal(result.total, total);
+      assert.equal(result.valid, playable, `${element}: ${total} slabs`);
+      assert.equal(validateDeck(deck), playable);
+      assert.equal(validateDeckSlot(deck), total <= DECK_SIZE, 'empty slots can be saved but cannot battle');
+      const file = JSON.stringify({ format: 'wizzy-deck', version: 1, spellbook: SPELLBOOK_VERSION, ...deck });
+      if (playable) {
+        assert.deepEqual(normalizeDeck(deck), deck, 'normalizing never fills a short deck to 30');
+        assert.deepEqual(normalizeDeckSlot(deck), deck);
+        assert.deepEqual(parseDeckList(file), deck);
+        assert.deepEqual(parseDeckList(serializeDeck(deck)), deck);
+        assert.deepEqual(setDeckQuantity(createStarterDeck(element), spellId, total), deck);
+      } else {
+        assert.throws(() => normalizeDeck(deck));
+        assert.throws(() => serializeDeck(deck));
+        assert.throws(() => parseDeckList(file));
+        if (total === 0) {
+          assert.deepEqual(normalizeDeckSlot(deck), deck);
+          assert.deepEqual(setDeckQuantity(createStarterDeck(element), spellId, 0), deck);
+        } else {
+          assert.throws(() => normalizeDeckSlot(deck));
+          assert.throws(() => setDeckQuantity(createStarterDeck(element), spellId, total), /more than 30/);
+        }
+      }
+    }
+  }
+});
+
+test('removing the last slab makes an editable empty slot without changing the saved short deck', () => {
+  const saved = { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 1 }] };
+  const draft = setDeckQuantity(saved, 'Fire-15', 0);
+  assert.deepEqual(draft, createStarterDeck('fire'));
+  assert.equal(validateDeck(draft), false);
+  assert.equal(validateDeckSlot(draft), true);
+  assert.equal(validateDeck(saved), true);
+  assert.equal(getDeckCount(saved, 'Fire-15'), 1);
 });

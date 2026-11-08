@@ -85,7 +85,7 @@ test('saved decks synchronize across logins while stale or illegal saves cannot 
   assert.notDeepEqual(privateRead.data.account.decks, saved.data.account.decks);
 });
 
-test('accounts allow empty slots and one completed deck while battle seats still require 30 slabs', async t => {
+test('accounts allow empty slots while battle seats require at least one legal slab', async t => {
   const api = await service(t);
   const empty = { fire: { element: 'fire', entries: [] }, water: { element: 'water', entries: [] } };
   const account = await api.register({ ...registration('fresh_builder'), decks: empty });
@@ -99,10 +99,20 @@ test('accounts allow empty slots and one completed deck while battle seats still
   assert.deepEqual(save.data.account.decks, { fire: normalizeDeck(completed.fire), water: empty.water });
   assert.equal((await api.request('/api/rooms', { method: 'POST', token: account.token, body: { element: 'fire' } })).status, 201);
   assert.equal((await api.request('/api/rooms', { method: 'POST', token: account.token, body: { element: 'water' } })).status, 400);
-  const partial = { fire: { element: 'fire', entries: [{ spellId: 'Fire-1', quantity: 1 }] }, water: empty.water };
-  assert.equal((await api.request('/api/accounts/me', { method: 'PUT', token: account.token, body: { profile, decks: partial, revision: 1 } })).status, 400);
+  const short = { fire: { element: 'fire', entries: [{ spellId: 'Fire-1', quantity: 1 }] }, water: empty.water };
+  const shortSave = await api.request('/api/accounts/me', { method: 'PUT', token: account.token, body: { profile, decks: short, revision: 1 } });
+  assert.equal(shortSave.status, 200);
+  assert.deepEqual(shortSave.data.account.decks, short);
+  assert.deepEqual((await api.login('fresh_builder')).account.decks, short, 'a new login sees the saved one-card deck');
+  assert.equal((await api.request('/api/rooms', { method: 'POST', token: account.token, body: { element: 'fire' } })).status, 201);
+  for (const quantity of [0, 31]) {
+    const invalid = { fire: { element: 'fire', entries: [{ spellId: 'Fire-1', quantity }] }, water: empty.water };
+    assert.equal((await api.request('/api/accounts/me', { method: 'PUT', token: account.token,
+      body: { profile, decks: invalid, revision: 2 } })).status, 400);
+    assert.deepEqual((await api.request('/api/accounts/me', { token: account.token })).data.account.decks, short);
+  }
   assert.equal((await api.request('/api/accounts/me', { method: 'PUT', token: account.token,
-    body: { profile, decks: completed, revision: 1, spellbookVersion: 'old-spellbook' } })).status, 400);
+    body: { profile, decks: completed, revision: 2, spellbookVersion: 'old-spellbook' } })).status, 400);
 });
 
 test('SQLite accounts, saved decks and hashed sessions survive restart and expire on schedule', async t => {
@@ -111,7 +121,12 @@ test('SQLite accounts, saved decks and hashed sessions survive restart and expir
   const dbPath = path.join(folder, 'accounts.sqlite');
   let clock = 100000;
   const first = await service(t, { accountDbPath: dbPath, now: () => clock, accountSessionTtlMs: 1000 });
-  const registered = await first.register();
+  const shortInput = registration();
+  shortInput.decks = {
+    fire: { element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 1 }] },
+    water: { element: 'water', entries: [{ spellId: 'Water-1', quantity: 29 }] },
+  };
+  const registered = await first.register(shortInput);
   await first.stop();
   const bytes = await readFile(dbPath);
   assert.equal(bytes.includes(Buffer.from(registration().password)), false, 'raw password is never stored');

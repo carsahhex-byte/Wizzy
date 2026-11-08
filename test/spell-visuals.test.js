@@ -261,7 +261,7 @@ test('visual collection is pure and accepts frozen JSON snapshots', () => {
 
 function enhance(state, dice = [3, 3]) {
   let index = 0;
-  return rollEnhancement(activateEnhancement(state), () => (dice[index++] - 1) / 6);
+  return complete(rollEnhancement(activateEnhancement(state), () => (dice[index++] - 1) / 6));
 }
 
 test('battle visuals emit one stable Enhancement event for every successful tier and actual capped gain', () => {
@@ -269,7 +269,7 @@ test('battle visuals emit one stable Enhancement event for every successful tier
     const before = fresh(); before.players[0].enhancement = bank;
     const pending = activateEnhancement(before);
     let index = 0;
-    const after = rollEnhancement(pending, () => (dice[index++] - 1) / 6);
+    const after = complete(rollEnhancement(pending, () => (dice[index++] - 1) / 6));
     assert.deepEqual(getResolvedBattleVisuals(before, pending), []);
     const [event] = getResolvedBattleVisuals(before, after);
     assert.deepEqual(event, {
@@ -391,4 +391,67 @@ test('the battle collector is pure for frozen snapshots and its output can be fr
   assert.equal(events.length, 1); events[0].enhancementGain = 0;
   assert.equal(JSON.stringify([before, after]), original);
   assert.equal(getResolvedBattleVisuals(before, after)[0].enhancementGain, 30);
+});
+
+
+test('Enhancement Fate responses change the final award and animate only after two passes and resolution', () => {
+  const before = fresh({ fire: ['Fire-1', 'FAT-001', 'FAT-003'], water: ['Water-1', 'FAT-002', 'FAT-003'] });
+  const pending = activateEnhancement(before);
+  const rolled = rollEnhancement(pending, () => (3 - 1) / 6);
+  assert.equal(rolled.phase, 'fate'); assert.equal(rolled.fatePlayer, 1);
+  assert.equal(rolled.lastRoll.total, 6); assert.equal(rolled.lastRoll.resolved, false);
+  assert.equal(rolled.players[0].enhancement, 0);
+  const fate = (state, id, twist) => {
+    const card = state.players[state.fatePlayer].hand.find(card => card.spellId === id);
+    return castFateSelected(selectCard(state, card.id), twist === undefined ? {} : { twistDirections: { [card.id]: twist } });
+  };
+  const defended = fate(rolled, 'FAT-002');
+  const attacked = fate(defended, 'FAT-001');
+  const twisted = fate(attacked, 'FAT-003', 2);
+  const countered = fate(twisted, 'FAT-003', 2);
+  assert.equal(countered.lastRoll.total, 10);
+  const resolving = skipFate(skipFate(countered));
+  assert.equal(resolving.phase, 'resolving');
+  for (const state of [pending, rolled, defended, attacked, twisted, countered, resolving]) {
+    assert.equal(state.players[0].enhancement, 0);
+    assert.deepEqual(getResolvedBattleVisuals(before, state), [], `${state.phase} never awards an early animation`);
+  }
+  const after = resolveSpell(resolving), [event] = getResolvedBattleVisuals(before, after);
+  assert.equal(after.lastRoll.resolved, true); assert.equal(after.lastRoll.total, 10);
+  assert.equal(after.players[0].enhancement, 20);
+  assert.equal(event.kind, 'enhancement'); assert.equal(event.enhancementGain, 20);
+  for (const baseline of [pending, rolled, defended, attacked, twisted, countered, resolving]) {
+    assert.deepEqual(getResolvedBattleVisuals(baseline, after), [event]);
+  }
+  for (const viewer of [0, 1]) assert.deepEqual(getResolvedBattleVisuals(privateView(countered, viewer), privateView(after, viewer)), [event]);
+  assert.deepEqual(getResolvedBattleVisuals(after, structuredClone(after)), []);
+  assert.deepEqual(getResolvedBattleVisuals(after, endTurn(after)), []);
+  assert.deepEqual(getResolvedSpellVisuals(before, after), [], 'Fate and Enhancement never masquerade as slab animations');
+});
+
+test('Fate can remove an Enhancement tier, while successful final logs must preserve the modified-roll arithmetic', () => {
+  const before = fresh({ fire: ['Fire-1', 'FAT-001'], water: ['Water-1', 'FAT-002'] });
+  const rolled = rollEnhancement(activateEnhancement(before), () => (3 - 1) / 6);
+  const card = rolled.players[1].hand.find(card => card.spellId === 'FAT-002');
+  const linked = castFateSelected(selectCard(rolled, card.id));
+  const failed = complete(linked);
+  assert.equal(failed.lastRoll.rawTotal, 6); assert.equal(failed.lastRoll.total, 2);
+  assert.equal(failed.players[0].enhancement, 0);
+  assert.deepEqual(getResolvedBattleVisuals(before, failed), []);
+  const success = enhance(fresh(), [3, 6]);
+  for (const replacement of [
+    'Fire resolves Enhancement at Modified Roll 9 (raw 8; attacking Fate +0; defending Fate +0): tier +20%; gains +20%; 20% Enh.',
+    'Fire resolves Enhancement at Modified Roll 9 (raw 9; attacking Fate +4; defending Fate +0): tier +20%; gains +20%; 20% Enh.',
+    'Fire resolves Enhancement at Modified Roll 9 (raw 9; attacking Fate +0; defending Fate +0): tier +10%; gains +10%; 10% Enh.',
+  ]) {
+    const invalid = structuredClone(success); invalid.log.at(-1).message = replacement;
+    assert.deepEqual(getResolvedBattleVisuals(fresh(), invalid), []);
+  }
+});
+
+test('compatible tiered Enhancement completion logs keep their original award semantics', () => {
+  const before = fresh(), legacy = enhance(before, [3, 6]);
+  legacy.log.at(-1).message = 'Fire rolls 3 + 6 = 9 for Enhancement: tier +20%; gains +20%; 20% Enh.';
+  assert.equal(getResolvedBattleVisuals(before, legacy)[0].enhancementGain, 20);
+  assert.deepEqual(getResolvedBattleVisuals(null, legacy), [], 'loading a historical result is a baseline');
 });

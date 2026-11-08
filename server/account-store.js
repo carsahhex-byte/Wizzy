@@ -44,7 +44,7 @@ function savedData(value) {
       decks[element] = normalizeDeckSlot(value.decks[element]);
       if (decks[element].element !== element) throw new Error(`The ${element} deck has the wrong main element.`);
     }
-  } catch (error) { fail(400, 'invalid_deck', error.message || 'A saved deck must be empty or contain 30 legal slabs.'); }
+  } catch (error) { fail(400, 'invalid_deck', error.message || 'A saved deck slot must be empty or contain 1–30 legal slabs.'); }
   return { profile: { name, element: profile.element }, decks };
 }
 
@@ -119,7 +119,7 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
     const decks = JSON.parse(row.decks_json);
     return { id: row.id, username: row.username, profile: { name: row.name, element: row.element }, decks, revision: row.revision,
       spellbookVersion: SPELLBOOK_VERSION,
-      ...(archived && Object.values(decks).some(deck => deck.entries.length === 0) ? { migrationMessage: 'The spellbook has changed. Previous decks were archived; build and save new 30-slab decks.' } : {}) };
+      ...(archived && Object.values(decks).some(deck => deck.entries.length === 0) ? { migrationMessage: 'The spellbook has changed. Previous decks were archived; build and save new decks of 1–30 slabs.' } : {}) };
   }
   function rowForToken(token) {
     if (typeof token !== 'string' || !TOKEN.test(token)) fail(401, 'account_unauthorized', 'Log in to your Wizzy account again.');

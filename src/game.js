@@ -5,18 +5,18 @@ import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applyS
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
-export const SAVE_VERSION = 13;
+export const SAVE_VERSION = 14;
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
-export const ENHANCEMENT_ROLL_RULE = 'tiered-v1';
+export const ENHANCEMENT_ROLL_RULE = 'fate-tiered-v1';
 export const AURA_COST = 1;
 export const AURA_DURATION = 3;
 export const AURA_BONUS = 10;
 export const HAND_LIMIT = 6;
 export const OPENING_HAND_SIZE = 5;
 export const PHASES = Object.freeze(['setup', 'initiative', 'main', 'enhancing', 'rolling', 'fate', 'resolving', 'end', 'refresh', 'ready-to-pass']);
-const PENDING_PHASES = ['fate', 'rolling', 'resolving'];
+const PENDING_PHASES = ['enhancing', 'fate', 'rolling', 'resolving'];
 const LOG_TYPES = ['info', 'turn', 'round', 'cast', 'fate', 'resolve', 'refresh', 'damage', 'victory', 'dice', 'resource', 'heal', 'shield', 'loaded', 'enhancement', 'aura'];
 
 export const CARD_CATALOG = Object.freeze({
@@ -101,9 +101,9 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
     status: 'playing', winner: null, players, log: [],
   };
   if (ready) {
-    addLog(state, `The duel begins. Both wizards receive ${MAX_HP} HP, 3 mana, and ${OPENING_HAND_SIZE} spell slabs.`);
+    addLog(state, `The duel begins. Both wizards receive ${MAX_HP} HP, 3 mana, and up to ${OPENING_HAND_SIZE} spell slabs from their towers.`);
     addLog(state, 'Each wizard rolls one die to decide who starts. Ties are rerolled.');
-  } else addLog(state, 'Build and save a legal 30-slab Fire deck and Water deck to begin. Previous spellbook decks are not used.');
+  } else addLog(state, 'Build and save legal Fire and Water decks of 1–30 slabs to begin. Previous spellbook decks are not used.');
   return state;
 }
 
@@ -141,9 +141,9 @@ export function getActingPlayerIndex(state) {
   return state.phase === 'fate' ? state.fatePlayer : state.activePlayer;
 }
 
-function fateModifier(state, card, playerIndex = state.fatePlayer, twistDirection = null) {
+function fateModifier(state, card, playerIndex = state.fatePlayer, twistDirection = null, casterIndex = state.pendingSpell?.casterIndex ?? state.activePlayer) {
   if (card.category !== 'Fate') return null;
-  const attacking = playerIndex === state.activePlayer;
+  const attacking = playerIndex === casterIndex;
   if (card.spellId === 'FAT-001') return attacking ? 4 : null;
   if (card.spellId === 'FAT-002') return attacking ? null : -4;
   if (card.spellId === 'FAT-003') return twistDirection ?? (attacking ? 2 : -2);
@@ -209,7 +209,7 @@ export function castSelected(state, { emberSpend = 0 } = {}) {
   caster.element -= emberSpent;
   next.pendingCardId = card.id;
   next.pendingSpell = {
-    casterIndex: next.activePlayer, cardId: card.id, spellId: card.spellId, emberSpent,
+    kind: 'spell', casterIndex: next.activePlayer, cardId: card.id, spellId: card.spellId, emberSpent,
     loadedBonus: rule.requiresRoll ? caster.loaded : 0,
     attackingFate: 0, defendingFate: 0,
     attackingFateCardIds: [], defendingFateCardIds: [],
@@ -289,7 +289,7 @@ function advanceFate(next, action, cardIds = []) {
   next.fatePlayer = null;
   next.pendingSpell.fateStep = 'complete';
   next.phase = 'resolving';
-  addLog(next, `Both wizards pass. Fate ends at Modified Roll ${next.lastRoll.total}; the spell resolves.`, 'fate');
+  addLog(next, `Both wizards pass. Fate ends at Modified Roll ${next.lastRoll.total}; ${next.pendingSpell.kind === 'enhancement' ? 'Enhancement' : 'the spell'} resolves.`, 'fate');
   return next;
 }
 
@@ -300,7 +300,7 @@ export function skipFate(state) {
 
 /** Capture two d6 exactly once, then offer the defender post-roll Fate. */
 export function rollDice(state, random = Math.random) {
-  if (!inPhase(state, 'rolling')) return state;
+  if (!inPhase(state, 'rolling') || state.pendingSpell?.kind !== 'spell') return state;
   const samples = [random(), random()];
   if (samples.some((value) => !Number.isFinite(value) || value < 0 || value >= 1)) return state;
   const dice = samples.map((value) => Math.floor(value * 6) + 1);
@@ -317,7 +317,7 @@ export function rollDice(state, random = Math.random) {
   return openFateStep(next, 1 - next.activePlayer);
 }
 
-/** Nominal percentage-point award before the existing 30% bank cap. */
+/** Nominal percentage-point award from the final Modified Roll, before the bank cap. */
 export function getEnhancementBonus(total) {
   if (!Number.isSafeInteger(total)) return 0;
   return total >= 12 ? 30 : total >= 9 ? 20 : total >= ENHANCEMENT_THRESHOLD ? 10 : 0;
@@ -337,30 +337,53 @@ export function activateEnhancement(state) {
   next.selectedCardId = null;
   next.selectedFateCardIds = [];
   next.lastRoll = null;
+  next.pendingSpell = enhancementPending(next);
   next.phase = 'enhancing';
   addLog(next, `${next.players[next.activePlayer].name} attempts Enhancement for 0 Mana instead of casting a primary spell.`, 'enhancement', next.players[next.activePlayer].id);
   return next;
 }
 
+function enhancementPending(state) {
+  return {
+    kind: 'enhancement', casterIndex: state.activePlayer, cardId: null, spellId: null,
+    emberSpent: 0, loadedBonus: 0, enhancementBefore: state.players[state.activePlayer].enhancement,
+    enhancementRule: ENHANCEMENT_ROLL_RULE, attackingFate: 0, defendingFate: 0,
+    attackingFateCardIds: [], defendingFateCardIds: [], fateStep: null,
+    fatePlays: [], fateHistory: [], fatePasses: 0, legacyFateHistoryLength: 0,
+  };
+}
+
 export function rollEnhancement(state, random = Math.random) {
-  if (!inPhase(state, 'enhancing')) return state;
+  if (!inPhase(state, 'enhancing') || state.pendingSpell?.kind !== 'enhancement') return state;
   const samples = [random(), random()];
   if (samples.some(value => !Number.isFinite(value) || value < 0 || value >= 1)) return state;
   const next = structuredClone(state);
   const dice = samples.map(value => Math.floor(value * 6) + 1);
   const rawTotal = dice[0] + dice[1];
   const player = next.players[next.activePlayer];
-  const enhancementBefore = player.enhancement;
-  const enhancementBonus = getEnhancementBonus(rawTotal);
-  const success = enhancementBonus > 0;
-  player.enhancement = Math.min(MAX_ENHANCEMENT, enhancementBefore + enhancementBonus);
-  const enhancementGain = player.enhancement - enhancementBefore;
   next.lastRoll = { kind: 'enhancement', spellId: null, casterIndex: next.activePlayer,
     dice, rawTotal, total: rawTotal, loadedBonus: 0, attackingFate: 0, defendingFate: 0,
-    success, enhancementBefore, enhancementAfter: player.enhancement,
-    enhancementRule: ENHANCEMENT_ROLL_RULE, enhancementBonus, enhancementGain };
+    resolved: false, success: null, enhancementBefore: next.pendingSpell.enhancementBefore,
+    enhancementAfter: null, enhancementRule: ENHANCEMENT_ROLL_RULE, enhancementBonus: null, enhancementGain: null };
+  addLog(next, `${player.name} rolls ${dice.join(' + ')} = ${rawTotal} for Enhancement; the defender has the first Fate response.`, 'dice', player.id);
+  return openFateStep(next, 1 - next.activePlayer);
+}
+
+function completeEnhancement(next) {
+  const pending = next.pendingSpell;
+  const player = next.players[pending.casterIndex];
+  const roll = next.lastRoll;
+  const bonus = getEnhancementBonus(roll.total);
+  player.enhancement = Math.min(MAX_ENHANCEMENT, pending.enhancementBefore + bonus);
+  Object.assign(roll, {
+    resolved: true, success: bonus > 0, enhancementBonus: bonus,
+    enhancementAfter: player.enhancement, enhancementGain: player.enhancement - pending.enhancementBefore,
+    ...Object.fromEntries(['fatePlays', 'fateHistory', 'fatePasses', 'attackingFateCardIds', 'defendingFateCardIds', 'legacyFateHistoryLength']
+      .map(key => [key, structuredClone(pending[key])])),
+  });
+  clearPending(next);
   next.phase = 'main';
-  addLog(next, `${player.name} rolls ${dice.join(' + ')} = ${rawTotal} for Enhancement: ${success ? `tier +${enhancementBonus}%; gains +${enhancementGain}%; ${player.enhancement}% Enh.${enhancementGain < enhancementBonus ? ' (maximum 30%)' : ''}` : `no increase; ${player.enhancement}% Enh.`}`, 'enhancement', player.id);
+  addLog(next, `${player.name} resolves Enhancement at Modified Roll ${roll.total} (raw ${roll.rawTotal}; attacking Fate ${roll.attackingFate >= 0 ? '+' : ''}${roll.attackingFate}; defending Fate ${roll.defendingFate}): ${roll.success ? `tier +${bonus}%; gains +${roll.enhancementGain}%; ${player.enhancement}% Enh.${roll.enhancementGain < bonus ? ' (maximum 30%)' : ''}` : `no increase; ${player.enhancement}% Enh.`}`, 'enhancement', player.id);
   return next;
 }
 
@@ -406,6 +429,7 @@ function finishDuel(state, casterIndex = state.activePlayer) {
     : state.players[1 - casterIndex].hp === 0 ? 1 - casterIndex : null;
   if (loser === null) return;
   discardCommittedCard(state);
+  if (state.lastRoll?.kind === 'enhancement' && !state.lastRoll.resolved) state.lastRoll = null;
   state.status = 'finished';
   state.winner = 1 - loser;
   clearPending(state);
@@ -434,6 +458,7 @@ function completeSpell(next, rollTotal) {
 
 export function resolveSpell(state) {
   if (!inPhase(state, 'resolving')) return state;
+  if (state.pendingSpell?.kind === 'enhancement') return completeEnhancement(structuredClone(state));
   if (!state.players[state.activePlayer].hand.some((card) => card.id === state.pendingCardId)) return state;
   return completeSpell(structuredClone(state), state.lastRoll.total);
 }
@@ -544,6 +569,44 @@ function requireValue(condition, message) {
   if (!condition) throw new Error(`Invalid game: ${message}`);
 }
 
+/** Recheck paid cards, roles, alternating priority and modifier sums, including historical Enhancement chains. */
+function assertFateTrace(state, trace, casterIndex) {
+  requireValue(Array.isArray(trace.fatePlays) && Array.isArray(trace.fateHistory)
+    && trace.fateHistory.length <= 2 * trace.fatePlays.length + 2, 'Fate history');
+  requireValue(Number.isInteger(trace.legacyFateHistoryLength) && trace.legacyFateHistoryLength >= 0
+    && trace.legacyFateHistoryLength <= trace.fateHistory.length, 'legacy Fate prefix');
+  const playedIds = new Set();
+  let passes = 0;
+  trace.fateHistory.forEach((entry, index) => {
+    requireValue(passes < 2, 'closed Fate chain');
+    requireValue(entry && entry.step === index + 1 && entry.playerIndex === (index % 2 === 0 ? 1 - casterIndex : casterIndex)
+      && ['cast', 'skip', 'auto-skip'].includes(entry.action) && Array.isArray(entry.cardIds)
+      && new Set(entry.cardIds).size === entry.cardIds.length, 'Fate response sequence');
+    requireValue(entry.action === 'cast' ? entry.cardIds.length === 1 || index < trace.legacyFateHistoryLength && entry.cardIds.length > 0
+      : entry.cardIds.length === 0, 'Fate response action');
+    passes = entry.action === 'cast' ? 0 : passes + 1;
+  });
+  requireValue(trace.fatePasses === passes && Number.isInteger(passes), 'Fate pass count');
+  for (const play of trace.fatePlays) {
+    requireValue(play && [0, 1].includes(play.playerIndex) && !playedIds.has(play.cardId), 'Fate play identity');
+    playedIds.add(play.cardId);
+    const card = state.players[play.playerIndex].discard.find(entry => entry.id === play.cardId);
+    requireValue(card && card.spellId === play.spellId && fateModifier(state, card, play.playerIndex, play.modifier, casterIndex) !== null, 'Fate ownership and role');
+    requireValue(play.modifier === fateModifier(state, card, play.playerIndex, card.spellId === 'FAT-003' ? play.modifier : null, casterIndex)
+      && (card.spellId !== 'FAT-003' || [2, -2].includes(play.modifier)), 'Fate direction');
+    requireValue(trace.fateHistory.some(entry => entry.action === 'cast' && entry.step === play.step
+      && entry.playerIndex === play.playerIndex && entry.cardIds.includes(play.cardId)), 'Fate commitment');
+  }
+  requireValue(trace.fateHistory.flatMap(entry => entry.cardIds).length === trace.fatePlays.length, 'Fate play count');
+  for (const [kind, owner] of [['attackingFate', casterIndex], ['defendingFate', 1 - casterIndex]]) {
+    const plays = trace.fatePlays.filter(play => play.playerIndex === owner);
+    const ids = trace[`${kind}CardIds`];
+    requireValue(Array.isArray(ids) && ids.length === plays.length && ids.every((id, index) => id === plays[index].cardId), 'Fate card totals');
+    requireValue(trace[kind] === plays.reduce((sum, play) => sum + play.modifier, 0), 'Fate modifier total');
+  }
+  return passes;
+}
+
 /** Validate only the replacement spellbook; previous duels remain archived. */
 export function assertGame(state) {
   requireValue(state !== null && typeof state === 'object' && state.version === SAVE_VERSION, 'unsupported save');
@@ -577,7 +640,7 @@ export function assertGame(state) {
         || Array.isArray(player.deckDefinition.entries) && player.deckDefinition.entries.length === 0), 'deck setup');
     } else {
       const deckDefinition = normalizeDeck(player.deckDefinition);
-      requireValue(cards.length === DECK_SIZE, 'card conservation');
+      requireValue(cards.length === deckDefinition.entries.reduce((total, entry) => total + entry.quantity, 0), 'card conservation');
       const definitions = new Map(makeDeckCards(id, deckDefinition).map(card => [card.id, card]));
       for (const card of cards) {
         requireValue(card && typeof card.id === 'string' && !allIds.has(card.id), 'unique cards');
@@ -619,53 +682,34 @@ export function assertGame(state) {
   const hand = state.players[state.activePlayer].hand;
   const isOwnCard = id => typeof id === 'string' && hand.some(card => card.id === id);
   if (PENDING_PHASES.includes(state.phase)) {
-    requireValue(state.primaryUsed === true && state.primaryAction === 'spell', 'committed primary spell');
     const pending = state.pendingSpell;
-    requireValue(pending && isOwnCard(state.pendingCardId) && pending.cardId === state.pendingCardId
-      && pending.casterIndex === state.activePlayer, 'pending spell');
-    const card = hand.find(entry => entry.id === pending.cardId);
-    requireValue(pending.spellId === card.spellId && SPELL_RULES[card.spellId]?.requiresRoll === true, 'rolling spell');
-    requireValue(Number.isSafeInteger(pending.emberSpent) && pending.emberSpent >= 0, 'Ember reservation');
-    const range = getEmberSpendRange(card.spellId, state.players[state.activePlayer].element + pending.emberSpent);
-    requireValue(pending.emberSpent >= range.min && pending.emberSpent <= range.max, 'Ember payment');
-    requireValue(Number.isSafeInteger(pending.loadedBonus) && pending.loadedBonus >= 0 && state.players[state.activePlayer].loaded === 0, 'captured Loaded');
-    requireValue(Array.isArray(pending.fatePlays) && Array.isArray(pending.fateHistory)
-      && pending.fateHistory.length <= 2 * pending.fatePlays.length + 2, 'Fate history');
-    requireValue(Number.isInteger(pending.legacyFateHistoryLength) && pending.legacyFateHistoryLength >= 0
-      && pending.legacyFateHistoryLength <= pending.fateHistory.length, 'legacy Fate prefix');
-    const playedIds = new Set();
-    let passes = 0;
-    pending.fateHistory.forEach((entry, index) => {
-      requireValue(passes < 2, 'closed Fate chain');
-      requireValue(entry && entry.step === index + 1 && entry.playerIndex === (index % 2 === 0 ? 1 - state.activePlayer : state.activePlayer)
-        && ['cast', 'skip', 'auto-skip'].includes(entry.action) && Array.isArray(entry.cardIds)
-        && new Set(entry.cardIds).size === entry.cardIds.length, 'Fate response sequence');
-      requireValue(entry.action === 'cast' ? entry.cardIds.length === 1 || index < pending.legacyFateHistoryLength && entry.cardIds.length > 0 : entry.cardIds.length === 0, 'Fate response action');
-      passes = entry.action === 'cast' ? 0 : passes + 1;
-    });
-    requireValue(pending.fatePasses === passes && Number.isInteger(passes), 'Fate pass count');
-    for (const play of pending.fatePlays) {
-      requireValue(play && [0, 1].includes(play.playerIndex) && !playedIds.has(play.cardId), 'Fate play identity');
-      playedIds.add(play.cardId);
-      const fate = state.players[play.playerIndex].discard.find(entry => entry.id === play.cardId);
-      requireValue(fate && fate.spellId === play.spellId && fateModifier(state, fate, play.playerIndex, play.modifier) !== null, 'Fate ownership and role');
-      requireValue(play.modifier === fateModifier(state, fate, play.playerIndex, fate.spellId === 'FAT-003' ? play.modifier : null)
-        && (fate.spellId !== 'FAT-003' || [2, -2].includes(play.modifier)), 'Fate direction');
-      requireValue(pending.fateHistory.some(entry => entry.action === 'cast' && entry.step === play.step
-        && entry.playerIndex === play.playerIndex && entry.cardIds.includes(play.cardId)), 'Fate commitment');
-    }
-    requireValue(pending.fateHistory.flatMap(entry => entry.cardIds).length === pending.fatePlays.length, 'Fate play count');
-    for (const [kind, owner] of [['attackingFate', state.activePlayer], ['defendingFate', 1 - state.activePlayer]]) {
-      const plays = pending.fatePlays.filter(play => play.playerIndex === owner);
-      const ids = pending[`${kind}CardIds`];
-      requireValue(Array.isArray(ids) && ids.length === plays.length && ids.every((id, index) => id === plays[index].cardId), 'Fate card totals');
-      requireValue(pending[kind] === plays.reduce((sum, play) => sum + play.modifier, 0), 'Fate modifier total');
-    }
-    if (state.phase === 'rolling') {
-      requireValue(state.lastRoll === null && pending.fateStep === null && pending.fateHistory.length === 0 && pending.fatePlays.length === 0 && passes === 0, 'pre-Fate dice');
+    requireValue(pending && ['spell', 'enhancement'].includes(pending.kind)
+      && pending.casterIndex === state.activePlayer && state.primaryUsed
+      && state.primaryAction === pending.kind, 'committed primary action');
+    if (pending.kind === 'enhancement') {
+      requireValue(state.pendingCardId === null && pending.cardId === null && pending.spellId === null
+        && pending.emberSpent === 0 && pending.loadedBonus === 0
+        && pending.enhancementBefore === state.players[state.activePlayer].enhancement
+        && pending.enhancementBefore < MAX_ENHANCEMENT && pending.enhancementRule === ENHANCEMENT_ROLL_RULE
+        && pending.legacyFateHistoryLength === 0 && state.phase !== 'rolling', 'pending Enhancement');
     } else {
-      requireValue(state.lastRoll !== null, 'completed dice');
+      requireValue(isOwnCard(state.pendingCardId) && pending.cardId === state.pendingCardId && state.phase !== 'enhancing', 'pending spell');
+      const card = hand.find(entry => entry.id === pending.cardId);
+      requireValue(pending.spellId === card.spellId && SPELL_RULES[card.spellId]?.requiresRoll === true, 'rolling spell');
+      requireValue(Number.isSafeInteger(pending.emberSpent) && pending.emberSpent >= 0, 'Ember reservation');
+      const range = getEmberSpendRange(card.spellId, state.players[state.activePlayer].element + pending.emberSpent);
+      requireValue(pending.emberSpent >= range.min && pending.emberSpent <= range.max, 'Ember payment');
+      requireValue(Number.isSafeInteger(pending.loadedBonus) && pending.loadedBonus >= 0 && state.players[state.activePlayer].loaded === 0, 'captured Loaded');
+    }
+    const passes = assertFateTrace(state, pending, state.activePlayer);
+    if (['rolling', 'enhancing'].includes(state.phase)) {
+      requireValue(state.lastRoll === null && pending.fateStep === null && pending.fateHistory.length === 0
+        && pending.fatePlays.length === 0 && passes === 0, 'pre-Fate dice');
+    } else {
+      requireValue(state.lastRoll !== null && state.lastRoll.kind === pending.kind, 'completed dice');
       for (const key of ['spellId', 'casterIndex', 'loadedBonus', 'attackingFate', 'defendingFate']) requireValue(state.lastRoll[key] === pending[key], 'roll context');
+      if (pending.kind === 'enhancement') requireValue(state.lastRoll.enhancementBefore === pending.enhancementBefore
+        && state.lastRoll.resolved === false, 'unawarded Enhancement');
       if (state.phase === 'fate') {
         const index = pending.fateHistory.length;
         requireValue(passes < 2 && pending.fateStep === `response-${index + 1}`
@@ -683,20 +727,34 @@ export function assertGame(state) {
     requireValue(Number.isSafeInteger(roll.total) && roll.total === roll.rawTotal + roll.loadedBonus + roll.attackingFate + roll.defendingFate, 'modified roll');
     requireValue([0, 1].includes(roll.casterIndex), 'roll owner');
     if (roll.kind === 'enhancement') {
-      requireValue(roll.spellId === null && roll.loadedBonus === 0 && roll.attackingFate === 0 && roll.defendingFate === 0
-        && roll.success === (roll.rawTotal >= ENHANCEMENT_THRESHOLD), 'Enhancement dice');
+      requireValue(roll.spellId === null && roll.loadedBonus === 0, 'Enhancement dice');
       requireValue(Number.isInteger(roll.enhancementBefore) && roll.enhancementBefore >= 0 && roll.enhancementBefore < MAX_ENHANCEMENT
         && roll.enhancementBefore % ENHANCEMENT_STEP === 0, 'Enhancement starting bank');
-      if (Object.hasOwn(roll, 'enhancementRule')) {
-        const bonus = getEnhancementBonus(roll.rawTotal);
-        requireValue(roll.enhancementRule === ENHANCEMENT_ROLL_RULE && roll.enhancementBonus === bonus
-          && roll.enhancementAfter === Math.min(MAX_ENHANCEMENT, roll.enhancementBefore + bonus)
-          && roll.enhancementGain === roll.enhancementAfter - roll.enhancementBefore, 'tiered Enhancement outcome');
+      if (roll.enhancementRule === ENHANCEMENT_ROLL_RULE) {
+        requireValue(typeof roll.resolved === 'boolean', 'Enhancement resolution marker');
+        if (!roll.resolved) {
+          requireValue(state.pendingSpell?.kind === 'enhancement' && ['fate', 'resolving'].includes(state.phase)
+            && ['success', 'enhancementBonus', 'enhancementAfter', 'enhancementGain'].every(key => roll[key] === null)
+            && !Object.hasOwn(roll, 'fateHistory') && !Object.hasOwn(roll, 'fatePlays'), 'unresolved Enhancement award');
+        } else {
+          const bonus = getEnhancementBonus(roll.total);
+          requireValue(roll.legacyFateHistoryLength === 0 && assertFateTrace(state, roll, roll.casterIndex) === 2, 'Enhancement Fate completion');
+          requireValue(roll.success === (bonus > 0) && roll.enhancementBonus === bonus
+            && roll.enhancementAfter === Math.min(MAX_ENHANCEMENT, roll.enhancementBefore + bonus)
+            && roll.enhancementGain === roll.enhancementAfter - roll.enhancementBefore, 'tiered Enhancement outcome');
+        }
       } else {
-        // Earlier v13/v12 records awarded a flat 10 on any successful roll.
-        // Keep their historical outcome and bank; only future rolls use tiers.
-        requireValue(!Object.hasOwn(roll, 'enhancementBonus') && !Object.hasOwn(roll, 'enhancementGain')
-          && roll.enhancementAfter === roll.enhancementBefore + (roll.success ? ENHANCEMENT_STEP : 0), 'legacy Enhancement outcome');
+        // Only migrated, already-finalized raw-roll records use the earlier rules.
+        requireValue(roll.resolved === true && roll.attackingFate === 0 && roll.defendingFate === 0
+          && roll.success === (roll.rawTotal >= ENHANCEMENT_THRESHOLD)
+          && !Object.hasOwn(roll, 'fateHistory') && !Object.hasOwn(roll, 'fatePlays'), 'legacy Enhancement dice');
+        if (roll.enhancementRule === 'tiered-v1') {
+          const bonus = getEnhancementBonus(roll.rawTotal);
+          requireValue(roll.enhancementBonus === bonus && roll.enhancementAfter === Math.min(MAX_ENHANCEMENT, roll.enhancementBefore + bonus)
+            && roll.enhancementGain === roll.enhancementAfter - roll.enhancementBefore, 'legacy tiered Enhancement outcome');
+        } else requireValue(roll.enhancementRule === 'legacy-flat-v1' && !Object.hasOwn(roll, 'enhancementBonus')
+          && !Object.hasOwn(roll, 'enhancementGain') && roll.enhancementAfter === roll.enhancementBefore
+            + (roll.success ? ENHANCEMENT_STEP : 0), 'legacy Enhancement outcome');
       }
     } else requireValue(roll.kind === 'spell' && SPELL_RULES[roll.spellId]?.requiresRoll === true, 'roll spell');
   }
@@ -723,7 +781,7 @@ export function validateSavedGame(value) {
 /** Upgrade current-catalog duels without re-dealing or replaying paid effects. */
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![10, 11, 12].includes(value.version)) return null;
+  if (!value || ![10, 11, 12, 13].includes(value.version)) return null;
   try {
     if (value.version === 10 && (!Array.isArray(value.players) || value.players.some(player => !Array.isArray(player?.hand) || player.hand.length > 5))) return null;
     const next = structuredClone(value);
@@ -731,13 +789,30 @@ export function migrateSavedGame(value) {
     const beforeEnhancement = value.version < 12;
     if (beforeEnhancement && next.phase === 'enhancing') return null;
     for (const player of next.players) {
-      player.auraTurns = 0;
+      if (value.version < 13) player.auraTurns = 0;
       if (beforeEnhancement) player.enhancement = 0;
     }
-    next.primaryAction = next.primaryUsed
+    if (value.version < 13) next.primaryAction = next.primaryUsed
       ? next.phase === 'enhancing' || next.lastRoll?.kind === 'enhancement' ? 'enhancement' : 'spell'
       : null;
     if (beforeEnhancement && next.lastRoll) next.lastRoll.kind = 'spell';
+    if (next.lastRoll?.kind === 'enhancement') {
+      // Older formats never opened Fate or reserved a bonus for Enhancement.
+      // Tag their already-paid result; do not recalculate or replay the award.
+      const roll = next.lastRoll;
+      if (Object.hasOwn(roll, 'resolved') || Object.hasOwn(roll, 'fateHistory') || Object.hasOwn(roll, 'fatePlays')) return null;
+      if (Object.hasOwn(roll, 'enhancementRule') && roll.enhancementRule !== 'tiered-v1') return null;
+      if (!Object.hasOwn(roll, 'enhancementRule')) roll.enhancementRule = 'legacy-flat-v1';
+      roll.resolved = true;
+    }
+    if (next.pendingSpell) {
+      if (next.pendingSpell.kind === 'enhancement') return null;
+      next.pendingSpell.kind = 'spell';
+    }
+    if (next.phase === 'enhancing') {
+      if (next.pendingSpell !== null || next.lastRoll !== null) return null;
+      next.pendingSpell = enhancementPending(next);
+    }
     if (beforeEnhancement && next.pendingSpell) {
       const pending = next.pendingSpell;
       const oldHistory = pending.fateHistory;
@@ -771,7 +846,7 @@ export function migrateSavedGame(value) {
       }
     }
     assertGame(next);
-    addLog(next, 'Aura is available for 1 Mana and lasts three owner turns after activation. Enhancement is consumed after an outgoing damaging spell resolves.');
+    if (value.version < 13) addLog(next, 'Aura is available for 1 Mana and lasts three owner turns after activation. Enhancement is consumed after an outgoing damaging spell resolves.');
     return next;
   } catch { return null; }
 }

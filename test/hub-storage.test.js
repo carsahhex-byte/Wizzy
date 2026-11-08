@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
-import { createStarterDeck, getEligibleSpells, normalizeDeckSlot, setDeckQuantity } from '../src/decks.js';
+import { createStarterDeck, getEligibleSpells, normalizeDeckSlot, setDeckQuantity, validateDeck } from '../src/decks.js';
 import { createHubStorage, HUB_SAVE_KEY, GUEST_SAVE_KEY, restoreHubDraft } from '../src/hub-storage.js';
 
 class BrowserStorage {
@@ -231,4 +231,51 @@ test('unrestricted saved quantities and drafts survive local reload, guest backu
   assert.equal(store.save(account), true);
   assert.deepEqual(createHubStorage(disk).readAccount('many-slabs').savedDecks, guest.savedDecks);
   assert.deepEqual(createHubStorage(disk).readGuest().savedDecks, guest.savedDecks);
+});
+
+test('empty slots and 1–30 slab decks retain their exact counts across guest and account saves', () => {
+  for (const total of [0, 1, 5, 29, 30]) {
+    const disk = new BrowserStorage();
+    const store = createHubStorage(disk);
+    const guest = snapshot(`Deck ${total}`);
+    guest.savedDecks = {
+      fire: { element: 'fire', entries: total ? [{ spellId: 'Fire-0', quantity: total }] : [] },
+      water: { element: 'water', entries: total ? [{ spellId: 'Water-1', quantity: total }] : [] },
+    };
+    guest.drafts = structuredClone(guest.savedDecks);
+    assert.equal(store.save(guest), true, `${total} slabs`);
+    let restored = createHubStorage(disk).load().state;
+    assert.deepEqual(restored.savedDecks, guest.savedDecks);
+    assert.deepEqual(restored.drafts, guest.drafts);
+    for (const element of ['fire', 'water']) {
+      assert.equal(validateDeck(restored.savedDecks[element]), total > 0, 'an empty saved slot remains unready for battle');
+      assert.deepEqual(restoreHubDraft(guest.drafts[element], element), guest.drafts[element]);
+    }
+    disk.removeItem(HUB_SAVE_KEY);
+    restored = createHubStorage(disk).load().state;
+    assert.deepEqual(restored.savedDecks, guest.savedDecks, 'the guest backup preserves short decks');
+    const account = { ...structuredClone(guest), accountId: 'short-deck-owner', accountUsername: 'short_decks', cloudDecks: structuredClone(guest.savedDecks) };
+    assert.equal(store.save(account), true);
+    const cached = createHubStorage(disk).readAccount(account.accountId);
+    assert.deepEqual(cached.savedDecks, account.savedDecks);
+    assert.deepEqual(cached.cloudDecks, account.cloudDecks);
+    assert.deepEqual(createHubStorage(disk).readGuest().savedDecks, guest.savedDecks);
+  }
+});
+
+test('a 31-slab save cannot replace an existing valid deck or its guest backup', () => {
+  const disk = new BrowserStorage();
+  const store = createHubStorage(disk);
+  const valid = snapshot('Saved deck');
+  assert.equal(store.save(valid), true);
+  const before = disk.getItem(HUB_SAVE_KEY);
+  const backup = disk.getItem(GUEST_SAVE_KEY);
+  const oversized = structuredClone(valid);
+  oversized.savedDecks.fire = { element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 31 }] };
+  oversized.drafts.fire = structuredClone(oversized.savedDecks.fire);
+  assert.equal(store.save(oversized), false);
+  assert.equal(store.cacheAccount('oversized-owner', oversized), false);
+  assert.equal(disk.getItem(HUB_SAVE_KEY), before);
+  assert.equal(disk.getItem(GUEST_SAVE_KEY), backup);
+  assert.deepEqual(createHubStorage(disk).load().state.savedDecks, valid.savedDecks);
 });

@@ -39,7 +39,7 @@ function playableDeck(value, element) {
     const deck = normalizeDeck(value);
     if (deck.element !== element) throw new Error(`This seat needs a ${element === 'fire' ? 'Fire' : 'Water'} deck.`);
     return deck;
-  } catch (error) { fail(400, 'invalid_deck', error.message || 'Choose a legal 30-slab deck.'); }
+  } catch (error) { fail(400, 'invalid_deck', error.message || 'Choose a legal deck of 1–30 slabs.'); }
 }
 
 /** Use the tested rules engine while keeping all random draws on the server. */
@@ -221,7 +221,7 @@ export function createMultiplayerServer(options = {}) {
       default: fail(400, 'unknown_action', 'That battle action is not supported.');
     }
     if (next === room.state) fail(422, 'invalid_move', 'That action is not allowed in the current battle step.');
-    // Casting rolls the server's raw dice before the defender sees Fate.
+    // Spells and Enhancement roll once before the defender sees Fate.
     // Later Fate actions update that same roll; no phone supplies dice.
     if (next.phase === 'rolling') next = rollDice(next, rollRandom);
     if (next.phase === 'enhancing') next = rollEnhancement(next, rollRandom);

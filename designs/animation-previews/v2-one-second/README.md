@@ -1,8 +1,8 @@
 # Wizzy approved one-second combat animations
 
 This approved pack is integrated into live battles. The separate gallery and
-ZIP remain references for the same source artwork and frame timing. Combat
-values, spell IDs, Enhancement tiers, decks and save compatibility are unchanged.
+ZIP remain references for the same source artwork and frame timing. Preview
+playback does not change combat values, spell IDs, decks or saved game state.
 Live targets use the original quick hit response; the longer v2 hit-reaction
 sheet remains approved reference artwork and is not currently played in battles.
 
@@ -59,7 +59,11 @@ manifest and the preview player. To rebuild the delivery folder from source:
 node scripts/package-animation-review.js dist/previews/combat-linger-v2
 ```
 
-Enhancement rules: raw 2d6 below 6 gains nothing; 6–8 adds 10 percentage points;
-9–11 adds 20; 12+ adds 30. Use the highest qualifying award and add it to stored
-Enhancement, capped at 30% total. Current Mana cost, primary-action use, Loaded,
-Fate, damage application and consumption rules remain as before.
+Enhancement rolls 2d6 once, then opens the ordinary defender-first Fate chain.
+Players alternate eligible Fortune/Misfortune/Twist responses until two
+consecutive passes, including automatic passes without eligible Fate. The final
+Modified Roll awards once: below 6 gains nothing; 6–8 adds 10 percentage points;
+9–11 adds 20; 12+ adds 30, capped at 30% stored total. Loaded neither modifies
+nor is consumed by this roll. The successful jump plays only after the chain
+ends; a final miss has no animation. Mana cost, primary-action use, damage
+application and consumption rules are unchanged, as are all preview timings.

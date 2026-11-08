@@ -1,4 +1,4 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELLBOOK_VERSION } from './spells.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.js';
 
 export const MAX_DECK_FILE_BYTES = 65536;
 
@@ -16,8 +16,8 @@ function requireDeckElement(element) {
   if (!isDeckElement(element)) throw new TypeError('Choose Fire or Water as the deck’s main element.');
 }
 
-/** Inspect a full deck or a partial editor draft without changing the input. */
-function inspectDeck(deck, requireFull) {
+/** Inspect a playable deck or an editor draft without changing the input. */
+function inspectDeck(deck, requirePlayable) {
   const errors = [];
   let total = 0;
   if (!isDeckRecord(deck)) return { valid: false, total, errors: ['A deck must be an object.'] };
@@ -44,8 +44,8 @@ function inspectDeck(deck, requireFull) {
     if (Number.isSafeInteger(quantity) && quantity >= 0) total += quantity;
   }
   if (!Number.isSafeInteger(total)) errors.push('The slab count is invalid.');
-  if (requireFull && total !== DECK_SIZE) errors.push(`A deck must contain exactly ${DECK_SIZE} slabs.`);
-  else if (!requireFull && total > DECK_SIZE) errors.push(`A deck cannot contain more than ${DECK_SIZE} slabs.`);
+  if (total > DECK_SIZE) errors.push(`A deck cannot contain more than ${DECK_SIZE} slabs.`);
+  else if (requirePlayable && total < MIN_DECK_SIZE) errors.push(`A deck must contain at least ${MIN_DECK_SIZE} slab.`);
   return { valid: errors.length === 0, total, errors: [...new Set(errors)] };
 }
 
@@ -55,7 +55,7 @@ export function getEligibleSpells(element) {
   return Object.values(SPELL_CATALOG).filter(spell => isSpellEligibleForDeck(spell, element));
 }
 
-/** New collections start empty; players choose their own 30 slabs in the editor. */
+/** New collections start empty; players choose up to 30 slabs in the editor. */
 export function createStarterDeck(element) {
   requireDeckElement(element);
   return { element, entries: DECK_LISTS[element].map(({ spellId, quantity }) => ({ spellId, quantity })) };
@@ -76,14 +76,14 @@ export function normalizeDeck(deck) {
   return { element: deck.element, entries: orderDeckEntries(deck.entries) };
 }
 
-/** Accounts may have an empty, not-yet-built slot; battles always require a full deck. */
+/** Accounts may have an empty slot; battles require at least one slab. */
 export function validateDeckSlot(deck) {
   return validateDeck(deck) || (isDeckRecord(deck) && isDeckElement(deck.element)
     && Array.isArray(deck.entries) && deck.entries.length === 0);
 }
 
 export function normalizeDeckSlot(deck) {
-  if (!validateDeckSlot(deck)) throw new TypeError('Save a legal 30-slab deck, or leave its slot empty.');
+  if (!validateDeckSlot(deck)) throw new TypeError(`Save a legal deck with ${MIN_DECK_SIZE}–${DECK_SIZE} slabs, or leave its slot empty.`);
   return { element: deck.element, entries: orderDeckEntries(deck.entries) };
 }
 
