@@ -6,7 +6,7 @@ import { OPTIMIZED_ART } from '../src/optimized-art.js';
 
 const webOnly = process.argv.includes('--web');
 // Dependencies precede their importers in both the hosted and standalone builds.
-const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'assets.js', 'hub-storage.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
+const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'slab-text.js', 'assets.js', 'hub-storage.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
 const styleNames = ['style.css', 'hub.css', 'multiplayer.css', 'accounts.css'];
 for (const filename of moduleNames) execFileSync(process.execPath, ['--check', `src/${filename}`], { stdio: 'inherit' });
 await rm('dist', { recursive: true, force: true });

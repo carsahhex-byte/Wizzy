@@ -6,7 +6,7 @@ import {
   createGame, assertGame, getActingPlayerIndex, selectCard, castSelected,
   castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh,
   toggleRefreshCard, confirmRefresh, rollInitiative, OPENING_HAND_SIZE,
-  activateEnhancement, rollEnhancement,
+  activateEnhancement, rollEnhancement, activateAura,
 } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
@@ -202,6 +202,9 @@ export function createMultiplayerServer(options = {}) {
       case 'enhance':
         if (Object.keys(payload).length) fail(400, 'invalid_action', 'The server rolls Enhancement dice; no roll or bonus may be submitted.');
         next = activateEnhancement(room.state); break;
+      case 'aura':
+        if (Object.keys(payload).length) fail(400, 'invalid_action', 'Aura has a fixed cost, bonus and duration; no details may be submitted.');
+        next = activateAura(room.state); break;
       case 'castFate': {
         if (Object.keys(payload).some(key => key !== 'twistDirections')) fail(400, 'invalid_action', 'Only Twist directions may accompany Cast Fate.');
         const directions = payload.twistDirections ?? {};

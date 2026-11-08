@@ -1,5 +1,7 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
 import { OPTIMIZED_ART } from './optimized-art.js';
+import { SPELL_CATALOG } from './spells.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -23,6 +25,7 @@ export const ASSET_FILES = Object.freeze({
   skipFate: 'Skip Fate.png',
   castFate: 'Cast Fate Button.png',
   enhanceButtons: 'Wizzy Enhancement Buttons.png',
+  auraButton: 'Wizzy Aura Button.png',
   endTurn: 'End Turn Button.png',
   refresh: 'Hand Refresh Button.png',
   combatLog: 'View Combat Log Button.png',
@@ -94,11 +97,15 @@ export const SPELL_SLABS = Object.freeze(Object.fromEntries([
 
 const cropImage = crop => `<img alt="" draggable="false" src="${ASSETS[crop.asset]}" style="position:absolute;display:block;max-width:none;width:${crop.width/crop.w*100}%;height:${crop.height/crop.h*100}%;left:${-crop.x/crop.w*100}%;top:${-crop.y/crop.h*100}%;image-rendering:pixelated;pointer-events:none;user-select:none" />`;
 
-/** Complete supplied slab, normalized to its existing parent card's dimensions. */
+/** Original frame and illustration with readable live rules at the existing size. */
 export function spellSlabMarkup(spellId, className = '') {
   const crop = SPELL_SLABS[spellId];
   if (!crop) return '';
-  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:#030308">${cropImage(crop)}</span>`;
+  const definition = SPELL_CATALOG[spellId];
+  const lines = COMPACT_SPELL_TEXT[spellId] || [];
+  const length = lines.reduce((total,line)=>total+line.text.length+(line.threshold?line.threshold.length+1:0),0);
+  const density = length>60?'long':length<35&&lines.length<3?'short':'normal';
+  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" data-copy-density="${density}" data-copy-type="${definition.type}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:#030308">${cropImage(crop)}<span class="slab-live-paper"><strong class="slab-live-title">${definition.name}</strong><span class="slab-live-rules" data-slab-rules="${spellId}">${slabRulesMarkup(spellId)}</span></span></span>`;
 }
 
 /** Art-only viewports are available where a smaller illustration is needed. */
@@ -135,6 +142,7 @@ export const ASSET_CROPS = Object.freeze({
   // Exclude the atlas gap and near-invisible transparent export residue.
   enhanceFire: { width: 1254, height: 1254, x: 56, y: 177, w: 1142, h: 407 },
   enhanceWater: { width: 1254, height: 1254, x: 56, y: 735, w: 1143, h: 406 },
+  auraButton: { width: 2098, height: 749, x: 43, y: 21, w: 2014, h: 715 },
   endTurn: { width: 2172, height: 724, x: 81, y: 51, w: 2008, h: 624 },
   refresh: { width: 2172, height: 724, x: 80, y: 51, w: 2009, h: 624 },
   combatLog: { width: 2172, height: 724, x: 83, y: 151, w: 2006, h: 414 },

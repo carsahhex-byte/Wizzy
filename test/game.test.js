@@ -4,6 +4,7 @@ import {
   createGame, rollInitiative, selectCard, canSelectCard, canCastSelected, canPlayFate, getActingPlayerIndex,
   castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn,
   canEnhance, activateEnhancement, rollEnhancement, MAX_ENHANCEMENT, ENHANCEMENT_STEP, ENHANCEMENT_THRESHOLD,
+  canActivateAura, activateAura, AURA_COST, AURA_DURATION, AURA_BONUS,
   beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, applyDamage,
   assertGame, validateSavedGame, migrateSavedGame, SPELL_CATALOG, SPELL_RULES, SAVE_VERSION, DECK_SIZE, HAND_LIMIT, OPENING_HAND_SIZE,
 } from '../src/game.js';
@@ -70,7 +71,7 @@ function fateFixture() {
 }
 
 test('catalog has 32 spells, 28 rolling primaries, one immediate primary and no old IDs', () => {
-  assert.equal(SAVE_VERSION, 12); assert.equal(DECK_SIZE, 30);
+  assert.equal(SAVE_VERSION, 13); assert.equal(DECK_SIZE, 30);
   assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
   assert.equal(Object.keys(SPELL_CATALOG).length, 32);
   assert.equal(Object.keys(SPELL_RULES).length, 29);
@@ -439,7 +440,8 @@ test('old duels are rejected without silently remapping retired slabs or changin
 
 function legacySave(state, version = 11) {
   const legacy = structuredClone(state); legacy.version = version;
-  for (const player of legacy.players) delete player.enhancement;
+  delete legacy.primaryAction;
+  for (const player of legacy.players) { delete player.enhancement; delete player.auraTurns; }
   if (legacy.lastRoll) delete legacy.lastRoll.kind;
   if (legacy.pendingSpell) {
     const steps = ['defender-first', 'attacker', 'defender-final'];
@@ -460,8 +462,8 @@ test('version 10 and 11 duels preserve exact zones, resources and a pending roll
   for (const version of [10, 11]) for (const current of [main, rolling, defender, attacker]) {
     const original = legacySave(current, version), snapshot = structuredClone(original);
     const upgraded = migrateSavedGame(original);
-    assert.ok(upgraded, `${version} ${current.phase} migrates`); assert.equal(upgraded.version, 12);
-    assert.deepEqual(upgraded.players.map(({ enhancement, ...player }) => player), original.players);
+    assert.ok(upgraded, `${version} ${current.phase} migrates`); assert.equal(upgraded.version, 13);
+    assert.deepEqual(upgraded.players.map(({ enhancement, auraTurns, ...player }) => player), original.players);
     assert.deepEqual(upgraded.players.map(player => player.enhancement), [0, 0]);
     assert.deepEqual(upgraded.initiative, original.initiative);
     assert.deepEqual(original, snapshot, 'previous save remains unchanged');
@@ -491,7 +493,7 @@ test('old finite Fate resolution resumes the chain without replaying paid effect
   const original = structuredClone(legacy), upgraded = migrateSavedGame(legacy);
   assert.ok(upgraded); assert.equal(upgraded.phase, 'fate'); assert.equal(upgraded.fatePlayer, 1);
   assert.equal(upgraded.pendingSpell.fatePasses, 1);
-  assert.deepEqual(upgraded.players.map(({ enhancement, ...player }) => player), original.players);
+  assert.deepEqual(upgraded.players.map(({ enhancement, auraTurns, ...player }) => player), original.players);
   assert.deepEqual(upgraded.lastRoll, { ...original.lastRoll, kind: 'spell' }); assertGame(upgraded);
   const resolved = complete(upgraded);
   assert.equal(resolved.players[0].discard.filter(card => card.spellId === 'Fire-1').length, 1);
@@ -606,7 +608,6 @@ test('pending and completed Enhancement save safely and malformed bonuses or out
     state => { state.lastRoll.success = false; },
     state => { state.lastRoll.enhancementBefore = 30; },
     state => { state.lastRoll.enhancementAfter = 20; },
-    state => { state.players[0].enhancement = 0; },
     state => { state.lastRoll.loadedBonus = 2; state.lastRoll.total += 2; },
     state => { state.lastRoll.kind = 'spell'; },
   ];
@@ -651,7 +652,7 @@ test('legacy final-defender windows reopen attacker priority and preserve every 
     }
     const snapshot = structuredClone(original), upgraded = migrateSavedGame(original);
     assert.ok(upgraded); assertGame(upgraded);
-    assert.deepEqual(upgraded.players.map(({ enhancement, ...player }) => player), original.players);
+    assert.deepEqual(upgraded.players.map(({ enhancement, auraTurns, ...player }) => player), original.players);
     assert.deepEqual(upgraded.lastRoll, { ...original.lastRoll, kind: 'spell' });
     assert.equal(upgraded.pendingSpell.fatePlays.length, original.pendingSpell.fatePlays.length);
     assert.equal(upgraded.fatePlayer, current === finalWindow ? 1 : 0);
@@ -714,9 +715,9 @@ test('Fire-0 respects the five-Ember cap and rejects spending before any card is
   }
 });
 
-test('additive Fire-0 preserves version-12 duels and cannot be forged into a pending dice spell', () => {
+test('additive Fire-0 preserves current-format duels and cannot be forged into a pending dice spell', () => {
   const previous = fresh(), snapshot = JSON.parse(JSON.stringify(previous));
-  assert.equal(SAVE_VERSION, 12); assert.equal(migrateSavedGame(previous), previous);
+  assert.equal(SAVE_VERSION, 13); assert.equal(migrateSavedGame(previous), previous);
   assert.equal(validateSavedGame(snapshot), true);
   let state = handOf(fresh({ fire: ['Fire-0'] }), 0, ['Fire-0', 'Fire-1']);
   assertGame(state); assert.equal(migrateSavedGame(state), state);
@@ -724,4 +725,166 @@ test('additive Fire-0 preserves version-12 duels and cannot be forged into a pen
   const immediate = state.players[0].hand.find(card => card.spellId === 'Fire-0');
   state.pendingCardId = immediate.id; state.pendingSpell.cardId = immediate.id; state.pendingSpell.spellId = immediate.spellId;
   assert.equal(validateSavedGame(state), false, 'non-roll spells never persist in a dice or Fate phase');
+});
+
+test('Aura costs one Mana and immediately uses the primary action without rolling or consuming other resources', () => {
+  assert.deepEqual([AURA_COST, AURA_DURATION, AURA_BONUS], [1, 3, 10]);
+  const initial = fateFixture();
+  Object.assign(initial.players[0], { mana: 1, loaded: 4, loadedPending: 2, element: 3, enhancement: 20 });
+  initial.selectedCardId = initial.players[0].hand.find(card => card.spellId === 'Fire-1').id;
+  initial.lastRoll = rollEnhancement(activateEnhancement(fresh()), () => .5).lastRoll;
+  const snapshot = structuredClone(initial);
+  assert.equal(canActivateAura(initial, 0), true); assert.equal(canActivateAura(initial, 1), false);
+  const state = activateAura(initial);
+  assert.deepEqual([state.phase, state.primaryUsed, state.primaryAction, state.selectedCardId, state.lastRoll, state.pendingSpell, state.fatePlayer], ['main', true, 'aura', null, null, null, null]);
+  assert.deepEqual([state.players[0].mana, state.players[0].auraTurns, state.players[0].loaded, state.players[0].loadedPending, state.players[0].element, state.players[0].enhancement], [0, 3, 4, 2, 3, 20]);
+  assert.deepEqual(state.players[0].hand, initial.players[0].hand);
+  assert.deepEqual(state.players[0].deck, initial.players[0].deck); assert.deepEqual(state.players[0].discard, initial.players[0].discard);
+  assert.deepEqual(state.players[1], initial.players[1]); assert.deepEqual(initial, snapshot);
+  assert.equal(canEnhance(state), false); assert.equal(canActivateAura(state), false);
+  const selected = selectCard(state, state.players[0].hand[0].id);
+  assert.equal(canCastSelected(selected), false); assert.equal(castSelected(selected), selected);
+  for (const action of [rollDice, rollEnhancement, skipFate, castFateSelected, activateEnhancement, activateAura]) assert.equal(action(state), state);
+  assert.ok(!state.log.slice(initial.log.length).some(entry => ['dice', 'fate', 'damage', 'resource'].includes(entry.type)));
+  assert.match(state.log.at(-1).message, /\+10% damage.*3.*turns/); assertGame(state);
+});
+
+test('Aura lasts exactly three owner turns including activation and advances only when the turn actually passes', () => {
+  let state = activateAura(fresh());
+  for (const remaining of [3, 2, 1]) {
+    assert.equal(state.activePlayer, 0); assert.equal(state.players[0].auraTurns, remaining);
+    const ending = endTurn(state), refresh = beginRefresh(ending), cancelled = cancelRefresh(refresh);
+    assert.equal(ending.players[0].auraTurns, remaining);
+    assert.equal(refresh.players[0].auraTurns, remaining);
+    assert.equal(cancelled.players[0].auraTurns, remaining);
+    state = confirmRefresh(refresh);
+    assert.deepEqual([state.activePlayer, state.players[0].auraTurns, state.primaryUsed, state.primaryAction], [1, remaining - 1, false, null]);
+    assertGame(state);
+    const enemyEnding = endTurn(state);
+    assert.equal(enemyEnding.players[0].auraTurns, remaining - 1);
+    state = endTurn(enemyEnding);
+    assert.equal(state.players[0].auraTurns, remaining - 1, 'opponent turns never tick this Aura');
+    assertGame(state);
+  }
+  assert.equal(state.players[0].auraTurns, 0); assert.equal(canActivateAura(state), true);
+  assert.equal(activateAura(state).players[0].auraTurns, 3, 'Aura can be activated again after expiry');
+  assert.match(state.log.find(entry => /Aura expires/.test(entry.message)).message, /Fire/);
+});
+
+test('both players have independent Aura durations and an active Aura cannot stack or refresh early', () => {
+  let state = pass(activateAura(fresh()));
+  state = activateAura(state);
+  assert.deepEqual(state.players.map(player => player.auraTurns), [2, 3]);
+  state = pass(state);
+  assert.deepEqual(state.players.map(player => player.auraTurns), [2, 2]);
+  assert.equal(state.primaryUsed, false); assert.equal(canActivateAura(state), false);
+  assert.equal(activateAura(state), state, 'spending another primary cannot extend an active Aura');
+  state = pass(state); assert.deepEqual(state.players.map(player => player.auraTurns), [1, 2]);
+  state = pass(state); assert.deepEqual(state.players.map(player => player.auraTurns), [1, 1]);
+  assertGame(state);
+});
+
+test('Aura requires one Mana and a free primary action during the owner main phase', () => {
+  const initial = fateFixture(), noMana = structuredClone(initial); noMana.players[0].mana = 0;
+  const casted = cast(initial, 'Fire-1'), responding = roll(casted), resolved = complete(responding);
+  const enhancing = activateEnhancement(initial), enhanced = rollEnhancement(enhancing, () => .5);
+  const setup = createGame(), initiative = createGame(2, { fire: fixtureDeck('fire'), water: fixtureDeck('water') });
+  for (const state of [setup, initiative, noMana, casted, responding, resolved, enhancing, enhanced, endTurn(initial), beginRefresh(endTurn(initial)), applyDamage(initial, 1, 100)]) {
+    assert.equal(canActivateAura(state), false); assert.equal(activateAura(state), state); assertGame(state);
+  }
+  const second = pass(initial);
+  assert.equal(canActivateAura(second, 0), false); assert.equal(canActivateAura(second, 1), true);
+  assert.equal(activateAura(second).players[1].auraTurns, 3);
+});
+
+test('primaryAction distinguishes spell, Enhancement and Aura and resets after passing', () => {
+  const initial = fateFixture(); assert.equal(initial.primaryAction, null);
+  for (const [state, action] of [[cast(initial, 'Fire-1'), 'spell'], [activateEnhancement(initial), 'enhancement'], [activateAura(initial), 'aura']]) {
+    assert.equal(state.primaryAction, action); assert.equal(state.primaryUsed, true); assertGame(state);
+    const done = state.phase === 'enhancing' ? rollEnhancement(state, () => 0) : complete(state);
+    assert.equal(done.primaryAction, action); assert.equal(done.primaryUsed, true);
+    assert.equal(endTurn(done).primaryAction, action);
+    assert.equal(pass(done).primaryAction, null); assertGame(pass(done));
+  }
+});
+
+function version12Save(state) {
+  const previous = structuredClone(state); previous.version = 12;
+  delete previous.primaryAction;
+  for (const player of previous.players) delete player.auraTurns;
+  return previous;
+}
+
+test('version 12 migration preserves Enhancement and all cards, resources, dice and open-chain state', () => {
+  const main = fateFixture(); main.players[0].enhancement = 20; main.players[1].enhancement = 10;
+  main.players[0].loaded = 3; main.players[0].shield = 13; main.players[1].hp = 82;
+  const rolling = cast(main, 'Fire-1'), defender = roll(rolling), attacker = fate(defender, ['FAT-002']);
+  const selected = selectCard(attacker, attacker.players[0].hand.find(card => card.spellId === 'FAT-001').id);
+  let extended = attacker;
+  for (const id of ['FAT-001', 'FAT-002', 'FAT-003']) extended = fate(extended, [id]);
+  const resolving = complete(extended);
+  const enhancing = activateEnhancement(main), enhanced = rollEnhancement(enhancing, () => .5);
+  for (const current of [createGame(), main, rolling, defender, attacker, selected, extended, resolving, enhancing, enhanced, endTurn(enhanced), beginRefresh(endTurn(enhanced)), pass(enhanced)]) {
+    const previous = version12Save(current), snapshot = structuredClone(previous), upgraded = migrateSavedGame(previous);
+    assert.ok(upgraded, `${current.phase} migrates`); assert.equal(upgraded.version, 13);
+    assert.deepEqual(upgraded.players.map(({ auraTurns, ...player }) => player), previous.players);
+    assert.deepEqual(upgraded.players.map(player => player.auraTurns), [0, 0]);
+    for (const key of ['pendingSpell', 'pendingCardId', 'lastRoll', 'phase', 'selectedCardId', 'selectedFateCardIds', 'fatePlayer', 'refreshCardIds', 'initiative']) assert.deepEqual(upgraded[key], previous[key], key);
+    assert.equal(upgraded.primaryAction, current.primaryAction); assert.deepEqual(previous, snapshot);
+    assertGame(upgraded); assert.equal(validateSavedGame(JSON.parse(JSON.stringify(upgraded))), true);
+  }
+});
+
+test('Aura state round-trips, malformed duration/action states fail, and historical Enhancement may be consumed', () => {
+  const aura = activateAura(fresh()), activated = JSON.parse(JSON.stringify(aura));
+  assert.equal(validateSavedGame(activated), true); assert.equal(migrateSavedGame(activated), activated);
+  for (const value of [-1, 4, 1.5, '3', null, undefined]) {
+    const state = structuredClone(aura); state.players[0].auraTurns = value;
+    assert.equal(validateSavedGame(state), false);
+  }
+  for (const primaryAction of [null, 'fate', 'bad', 1]) {
+    const state = structuredClone(aura); state.primaryAction = primaryAction;
+    assert.equal(validateSavedGame(state), false);
+  }
+  const noAction = fresh(); noAction.primaryAction = 'aura'; assert.equal(validateSavedGame(noAction), false);
+  const historical = rollEnhancement(activateEnhancement(fresh()), () => .5);
+  historical.players[0].enhancement = 0;
+  assert.equal(validateSavedGame(historical), true, 'old roll records the past result rather than requiring a monotonic current bonus');
+  assertGame(historical);
+  const oldHistorical = version12Save(historical), upgraded = migrateSavedGame(oldHistorical);
+  assert.ok(upgraded); assert.equal(upgraded.players[0].enhancement, 0); assert.deepEqual(upgraded.lastRoll, historical.lastRoll);
+});
+
+test('temporary Enhancement remains through Fate and is consumed after the whole damaging spell even when Shield blocks it', () => {
+  const initial = fresh({ fire: ['FAT-001'], water: ['FAT-002'] });
+  handOf(initial, 0, ['Fire-4', 'FAT-001']); handOf(initial, 1, ['Water-1', 'FAT-002']);
+  Object.assign(initial.players[0], { enhancement: 20, auraTurns: 2 });
+  Object.assign(initial.players[1], { shield: 30, enhancement: 30 });
+  let state = roll(cast(initial, 'Fire-4'), [4, 4]);
+  assert.equal(state.players[0].enhancement, 20);
+  state = fate(state, ['FAT-002']); assert.equal(state.players[1].enhancement, 30, 'Fate never consumes the responder bonus');
+  state = fate(state, ['FAT-001']);
+  assert.equal(state.phase, 'resolving'); assert.equal(state.players[0].enhancement, 20);
+  state = resolveSpell(state);
+  assert.deepEqual([state.players[0].enhancement, state.players[0].auraTurns, state.players[1].enhancement], [0, 2, 30]);
+  assert.deepEqual([state.players[1].hp, state.players[1].shield], [100, 23], '5 × 1.30 rounds once to 7 before Shield');
+  assert.deepEqual([state.players[0].element, state.players[0].loadedPending], [1, 2], 'remaining spell effects resolve normally');
+  const newEntries = state.log.slice(initial.log.length);
+  assert.ok(newEntries.findIndex(entry => entry.type === 'enhancement') > newEntries.findIndex(entry => entry.type === 'damage'));
+  assertGame(state); assert.equal(validateSavedGame(JSON.parse(JSON.stringify(state))), true);
+});
+
+test('non-damaging spells and self damage preserve temporary Enhancement and Aura', () => {
+  for (const spellId of ['Fire-0', 'Fire-2', 'Fire-3', 'Water-3', 'Water-10']) {
+    const index = spellId.startsWith('Water') ? 1 : 0;
+    const initial = fresh({ first: index, fire: spellId === 'Fire-0' ? ['Fire-0'] : [] });
+    handOf(initial, index, [spellId]); Object.assign(initial.players[index], { mana: 10, hp: 60, enhancement: 20, auraTurns: 2 });
+    const state = complete(cast(initial, spellId));
+    assert.deepEqual([state.players[index].enhancement, state.players[index].auraTurns], [20, 2], spellId);
+    assertGame(state);
+  }
+  const initial = fresh(); Object.assign(initial.players[0], { shield: 12, enhancement: 20, auraTurns: 2 });
+  const state = applyDamage(initial, 0, 4, { selfDamage: true });
+  assert.deepEqual([state.players[0].hp, state.players[0].shield, state.players[0].enhancement, state.players[0].auraTurns], [96, 12, 20, 2]);
+  assertGame(state);
 });

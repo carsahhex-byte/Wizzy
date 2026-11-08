@@ -209,6 +209,16 @@
     "width": 1254,
     "height": 1254
   },
+  "auraButton": {
+    "file": "auraButton-3cc76e59176a.webp",
+    "source": "Wizzy Aura Button.png",
+    "sourceSha256": "d59ac9760f2464580ed7bb935b13248f551dceb0526c8bc10ef5b5648b85d9d6",
+    "optimizedSha256": "3cc76e59176a4bce28361a6436bbda13918de96af06762788e3044582927f804",
+    "bytes": 691016,
+    "sourceBytes": 1299119,
+    "width": 2098,
+    "height": 749
+  },
   "endTurn": {
     "file": "endTurn-9e0357f1eda0.webp",
     "source": "End Turn Button.png",
