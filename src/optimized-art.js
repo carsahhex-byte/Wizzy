@@ -95,6 +95,11 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "40a485d4115e375feb7196d842fedbc952e50f351501937aae2eb7b57930b0da",
     "optimizedSha256": "117013e14b7292263312b22269183bce4816ebc7c31058b138865b6bcea3aa9a"
   },
+  "enhanceButtons": {
+    "file": "enhanceButtons-ccd3dfe7b000.webp",
+    "sourceSha256": "98689043b0a51902dbe020fb8c21252903f0fa799d103c4fe1cb9750bf1bd113",
+    "optimizedSha256": "ccd3dfe7b0006447ba46de1e081ee61320b82f187b8bf1e7957438e81edfa4ec"
+  },
   "endTurn": {
     "file": "endTurn-9e0357f1eda0.webp",
     "sourceSha256": "3c7ee12938badfcad961191fc06c0f8de0b6e045824cde2c335dbab8b7d58c10",

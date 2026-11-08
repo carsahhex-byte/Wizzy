@@ -1,6 +1,6 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.74b3dfd2ccc9.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.93bc992ca3dc.js';
 import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.c2259fcc14fe.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.4d0059664038.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.de3c84f3f0d5.js';
 import { MAX_COPIES, createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.18630709b2df.js';
 
 const HUB_SAVE_KEY = `wizzy.hub.${SPELLBOOK_VERSION}`;

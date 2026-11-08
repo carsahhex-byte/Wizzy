@@ -1,10 +1,10 @@
-import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE } from './game.7708883da810.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.74b3dfd2ccc9.js';
+import { createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD } from './game.111c93de4310.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.93bc992ca3dc.js';
 import { SPELL_CATALOG, DECK_SIZE } from './spells.c2259fcc14fe.js';
 import { validateDeck } from './decks.18630709b2df.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.4d0059664038.js';
-import { createHub } from './hub.c75f1b677930.js';
-import { createMultiplayer } from './multiplayer.95355aea2707.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.de3c84f3f0d5.js';
+import { createHub } from './hub.2c0d17b02557.js';
+import { createMultiplayer } from './multiplayer.7da750591458.js';
 import { createAccounts } from './accounts.f521c540ddcc.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
@@ -50,8 +50,10 @@ function loadGame() {
   };
   const saved=readSave(SAVE_KEY);
   if(validateSavedGame(saved))return saved;
-  const migrated=migrateSavedGame(readSave('wizzy.duel.v10'));
-  if(migrated)return migrated;
+  for(const key of ['wizzy.duel.v11','wizzy.duel.v10']){
+    const migrated=migrateSavedGame(readSave(key));
+    if(migrated)return migrated;
+  }
   // Older catalogs remain retired; all previous saved keys stay intact.
   return createGame();
 }
@@ -91,13 +93,14 @@ function phaseHint(active) {
     return state.phase==='fate'?`Waiting for ${actor.name} to finish Fate.`:`Waiting for ${active.name} to play or end their turn.`;
   }
   switch(state.phase) {
-    case 'fate': return `${state.pendingSpell?`${SPELL_CATALOG[state.pendingSpell.spellId].name} · `:''}${state.players[state.fatePlayer].name} · ${state.pendingSpell?.fateStep==='defender-final'?'Final defending':state.fatePlayer===state.activePlayer?'Attacking':'Defending'} Fate. Dice are rolled. Select a batch, or Skip Fate.`;
+    case 'fate': return `${state.players[state.fatePlayer].name} · ${state.fatePlayer===state.activePlayer?'Attacking':'Defending'} Fate. Play one slab or Skip. ${state.pendingSpell?.fatePasses||0}/2 consecutive passes.`;
     case 'rolling': return 'Rolling two dice…';
+    case 'enhancing': return `${active.name} is rolling Enhancement. ${ENHANCEMENT_THRESHOLD}+ gains 10%.`;
     case 'resolving': return 'Resolving your spell…';
     case 'end': return 'End Turn passes. Hand Refresh lets you choose discards first.';
     case 'refresh': return `${state.refreshCardIds.length} selected. Hand Refresh confirms and passes; End Turn skips refresh.`;
     case 'ready-to-pass': return 'Hand refreshed. Click End Turn to pass to the next wizard.';
-    default: return state.primaryUsed?'Primary spell resolved. End Turn to continue.':`${active.name} wizard · select a slab, then Cast Spell.`;
+    default: return state.primaryUsed?(state.lastRoll?.kind==='enhancement'&&state.lastRoll.casterIndex===state.activePlayer?`${state.lastRoll.success?'Enhancement gained!':'Enhancement missed.'} ${active.enhancement}% damage bonus. End Turn to continue.`:'Primary spell resolved. End Turn to continue.'):`${active.name} · cast a slab or roll Enhancement.`;
   }
 }
 function slabFace(card) {
@@ -117,6 +120,17 @@ function cardView(card, active, finished) {
     ${slabFace(card)}
     ${selected ? '<span class="card-badge">SELECTED</span>' : ''}${refreshSelected ? '<span class="card-badge discard-badge">✓ DISCARD</span>' : ''}${pending ? '<span class="card-badge pending-badge">CASTING</span>' : ''}
   </button>`;
+}
+function enhancementAvailable(playerIndex){
+  return canActOnline()&&state.activePlayer===playerIndex&&canEnhance(state,playerIndex)
+    &&(!isOnlineBattle()||onlinePlayerIndex===playerIndex);
+}
+function enhancementWidgets(){
+  return `<div class="enhancement-status" aria-label="Damage Enhancements">${state.players.map((player,index)=>`<div class="enhancement-label ${player.id}" data-enhancement-player="${index}" data-enhancement="${player.enhancement}" aria-label="${player.name} has ${player.enhancement}% damage Enhancement"><small>${player.name.toUpperCase()}</small><strong>${player.enhancement}% Enh.</strong></div>`).join('')}</div><div class="enhance-controls" aria-label="Enhancement actions">${state.players.map((player,index)=>{
+    const maxed=player.enhancement>=MAX_ENHANCEMENT;
+    const description=maxed?'MAX 30%':state.phase==='enhancing'&&state.activePlayer===index?'ROLLING…':`${player.name.toUpperCase()} · 0 MANA · ${ENHANCEMENT_THRESHOLD}+`;
+    return `<button type="button" class="enhance-button ${player.id}" data-enhance-player="${index}" data-focus="enhance-${index}" aria-label="${player.name} Enhancement. ${maxed?'Maximum 30% reached.':`Roll 2d6: ${ENHANCEMENT_THRESHOLD}+ gains 10% damage, instead of a primary spell. Zero Mana. Current ${player.enhancement}%.`}" title="${maxed?'Maximum Enhancement reached':`Instead of a primary spell: roll ${ENHANCEMENT_THRESHOLD}+ to gain 10% damage. 0 Mana.`}" ${enhancementAvailable(index)?'':'disabled'}>${art('enhanceButtons','enhance-button-art',ASSET_CROPS[player.id==='fire'?'enhanceFire':'enhanceWater'])}<span class="enhance-button-caption">${description}</span></button>`;
+  }).join('')}</div>`;
 }
 const pipPositions={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 function pips(value) {
@@ -159,10 +173,13 @@ function renderOpeningRoll() {
 const signed=value=>`${value>=0?'+':''}${value}`;
 function diceView() {
   if(state.phase==='initiative')return `<section class="dice-area" aria-label="Opening rolls">${art('diceFrame','dice-frame')}<strong class="roll-total">Opening roll</strong><div class="dice-pair">${diceFace(state.initiative.rolls[0],0)}${diceFace(state.initiative.rolls[1],1)}</div><span class="roll-breakdown">FIRE · WATER</span><span class="dice-caption">HIGHER ROLL TAKES THE FIRST TURN</span></section>`;
-  const last=state.phase==='rolling'?null:state.lastRoll;
-  const title=state.phase==='rolling'?'Rolling…':last?`Total: ${last.total}`:state.phase==='setup'?'Build your decks':'Ready to roll';
-  const equation=last?`${last.dice[0]} + ${last.dice[1]} ${signed(last.loadedBonus)} Loaded ${signed(last.attackingFate)} Fate ${signed(last.defendingFate)} Fate`:state.pendingSpell?`Loaded ${signed(state.pendingSpell.loadedBonus)} · Attack ${signed(state.pendingSpell.attackingFate)} · Defend ${signed(state.pendingSpell.defendingFate)}`:'Two six-sided dice';
-  return `<section class="dice-area ${state.phase==='rolling'?'dice-rolling':''}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. Modified total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · ${state.phase==='fate'?'MODIFIED ROLL · FATE OPEN':'RESOLVED ROLL'}`:'ROLL FIRST · THEN DEFENDING FATE'}</span></section>`;
+  const rolling=['rolling','enhancing'].includes(state.phase);
+  const last=rolling?null:state.lastRoll;
+  const enhancement=last?.kind==='enhancement';
+  const title=rolling?'Rolling…':last?`Total: ${last.total}`:state.phase==='setup'?'Build your decks':'Ready to roll';
+  const equation=enhancement?`${last.dice[0]} + ${last.dice[1]} · ${ENHANCEMENT_THRESHOLD}+ NEEDED · ${last.success?'SUCCESS':'MISS'}`:last?`${last.dice[0]} + ${last.dice[1]} ${signed(last.loadedBonus)} Loaded ${signed(last.attackingFate)} Fate ${signed(last.defendingFate)} Fate`:state.phase==='enhancing'?`RAW 2d6 · ${ENHANCEMENT_THRESHOLD}+ GAINS 10%`:state.pendingSpell?`Loaded ${signed(state.pendingSpell.loadedBonus)} · Attack ${signed(state.pendingSpell.attackingFate)} · Defend ${signed(state.pendingSpell.defendingFate)}`:'Two six-sided dice';
+  const caption=enhancement?`${state.players[last.casterIndex].name.toUpperCase()} · ENHANCEMENT ${last.enhancementBefore}% → ${last.enhancementAfter}%`:last?`${state.players[last.casterIndex].name.toUpperCase()} · ${escape(SPELL_CATALOG[last.spellId].name)} · ${state.phase==='fate'?'FATE CHAIN OPEN':'RESOLVED ROLL'}`:state.phase==='enhancing'?'ENHANCEMENT · NO FATE OR LOADED':'ROLL FIRST · THEN DEFENDING FATE';
+  return `<section class="dice-area ${rolling?'dice-rolling':''}" data-roll-kind="${state.phase==='enhancing'||enhancement?'enhancement':'spell'}" aria-label="${escape(last?`Dice ${last.dice.join(' and ')}. ${enhancement?'Enhancement':'Modified'} total ${last.total}.`:title)}">${art('diceFrame','dice-frame')}<strong class="roll-total" data-testid="roll-total">${title}</strong><div class="dice-pair">${diceFace(last?.dice[0],0)}${diceFace(last?.dice[1],1)}</div><span class="roll-breakdown">${equation}</span><span class="dice-caption">${caption}</span></section>`;
 }
 function selectedTwistDirections(){
   const player=state.players[getActingPlayerIndex(state)];
@@ -176,7 +193,7 @@ function hintView(active,selected) {
   if(isOnlineBattle()&&!canActOnline())return phaseHint(active);
   if(state.phase==='main'&&state.primaryUsed)return `${phaseHint(active)}${selected?'<div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button></div>':''}`;
   if(selected&&['main','fate'].includes(state.phase)){
-    const label=state.phase==='fate'?`${state.selectedFateCardIds.length} Fate ${state.selectedFateCardIds.length===1?'slab':'slabs'} selected`:`${escape(selected.name)} · ${selected.manaCost} Mana${active.mana<selected.manaCost?' · Not enough mana':''}`;
+    const label=state.phase==='fate'?`${escape(selected.name)} · one Fate response`:`${escape(selected.name)} · ${selected.manaCost} Mana${active.mana<selected.manaCost?' · Not enough mana':''}`;
     return `<span>${label}</span>${twistOptions()}<div class="hint-actions"><button class="text-button" id="inspect-selected">Read slab</button>${state.phase==='fate'?'<button class="text-button" id="skip-fate">Skip Fate</button>':''}</div>`;
   }
   return phaseHint(active);
@@ -187,7 +204,7 @@ function render() {
   const finished = state.status !== 'playing';
   const opening = state.phase === 'initiative';
   const isFate = state.phase === 'fate';
-  const resolving = ['rolling','resolving'].includes(state.phase);
+  const resolving = ['rolling','enhancing','resolving'].includes(state.phase);
   const ending = ['end','refresh','ready-to-pass'].includes(state.phase);
   const showRefresh = ['end','refresh'].includes(state.phase) && !finished && (!isOnlineBattle()||state.activePlayer===onlinePlayerIndex);
   const selected=displayPlayer.hand.find(card=>card.id===state.selectedCardId);
@@ -210,11 +227,11 @@ function render() {
     <div class="battle-hud">${playerPanel(state.players[0],0)}${diceView()}${playerPanel(state.players[1],1)}</div>
     <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${displayPlayer.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${isOnlineBattle()?'YOUR ':''}${displayPlayer.name.toUpperCase()} · ${isOnlineBattle()&&!canActOnline()?'WAITING':isFate?(state.fatePlayer===state.activePlayer?'ATTACKING FATE':'DEFENDING FATE'):'SPELLBOOK'}</span><span data-testid="hand-count">${handCount(displayPlayer)} / ${HAND_LIMIT} SLABS</span></div>
     <div class="cards ${displayPlayer.id} cards-${displayPlayer.hand.length}" aria-label="${displayPlayer.name} wizard’s spell slabs">${displayPlayer.hand.map(card=>cardView(card,displayPlayer,finished)).join('')||'<div class="empty-hand"><span>✧</span><p>No spells in hand.<br>Refresh your hand or draw on your next turn.</p></div>'}</div>
-    <div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${displayPlayer.discard.length} <small>${displayPlayer.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${isOnlineBattle()&&!canActOnline()?'YOUR PRIVATE HAND':state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${deckCount(displayPlayer)} <small>${deckCount(displayPlayer)===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
+    ${enhancementWidgets()}<div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${displayPlayer.discard.length} <small>${displayPlayer.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${isOnlineBattle()&&!canActOnline()?'YOUR PRIVATE HAND':state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${deckCount(displayPlayer)} <small>${deckCount(displayPlayer)===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
     <div class="turn-controls"><div class="phase-hint" role="status">${hintView(active,selected)}${isOnlineBattle()&&state.pendingSpell?'<button class="text-button" id="inspect-pending">Read pending spell</button>':''}</div>
     <div class="action-bar"><div class="round-plaque" aria-label="${opening?'Opening roll':`Round ${state.round}, ${active.name} wizard’s turn`}">${art('round','round-art')}<span class="round-cover"><strong>Round <span data-testid="round-number">${state.round}</span></strong><span>${finished?'Duel complete':opening?'Opening roll':`${active.name}’s Turn`}</span></span></div>
     <button class="art-button cast-button" id="cast-spell" data-focus="cast" aria-label="${castLabel}" ${finished||resolving||!canActOnline()||(isFate?(fateCount>0&&!canCastSelected(state)):!canCastSelected(state))?'disabled':''}>${art(castArt,'button-art')}</button>
-    <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh and pass, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh||!canActOnline()?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button ${ending?'is-ending':''}" id="end-turn" data-focus="end" aria-label="${['end','refresh','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||!canActOnline()||(isOnlineBattle()&&state.activePlayer!==onlinePlayerIndex)||['fate','rolling','resolving'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
+    <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh and pass, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh||!canActOnline()?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button ${ending?'is-ending':''}" id="end-turn" data-focus="end" aria-label="${['end','refresh','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||!canActOnline()||(isOnlineBattle()&&state.activePlayer!==onlinePlayerIndex)||['fate','rolling','enhancing','resolving'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
     <details class="combat-log" ${logOpen?'open':''}><summary aria-label="View combat log">${art('combatLog','log-button')}<span class="log-count">${state.log.length}</span><span class="chevron" aria-hidden="true">⌄</span></summary><ol>${state.log.slice().reverse().map(entry=>`<li><span class="log-round">R${entry.round}</span><span>${escape(entry.message)}</span></li>`).join('')}</ol></details>
     <footer class="game-footer"><span>${isOnlineBattle()?'TWO SCREENS · YOUR HAND IS PRIVATE':'LOCAL DUEL · TWO WIZARDS, ONE SCREEN'}</span><span>FIRE · WATER · FATE</span></footer></div></div>`;
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
@@ -255,7 +272,7 @@ function clearCombatTimers() {
 function scheduleCombat() {
   clearCombatTimers();
   if(isOnlineBattle()||battleView.hidden||handoff.open||document.querySelector('#restart').open||state.status!=='playing')return;
-  if(state.phase==='rolling'){
+  if(['rolling','enhancing'].includes(state.phase)){
     if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
       diceAnimationTimer=setInterval(()=>{
         app.querySelectorAll('.die-face').forEach(face=>{
@@ -265,7 +282,12 @@ function scheduleCombat() {
         });
       },90);
     }
-    resolutionTimer=setTimeout(()=>advanceFateWindow(rollDice(state)),650);
+    resolutionTimer=setTimeout(()=>{
+      if(state.phase==='enhancing'){
+        update(rollEnhancement(state));
+        app.querySelector('#end-turn')?.focus({preventScroll:true});
+      }else advanceFateWindow(rollDice(state));
+    },650);
   }else if(state.phase==='resolving') {
     resolutionTimer=setTimeout(()=>{
       update(resolveSpell(state));
@@ -278,7 +300,7 @@ function showHandoff(playerIndex=state.activePlayer,kind='turn') {
   clearCombatTimers();
   const player=state.players[playerIndex];
   document.querySelector('#handoff-title').textContent=kind==='fate'?`${player.name} · ${playerIndex===state.activePlayer?'attacking':'defending'} Fate`:`${player.name}’s turn`;
-  document.querySelector('#handoff-description').textContent=kind==='fate'?`The dice have rolled${state.lastRoll?` ${state.lastRoll.dice.join(' + ')} for a modified total of ${state.lastRoll.total}`:''}. Pass the screen to ${player.name}. Select Fate, choose each Twist’s +2 or −2, then Cast Fate, or Skip Fate.${state.pendingSpell?.fateStep==='defender-final'?' This is the final response.':''}`:`Round ${state.round}. Pass the screen to the ${player.name} wizard. Your hand is ready.`;
+  document.querySelector('#handoff-description').textContent=kind==='fate'?`The dice have rolled${state.lastRoll?` ${state.lastRoll.dice.join(' + ')} for a modified total of ${state.lastRoll.total}`:''}. Pass the screen to ${player.name}. Play one Fate slab or Skip Fate. Your opponent can respond after every card. Two consecutive passes resolve the spell.`:`Round ${state.round}. Pass the screen to the ${player.name} wizard. Your hand is ready.`;
   document.querySelector('#handoff-portrait').innerHTML=art(player.id==='fire'?'fireMage':'waterMage');
   document.querySelector('#begin-turn').innerHTML=`${kind==='fate'?'Choose Fate':'Begin turn'} <span aria-hidden="true">→</span>`;
   handoff.showModal();
@@ -376,7 +398,7 @@ function showSlab(spellId) {
   document.querySelector('#slab-definition').textContent=`${spell.spellId} · ${spell.category}${spell.category==='Elemental'?` · ${spell.element}`:''}`;
   document.querySelector('#slab-face').innerHTML=slabFace(spell);
   document.querySelector('#slab-face').dataset.slabType=spell.type;
-  const timing=spell.category==='Fate'?'Play after the dice roll in your Fate window. Twist may add 2 or subtract 2, by your choice.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds with Fate first, then the caster. A caster Fate batch allows one final defender response.':'Resolves immediately, without a dice roll or Fate window.';
+  const timing=spell.category==='Fate'?'Play one Fate slab in your post-roll response. Players alternate until two consecutive passes. Twist may add 2 or subtract 2.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds first, then players alternate one Fate slab at a time until two consecutive passes. Your Enhancement increases outgoing damage before Shield.':'Resolves immediately, without a dice roll or Fate window.';
   document.querySelector('#slab-behavior').textContent=`${spell.effectText} ${timing}`;
   if(!dialog.open)dialog.showModal();
 }
@@ -408,6 +430,14 @@ document.querySelector('#deck-inspector').addEventListener('click',event=>{
   if(tab)showDeck(tab.dataset.deckPlayer);
 });
 app.addEventListener('click',event=>{
+  const enhancement=event.target.closest('[data-enhance-player]');
+  if(enhancement){
+    const playerIndex=Number(enhancement.dataset.enhancePlayer);
+    if(!enhancementAvailable(playerIndex))return;
+    if(isOnlineBattle())sendOnlineAction('enhance');
+    else update(activateEnhancement(state));
+    return;
+  }
   const twist=event.target.closest('[data-twist-card]');
   if(twist){
     twistDirections[twist.dataset.twistCard]=Number(twist.dataset.twistValue);
