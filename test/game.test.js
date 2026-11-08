@@ -749,8 +749,14 @@ test('Aura costs one Mana and immediately uses the primary action without rollin
   assert.match(state.log.at(-1).message, /\+10% damage.*3.*turns/); assertGame(state);
 });
 
-test('Aura lasts exactly three owner turns including activation and advances only when the turn actually passes', () => {
+test('Aura excludes activation and lasts three subsequent owner turns, ticking only on actual passes', () => {
   let state = activateAura(fresh());
+  const activationEnd = endTurn(state), activationRefresh = beginRefresh(activationEnd);
+  assert.equal(cancelRefresh(activationRefresh).players[0].auraTurns, 3);
+  state = confirmRefresh(activationRefresh);
+  assert.deepEqual([state.activePlayer, state.players[0].auraTurns, state.primaryAction], [1, 3, null], 'activation pass preserves all three subsequent turns');
+  state = pass(state);
+  assert.equal(state.players[0].auraTurns, 3, 'the first opponent turn does not reduce Aura');
   for (const remaining of [3, 2, 1]) {
     assert.equal(state.activePlayer, 0); assert.equal(state.players[0].auraTurns, remaining);
     const ending = endTurn(state), refresh = beginRefresh(ending), cancelled = cancelRefresh(refresh);
@@ -774,13 +780,13 @@ test('Aura lasts exactly three owner turns including activation and advances onl
 test('both players have independent Aura durations and an active Aura cannot stack or refresh early', () => {
   let state = pass(activateAura(fresh()));
   state = activateAura(state);
-  assert.deepEqual(state.players.map(player => player.auraTurns), [2, 3]);
+  assert.deepEqual(state.players.map(player => player.auraTurns), [3, 3]);
   state = pass(state);
-  assert.deepEqual(state.players.map(player => player.auraTurns), [2, 2]);
+  assert.deepEqual(state.players.map(player => player.auraTurns), [3, 3]);
   assert.equal(state.primaryUsed, false); assert.equal(canActivateAura(state), false);
   assert.equal(activateAura(state), state, 'spending another primary cannot extend an active Aura');
-  state = pass(state); assert.deepEqual(state.players.map(player => player.auraTurns), [1, 2]);
-  state = pass(state); assert.deepEqual(state.players.map(player => player.auraTurns), [1, 1]);
+  state = pass(state); assert.deepEqual(state.players.map(player => player.auraTurns), [2, 3]);
+  state = pass(state); assert.deepEqual(state.players.map(player => player.auraTurns), [2, 2]);
   assertGame(state);
 });
 
@@ -887,4 +893,63 @@ test('non-damaging spells and self damage preserve temporary Enhancement and Aur
   const state = applyDamage(initial, 0, 4, { selfDamage: true });
   assert.deepEqual([state.players[0].hp, state.players[0].shield, state.players[0].enhancement, state.players[0].auraTurns], [96, 12, 20, 2]);
   assertGame(state);
+});
+
+test('Aura activation saves resume without consuming a subsequent turn through either End Turn or refresh', () => {
+  for (const first of [0, 1]) {
+    const activated = activateAura(fresh({ first }));
+    assert.match(activated.log.at(-1).message, /next 3 turns.*activation turn does not count/);
+    const ending = endTurn(activated), refreshing = beginRefresh(ending);
+    const cases = [[activated, pass], [ending, endTurn], [refreshing, confirmRefresh], [refreshing, endTurn], [cancelRefresh(refreshing), endTurn]];
+    for (const [current, finishTurn] of cases) {
+      const saved = JSON.parse(JSON.stringify(current)), snapshot = structuredClone(saved);
+      assert.equal(saved.version, 13); assert.equal(validateSavedGame(saved), true);
+      assert.equal(migrateSavedGame(saved), saved, 'the existing v13 save remains directly compatible');
+      const next = finishTurn(saved);
+      assert.deepEqual([next.activePlayer, next.players[first].auraTurns, next.primaryAction], [1 - first, 3, null]);
+      assert.equal(pass(next).players[first].auraTurns, 3, 'the intervening opponent turn is excluded too');
+      assert.deepEqual(saved, snapshot, 'resuming never rewrites the stored cards, resources or action marker');
+      assertGame(next);
+    }
+  }
+});
+
+test('Aura boosts damaging spells on all three subsequent owner turns and expires only after the third passes', () => {
+  for (const owner of [0, 1]) {
+    const spellId = owner === 0 ? 'Fire-1' : 'Water-1';
+    let state = fresh({ first: owner, ...(owner === 0 ? { fire: [spellId, spellId, spellId] } : { water: [spellId, spellId, spellId] }) });
+    handOf(state, owner, [spellId, spellId, spellId]);
+    state = pass(pass(activateAura(state)));
+    assert.equal(state.players[owner].auraTurns, 3);
+    for (let turn = 1; turn <= 3; turn += 1) {
+      const remaining = 4 - turn, target = 1 - owner, previousHP = state.players[target].hp;
+      assert.equal(state.activePlayer, owner); assert.equal(state.players[owner].auraTurns, remaining);
+      state = complete(cast(state, spellId), [2, 3]);
+      assert.equal(state.players[target].hp, previousHP - 7, 'base6 receives the fixed10% before one rounding');
+      assert.equal(state.players[owner].auraTurns, remaining, 'casting never consumes a duration turn');
+      const ending = endTurn(state);
+      assert.equal(ending.players[owner].auraTurns, remaining, 'the last spell stays boosted through the End Turn reveal');
+      state = endTurn(ending);
+      assert.equal(state.players[owner].auraTurns, remaining - 1);
+      state = pass(state); assertGame(state);
+    }
+    assert.equal(state.players[1 - owner].hp, 79);
+    assert.equal(state.players[owner].auraTurns, 0); assert.equal(canActivateAura(state), true);
+  }
+});
+
+test('previous v13 saves with an already-progressed Aura retain their remaining count and deck data', () => {
+  for (const remaining of [1, 2]) {
+    const previous = pass(pass(activateAura(fresh())));
+    previous.players[0].auraTurns = remaining;
+    previous.log.find(entry => entry.message.includes('activates Aura')).message = 'Fire activates Aura for 1 Mana: +10% damage for 3 of their turns, including this turn.';
+    const saved = JSON.parse(JSON.stringify(previous)), snapshot = structuredClone(saved);
+    assert.equal(validateSavedGame(saved), true); assert.equal(migrateSavedGame(saved), saved);
+    assert.equal(saved.players[0].auraTurns, remaining, 'elapsed turns are not refunded or inferred from old log text');
+    assert.deepEqual(saved, snapshot);
+    const next = pass(saved);
+    assert.equal(next.players[0].auraTurns, remaining - 1);
+    assert.deepEqual(next.players[0].deckDefinition, saved.players[0].deckDefinition);
+    assertGame(next);
+  }
 });

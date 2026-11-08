@@ -293,7 +293,7 @@ test('Aura is a fixed server-authorized primary action with private hands, publi
   assert.equal(visible.players[1].hand.length, 5);
 });
 
-test('Aura requires one Mana and counts only its owner passing three turns, including refresh', async t => {
+test('Aura requires one Mana and lasts three subsequent owner turns after activation, including refresh paths', async t => {
   let samples = 0;
   const emptyApi = await service(t, { createMatch: decks => {
     const state = fixtureMatch(decks); state.players[0].mana = 0; return state;
@@ -309,23 +309,22 @@ test('Aura requires one Mana and counts only its owner passing three turns, incl
   assert.equal(result.data.state.players[0].auraTurns, 3, 'opening refresh controls does not spend a duration turn');
   result = await api.action(host, 'beginRefresh'); assert.equal(result.data.state.players[0].auraTurns, 3);
   result = await api.action(host, 'confirmRefresh');
-  assert.deepEqual([result.data.state.activePlayer, result.data.state.players[0].auraTurns], [1, 2]);
+  assert.deepEqual([result.data.state.activePlayer, result.data.state.players[0].auraTurns], [1, 3], 'activation pass does not count');
   assert.equal((await api.action(guest, 'aura')).status, 200, 'both seats can activate their own Aura');
   await api.action(guest, 'endTurn'); result = await api.action(guest, 'endTurn');
-  assert.deepEqual(result.data.state.players.map(player => player.auraTurns), [2, 2], 'opponent turns do not reduce the other Aura');
+  assert.deepEqual(result.data.state.players.map(player => player.auraTurns), [3, 3], 'neither activation turn consumes its duration');
   const active = await api.get(host);
   assert.equal((await api.action(host, 'aura')).status, 422, 'an active Aura cannot refresh or stack');
   const rejected = await api.get(host);
   assert.deepEqual([rejected.revision, rejected.state.players[0].mana, rejected.state.primaryUsed], [active.revision, active.state.players[0].mana, false]);
-  await api.action(host, 'endTurn'); result = await api.action(host, 'endTurn');
-  assert.deepEqual(result.data.state.players.map(player => player.auraTurns), [1, 2]);
-  await api.action(guest, 'endTurn'); await api.action(guest, 'beginRefresh');
-  result = await api.action(guest, 'confirmRefresh');
-  assert.deepEqual(result.data.state.players.map(player => player.auraTurns), [1, 1]);
-  await api.action(host, 'endTurn'); result = await api.action(host, 'endTurn');
-  assert.deepEqual(result.data.state.players.map(player => player.auraTurns), [0, 1]);
-  await api.action(guest, 'endTurn'); result = await api.action(guest, 'endTurn');
-  assert.deepEqual(result.data.state.players.map(player => player.auraTurns), [0, 0]);
+  for (const remaining of [3, 2, 1]) {
+    await api.action(host, 'endTurn'); result = await api.action(host, 'endTurn');
+    assert.deepEqual(result.data.state.players.map(player => player.auraTurns), [remaining - 1, remaining]);
+    await api.action(guest, 'endTurn'); await api.action(guest, 'beginRefresh');
+    result = await api.action(guest, 'confirmRefresh');
+    assert.deepEqual(result.data.state.players.map(player => player.auraTurns), [remaining - 1, remaining - 1]);
+    assert.deepEqual((await api.get(host)).state.players.map(player => player.auraTurns), [remaining - 1, remaining - 1], 'both private screens agree');
+  }
   const manaBefore = result.data.state.players[0].mana;
   result = await api.action(host, 'aura'); assert.equal(result.status, 200, 'expired Aura can be activated on a later owner turn');
   assert.deepEqual([result.data.state.players[0].auraTurns, result.data.state.players[0].mana], [3, manaBefore - 1]);
