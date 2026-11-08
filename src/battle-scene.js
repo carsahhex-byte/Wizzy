@@ -50,8 +50,8 @@ export function createBattleScene() {
     sprite.style.backgroundRepeat = 'no-repeat';
     sprite.style.imageRendering = 'pixelated';
     element.append(wizard);
-    return { type, index, wizard, sprite, startX: index === 0 ? 410 : 614, targetX: index === 0 ? 236 : 788,
-      outward: index === 0 ? 'left' : 'right', inward: index === 0 ? 'right' : 'left' };
+    return { type, index, wizard, sprite, startX: index === 0 ? -128 : 1152, targetX: index === 0 ? 236 : 788,
+      inward: index === 0 ? 'right' : 'left' };
   });
 
   const played = new Set();
@@ -106,7 +106,7 @@ export function createBattleScene() {
     preparedKey = key;
     if (played.has(key)) return false;
     if (reducedMotion()) { played.add(key); idle(); return false; }
-    for (const entry of wizards) pose(entry, entry.startX, 650, 'up', idleFrame, 'up');
+    for (const entry of wizards) pose(entry, entry.startX, 450, entry.inward, idleFrame, 'in');
     element.dataset.motion = 'prepared';
     return true;
   }
@@ -129,15 +129,13 @@ export function createBattleScene() {
         if (reducedMotion()) { finishEntrance(); return; }
         if (timeline.start === null) timeline.start = time;
         const elapsed = Math.max(0, time - timeline.start);
-        if (elapsed >= 2000) { finishEntrance(); return; }
-        const upward = elapsed < 1000;
-        const progress = upward ? elapsed / 1000 : (elapsed - 1000) / 1000;
+        if (elapsed >= 1800) { finishEntrance(); return; }
+        const progress = elapsed / 1800;
         const frame = walkFrames[Math.floor(elapsed / 125) % walkFrames.length];
         for (const entry of wizards) pose(entry,
-          upward ? entry.startX : entry.startX + (entry.targetX - entry.startX) * progress,
-          upward ? 650 - 200 * progress : 450,
-          upward ? 'up' : entry.outward, frame, upward ? 'up' : 'out');
-        element.dataset.motion = upward ? 'up' : 'out';
+          entry.startX + (entry.targetX - entry.startX) * progress,
+          450, entry.inward, frame, 'in');
+        element.dataset.motion = 'in';
         frameRequest = view.requestAnimationFrame(tick);
       }
       frameRequest = view.requestAnimationFrame(tick);

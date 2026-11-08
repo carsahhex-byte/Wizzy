@@ -7,7 +7,7 @@ import { createHub } from './hub.37bade2b5bbf.js';
 import { createMultiplayer } from './multiplayer.35b434c91713.js';
 import { createAccounts } from './accounts.92dd638f4166.js';
 import { fitSlabText } from './slab-text.a18511f20227.js';
-import { createBattleScene } from './battle-scene.f9beb8a58f82.js';
+import { createBattleScene } from './battle-scene.b2de518f7083.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
