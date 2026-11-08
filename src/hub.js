@@ -3,6 +3,7 @@ import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.js';
 import { MAX_COPIES, createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.js';
 import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.js';
+import { fitSlabText } from './slab-text.js';
 
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck']);
 // The square artwork includes ocean around the city. Its artwork and labels
@@ -275,6 +276,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     applyMapView();
   });
   window.addEventListener('resize', applyMapView);
+  window.addEventListener('resize', () => { if (visible) fitSlabText(root); });
 
   function render() {
     finishMapDrag();
@@ -285,6 +287,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     const selection = active?.tagName === 'INPUT' && active.type === 'text' ? [active.selectionStart, active.selectionEnd] : null;
     root.dataset.wzScreen = screen;
     root.innerHTML = ({ title: titleHub, home: homeHub, character: characterHub, friends: friendsHub, deck: deckHub }[screen])() + (notice ? `<div class="wz-notice" role="status">${escapeHub(notice)}</div>` : '');
+    fitSlabText(root);
     applyMapView();
     const mapViewport = root.querySelector('.wz-map-viewport');
     if (mapViewport) mapObserver?.observe(mapViewport);
