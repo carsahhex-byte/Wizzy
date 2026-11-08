@@ -41,14 +41,16 @@ export function applyDamageToPlayer(player, amount, { selfDamage = false } = {})
   return { amount, absorbed, hpDamage, selfDamage };
 }
 
-/** Boost the completed damage expression once, rounding halves upward before Shield. */
-export function calculateEnhancedDamage(baseDamage, enhancement = 0) {
+/** Add Enhancement and Aura to completed damage, rounding halves upward before Shield. */
+export function calculateEnhancedDamage(baseDamage, enhancement = 0, aura = 0) {
   if (!Number.isSafeInteger(baseDamage) || baseDamage < 0) throw new Error('Base damage must be a nonnegative whole number.');
   if (![0, 10, 20, 30].includes(enhancement)) throw new Error('Enhancement must be 0, 10, 20, or 30 percent.');
-  const scaled = baseDamage * (100 + enhancement) + 50;
+  if (![0, 10].includes(aura)) throw new Error('Aura must be 0 or 10 percent.');
+  const combinedPercent = enhancement + aura;
+  const scaled = baseDamage * (100 + combinedPercent) + 50;
   if (!Number.isSafeInteger(scaled)) throw new Error('Damage is too large to calculate safely.');
   const totalDamage = Math.floor(scaled / 100);
-  return { baseDamage, enhancement, bonusDamage: totalDamage - baseDamage, totalDamage };
+  return { baseDamage, enhancement, aura, combinedPercent, bonusDamage: totalDamage - baseDamage, totalDamage };
 }
 
 /** Resolve a paid spell using the final Modified Roll; the engine owns Fate timing. */
@@ -67,18 +69,22 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   }
   const caster = state.players[casterIndex];
   const opponent = state.players[1 - casterIndex];
+  const enhancement = caster.enhancement ?? 0;
+  const aura = (caster.auraTurns ?? 0) > 0 ? 10 : 0;
   const waterSpell = definition.element === 'Water';
   const flow = waterSpell ? Math.min(MAX_FLOW, caster.element) : 0;
   caster.element = Math.min(waterSpell ? MAX_FLOW : MAX_EMBERS, caster.element);
   let flowGain = 1;
+  let dealtOutgoingDamage = false;
   const events = [];
   const name = player => player.name ?? player.id ?? 'Wizard';
   const record = (type, player, message, detail = {}) => events.push({ type, playerId: player.id, spellId, message, ...detail });
   const damage = (player, amount) => {
     const selfDamage = player === caster;
-    const calculation = calculateEnhancedDamage(amount, selfDamage ? 0 : caster.enhancement ?? 0);
+    const calculation = calculateEnhancedDamage(amount, selfDamage ? 0 : enhancement, selfDamage ? 0 : aura);
     const detail = applyDamageToPlayer(player, calculation.totalDamage, { selfDamage });
-    const formula = `Base ${calculation.baseDamage} + ${calculation.enhancement}% Enhancement = ${calculation.totalDamage} damage`;
+    if (!selfDamage && amount > 0) dealtOutgoingDamage = true;
+    const formula = `Base ${calculation.baseDamage} + ${calculation.enhancement}% Enhancement + ${calculation.aura}% Aura = ${calculation.totalDamage} damage`;
     record('damage', player, `${formula}. ${name(player)} takes ${detail.amount} damage${detail.absorbed ? ` (${detail.absorbed} absorbed by Shield)` : ''}; ${detail.hpDamage} HP damage.`, { ...calculation, ...detail });
   };
   const gainShield = amount => {
@@ -216,6 +222,11 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
     case 'Water-14':
       damage(opponent, 15 + 5 * flow + (rollTotal >= 8 ? 12 : 0));
       break;
+  }
+  if (dealtOutgoingDamage && enhancement > 0) {
+    caster.enhancement = 0;
+    record('enhancement', caster, `${name(caster)} uses ${enhancement}% Enhancement on this spell; Enhancement returns to 0%.`,
+      { amount: -enhancement, enhancementBefore: enhancement, enhancementAfter: 0 });
   }
   if (waterSpell) gainElement(flowGain);
   return events;

@@ -143,6 +143,16 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .cards-2 .spell-card:first-child { grid-column: 2 / span 2; }
 .cards-2 .spell-card:last-child { grid-column: 4 / span 2; }
 .card-image { width: 100%; height: 100%; }
+.spell-slab-art { container-type: inline-size; }
+.slab-live-paper { position: absolute; inset: 51% 7.5% 5.5%; display: flex; flex-direction: column; padding: 1.3cqw 1cqw; background: linear-gradient(115deg,#ffebbb,#ffe0a0 70%,#ffe8b7); color: #28160d; text-shadow: none; text-align: left; overflow: hidden; }
+[data-copy-type='Fate'] .slab-live-paper { top: 55%; }
+.slab-live-paper .slab-live-title { display: block; flex: 0 0 auto; margin: 0 0 1cqw; color: #28160d; font: 900 10.5cqw/1.04 'Trebuchet MS',Arial,sans-serif; text-align: center; }
+.slab-live-rules { display: block; min-height: 0; font: 700 8cqw/1.08 Arial,sans-serif; letter-spacing: -.1px; }
+[data-copy-density='long'] .slab-live-rules { font-size: 6.5cqw; }
+[data-copy-density='short'] .slab-live-rules { font-size: 9cqw; }
+.slab-rule-line { display: block; margin-bottom: .5cqw; }
+.slab-rule-line:last-child { margin-bottom: 0; }
+.slab-live-paper .slab-rule-threshold { color: #48152e; font-weight: 950; background: #e5b96e66; padding: 0 .5cqw; }
 .slab-mana { position: absolute; top: 6%; left: 8%; z-index: 1; padding: 3px 5px; border: 1px solid #d6c5ff; border-radius: 3px; color: #fff4d8; background: #15172ce8; font: 700 13px/1.15 'Trebuchet MS', Arial, sans-serif; white-space: nowrap; text-shadow: none; pointer-events: none; }
 .large-slab .slab-mana { font-size: 16px; padding: 5px 8px; }
 .spell-card:hover:not(:disabled):not(.discard-selected) { transform: translateY(-5px); filter: brightness(1.1); }
@@ -173,6 +183,8 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .enhance-button-art { position: absolute; left: 0; top: 4px; width: 170px; height: 60.5px; }
 .enhance-button-caption { position: absolute; left: 0; right: 0; bottom: 10px; color: #ffe5a5; font: bold 11px/1.2 monospace; letter-spacing: .2px; text-align: center; white-space: nowrap; }
 .enhance-button.water .enhance-button-caption { color: #b5efff; }
+.aura-button .enhance-button-caption { color: #b8f7b0; }
+.aura-button::after { color: #dbffc4; }
 .enhance-button:not(:disabled):hover { filter: brightness(1.15); }
 .enhance-button:not(:disabled):active { transform: translateY(2px); }
 .enhance-button:disabled { cursor: default; filter: brightness(.58); }
@@ -184,6 +196,7 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .enhancement-label.water { border-color: #71cbdc; background: #182a40e6; color: #b6f3ff; }
 .enhancement-label small { display: block; font: bold 10px/1.2 monospace; letter-spacing: 2px; }
 .enhancement-label strong { display: block; margin-top: 4px; font: bold 24px/1.2 monospace; white-space: nowrap; }
+.aura-status { display: block; margin-top: 6px; color: #b8efaf; font: bold 10px/1.2 monospace; white-space: nowrap; }
 @keyframes enhancement-sparkle { 0%,60%,100% { opacity: .2; } 15%,75% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .enhance-button::after { animation: none; opacity: .65; } }
 .twist-choice { display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 3px 5px; font-size: 13px; }

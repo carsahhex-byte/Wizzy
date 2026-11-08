@@ -5,15 +5,18 @@ import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applyS
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
+export const AURA_COST = 1;
+export const AURA_DURATION = 3;
+export const AURA_BONUS = 10;
 export const HAND_LIMIT = 6;
 export const OPENING_HAND_SIZE = 5;
 export const PHASES = Object.freeze(['setup', 'initiative', 'main', 'enhancing', 'rolling', 'fate', 'resolving', 'end', 'refresh', 'ready-to-pass']);
 const PENDING_PHASES = ['fate', 'rolling', 'resolving'];
-const LOG_TYPES = ['info', 'turn', 'round', 'cast', 'fate', 'resolve', 'refresh', 'damage', 'victory', 'dice', 'resource', 'heal', 'shield', 'loaded', 'enhancement'];
+const LOG_TYPES = ['info', 'turn', 'round', 'cast', 'fate', 'resolve', 'refresh', 'damage', 'victory', 'dice', 'resource', 'heal', 'shield', 'loaded', 'enhancement', 'aura'];
 
 export const CARD_CATALOG = Object.freeze({
   fire: Object.freeze(Object.values(SPELL_CATALOG).filter(card => card.element === 'Fire' || card.category === 'Fate')),
@@ -84,13 +87,13 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
       id, name: id === 'fire' ? 'Fire' : 'Water',
       elementName: id === 'fire' ? 'Embers' : 'Flow',
       hp: MAX_HP, maxHp: MAX_HP, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
-      turnsStarted: 0, enhancement: 0, deckDefinition,
+      turnsStarted: 0, enhancement: 0, auraTurns: 0, deckDefinition,
       hand: deck.splice(0, OPENING_HAND_SIZE), deck, discard: [],
     };
   });
   const state = {
     version: SAVE_VERSION, round: 1, activePlayer: 0,
-    phase: ready ? 'initiative' : 'setup', primaryUsed: false, selectedCardId: null, selectedFateCardIds: [], pendingCardId: null, pendingSpell: null,
+    phase: ready ? 'initiative' : 'setup', primaryUsed: false, primaryAction: null, selectedCardId: null, selectedFateCardIds: [], pendingCardId: null, pendingSpell: null,
     fatePlayer: null, lastRoll: null, refreshCardIds: [],
     startingPlayer: null, secondPlayerOpeningDrawPending: true,
     initiative: { round: 1, rolls: [null, null], history: [], winner: null, legacy: false },
@@ -199,6 +202,7 @@ export function castSelected(state, { emberSpend = 0 } = {}) {
   if (!Number.isSafeInteger(emberSpent) || emberSpent < range.min || emberSpent > range.max) return state;
   const next = structuredClone(state);
   next.primaryUsed = true;
+  next.primaryAction = 'spell';
   const caster = next.players[next.activePlayer];
   caster.mana -= card.manaCost;
   caster.element -= emberSpent;
@@ -322,6 +326,7 @@ export function activateEnhancement(state) {
   if (!canEnhance(state)) return state;
   const next = structuredClone(state);
   next.primaryUsed = true;
+  next.primaryAction = 'enhancement';
   next.selectedCardId = null;
   next.selectedFateCardIds = [];
   next.lastRoll = null;
@@ -346,6 +351,28 @@ export function rollEnhancement(state, random = Math.random) {
     success, enhancementBefore, enhancementAfter: player.enhancement };
   next.phase = 'main';
   addLog(next, `${player.name} rolls ${dice.join(' + ')} = ${rawTotal} for Enhancement (6+): ${success ? `gains +10% damage; ${player.enhancement}% Enh.` : `no increase; ${player.enhancement}% Enh.`}`, 'enhancement', player.id);
+  return next;
+}
+
+
+/** Aura is a fixed damage bonus lasting three owner turns, including activation. */
+export function canActivateAura(state, playerIndex = state.activePlayer) {
+  return playerIndex === state.activePlayer && inPhase(state, 'main') && !state.primaryUsed
+    && state.players[playerIndex]?.mana >= AURA_COST && state.players[playerIndex]?.auraTurns === 0;
+}
+
+export function activateAura(state) {
+  if (!canActivateAura(state)) return state;
+  const next = structuredClone(state);
+  const player = next.players[next.activePlayer];
+  player.mana -= AURA_COST;
+  player.auraTurns = AURA_DURATION;
+  next.primaryUsed = true;
+  next.primaryAction = 'aura';
+  next.selectedCardId = null;
+  next.selectedFateCardIds = [];
+  next.lastRoll = null;
+  addLog(next, `${player.name} activates Aura for ${AURA_COST} Mana: +${AURA_BONUS}% damage for ${AURA_DURATION} of their turns, including this turn.`, 'aura', player.id);
   return next;
 }
 
@@ -413,8 +440,18 @@ export function endTurn(state) {
     next.phase = 'end';
     return next;
   }
+  // The first End Turn click only reveals refresh. Aura advances once when
+  // this owner's turn actually passes, including the activation turn.
+  const endingPlayer = next.players[next.activePlayer];
+  if (endingPlayer.auraTurns > 0) {
+    endingPlayer.auraTurns -= 1;
+    addLog(next, endingPlayer.auraTurns > 0
+      ? `${endingPlayer.name}'s Aura has ${endingPlayer.auraTurns} owner turns remaining.`
+      : `${endingPlayer.name}'s Aura expires.`, 'aura', endingPlayer.id);
+  }
   next.phase = 'main';
   next.primaryUsed = false;
+  next.primaryAction = null;
   next.refreshCardIds = [];
   clearPending(next);
   next.activePlayer = next.activePlayer === 0 ? 1 : 0;
@@ -504,6 +541,8 @@ export function assertGame(state) {
   requireValue([0, 1].includes(state.activePlayer), 'active player');
   requireValue(['playing', 'finished'].includes(state.status) && PHASES.includes(state.phase), 'status or phase');
   requireValue(typeof state.primaryUsed === 'boolean', 'primary spell used');
+  requireValue(state.primaryUsed ? ['spell', 'enhancement', 'aura'].includes(state.primaryAction)
+    : state.primaryAction === null, 'primary action');
   requireValue(Array.isArray(state.players) && state.players.length === 2, 'players');
   const setup = state.phase === 'setup';
   const allIds = new Set();
@@ -516,6 +555,7 @@ export function assertGame(state) {
       requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
     }
     requireValue(Number.isSafeInteger(player.enhancement) && player.enhancement >= 0 && player.enhancement <= MAX_ENHANCEMENT && player.enhancement % ENHANCEMENT_STEP === 0, 'Enhancement cap');
+    requireValue(Number.isSafeInteger(player.auraTurns) && player.auraTurns >= 0 && player.auraTurns <= AURA_DURATION, 'Aura duration');
     requireValue(player.mana <= MAX_MANA && player.shield <= MAX_SHIELD, 'resource cap');
     requireValue(player.element <= (index === 0 ? MAX_EMBERS : MAX_FLOW), 'element cap');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
@@ -569,7 +609,7 @@ export function assertGame(state) {
   const hand = state.players[state.activePlayer].hand;
   const isOwnCard = id => typeof id === 'string' && hand.some(card => card.id === id);
   if (PENDING_PHASES.includes(state.phase)) {
-    requireValue(state.primaryUsed === true, 'committed primary spell');
+    requireValue(state.primaryUsed === true && state.primaryAction === 'spell', 'committed primary spell');
     const pending = state.pendingSpell;
     requireValue(pending && isOwnCard(state.pendingCardId) && pending.cardId === state.pendingCardId
       && pending.casterIndex === state.activePlayer, 'pending spell');
@@ -637,12 +677,12 @@ export function assertGame(state) {
         && roll.success === (roll.rawTotal >= ENHANCEMENT_THRESHOLD), 'Enhancement dice');
       requireValue(Number.isInteger(roll.enhancementBefore) && roll.enhancementBefore >= 0 && roll.enhancementBefore < MAX_ENHANCEMENT
         && roll.enhancementBefore % ENHANCEMENT_STEP === 0
-        && roll.enhancementAfter === roll.enhancementBefore + (roll.success ? ENHANCEMENT_STEP : 0)
-        && state.players[roll.casterIndex].enhancement >= roll.enhancementAfter, 'Enhancement outcome');
+        && roll.enhancementAfter === roll.enhancementBefore + (roll.success ? ENHANCEMENT_STEP : 0), 'Enhancement outcome');
     } else requireValue(roll.kind === 'spell' && SPELL_RULES[roll.spellId]?.requiresRoll === true, 'roll spell');
   }
-  if (state.phase === 'enhancing') requireValue(state.status === 'playing' && state.primaryUsed && state.lastRoll === null
+  if (state.phase === 'enhancing') requireValue(state.status === 'playing' && state.primaryUsed && state.primaryAction === 'enhancement' && state.lastRoll === null
     && state.selectedCardId === null && state.players[state.activePlayer].enhancement < MAX_ENHANCEMENT, 'pending Enhancement');
+  if (state.primaryAction === 'aura') requireValue(state.players[state.activePlayer].auraTurns === AURA_DURATION, 'activated Aura');
   requireValue(Array.isArray(state.refreshCardIds) && new Set(state.refreshCardIds).size === state.refreshCardIds.length, 'refresh selection');
   requireValue(state.phase === 'refresh' ? state.refreshCardIds.every(isOwnCard) : state.refreshCardIds.length === 0, 'refresh cards');
   if (state.status === 'playing') requireValue(state.winner === null && state.players.every(player => player.hp > 0), 'active duel');
@@ -663,15 +703,22 @@ export function validateSavedGame(value) {
 /** Upgrade current-catalog duels without re-dealing or replaying paid effects. */
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![10, 11].includes(value.version)) return null;
+  if (!value || ![10, 11, 12].includes(value.version)) return null;
   try {
     if (value.version === 10 && (!Array.isArray(value.players) || value.players.some(player => !Array.isArray(player?.hand) || player.hand.length > 5))) return null;
     const next = structuredClone(value);
     next.version = SAVE_VERSION;
-    if (next.phase === 'enhancing') return null;
-    for (const player of next.players) player.enhancement = 0;
-    if (next.lastRoll) next.lastRoll.kind = 'spell';
-    if (next.pendingSpell) {
+    const beforeEnhancement = value.version < 12;
+    if (beforeEnhancement && next.phase === 'enhancing') return null;
+    for (const player of next.players) {
+      player.auraTurns = 0;
+      if (beforeEnhancement) player.enhancement = 0;
+    }
+    next.primaryAction = next.primaryUsed
+      ? next.phase === 'enhancing' || next.lastRoll?.kind === 'enhancement' ? 'enhancement' : 'spell'
+      : null;
+    if (beforeEnhancement && next.lastRoll) next.lastRoll.kind = 'spell';
+    if (beforeEnhancement && next.pendingSpell) {
       const pending = next.pendingSpell;
       const oldHistory = pending.fateHistory;
       if (!Array.isArray(oldHistory) || oldHistory.length > 3) return null;
@@ -704,7 +751,7 @@ export function migrateSavedGame(value) {
       }
     }
     assertGame(next);
-    addLog(next, 'Fate now chains until both wizards pass. Enhancement starts at 0%; roll 6+ instead of a primary spell to gain 10%, up to 30%.');
+    addLog(next, 'Aura is available for 1 Mana and lasts three owner turns. Enhancement is consumed after an outgoing damaging spell resolves.');
     return next;
   } catch { return null; }
 }
