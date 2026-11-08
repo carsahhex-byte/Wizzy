@@ -40,6 +40,16 @@ export function applyDamageToPlayer(player, amount, { selfDamage = false } = {})
   return { amount, absorbed, hpDamage, selfDamage };
 }
 
+/** Boost the completed damage expression once, rounding halves upward before Shield. */
+export function calculateEnhancedDamage(baseDamage, enhancement = 0) {
+  if (!Number.isSafeInteger(baseDamage) || baseDamage < 0) throw new Error('Base damage must be a nonnegative whole number.');
+  if (![0, 10, 20, 30].includes(enhancement)) throw new Error('Enhancement must be 0, 10, 20, or 30 percent.');
+  const scaled = baseDamage * (100 + enhancement) + 50;
+  if (!Number.isSafeInteger(scaled)) throw new Error('Damage is too large to calculate safely.');
+  const totalDamage = Math.floor(scaled / 100);
+  return { baseDamage, enhancement, bonusDamage: totalDamage - baseDamage, totalDamage };
+}
+
 /** Resolve a paid spell using the final Modified Roll; the engine owns Fate timing. */
 export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null, emberSpent = 0 }) {
   const definition = SPELL_CATALOG[spellId];
@@ -64,8 +74,11 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   const name = player => player.name ?? player.id ?? 'Wizard';
   const record = (type, player, message, detail = {}) => events.push({ type, playerId: player.id, spellId, message, ...detail });
   const damage = (player, amount) => {
-    const detail = applyDamageToPlayer(player, amount, { selfDamage: player === caster });
-    record('damage', player, `${name(player)} takes ${amount} damage${detail.absorbed ? ` (${detail.absorbed} absorbed by Shield)` : ''}.`, detail);
+    const selfDamage = player === caster;
+    const calculation = calculateEnhancedDamage(amount, selfDamage ? 0 : caster.enhancement ?? 0);
+    const detail = applyDamageToPlayer(player, calculation.totalDamage, { selfDamage });
+    const formula = `Base ${calculation.baseDamage} + ${calculation.enhancement}% Enhancement = ${calculation.totalDamage} damage`;
+    record('damage', player, `${formula}. ${name(player)} takes ${detail.amount} damage${detail.absorbed ? ` (${detail.absorbed} absorbed by Shield)` : ''}; ${detail.hpDamage} HP damage.`, { ...calculation, ...detail });
   };
   const gainShield = amount => {
     const gained = Math.min(amount, Math.max(0, MAX_SHIELD - caster.shield));

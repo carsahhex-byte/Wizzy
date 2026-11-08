@@ -6,6 +6,7 @@ import {
   createGame, assertGame, getActingPlayerIndex, selectCard, castSelected,
   castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh,
   toggleRefreshCard, confirmRefresh, rollInitiative, OPENING_HAND_SIZE,
+  activateEnhancement, rollEnhancement,
 } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
@@ -198,6 +199,9 @@ export function createMultiplayerServer(options = {}) {
         next = rollInitiative(room.state, playerIndex, initiativeRandom); break;
       case 'selectCard': next = selectCard(room.state, payload.cardId); break;
       case 'castSpell': next = castSelected(room.state, { emberSpend: payload.emberSpend ?? 0 }); break;
+      case 'enhance':
+        if (Object.keys(payload).length) fail(400, 'invalid_action', 'The server rolls Enhancement dice; no roll or bonus may be submitted.');
+        next = activateEnhancement(room.state); break;
       case 'castFate': {
         if (Object.keys(payload).some(key => key !== 'twistDirections')) fail(400, 'invalid_action', 'Only Twist directions may accompany Cast Fate.');
         const directions = payload.twistDirections ?? {};
@@ -217,6 +221,7 @@ export function createMultiplayerServer(options = {}) {
     // Casting rolls the server's raw dice before the defender sees Fate.
     // Later Fate actions update that same roll; no phone supplies dice.
     if (next.phase === 'rolling') next = rollDice(next, rollRandom);
+    if (next.phase === 'enhancing') next = rollEnhancement(next, rollRandom);
     if (next.phase === 'resolving') next = resolveSpell(next);
     assertGame(next);
     room.state = next; room.revision += 1; room.touchedAt = now();

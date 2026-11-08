@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applySpellEffect, applyDamageToPlayer, getEmberSpendRange, SPELL_RULES, MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from '../src/effects.js';
+import { applySpellEffect, applyDamageToPlayer, calculateEnhancedDamage, getEmberSpendRange, SPELL_RULES, MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from '../src/effects.js';
 import { SPELL_CATALOG, SPELLBOOK_VERSION, DECK_LISTS } from '../src/spells.js';
 
 const player = (id, overrides = {}) => ({
@@ -214,4 +214,88 @@ test('invalid spending, missing roll and old spell IDs cannot execute', () => {
   assert.throws(() => resolve('WAT-001'));
   assert.throws(() => resolve('NEU-001'));
   assert.throws(() => resolve('FAT-001'));
+});
+
+test('Enhancement rounds completed damage once to the nearest whole number, with halves upward', () => {
+  for (const [base, percent, total] of [
+    [0, 30, 0], [6, 0, 6], [6, 10, 7], [6, 20, 7], [6, 30, 8],
+    [5, 10, 6], [15, 10, 17], [25, 10, 28], [35, 10, 39],
+    [20, 30, 26], [28, 30, 36], [36, 30, 47], [45, 30, 59],
+  ]) {
+    assert.deepEqual(calculateEnhancedDamage(base, percent), {
+      baseDamage: base, enhancement: percent, bonusDamage: total - base, totalDamage: total,
+    });
+  }
+  assert.equal(calculateEnhancedDamage(10).totalDamage, 10);
+});
+
+test('Enhancement calculation rejects fractional, negative, over-cap and unsafe inputs', () => {
+  for (const damage of [-1, 1.5, '6', NaN, Infinity, Number.MAX_SAFE_INTEGER]) {
+    assert.throws(() => calculateEnhancedDamage(damage, 10));
+  }
+  for (const percent of [-10, 5, 40, 100, '10', null, NaN]) {
+    assert.throws(() => calculateEnhancedDamage(10, percent));
+  }
+});
+
+test('Enhancement multiplies threshold damage before Shield and logs base, bonus and actual HP damage', () => {
+  const result = resolve('Fire-6', { roll: 7, caster: { enhancement: 30 }, opponent: { shield: 5 } });
+  assert.deepEqual([result.opponent.hp, result.opponent.shield], [69, 0]);
+  const event = result.events.find(entry => entry.type === 'damage');
+  assert.deepEqual({ baseDamage: event.baseDamage, enhancement: event.enhancement, bonusDamage: event.bonusDamage,
+    totalDamage: event.totalDamage, amount: event.amount, absorbed: event.absorbed, hpDamage: event.hpDamage },
+  { baseDamage: 28, enhancement: 30, bonusDamage: 8, totalDamage: 36, amount: 36, absorbed: 5, hpDamage: 31 });
+  assert.match(event.message, /Base 28 \+ 30% Enhancement = 36 damage/);
+  assert.match(event.message, /5 absorbed by Shield/);
+  assert.match(event.message, /31 HP damage/);
+});
+
+test('Shield removal remains its printed amount before enhanced damage', () => {
+  const result = resolve('Fire-5', { roll: 9, spent: 1, caster: { enhancement: 20 }, opponent: { shield: 12 } });
+  assert.deepEqual(result.events.map(entry => [entry.type, entry.amount, entry.absorbed]), [
+    ['shield', -8, undefined], ['damage', 22, 4],
+  ]);
+  assert.deepEqual([result.opponent.hp, result.opponent.shield], [82, 0]);
+});
+
+test('Ember contributions are combined before one Enhancement multiplication and rounding', () => {
+  const result = resolve('Fire-12', { roll: 6, spent: 2, caster: { enhancement: 20 } });
+  assert.equal(result.opponent.hp, 64);
+  assert.equal(result.events[0].baseDamage, 30);
+  assert.equal(result.events[0].totalDamage, 36);
+  const signature = resolve('Fire-7', { roll: 9, spent: 3, caster: { enhancement: 10 } });
+  assert.equal(signature.opponent.hp, 50);
+  assert.equal(signature.events[0].baseDamage, 45);
+});
+
+test('Flow contributes before Enhancement while healing and Flow gain retain printed values', () => {
+  const result = resolve('Water-12', { roll: 7, caster: { hp: 70, element: 3, enhancement: 30 } });
+  assert.deepEqual([result.opponent.hp, result.caster.hp, result.caster.element], [77, 76, 4]);
+  assert.deepEqual(result.events.map(entry => [entry.type, entry.amount]), [['damage', 23], ['heal', 6], ['resource', 1]]);
+});
+
+test('Enhancement does not increase Shield grants, Ember gains or queued Loaded', () => {
+  const shield = resolve('Fire-10', { roll: 8, caster: { enhancement: 30 } });
+  assert.deepEqual([shield.caster.shield, shield.caster.element], [24, 1]);
+  const preparation = resolve('Fire-11', { roll: 10, caster: { enhancement: 30 } });
+  assert.deepEqual([preparation.opponent.hp, preparation.caster.element, preparation.caster.loadedPending], [90, 2, 4]);
+});
+
+test('the target Enhancement cannot modify incoming damage and self-damage stays unboosted', () => {
+  const incoming = resolve('Fire-1', { opponent: { enhancement: 30 } });
+  assert.equal(incoming.opponent.hp, 94);
+  assert.equal(incoming.events[0].enhancement, 0);
+  const own = player('fire', { shield: 30, enhancement: 30 });
+  assert.deepEqual(applyDamageToPlayer(own, 15, { selfDamage: true }), {
+    amount: 15, absorbed: 0, hpDamage: 15, selfDamage: true,
+  });
+  assert.deepEqual([own.hp, own.shield], [85, 30]);
+});
+
+test('zero Enhancement preserves the previous numerical outcomes and records a transparent formula', () => {
+  const result = resolve('Water-14', { roll: 8, caster: { element: 3, enhancement: 0 }, opponent: { shield: 5 } });
+  assert.deepEqual([result.opponent.hp, result.opponent.shield], [63, 0]);
+  const event = result.events.find(entry => entry.type === 'damage');
+  assert.deepEqual([event.baseDamage, event.enhancement, event.bonusDamage, event.totalDamage], [42, 0, 0, 42]);
+  assert.match(event.message, /Base 42 \+ 0% Enhancement = 42 damage/);
 });

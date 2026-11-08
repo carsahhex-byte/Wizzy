@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createGame, rollInitiative, selectCard, canSelectCard, canCastSelected, canPlayFate, getActingPlayerIndex,
   castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn,
+  canEnhance, activateEnhancement, rollEnhancement, MAX_ENHANCEMENT, ENHANCEMENT_STEP, ENHANCEMENT_THRESHOLD,
   beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, applyDamage,
   assertGame, validateSavedGame, migrateSavedGame, SPELL_CATALOG, SPELL_RULES, SAVE_VERSION, DECK_SIZE, HAND_LIMIT, OPENING_HAND_SIZE,
 } from '../src/game.js';
@@ -69,7 +70,7 @@ function fateFixture() {
 }
 
 test('replacement catalog has 31 spells, 28 rolling primary slabs and no old IDs', () => {
-  assert.equal(SAVE_VERSION, 11); assert.equal(DECK_SIZE, 30);
+  assert.equal(SAVE_VERSION, 12); assert.equal(DECK_SIZE, 30);
   assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
   assert.equal(Object.keys(SPELL_CATALOG).length, 31);
   assert.equal(Object.keys(SPELL_RULES).length, 28);
@@ -170,7 +171,7 @@ test('no playable Fate auto-skips both decisions and resolves without a prompt',
   let state = cast(handOf(fresh(), 0, ['Fire-1']), 'Fire-1');
   state = roll(state, [3, 4]);
   assert.equal(state.phase, 'resolving'); assert.equal(state.fatePlayer, null);
-  assert.deepEqual(state.pendingSpell.fateHistory.map(entry => [entry.step, entry.action]), [['defender-first', 'auto-skip'], ['attacker', 'auto-skip']]);
+  assert.deepEqual(state.pendingSpell.fateHistory.map(entry => [entry.step, entry.action]), [[1, 'auto-skip'], [2, 'auto-skip']]);
   assert.equal(state.players[1].hp, 100); assertGame(state);
   state = resolveSpell(state);
   assert.deepEqual([state.phase, state.players[1].hp, state.players[0].element, state.players[0].discard.length], ['main', 94, 1, 1]);
@@ -181,54 +182,66 @@ test('defender responds first to visible dice and only role-eligible Fate can be
   let state = fateFixture();
   const attackerCard = state.players[0].hand.find(card => card.spellId === 'FAT-001');
   state = roll(cast(state, 'Fire-1'), [4, 4]);
-  assert.deepEqual([state.phase, state.fatePlayer, getActingPlayerIndex(state), state.pendingSpell.fateStep], ['fate', 1, 1, 'defender-first']);
+  assert.deepEqual([state.phase, state.fatePlayer, getActingPlayerIndex(state), state.pendingSpell.fateStep], ['fate', 1, 1, 'response-1']);
   assert.equal(state.lastRoll.total, 8); assert.equal(canSelectCard(state, attackerCard.id), false);
   assert.equal(resolveSpell(state), state); assert.equal(endTurn(state), state); assertGame(state);
 });
 
-test('defender cast then attacker skip ends immediately without a second defender response', () => {
+test('a pass is only provisional and does not prevent a later response', () => {
   let state = roll(cast(fateFixture(), 'Fire-1'), [4, 4]);
   state = fate(state, ['FAT-002']);
-  assert.deepEqual([state.fatePlayer, state.pendingSpell.fateStep, state.lastRoll.total], [0, 'attacker', 4]);
-  assertGame(state); state = skipFate(state);
+  assert.deepEqual([state.fatePlayer, state.pendingSpell.fateStep, state.lastRoll.total], [0, 'response-2', 4]);
+  state = skipFate(state);
+  assert.deepEqual([state.phase, state.fatePlayer, state.pendingSpell.fatePasses], ['fate', 1, 1]);
+  state = fate(state, ['FAT-002']);
+  assert.deepEqual([state.fatePlayer, state.pendingSpell.fatePasses, state.lastRoll.total], [0, 0, 0]);
+  state = fate(state, ['FAT-001']);
+  assert.equal(state.lastRoll.total, 4);
+  state = skipFate(skipFate(state));
   assert.equal(state.phase, 'resolving');
-  assert.equal(state.pendingSpell.fateHistory.length, 2);
-  assert.equal(state.players[1].hand.filter(card => card.spellId === 'FAT-002').length, 1);
+  assert.deepEqual(state.pendingSpell.fateHistory.map(entry => entry.action), ['cast', 'skip', 'cast', 'cast', 'skip', 'skip']);
   state = resolveSpell(state);
   assert.deepEqual([state.players[0].element, state.players[1].hp], [0, 94]); assertGame(state);
 });
 
-test('attacker casting enables one final defender response, then the spell resolves', () => {
-  let state = roll(cast(fateFixture(), 'Fire-1'), [3, 4]);
-  state = skipFate(state); assert.equal(state.fatePlayer, 0);
-  state = fate(state, ['FAT-001']);
-  assert.deepEqual([state.fatePlayer, state.pendingSpell.fateStep, state.lastRoll.total], [1, 'defender-final', 11]); assertGame(state);
-  state = fate(state, ['FAT-002']);
-  assert.equal(state.phase, 'resolving'); assert.equal(state.lastRoll.total, 7);
-  assert.equal(state.pendingSpell.fateHistory.length, 3); assertGame(state);
-  state = resolveSpell(state); assert.equal(state.players[0].element, 1); assertGame(state);
-});
-
-test('final defender prompt is skipped automatically if their eligible Fate is exhausted', () => {
-  let state = fresh({ fire: ['FAT-001'], water: ['FAT-002', 'FAT-001'] });
-  handOf(state, 0, ['Fire-1', 'FAT-001']); handOf(state, 1, ['Water-1', 'FAT-002', 'FAT-001']);
-  state = fate(roll(cast(state, 'Fire-1')), ['FAT-002']);
-  state = fate(state, ['FAT-001']);
-  assert.equal(state.phase, 'resolving');
-  assert.equal(state.pendingSpell.fateHistory.at(-1).step, 'defender-final');
-  assert.equal(state.pendingSpell.fateHistory.at(-1).action, 'auto-skip'); assertGame(state);
-});
-
-test('multiple Fate slabs stack in a batch and raw dice and Loaded never change', () => {
+test('Fate alternates beyond three links, preserves roles and closes only after both pass', () => {
   let state = fateFixture(); state.players[0].loaded = 3;
   state = roll(cast(state, 'Fire-1'), [5, 5]);
-  state = fate(state, ['FAT-002', 'FAT-002', 'FAT-003']);
-  assert.equal(state.lastRoll.total, 3);
-  state = fate(state, ['FAT-001', 'FAT-003']);
+  const links = [['FAT-002'], ['FAT-001'], ['FAT-002'], ['FAT-003'], ['FAT-003'], ['FAT-003']];
+  const totals = [9, 13, 9, 11, 9, 11];
+  for (let index = 0; index < links.length; index += 1) {
+    assert.equal(state.fatePlayer, index % 2 === 0 ? 1 : 0);
+    state = fate(state, links[index]);
+    assert.equal(state.lastRoll.total, totals[index]); assertGame(state);
+  }
+  assert.equal(state.phase, 'resolving', 'exhausted hands automatically pass on both sides');
+  assert.equal(state.pendingSpell.fatePlays.length, 6);
+  assert.deepEqual(state.pendingSpell.fateHistory.map(entry => entry.step), [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.deepEqual(state.lastRoll.dice, [5, 5]);
+  assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.loadedBonus, state.lastRoll.attackingFate, state.lastRoll.defendingFate], [10, 3, 8, -10]);
+  state = resolveSpell(state); assert.equal(state.players[0].element, 2); assertGame(state);
+});
+
+test('no eligible Fate auto-passes while the other player can still cast another link', () => {
+  let state = fresh({ fire: ['FAT-001'], water: ['FAT-002', 'FAT-002', 'FAT-001'] });
+  handOf(state, 0, ['Fire-1']); handOf(state, 1, ['Water-1', 'FAT-002', 'FAT-002', 'FAT-001']);
+  state = fate(roll(cast(state, 'Fire-1')), ['FAT-002']);
+  assert.deepEqual([state.phase, state.fatePlayer, state.pendingSpell.fatePasses], ['fate', 1, 1]);
+  state = fate(state, ['FAT-002']);
   assert.equal(state.phase, 'resolving');
-  assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.loadedBonus, state.lastRoll.attackingFate, state.lastRoll.defendingFate, state.lastRoll.total], [10, 3, 6, -10, 9]);
-  assert.deepEqual(state.lastRoll.dice, [5, 5]); assert.equal(state.pendingSpell.fatePlays.length, 5); assertGame(state);
-  state = resolveSpell(state); assert.equal(state.players[0].element, 1); assertGame(state);
+  assert.deepEqual(state.pendingSpell.fateHistory.map(entry => entry.action), ['cast', 'auto-skip', 'cast', 'auto-skip', 'auto-skip']);
+  assert.equal(state.players[1].hand.some(card => card.spellId === 'FAT-001'), true, 'wrong-role Fortune cannot respond');
+  assertGame(state);
+});
+
+test('two voluntary passes finish Fate even when both still hold legal responses', () => {
+  let state = roll(cast(fateFixture(), 'Fire-1'));
+  assert.equal(canPlayFate(state, 0), true); assert.equal(canPlayFate(state, 1), true);
+  state = skipFate(state);
+  assert.deepEqual([state.phase, state.fatePlayer, state.pendingSpell.fatePasses], ['fate', 0, 1]);
+  state = skipFate(state);
+  assert.deepEqual([state.phase, state.fatePlayer, state.pendingSpell.fatePasses], ['resolving', null, 2]);
+  assert.equal(state.pendingSpell.fatePlays.length, 0); assertGame(state);
 });
 
 test('Twist supports either sign for either role, with directions tracked in save data', () => {
@@ -237,16 +250,20 @@ test('Twist supports either sign for either role, with directions tracked in sav
   assert.equal(state.lastRoll.defendingFate, 2); assert.equal(state.lastRoll.total, 9); assertGame(state);
   state = fate(state, ['FAT-003'], -2);
   assert.equal(state.lastRoll.attackingFate, -2); assert.equal(state.lastRoll.total, 7); assertGame(state);
-  state = skipFate(state); assert.equal(state.phase, 'resolving'); assertGame(state);
+  state = skipFate(skipFate(state)); assert.equal(state.phase, 'resolving'); assertGame(state);
 });
 
-test('multiple selected Twists can choose different directions within one batch', () => {
-  let state = roll(cast(fateFixture(), 'Fire-1'));
-  state = skipFate(state);
+test('selecting another Fate replaces the pending link and forged batches are rejected', () => {
+  let state = skipFate(roll(cast(fateFixture(), 'Fire-1')));
   const cards = state.players[0].hand.filter(card => card.spellId === 'FAT-003');
-  for (const card of cards) state = selectCard(state, card.id);
-  state = castFateSelected(state, { twistDirections: { [cards[0].id]: 2, [cards[1].id]: -2 } });
-  assert.equal(state.lastRoll.attackingFate, 0); assert.equal(state.pendingSpell.attackingFateCardIds.length, 2); assertGame(state);
+  state = selectCard(selectCard(state, cards[0].id), cards[1].id);
+  assert.deepEqual(state.selectedFateCardIds, [cards[1].id]); assertGame(state);
+  const forged = { ...state, selectedFateCardIds: cards.map(card => card.id) };
+  assert.equal(canCastSelected(forged), false); assert.equal(castFateSelected(forged), forged);
+  assert.equal(validateSavedGame(forged), false);
+  state = castFateSelected(state, { twistDirections: { [cards[1].id]: -2 } });
+  assert.equal(state.lastRoll.attackingFate, -2);
+  assert.equal(state.pendingSpell.attackingFateCardIds.length, 1); assertGame(state);
 });
 
 test('invalid Twist directions and forged card keys never pay or discard', () => {
@@ -259,7 +276,7 @@ test('invalid Twist directions and forged card keys never pay or discard', () =>
   assert.equal(state.players[1].discard.length, 0); assertGame(state);
 });
 
-test('Fate selection toggles whole batches and cannot spend the primary slot a second time', () => {
+test('Fate selection toggles the current link and cannot spend the primary slot a second time', () => {
   let state = roll(cast(fateFixture(), 'Fire-1'));
   const card = state.players[1].hand.find(card => card.spellId === 'FAT-002');
   state = selectCard(state, card.id); assert.equal(canCastSelected(state), true);
@@ -274,7 +291,7 @@ test('Fate selection toggles whole batches and cannot spend the primary slot a s
 test('a second player who used Fate draws one extra slab rather than refilling to six', () => {
   let state = fresh({ fire: ['FAT-001'], water: ['FAT-002', 'FAT-002'] });
   handOf(state, 0, ['Fire-1']); handOf(state, 1, ['Water-1', 'FAT-002', 'FAT-002', 'Water-2', 'Water-3']);
-  state = fate(roll(cast(state, 'Fire-1')), ['FAT-002', 'FAT-002']);
+  state = fate(fate(roll(cast(state, 'Fire-1')), ['FAT-002']), ['FAT-002']);
   state = resolveSpell(state);
   assert.equal(state.players[1].hand.length, 3);
   state = pass(state); assert.equal(state.players[1].hand.length, 4); assert.equal(state.players[1].mana, 3); assertGame(state);
@@ -376,11 +393,11 @@ test('empty towers never fabricate cards or reshuffle the discard pile', () => {
   assert.deepEqual([state.players[0].hand.length, state.players[0].deck.length, state.players[0].discard.length], [0, 0, 30]); assertGame(state);
 });
 
-test('every post-roll response step and selected batch round-trips through saved-state validation', () => {
+test('every post-roll response step and selected link round-trips through saved-state validation', () => {
   const main = fateFixture(), casted = cast(main, 'Fire-1'), defender = roll(casted);
   const selected = selectCard(defender, defender.players[1].hand.find(card => card.spellId === 'FAT-003').id);
   const attacker = castFateSelected(selected, { twistDirections: { [selected.selectedCardId]: 2 } });
-  const final = fate(attacker, ['FAT-001']), resolving = skipFate(final), resolved = resolveSpell(resolving);
+  const final = fate(attacker, ['FAT-001']), resolving = skipFate(skipFate(final)), resolved = resolveSpell(resolving);
   for (const state of [createGame(), main, casted, defender, selected, attacker, final, resolving, resolved, endTurn(resolved), beginRefresh(endTurn(resolved)), applyDamage(resolved, 1, 100)]) {
     assertGame(state); assert.equal(validateSavedGame(JSON.parse(JSON.stringify(state))), true);
   }
@@ -419,34 +436,66 @@ test('old duels are rejected without silently remapping retired slabs or changin
   for (const value of [null, [], {}, 42]) assert.equal(migrateSavedGame(value), null);
 });
 
-test('version 10 duels keep their exact hands, resources and pending Fate when upgraded', () => {
-  const pending = roll(cast(fateFixture(), 'Fire-1'));
-  pending.players[0].shield = 17;
-  pending.players[1].hp = 82;
-  pending.version = 10;
-  const original = structuredClone(pending);
-  const upgraded = migrateSavedGame(pending);
-  assert.equal(upgraded.version, 11);
-  assert.deepEqual(upgraded.players, original.players, 'migration never deals or spends additional cards/resources');
-  assert.deepEqual(upgraded.pendingSpell, original.pendingSpell);
-  assert.deepEqual(upgraded.lastRoll, original.lastRoll);
-  assert.deepEqual(upgraded.initiative, original.initiative);
-  assert.equal(upgraded.phase, original.phase);
-  assert.deepEqual(pending, original, 'previous save remains unchanged');
-  assertGame(upgraded);
-  let resumed = upgraded;
-  while (resumed.phase === 'fate') resumed = skipFate(resumed);
-  resumed = resolveSpell(resumed);
-  resumed = pass(pass(resumed));
-  assert.equal(resumed.players[0].hand.length, 6);
-  assertGame(resumed);
+function legacySave(state, version = 11) {
+  const legacy = structuredClone(state); legacy.version = version;
+  for (const player of legacy.players) delete player.enhancement;
+  if (legacy.lastRoll) delete legacy.lastRoll.kind;
+  if (legacy.pendingSpell) {
+    const steps = ['defender-first', 'attacker', 'defender-final'];
+    const pending = legacy.pendingSpell;
+    for (const entry of pending.fateHistory) entry.step = steps[entry.step - 1];
+    for (const play of pending.fatePlays) play.step = steps[play.step - 1];
+    if (legacy.phase === 'fate') pending.fateStep = steps[pending.fateHistory.length];
+    delete pending.fatePasses; delete pending.legacyFateHistoryLength;
+  }
+  return legacy;
+}
 
-  const bad = structuredClone(original);
-  bad.players[0].deck[0].spellId = 'FIR-001';
-  assert.equal(migrateSavedGame(bad), null, 'retired IDs are never remapped');
-  const oversized = structuredClone(original);
-  oversized.players[0].hand.push(...oversized.players[0].deck.splice(0, 2));
+test('version 10 and 11 duels preserve exact zones, resources and a pending roll or response', () => {
+  const main = fateFixture(); main.players[0].shield = 17; main.players[1].hp = 82;
+  const rolling = cast(main, 'Fire-1');
+  const defender = roll(rolling);
+  const attacker = fate(defender, ['FAT-002']);
+  for (const version of [10, 11]) for (const current of [main, rolling, defender, attacker]) {
+    const original = legacySave(current, version), snapshot = structuredClone(original);
+    const upgraded = migrateSavedGame(original);
+    assert.ok(upgraded, `${version} ${current.phase} migrates`); assert.equal(upgraded.version, 12);
+    assert.deepEqual(upgraded.players.map(({ enhancement, ...player }) => player), original.players);
+    assert.deepEqual(upgraded.players.map(player => player.enhancement), [0, 0]);
+    assert.deepEqual(upgraded.initiative, original.initiative);
+    assert.deepEqual(original, snapshot, 'previous save remains unchanged');
+    if (original.lastRoll) assert.deepEqual(upgraded.lastRoll, { ...original.lastRoll, kind: 'spell' });
+    if (original.pendingSpell) {
+      assert.equal(upgraded.pendingSpell.loadedBonus, original.pendingSpell.loadedBonus);
+      assert.equal(upgraded.pendingSpell.emberSpent, original.pendingSpell.emberSpent);
+      assert.equal(upgraded.pendingSpell.fatePlays.length, original.pendingSpell.fatePlays.length);
+    }
+    assertGame(upgraded);
+    let resumed = complete(upgraded);
+    resumed = pass(pass(resumed));
+    assert.equal(resumed.players[0].hand.length, 6); assertGame(resumed);
+  }
+  const bad = legacySave(main); bad.players[0].deck[0].spellId = 'FIR-001';
+  assert.equal(migrateSavedGame(bad), null);
+  const oversized = legacySave(main, 10); oversized.players[0].hand.push(...oversized.players[0].deck.splice(0, 2));
   assert.equal(migrateSavedGame(oversized), null, 'version 10 never allowed six-card hands');
+});
+
+test('old finite Fate resolution resumes the chain without replaying paid effects', () => {
+  let state = fate(roll(cast(fateFixture(), 'Fire-1')), ['FAT-002']);
+  state = skipFate(state);
+  const legacy = legacySave(state);
+  // In v11, defender cast + attacker pass ended the fixed response sequence.
+  legacy.phase = 'resolving'; legacy.fatePlayer = null; legacy.pendingSpell.fateStep = 'complete';
+  const original = structuredClone(legacy), upgraded = migrateSavedGame(legacy);
+  assert.ok(upgraded); assert.equal(upgraded.phase, 'fate'); assert.equal(upgraded.fatePlayer, 1);
+  assert.equal(upgraded.pendingSpell.fatePasses, 1);
+  assert.deepEqual(upgraded.players.map(({ enhancement, ...player }) => player), original.players);
+  assert.deepEqual(upgraded.lastRoll, { ...original.lastRoll, kind: 'spell' }); assertGame(upgraded);
+  const resolved = complete(upgraded);
+  assert.equal(resolved.players[0].discard.filter(card => card.spellId === 'Fire-1').length, 1);
+  assert.equal(resolved.players[1].discard.filter(card => card.spellId === 'FAT-002').length, 1);
+  assert.equal(resolved.players[1].hp, 94); assertGame(resolved);
 });
 
 test('legal simulated duels preserve exact cards and valid states through repeated combat and refresh', () => {
@@ -473,4 +522,157 @@ test('legal simulated duels preserve exact cards and valid states through repeat
       }
     }
   }
+});
+
+test('Enhancement succeeds on raw 6, fails on raw 5, and uses the primary action either way', () => {
+  assert.deepEqual([MAX_ENHANCEMENT, ENHANCEMENT_STEP, ENHANCEMENT_THRESHOLD], [30, 10, 6]);
+  for (const [dice, expected] of [[[2, 3], 0], [[3, 3], 10], [[6, 6], 10]]) {
+    const initial = fateFixture(); initial.players[0].mana = 0; initial.players[0].loaded = 4;
+    initial.players[0].loadedPending = 2; initial.players[0].element = 3;
+    const snapshot = structuredClone(initial);
+    let state = activateEnhancement(initial);
+    assert.deepEqual([state.phase, state.primaryUsed, state.lastRoll, state.pendingSpell], ['enhancing', true, null, null]);
+    assert.equal(canEnhance(state), false); assertGame(state);
+    for (const action of [activateEnhancement, endTurn, castSelected, skipFate, resolveSpell, rollDice]) assert.equal(action(state), state);
+    let index = 0;
+    state = rollEnhancement(state, () => (dice[index++] - 1) / 6);
+    assert.deepEqual([state.phase, state.primaryUsed, state.players[0].enhancement], ['main', true, expected]);
+    assert.deepEqual([state.lastRoll.kind, state.lastRoll.dice, state.lastRoll.rawTotal, state.lastRoll.total, state.lastRoll.success], ['enhancement', dice, dice[0] + dice[1], dice[0] + dice[1], expected > 0]);
+    assert.deepEqual([state.lastRoll.loadedBonus, state.lastRoll.attackingFate, state.lastRoll.defendingFate], [0, 0, 0]);
+    assert.deepEqual([state.players[0].mana, state.players[0].element, state.players[0].loaded, state.players[0].loadedPending], [0, 3, 4, 2]);
+    assert.deepEqual(state.players[0].hand, initial.players[0].hand); assert.deepEqual(state.players[1], initial.players[1]);
+    assert.deepEqual(initial, snapshot, 'activation and roll leave input untouched');
+    assert.equal(canEnhance(state), false); assert.equal(activateEnhancement(state), state);
+    const selected = selectCard(state, state.players[0].hand.find(card => card.category !== 'Fate').id);
+    assert.equal(canCastSelected(selected), false); assert.equal(castSelected(selected), selected);
+    const ending = endTurn(state);
+    assert.equal(ending.players[0].loaded, 0, 'unused Loaded still expires normally when ending the turn');
+    assert.equal(ending.players[0].loadedPending, 2); assertGame(ending);
+  }
+});
+
+test('Enhancement is once per own turn, persists through turns, caps at 30 and resets for a new duel', () => {
+  let state = fresh();
+  assert.equal(canEnhance(state, 1), false); assert.equal(canEnhance(state, 0), true);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    state = rollEnhancement(activateEnhancement(state), () => .5);
+    assert.equal(state.players[0].enhancement, attempt * 10); assert.equal(state.players[1].enhancement, 0);
+    assert.equal(canEnhance(state), false); assertGame(state);
+    state = pass(state);
+    assert.equal(canEnhance(state, 0), false);
+    state = pass(state); assert.equal(state.players[0].enhancement, attempt * 10);
+  }
+  assert.equal(state.primaryUsed, false); assert.equal(canEnhance(state), false);
+  assert.equal(activateEnhancement(state), state, 'at the cap the action remains available for a primary spell');
+  const primary = state.players[0].hand.find(card => card.category !== 'Fate' && card.manaCost <= state.players[0].mana);
+  assert.equal(canCastSelected(selectCard(state, primary.id)), true);
+  assert.deepEqual(fresh().players.map(player => player.enhancement), [0, 0]); assertGame(state);
+});
+
+test('Enhancement is unavailable outside the owner main action and cannot interrupt a primary spell', () => {
+  const setup = createGame();
+  const initiative = createGame(2, { fire: fixtureDeck('fire'), water: fixtureDeck('water') });
+  const initial = fateFixture(), rolling = cast(initial, 'Fire-1'), responding = roll(rolling);
+  const resolved = complete(responding), ending = endTurn(initial), refresh = beginRefresh(ending);
+  for (const state of [setup, initiative, rolling, responding, resolved, ending, refresh, applyDamage(initial, 1, 100)]) {
+    assert.equal(canEnhance(state), false); assert.equal(activateEnhancement(state), state); assertGame(state);
+  }
+  const playerTwo = pass(initial);
+  assert.equal(canEnhance(playerTwo, 0), false); assert.equal(canEnhance(playerTwo, 1), true);
+  const enhanced = rollEnhancement(activateEnhancement(playerTwo), () => .5);
+  assert.deepEqual(enhanced.players.map(player => player.enhancement), [0, 10]); assertGame(enhanced);
+});
+
+test('invalid Enhancement random samples are rejected without paying, resolving or changing dice', () => {
+  const initial = activateEnhancement(fresh());
+  for (const value of [-.1, 1, NaN, Infinity, '0']) assert.equal(rollEnhancement(initial, () => value), initial);
+  assert.equal(rollEnhancement(fresh(), () => .5).lastRoll, null);
+  assert.equal(initial.phase, 'enhancing'); assert.equal(initial.players[0].enhancement, 0); assertGame(initial);
+});
+
+test('pending and completed Enhancement save safely and malformed bonuses or outcomes are rejected', () => {
+  const pending = activateEnhancement(fresh());
+  const success = rollEnhancement(pending, () => .5);
+  const failure = rollEnhancement(pending, () => 0);
+  for (const state of [pending, success, failure, pass(success), pass(pass(success))]) {
+    assertGame(state); assert.equal(validateSavedGame(JSON.parse(JSON.stringify(state))), true);
+  }
+  for (const value of [-10, 5, 40, .1, '10', null]) {
+    const state = structuredClone(success); state.players[0].enhancement = value;
+    assert.equal(validateSavedGame(state), false);
+  }
+  const mutations = [
+    state => { state.lastRoll.success = false; },
+    state => { state.lastRoll.enhancementBefore = 30; },
+    state => { state.lastRoll.enhancementAfter = 20; },
+    state => { state.players[0].enhancement = 0; },
+    state => { state.lastRoll.loadedBonus = 2; state.lastRoll.total += 2; },
+    state => { state.lastRoll.kind = 'spell'; },
+  ];
+  for (const mutate of mutations) {
+    const state = structuredClone(success); mutate(state); assert.equal(validateSavedGame(state), false, mutate.toString());
+  }
+  const invalid = structuredClone(pending); invalid.primaryUsed = false;
+  assert.equal(validateSavedGame(invalid), false);
+});
+
+test('legacy Fate batches remain paid once while all newly added chain links are individual cards', () => {
+  let state = roll(cast(fateFixture(), 'Fire-1'));
+  // Build the equivalent legal v11 batch: two Misfortunes were committed in the first response.
+  const legacy = legacySave(state), player = legacy.players[1], pending = legacy.pendingSpell;
+  const cards = player.hand.filter(card => card.spellId === 'FAT-002');
+  player.hand = player.hand.filter(card => !cards.includes(card)); player.discard.push(...cards);
+  pending.defendingFate = -8; pending.defendingFateCardIds = cards.map(card => card.id);
+  pending.fatePlays = cards.map(card => ({ cardId: card.id, spellId: card.spellId, playerIndex: 1, modifier: -4, step: 'defender-first' }));
+  pending.fateHistory = [{ step: 'defender-first', playerIndex: 1, action: 'cast', cardIds: cards.map(card => card.id) }];
+  pending.fateStep = 'attacker'; legacy.fatePlayer = 0;
+  legacy.lastRoll.defendingFate = -8; legacy.lastRoll.total -= 8;
+  const snapshot = structuredClone(legacy);
+  state = migrateSavedGame(legacy);
+  assert.ok(state); assert.equal(state.pendingSpell.legacyFateHistoryLength, 1);
+  assert.deepEqual(state.players[1].discard, cards); assertGame(state);
+  state = fate(state, ['FAT-001']);
+  assert.equal(state.pendingSpell.fateHistory[1].cardIds.length, 1);
+  assert.equal(state.lastRoll.defendingFate, -8);
+  assert.deepEqual(legacy, snapshot); assertGame(state);
+  const resolved = complete(state);
+  assert.equal(resolved.players[1].discard.length, 2);
+  assert.equal(resolved.players[0].discard.length, 2); assertGame(resolved);
+});
+
+test('legacy final-defender windows reopen attacker priority and preserve every paid Fate', () => {
+  const first = fate(roll(cast(fateFixture(), 'Fire-1')), ['FAT-002']);
+  const finalWindow = fate(first, ['FAT-001']);
+  for (const respond of [state => state, skipFate, state => fate(state, ['FAT-002'])]) {
+    const current = respond(finalWindow), original = legacySave(current);
+    if (current !== finalWindow) {
+      original.phase = 'resolving'; original.fatePlayer = null; original.pendingSpell.fateStep = 'complete';
+    }
+    const snapshot = structuredClone(original), upgraded = migrateSavedGame(original);
+    assert.ok(upgraded); assertGame(upgraded);
+    assert.deepEqual(upgraded.players.map(({ enhancement, ...player }) => player), original.players);
+    assert.deepEqual(upgraded.lastRoll, { ...original.lastRoll, kind: 'spell' });
+    assert.equal(upgraded.pendingSpell.fatePlays.length, original.pendingSpell.fatePlays.length);
+    assert.equal(upgraded.fatePlayer, current === finalWindow ? 1 : 0);
+    assert.equal(upgraded.pendingSpell.fateHistory.length, original.pendingSpell.fateHistory.length);
+    assert.deepEqual(original, snapshot);
+    const resolved = complete(upgraded);
+    assert.equal(resolved.players[0].discard.filter(card => card.spellId === 'Fire-1').length, 1);
+    assertGame(resolved);
+  }
+});
+
+test('migration rejects corrupt legacy phase, sequence and unsupported Enhancement phases', () => {
+  const old = legacySave(roll(cast(fateFixture(), 'Fire-1')));
+  const mutations = [
+    state => { state.pendingSpell.fateStep = 'attacker'; },
+    state => { state.fatePlayer = 0; },
+    state => { state.phase = 'resolving'; state.fatePlayer = null; state.pendingSpell.fateStep = 'complete'; },
+    state => { state.pendingSpell.fateHistory = [{ step: 'attacker', playerIndex: 1, action: 'skip', cardIds: [] }]; },
+  ];
+  for (const mutate of mutations) {
+    const state = structuredClone(old); mutate(state); assert.equal(migrateSavedGame(state), null, mutate.toString());
+  }
+  const impossible = legacySave(activateEnhancement(fresh()));
+  assert.equal(migrateSavedGame(impossible), null);
 });

@@ -120,7 +120,7 @@ test('server controls roles, selections, Fate, secure dice totals, one primary a
   const fortune = (await api.get(host)).state.players[0].hand.find(card => card.spellId === 'FAT-001');
   await api.action(host, 'selectCard', { cardId: fortune.id });
   result = await api.action(host, 'castFate');
-  assert.equal(result.status, 200); assert.equal(result.data.state.fatePlayer, 1, 'caster Fate gives defender a final response');
+  assert.equal(result.status, 200); assert.equal(result.data.state.fatePlayer, 1, 'every caster Fate gives the defender another response');
   assert.equal(result.data.state.lastRoll.total, 8);
   await api.action(guest, 'selectCard', { cardId: twist.id });
   assert.equal((await api.action(guest, 'castFate', { twistDirections: { [twist.id]: 4 } })).status, 400);
@@ -144,6 +144,152 @@ test('server controls roles, selections, Fate, secure dice totals, one primary a
   const refreshedGuest = await api.get(guest);
   assert.equal(refreshedGuest.state.players[0].hand.length, 0);
   assert.equal((await api.action(guest, 'endTurn')).status, 200, 'opponent can act on their new turn');
+});
+
+test('Fate alternates after every single slab beyond three windows and skips exhausted hands privately', async t => {
+  const api = await service(t, { createMatch: decks => {
+    const state = fixtureMatch(decks);
+    arrangeHand(state, 0, ['Fire-4', 'FAT-001', 'FAT-001', 'FAT-003', 'Fire-1']);
+    arrangeHand(state, 1, ['FAT-002', 'FAT-002', 'FAT-003', 'Water-1', 'Water-2']);
+    return state;
+  } });
+  const host = await api.create(), guest = await api.join(host);
+  const primary = (await api.get(host)).state.players[0].hand.find(card => card.spellId === 'Fire-4');
+  await api.action(host, 'selectCard', { cardId: primary.id });
+  let result = await api.action(host, 'castSpell');
+  assert.equal(result.data.state.fatePlayer, 1);
+  const links = [
+    [guest, 'FAT-002', undefined, 4],
+    [host, 'FAT-001', undefined, 8],
+    [guest, 'FAT-003', -2, 6],
+    [host, 'FAT-001', undefined, 10],
+    [guest, 'FAT-002', undefined, 6],
+    [host, 'FAT-003', 2, 8],
+  ];
+  for (const [index, [player, spellId, direction, total]] of links.entries()) {
+    const view = await api.get(player);
+    assert.equal(view.state.fatePlayer, player.playerIndex, `link ${index + 1} belongs to the responding player`);
+    const own = view.state.players[player.playerIndex];
+    const card = own.hand.find(card => card.spellId === spellId);
+    assert.ok(card);
+    await api.action(player, 'selectCard', { cardId: card.id });
+    result = await api.action(player, 'castFate', direction === undefined ? {} : { twistDirections: { [card.id]: direction } });
+    assert.equal(result.status, 200);
+    assert.equal(result.data.state.players[player.playerIndex].handCount, own.handCount - (index === 5 ? 2 : 1), 'one Fate is spent per link; final resolution also discards the pending primary');
+    assert.equal(result.data.state.lastRoll.total, total);
+    assert.deepEqual(result.data.state.lastRoll.dice, [4, 4]);
+    assert.equal(result.data.state.players[1 - player.playerIndex].hand.length, 0, 'opposing hand remains hidden');
+    if (index < 5) assert.equal(result.data.state.phase, 'fate');
+  }
+  assert.equal(result.data.state.phase, 'main', 'two automatic passes finish after both eligible hands are exhausted');
+  assert.equal(result.data.state.players[1].hp, 95);
+  assert.equal(result.data.state.primaryUsed, true);
+});
+
+test('passing does not lock out a later Fate response and two voluntary passes resolve with cards remaining', async t => {
+  const api = await service(t, { createMatch: decks => {
+    const state = fixtureMatch(decks);
+    arrangeHand(state, 0, ['Fire-4', 'FAT-001', 'FAT-003', 'Fire-1', 'Fire-2']);
+    return state;
+  } });
+  const host = await api.create(), guest = await api.join(host);
+  const primary = (await api.get(host)).state.players[0].hand.find(card => card.spellId === 'Fire-4');
+  await api.action(host, 'selectCard', { cardId: primary.id }); await api.action(host, 'castSpell');
+  let result = await api.action(guest, 'skipFate'); assert.equal(result.data.state.fatePlayer, 0);
+  const fortune = (await api.get(host)).state.players[0].hand.find(card => card.spellId === 'FAT-001');
+  await api.action(host, 'selectCard', { cardId: fortune.id });
+  result = await api.action(host, 'castFate'); assert.equal(result.data.state.fatePlayer, 1);
+  const misfortune = (await api.get(guest)).state.players[1].hand.find(card => card.spellId === 'FAT-002');
+  await api.action(guest, 'selectCard', { cardId: misfortune.id });
+  result = await api.action(guest, 'castFate'); assert.equal(result.status, 200, 'initial pass still permits this later response');
+  result = await api.action(host, 'skipFate'); assert.equal(result.data.state.phase, 'fate');
+  assert.equal(result.data.state.fatePlayer, 1);
+  result = await api.action(guest, 'skipFate'); assert.equal(result.data.state.phase, 'main');
+  const fire = await api.get(host), water = await api.get(guest);
+  assert.ok(fire.state.players[0].hand.some(card => card.spellId === 'FAT-003'));
+  assert.ok(water.state.players[1].hand.some(card => card.spellId === 'FAT-003'));
+  assert.equal(result.data.state.lastRoll.total, 8);
+  assert.equal(result.data.state.players[1].hp, 95);
+});
+
+test('Enhancement rolls are server-controlled at six, consume one primary action and cannot duplicate on retry', async t => {
+  let samples = 0;
+  const api = await service(t, { rollRandom: () => { samples += 1; return 2.5 / 6; }, createMatch: decks => {
+    const state = fixtureMatch(decks); state.players[0].loaded = 4; return state;
+  } });
+  const host = await api.create(), guest = await api.join(host);
+  assert.equal((await api.action(guest, 'enhance')).status, 403);
+  assert.equal((await api.action(host, 'enhance', { dice: [6, 6] })).status, 400);
+  assert.equal((await api.action(host, 'enhance', { enhancement: 30 })).status, 400);
+  assert.equal(samples, 0);
+  const before = await api.get(host);
+  const request = { type: 'enhance', payload: {}, revision: before.revision, requestId: 'enhance-once' };
+  const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: request });
+  const result = await send(); assert.equal(result.status, 200);
+  const state = result.data.state;
+  assert.deepEqual([state.phase, state.primaryUsed, state.players[0].enhancement, state.players[0].mana, state.players[0].loaded, state.players[0].element], ['main', true, 10, 3, 4, 0]);
+  assert.deepEqual(state.lastRoll.dice, [3, 3]); assert.equal(state.lastRoll.kind, 'enhancement');
+  assert.equal(state.lastRoll.total, 6); assert.equal(state.lastRoll.loadedBonus, 0);
+  assert.equal(state.lastRoll.success, true); assert.equal(state.pendingSpell, null);
+  assert.equal(state.players[0].handCount, 5);
+  const duplicate = await send(); assert.equal(duplicate.status, 200);
+  assert.equal(duplicate.data.revision, result.data.revision); assert.equal(samples, 2, 'the retry does not roll again');
+  assert.equal((await api.action(host, 'enhance')).status, 422, 'a second attempt is unavailable this turn');
+  const primary = state.players[0].hand.find(card => card.spellId === 'Fire-1');
+  await api.action(host, 'selectCard', { cardId: primary.id });
+  assert.equal((await api.action(host, 'castSpell')).status, 422, 'Enhancement replaces the primary spell');
+  const visible = await api.get(guest);
+  assert.equal(visible.state.players[0].enhancement, 10); assert.equal(visible.state.players[0].hand.length, 0);
+  await api.action(host, 'endTurn'); await api.action(host, 'endTurn');
+  const next = await api.get(guest);
+  assert.equal(next.state.players[0].enhancement, 10, 'the earned bonus persists after passing');
+  assert.equal(next.state.players[0].loaded, 0, 'normal end-of-turn Loaded expiry is unchanged');
+});
+
+test('failed Enhancement still spends the turn action and the thirty-percent cap rejects further attempts', async t => {
+  const values = [1.5 / 6, 2.5 / 6];
+  const api = await service(t, { rollRandom: () => values.shift() });
+  const host = await api.create(), guest = await api.join(host);
+  let result = await api.action(host, 'enhance'); assert.equal(result.status, 200);
+  assert.deepEqual(result.data.state.lastRoll.dice, [2, 3]); assert.equal(result.data.state.lastRoll.success, false);
+  assert.deepEqual([result.data.state.players[0].enhancement, result.data.state.primaryUsed, result.data.state.players[0].mana], [0, true, 3]);
+  assert.equal((await api.action(host, 'enhance')).status, 422);
+  const capApi = await service(t, { rollRandom: () => 2.5 / 6, createMatch: decks => {
+    const state = fixtureMatch(decks); state.players[0].enhancement = 20; return state;
+  } });
+  const capHost = await capApi.create(), capGuest = await capApi.join(capHost);
+  result = await capApi.action(capHost, 'enhance'); assert.equal(result.status, 200);
+  assert.equal(result.data.state.players[0].enhancement, 30);
+  await capApi.action(capHost, 'endTurn'); await capApi.action(capHost, 'endTurn');
+  await capApi.action(capGuest, 'endTurn'); await capApi.action(capGuest, 'endTurn');
+  result = await capApi.action(capHost, 'enhance'); assert.equal(result.status, 422);
+  const capped = (await capApi.get(capHost)).state;
+  assert.equal(capped.players[0].enhancement, 30); assert.equal(capped.primaryUsed, false, 'being capped does not spend a new turn action');
+  assert.equal(capped.players[0].mana, 5);
+});
+
+test('the server applies persistent damage Enhancement with one rounding step before Shield', async t => {
+  const api = await service(t, { createMatch: decks => {
+    const state = fixtureMatch(decks);
+    arrangeHand(state, 0, ['Fire-4', 'Fire-1', 'Fire-2', 'Fire-3', 'Fire-5']);
+    arrangeHand(state, 1, ['Water-1', 'Water-2', 'Water-3', 'Water-4', 'Water-5']);
+    state.players[0].enhancement = 10;
+    state.players[1].shield = 2;
+    return state;
+  } });
+  const host = await api.create(), guest = await api.join(host);
+  const primary = (await api.get(host)).state.players[0].hand.find(card => card.spellId === 'Fire-4');
+  await api.action(host, 'selectCard', { cardId: primary.id });
+  const result = await api.action(host, 'castSpell'); assert.equal(result.status, 200);
+  const state = result.data.state;
+  assert.equal(state.phase, 'main', 'empty Fate windows resolve automatically');
+  assert.deepEqual([state.players[1].shield, state.players[1].hp], [0, 96], '5 base × 110% rounds to 6; two Shield absorbs two, leaving four HP damage');
+  assert.equal(state.players[0].enhancement, 10, 'casting does not consume the passive bonus');
+  assert.equal(state.players[0].mana, 1);
+  assert.ok(state.log.some(entry => entry.type === 'damage' && /10%/.test(entry.message)), 'the public log explains the damage percentage calculation');
+  const other = await api.get(guest);
+  assert.equal(other.state.players[1].hp, 96);
+  assert.equal(other.state.players[0].hand.length, 0);
 });
 
 test('stale and repeated network requests cannot duplicate moves or apply client-supplied state', async t => {

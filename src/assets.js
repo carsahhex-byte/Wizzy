@@ -21,6 +21,7 @@ export const ASSET_FILES = Object.freeze({
   cast: 'Cast Spell Button.png',
   skipFate: 'Skip Fate.png',
   castFate: 'Cast Fate Button.png',
+  enhanceButtons: 'Wizzy Enhancement Buttons.png',
   endTurn: 'End Turn Button.png',
   refresh: 'Hand Refresh Button.png',
   combatLog: 'View Combat Log Button.png',
@@ -127,6 +128,9 @@ export const ASSET_CROPS = Object.freeze({
   cast: { width: 2172, height: 724, x: 83, y: 51, w: 2004, h: 632 },
   skipFate: { width: 2172, height: 724, x: 81, y: 49, w: 2008, h: 633 },
   castFate: { width: 2172, height: 724, x: 82, y: 49, w: 2008, h: 629 },
+  // Exclude the atlas gap and near-invisible transparent export residue.
+  enhanceFire: { width: 1254, height: 1254, x: 56, y: 177, w: 1142, h: 407 },
+  enhanceWater: { width: 1254, height: 1254, x: 56, y: 735, w: 1143, h: 406 },
   endTurn: { width: 2172, height: 724, x: 81, y: 51, w: 2008, h: 624 },
   refresh: { width: 2172, height: 724, x: 80, y: 51, w: 2009, h: 624 },
   combatLog: { width: 2172, height: 724, x: 83, y: 151, w: 2006, h: 414 },
