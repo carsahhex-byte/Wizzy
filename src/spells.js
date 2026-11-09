@@ -21,7 +21,7 @@ const fire = [
   [8, 2, 'Deal 10 damage and gain 1 Ember. On an 8+, deal 4 additional damage.'],
   [9, 2, 'Gain 2 Embers. On a 7+, gain 3 instead. If you have 4 or more Embers after resolution, gain 1 Mana.'],
   [10, 3, 'Gain 16 Shield and 1 Ember. On an 8+, gain 8 additional Shield.'],
-  [11, 3, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.'],
+  [11, 2, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.'],
   [12, 4, 'Deal 14 damage. You may spend up to 2 Embers to deal 8 additional damage per Ember. On a 7+, remove up to 10 Shield before dealing damage.'],
   [13, 6, 'Deal 30 damage. On a 7+, deal 38 instead. On a 10+, deal 45 instead.'],
   [14, 8, 'Spend all Embers. Deal 20 damage plus 7 per Ember spent. On an 8+, deal 9 per Ember instead.'],
