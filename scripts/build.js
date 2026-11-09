@@ -37,6 +37,7 @@ if (webOnly) {
 execFileSync(process.execPath,['scripts/package-animation-review.js','dist/previews/combat-linger-v2'],{stdio:'inherit'});
 // Idle sprites stay in a separate review gallery until they are approved for battle.
 execFileSync(process.execPath,['scripts/package-idle-review.js','dist/previews/idle-wizards'],{stdio:'inherit'});
+execFileSync(process.execPath,['scripts/package-earth-air-review.js','dist/previews/earth-air'],{stdio:'inherit'});
 await writeFile('dist/.nojekyll', '');
 
 if (webOnly) {

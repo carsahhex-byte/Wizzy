@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Wizzy · Earth & Air sprite review</title>
+  <link rel="stylesheet" href="preview.css">
+  <script defer src="manifest.js"></script>
+  <script defer src="preview.js"></script>
+</head>
+<body>
+  <main class="review-shell">
+    <header class="review-header">
+      <p class="eyebrow">WIZZY · ART & ANIMATION REVIEW</p>
+      <h1>Earth & Air</h1>
+      <p>Try each wizard on either side. This gallery is a preview; it does not change the game.</p>
+      <a class="download-link" id="download-pack" href="sprite-sheets.zip" download="wizzy-earth-air-preview.zip">Download preview pack ↓</a>
+    </header>
+
+    <section class="duel-panel" aria-labelledby="duel-heading">
+      <div class="panel-heading"><h2 id="duel-heading">Dueling preview</h2><span class="preview-tag">PREVIEW ONLY</span></div>
+      <div class="selection-controls">
+        <label>Left wizard<select id="left-element"><option value="earth">Earth</option><option value="air">Air</option><option value="fire">Fire reference</option><option value="water">Water reference</option></select></label>
+        <label>Right wizard<select id="right-element"><option value="air">Air</option><option value="earth">Earth</option><option value="fire">Fire reference</option><option value="water">Water reference</option></select></label>
+        <label>Animation<select id="animation-select"></select></label>
+        <label>Cast from<select id="caster-side"><option value="left">Left</option><option value="right">Right</option></select></label>
+      </div>
+      <div class="stage-wrap" id="stage" data-ready="false" data-phase="loading">
+        <canvas id="duel-canvas" width="1024" height="580" aria-label="Earth and Air wizard animation preview"></canvas>
+        <div class="stage-labels"><strong id="left-label">Earth</strong><span aria-hidden="true">VS</span><strong id="right-label">Air</strong></div>
+      </div>
+      <div class="playback-controls" role="group" aria-label="Preview playback">
+        <button type="button" id="play-toggle" aria-pressed="true">Pause</button>
+        <button type="button" id="restart">Restart</button>
+        <button type="button" id="swap-sides">Swap sides</button>
+        <button type="button" id="flip-facing" aria-pressed="false">Flip facing</button>
+        <label class="speed-control">Speed<select id="speed"><option value="0.25">¼×</option><option value="0.5">½×</option><option value="1" selected>1×</option><option value="1.5">1½×</option><option value="2">2×</option></select></label>
+        <label class="check-control"><input type="checkbox" id="loop" checked> Loop</label>
+        <label class="check-control"><input type="checkbox" id="show-anchors"> Show anchors</label>
+      </div>
+      <label class="timeline" for="timeline"><span>Timeline</span><input id="timeline" type="range" min="0" max="1000" value="0" step="1"><output id="time-label">0.00 / 1.00 s</output></label>
+      <p id="timing-label" class="timing-label"></p>
+      <p id="frame-info" class="frame-info" aria-live="off"></p>
+      <p id="load-status" class="load-status" role="status" aria-live="polite">Preparing the sprite sheets…</p>
+    </section>
+
+    <section class="comparison-panel" aria-labelledby="comparison-heading">
+      <div class="panel-heading"><h2 id="comparison-heading">Four-wizard comparison</h2><label>Comparison direction<select id="comparison-direction"><option value="down">Front</option><option value="left">Left</option><option value="right">Right</option><option value="up">Back</option></select></label></div>
+      <p class="section-note">The original Fire and Water walking sprites provide the size and style reference.</p>
+      <div class="comparison-grid" id="comparison-grid"></div>
+    </section>
+
+    <section class="sheets-panel" aria-labelledby="sheets-heading">
+      <div class="panel-heading"><h2 id="sheets-heading">Original sprite sheets</h2><a href="manifest.json" download>Download frame metadata</a></div>
+      <p class="section-note">Each link opens the original image. Transparent padding and source pixels remain intact.</p>
+      <div class="sheet-grid" id="sheet-grid"></div>
+    </section>
+    <footer>EARTH & AIR REVIEW · NO LIVE BATTLE INTEGRATION</footer>
+  </main>
+</body>
+</html>
