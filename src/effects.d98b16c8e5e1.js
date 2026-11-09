@@ -1,4 +1,4 @@
-import { SPELL_CATALOG } from './spells.c44ab9064f55.js';
+import { SPELL_CATALOG } from './spells.c32e89bc5577.js';
 
 export const MAX_HP = 100;
 export const MAX_MANA = 10;
@@ -154,16 +154,16 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       break;
     case 'Fire-9':
       gainElement(rollTotal >= 7 ? 3 : 2);
-      if (caster.element >= 4) gainShield(8);
+      if (caster.element >= 4) gainMana(1);
       break;
     case 'Fire-10':
       gainShield(16 + (rollTotal >= 8 ? 8 : 0));
       gainElement(1);
       break;
     case 'Fire-11':
-      damage(opponent, 8);
+      damage(opponent, 10);
       gainElement(2);
-      if (rollTotal >= 7) gainLoaded(rollTotal >= 10 ? 4 : 2);
+      if (rollTotal >= 7) gainMana(1);
       break;
     case 'Fire-12':
       if (rollTotal >= 7) removeShield(10);

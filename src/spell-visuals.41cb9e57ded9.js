@@ -1,5 +1,5 @@
-import { SPELL_CATALOG } from './spells.c44ab9064f55.js';
-import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.86e5d068531b.js';
+import { SPELL_CATALOG } from './spells.c32e89bc5577.js';
+import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.6abf2387f5c4.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
 const DAMAGING_SPELLS = new Set([
@@ -70,7 +70,10 @@ function castSpellId(entry, player) {
   const spellId = SPELL_NAMES.get(printedName);
   const visual = getSpellVisual(spellId);
   if (!visual || visual.element.toLowerCase() !== player.id) return null;
-  return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) ? spellId : null;
+  // A saved Fire-11 already committed at its former 3-Mana cost keeps that
+  // historical log/payment when resumed; its new resolution still animates.
+  const legacyFireEleven = spellId === 'Fire-11' && entry.message === `${prefix}${printedName} for 3 mana.`;
+  return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyFireEleven ? spellId : null;
 }
 
 /**
