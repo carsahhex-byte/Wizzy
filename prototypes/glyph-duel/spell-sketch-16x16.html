@@ -24,7 +24,8 @@ h1 { margin:0; color:#f0dfb2; font-size:clamp(36px,7vw,56px); line-height:1; let
 .brand-glyphs i { display:block; width:24px; height:24px; font-style:normal; }
 .glyph-circle { border:3px solid #bcba8b; border-radius:50%; }
 .glyph-square { border:3px solid #81b195; transform:rotate(10deg); }
-.brand-glyphs .glyph-star { width:30px; height:34px; font-size:35px; line-height:1; }
+.glyph-triangle { position:relative; background:var(--gold); clip-path:polygon(50% 0,100% 100%,0 100%); }
+.glyph-triangle::after { content:""; position:absolute; inset:6px 5px 3px; background:var(--bg); clip-path:polygon(50% 0,100% 100%,0 100%); }
 .panel { padding:26px; border:2px solid var(--line); background:var(--panel); box-shadow:5px 5px #0f130f; }
 .setup-panel > h2 { margin-bottom:13px; font-size:29px; line-height:1.15; color:#eee1bf; }
 .intro-copy { max-width:680px; margin:0 0 24px; color:#c3c8b9; font-size:15px; line-height:1.7; }
@@ -88,7 +89,7 @@ input[type='number'],select { width:100%; min-width:0; min-height:44px; padding:
 .shape-option { display:flex; flex-direction:column; align-items:center; min-width:0; padding:18px 10px 14px; border:2px solid #58664c; border-radius:0; background:#1a241b; color:#bdcaaa; }
 .shape-option[aria-pressed='true'] { border-color:var(--gold); background:#373421; box-shadow:inset 0 0 0 2px #967742; color:#f0d595; }
 .shape-option canvas { display:block; width:min(100%,96px); height:auto; margin-bottom:14px; image-rendering:pixelated; }
-.shape-option strong { font:700 12px 'Courier New',monospace; }
+.shape-option strong { width:100%; font:700 12px/1.4 'Courier New',monospace; overflow-wrap:anywhere; }
 #begin-cast { width:100%; }
 .board-shell { width:min(100%,480px); margin:0 auto 17px; padding:10px; border:3px solid #88764a; background:#141c16; box-shadow:4px 4px #0d140e; }
 #board { display:block; width:100%; height:auto; aspect-ratio:1; background:#ebe3ce; image-rendering:pixelated; touch-action:none; user-select:none; -webkit-user-select:none; cursor:crosshair; }
@@ -126,10 +127,58 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
 .confirm-dialog h2 { margin:8px 0 14px; color:#efdcac; font-size:26px; }
 .confirm-dialog p:not(.eyebrow) { color:#b8c3ad; font-size:14px; line-height:1.7; }
 .dialog-actions { display:flex; justify-content:flex-end; gap:11px; margin-top:21px; }
-@media (max-width:640px) { .brand-glyphs { gap:10px; }.brand-glyphs i { width:18px;height:18px; }.brand-glyphs .glyph-star { width:24px;height:27px;font-size:28px; }.panel { padding:19px; }.match-header { grid-template-columns:1fr; gap:12px; }.health-bars { gap:12px; }.round-status { flex-direction:row; justify-content:center; }.player-two { grid-column:2;grid-row:1; }.player-panel { padding:12px; }.phase-heading h2 { font-size:23px; }.status-grid { gap:15px; }.shape-options { gap:9px; }.shape-option { padding-inline:7px; }.result-boards { gap:10px; }.score-card { padding:10px; } }
-@media (max-width:380px) { body { padding-inline:12px; }.brand-header { gap:12px;padding-bottom:22px; }.brand-glyphs { gap:8px; }.brand-glyphs i { width:14px;height:14px;border-width:2px; }.brand-glyphs .glyph-star { width:18px;height:22px;font-size:23px; }h1 { font-size:36px; }.panel { padding:15px; }.setup-panel > h2 { font-size:25px; }.mode-picker { grid-template-columns:1fr; }.mode-option { padding:12px; }.settings-grid { grid-template-columns:1fr; }.settings-wide { grid-column:auto; }.player-heading { flex-direction:column; align-items:flex-start; gap:5px; }.phase-heading { gap:7px; }.phase-heading h2 { font-size:20px; }.shape-badge { font-size:9px;padding:6px; }.meter-label { flex-direction:column; align-items:flex-start; gap:4px;min-height:44px; }.budget-meter .meter-label > strong { font-size:12px; }.shape-options { gap:6px; }.shape-option strong { font-size:10px; }.board-shell { padding:6px; }.drawing-tools { gap:6px; }.drawing-tools .button { padding:10px 3px;font-size:12px; }.match-actions .button { min-width:0;flex:1;padding-inline:10px; }.result-boards { grid-template-columns:1fr; }.handoff-tile { padding:23px 15px; }.handoff-tile h3 { font-size:25px; }.handoff-tile .button { min-width:0;width:100%; } }
+/* Custom pattern library and the untimed editor stay independent of the match. */
+.custom-shapes-panel { margin-top:24px; padding-top:19px; border-top:1px dashed #596046; }
+.custom-shapes-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.custom-shapes-heading h3 { margin:0; color:#e6d6ac; font-size:19px; }
+.custom-shapes-panel > .field-note { padding:0; margin-bottom:14px; }
+.custom-shape-list { display:grid; gap:10px; max-height:380px; overflow-y:auto; overscroll-behavior:contain; padding:2px 4px 5px 0; }
+.custom-shape-empty { margin:0; padding:15px; border:1px dashed #5e694f; color:#a6b69a; font-size:12px; line-height:1.65; }
+.custom-shape-row { display:grid; grid-template-columns:56px minmax(0,1fr) auto; align-items:center; gap:12px; padding:10px; border:1px solid #5e694f; background:#1a241b; }
+.custom-shape-preview { display:block; width:56px; height:56px; image-rendering:pixelated; background:#eae3ce; }
+.custom-shape-copy { min-width:0; }
+.custom-shape-copy strong { display:block; color:#e5d9b7; font-size:14px; line-height:1.4; overflow-wrap:anywhere; }
+.custom-shape-copy small { display:block; margin-top:5px; color:#a0b293; font-size:11px; line-height:1.5; }
+.custom-shape-actions { display:flex; gap:8px; }
+.custom-shape-actions .button { min-width:58px; padding:10px; }
+.custom-shape-status,.shape-editor-status { margin:12px 0 0; color:#dbcb9e; font-size:12px; line-height:1.6; overflow-wrap:anywhere; }
+.custom-shape-status:empty { display:none; }
+.shape-library-status { margin:20px 0 0; padding:13px 15px; border:2px solid #aa8753; color:#f0d9ac; background:#382f20; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.shape-library-actions { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 15px; }
+.shape-library-actions .button { flex:1 1 150px; }
+.shape-options { max-height:400px; overflow-y:auto; overscroll-behavior:contain; padding:3px 4px 5px; }
+.shape-editor-dialog { width:min(calc(100% - 24px),580px); max-height:calc(100vh - 24px); max-height:calc(100dvh - 24px); margin:auto; padding:21px; overflow-y:auto; overscroll-behavior:contain; border:3px solid #a38a52; border-radius:0; color:var(--ink); background:#222720; box-shadow:5px 5px #0b100a; }
+.shape-editor-dialog::backdrop { background:#080d09db; }
+.shape-editor-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:13px; }
+.shape-editor-heading h2 { margin:0; color:#efdcac; font-size:26px; line-height:1.15; }
+.shape-editor-heading .eyebrow { margin-bottom:7px; }
+.editor-close { flex:0 0 auto; width:44px; height:44px; padding:0; border:2px solid #627153; color:#d9d8bd; background:#1b251d; font-size:29px; line-height:1; }
+.shape-editor-dialog .field-note { padding:0; margin:0 0 14px; color:#a5b499; }
+.shape-name-label { display:flex; flex-direction:column; gap:8px; margin:0 0 15px; color:#c3ccb6; font-size:13px; font-weight:700; }
+.shape-name-label input { width:100%; min-width:0; min-height:46px; padding:10px; border:2px solid #5a674f; border-radius:0; background:#111b15; color:#f0e2bb; font-size:16px; }
+.shape-editor-board-wrap { width:min(100%,440px); margin:0 auto 13px; padding:5px; border:2px solid #88764a; background:#141c16; }
+#shape-editor-board { display:block; width:100%; height:auto; aspect-ratio:1; background:#eae3ce; image-rendering:pixelated; cursor:crosshair; touch-action:none; user-select:none; -webkit-user-select:none; }
+#shape-editor-board:focus-visible { outline:3px solid #b9dbb7; outline-offset:3px; }
+.editor-tools { width:min(100%,440px); margin-bottom:10px; }
+.editor-tools .button { padding-inline:8px; }
+.shape-editor-count { margin:0; color:#b9c9a9; text-align:center; font:700 12px/1.6 'Courier New',monospace; }
+.shape-editor-status { min-height:20px; }
+.shape-editor-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:17px; }
+.shape-editor-actions .button { min-width:115px; }
+@media (max-width:480px) {
+ .custom-shape-row { grid-template-columns:48px minmax(0,1fr) auto; gap:9px; padding:9px; }
+ .custom-shape-preview { width:48px; height:48px; }
+ .custom-shape-actions { flex-direction:column; gap:6px; }
+ .custom-shape-actions .button { min-width:58px; min-height:44px; padding:9px; font-size:12px; }
+ .shape-editor-dialog { padding:13px; }
+ .shape-editor-heading h2 { font-size:23px; }
+ .shape-editor-actions .button { min-width:0; flex:1; padding-inline:10px; }
+}
+@media (max-width:640px) { .brand-glyphs { gap:10px; }.brand-glyphs i { width:18px;height:18px; }.glyph-triangle::after { inset:5px 4px 3px; }.panel { padding:19px; }.match-header { grid-template-columns:1fr; gap:12px; }.health-bars { gap:12px; }.round-status { flex-direction:row; justify-content:center; }.player-two { grid-column:2;grid-row:1; }.player-panel { padding:12px; }.phase-heading h2 { font-size:23px; }.status-grid { gap:15px; }.shape-options { gap:9px; }.shape-option { padding-inline:7px; }.result-boards { gap:10px; }.score-card { padding:10px; } }
+@media (max-width:380px) { body { padding-inline:12px; }.brand-header { gap:12px;padding-bottom:22px; }.brand-glyphs { gap:8px; }.brand-glyphs i { width:14px;height:14px;border-width:2px; }.glyph-triangle::after { inset:4px 3px 2px; }h1 { font-size:36px; }.panel { padding:15px; }.setup-panel > h2 { font-size:25px; }.mode-picker { grid-template-columns:1fr; }.mode-option { padding:12px; }.settings-grid { grid-template-columns:1fr; }.settings-wide { grid-column:auto; }.player-heading { flex-direction:column; align-items:flex-start; gap:5px; }.phase-heading { gap:7px; }.phase-heading h2 { font-size:20px; }.shape-badge { font-size:9px;padding:6px; }.meter-label { flex-direction:column; align-items:flex-start; gap:4px;min-height:44px; }.budget-meter .meter-label > strong { font-size:12px; }.shape-options { gap:6px; }.shape-option strong { font-size:10px; }.board-shell { padding:6px; }.drawing-tools { gap:6px; }.drawing-tools .button { padding:10px 3px;font-size:12px; }.match-actions .button { min-width:0;flex:1;padding-inline:10px; }.result-boards { grid-template-columns:1fr; }.handoff-tile { padding:23px 15px; }.handoff-tile h3 { font-size:25px; }.handoff-tile .button { min-width:0;width:100%; } }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; } }
 </style>
+  
   
   
 </head>
@@ -137,7 +186,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
   <main class="app-shell">
     <header class="brand-header">
       <div><p class="kicker">COMBAT LAB · 16 × 16</p><h1>Spell Sketch</h1><p class="tagline">remember. draw. counter.</p></div>
-      <div class="brand-glyphs" aria-hidden="true"><i class="glyph-circle"></i><i class="glyph-square"></i><i class="glyph-star">✦</i></div>
+      <div class="brand-glyphs" aria-hidden="true"><i class="glyph-circle"></i><i class="glyph-square"></i><i class="glyph-triangle"></i></div>
     </header>
 
     <section id="setup" class="panel setup-panel" aria-labelledby="setup-title">
@@ -171,6 +220,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
         <p>Both players get the same drawing window. After each has taken one attacking turn, the round ends and the window gets shorter, down to your chosen minimum.</p>
         <p>Results appear after both drawings. Erase or undo to return blocks to your pixel budget.</p>
       </div>
+      <section class="custom-shapes-panel" aria-labelledby="custom-shapes-title"><div class="custom-shapes-heading"><h3 id="custom-shapes-title">Your shapes</h3><button type="button" id="open-shape-editor" class="button button-quiet">Create shape</button></div><p class="field-note">Save your own 16 × 16 patterns to use in duels and practice.</p><div id="custom-shape-list" class="custom-shape-list"></div><p id="custom-shape-status" class="custom-shape-status" role="status"></p></section>
     </section>
 
     <section id="game" class="game-panel" aria-label="Spell Sketch match" hidden>
@@ -192,11 +242,12 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
         <p id="hint" class="hint">Pick a shape. You’ll get a moment to memorize it before the drawing timer begins.</p>
 
         <div id="spell-picker" class="spell-picker">
-          <div class="shape-options" role="group" aria-label="Choose a spell shape">
+          <div id="shape-options" class="shape-options" role="group" aria-label="Choose a spell shape">
             <button type="button" class="shape-option" data-shape="circle" aria-pressed="true" aria-label="Choose Circle"><canvas width="96" height="96" data-shape-preview="circle" aria-hidden="true"></canvas><strong>Circle</strong></button>
             <button type="button" class="shape-option" data-shape="square" aria-pressed="false" aria-label="Choose Square"><canvas width="96" height="96" data-shape-preview="square" aria-hidden="true"></canvas><strong>Square</strong></button>
-            <button type="button" class="shape-option" data-shape="star" aria-pressed="false" aria-label="Choose Star"><canvas width="96" height="96" data-shape-preview="star" aria-hidden="true"></canvas><strong>Star</strong></button>
+            <button type="button" class="shape-option" data-shape="triangle" aria-pressed="false" aria-label="Choose Triangle"><canvas width="96" height="96" data-shape-preview="triangle" aria-hidden="true"></canvas><strong>Triangle</strong></button>
           </div>
+          <div class="shape-library-actions"><button type="button" id="edit-shapes-ingame" class="button button-quiet">Create shape</button><button type="button" id="edit-selected-shape" class="button button-quiet" hidden>Edit selected shape</button></div>
           <button type="button" id="begin-cast" class="button button-primary">Memorize & draw <span aria-hidden="true">→</span></button>
         </div>
 
@@ -222,15 +273,17 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
       </div>
       <nav class="match-actions" aria-label="Match options"><button type="button" id="exit-to-setup" class="button button-quiet">Back to setup</button><button type="button" id="restart-match" class="button button-quiet">Restart match</button></nav>
     </section>
+    <p id="shape-library-status" class="shape-library-status" role="status" aria-live="polite" hidden></p>
     <p id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
     <footer>LOCAL PROTOTYPE <span aria-hidden="true">·</span> NO ACCOUNTS. JUST A LITTLE MAGIC. <span aria-hidden="true">·</span> <a href="spell-sketch.html" download="spell-sketch.html">Save offline copy</a></footer>
   </main>
 
+  <dialog id="shape-editor-dialog" class="shape-editor-dialog" aria-labelledby="shape-editor-title" aria-describedby="shape-editor-help"><section id="shape-editor" hidden><form id="shape-editor-form"><header class="shape-editor-heading"><div><p class="eyebrow">YOUR OWN MAGIC</p><h2 id="shape-editor-title">Create a shape</h2></div><button type="button" id="close-shape-editor" class="editor-close" aria-label="Cancel shape editing">×</button></header><p id="shape-editor-help" class="field-note">Draw any pattern on the 16 × 16 grid. There’s no timer or pixel limit here. Arrow keys move; Space applies your tool.</p><label class="shape-name-label" for="shape-name">Shape name<input id="shape-name" type="text" maxlength="40" autocomplete="off" value="Custom 1" required></label><div class="shape-editor-board-wrap"><canvas id="shape-editor-board" width="512" height="512" tabindex="0" aria-label="16 by 16 custom shape editor"></canvas></div><div class="drawing-tools editor-tools" role="toolbar" aria-label="Shape editor tools"><button type="button" class="button tool-button" data-editor-tool="draw" aria-pressed="true">Draw</button><button type="button" class="button tool-button" data-editor-tool="erase" aria-pressed="false">Erase</button><button type="button" id="shape-editor-undo" class="button button-quiet">Undo</button><button type="button" id="shape-editor-clear" class="button button-quiet">Clear</button></div><p id="shape-editor-count" class="shape-editor-count">0 / 256 blocks</p><p id="shape-editor-status" class="shape-editor-status" role="status" aria-live="polite"></p><div class="shape-editor-actions"><button type="button" id="cancel-shape-editor" class="button button-quiet">Cancel</button><button type="submit" id="save-shape" class="button button-primary">Create shape</button></div></form></section></dialog>
   <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message"><form method="dialog"><p class="eyebrow">ONE MOMENT</p><h2 id="confirm-title">Start fresh?</h2><p id="confirm-message">This will restart the current match.</p><div class="dialog-actions"><button class="button button-quiet" value="cancel">Cancel</button><button id="confirm-yes" class="button button-primary" value="confirm">Confirm</button></div></form></dialog>
 <script>(function (root) {
   'use strict';
 
-  const SHAPES = Object.freeze({ circle: 'Circle', square: 'Square', star: 'Five-point star' });
+  const SHAPES = Object.freeze({ circle: 'Circle', square: 'Square', triangle: 'Triangle' });
 
   function gridSize(value) {
     if (!Number.isSafeInteger(value) || value < 12 || value > 128) {
@@ -260,7 +313,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     }
   }
 
-  // Two rasterized sides of a very sharp star tip can share a one-cell stem.
+  // Two rasterized sides of a sharp polygon tip can share a one-cell stem.
   // Remove only those terminal pixels; the remaining outline stays a closed loop.
   function removeTerminalPixels(cells, size) {
     let removed;
@@ -283,7 +336,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
 
   function getPattern(shape, size = 16) {
     size = gridSize(size);
-    if (!Object.prototype.hasOwnProperty.call(SHAPES, shape)) throw new RangeError('Choose circle, square, or star.');
+    if (!Object.prototype.hasOwnProperty.call(SHAPES, shape)) throw new RangeError('Choose circle, square, or triangle.');
     const center = Math.floor(size / 2), radius = Math.floor(size / 3), cells = new Set();
     if (shape === 'circle') {
       let x = radius, y = 0, error = 1 - radius;
@@ -300,17 +353,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
       if (shape === 'square') {
         points = [[-radius, -radius], [radius, -radius], [radius, radius], [-radius, radius]];
       } else {
-        const unit = Array.from({ length: 10 }, (_, index) => {
-          const angle = -Math.PI / 2 + index * Math.PI / 5;
-          const distance = index % 2 ? .45 : 1;
-          return [Math.cos(angle) * distance, Math.sin(angle) * distance];
-        });
-        const left = Math.min(...unit.map(point => point[0])), right = Math.max(...unit.map(point => point[0]));
-        const top = Math.min(...unit.map(point => point[1])), bottom = Math.max(...unit.map(point => point[1]));
-        points = unit.map(point => [
-          -radius + (point[0] - left) / (right - left) * radius * 2,
-          -radius + (point[1] - top) / (bottom - top) * radius * 2,
-        ]);
+        points = [[0, -radius], [radius, radius], [-radius, radius]];
       }
       points = points.map(point => [Math.round(center + point[0]), Math.round(center + point[1])]);
       points.forEach((point, index) => traceLine(cells, size, point, points[(index + 1) % points.length]));
@@ -318,6 +361,28 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     }
     const sorted = Object.freeze(Array.from(cells).sort((a, b) => a - b));
     return Object.freeze({ id: shape, name: SHAPES[shape], size, cells: sorted, budget: Math.ceil(sorted.length * 115 / 100) });
+  }
+
+  /** Custom test masks may be disconnected or filled; only their data is constrained. */
+  function createPattern(definition, size = 16) {
+    size = gridSize(size);
+    if (!definition || typeof definition !== 'object' || Array.isArray(definition)) throw new TypeError('A custom pattern must be an object.');
+    if (typeof definition.id !== 'string' || !/^custom-[A-Za-z0-9_-]+$/.test(definition.id)) {
+      throw new RangeError('Custom pattern IDs must start with custom- and contain letters, numbers, underscores or hyphens.');
+    }
+    if (typeof definition.name !== 'string' || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(definition.name)) {
+      throw new RangeError('Custom pattern names must be a single line without control characters.');
+    }
+    const name = definition.name.trim();
+    if (!name.length || name.length > 40) throw new RangeError('Custom pattern names must contain 1 to 40 characters.');
+    const source = definition.cells;
+    if (source === null || source === undefined || typeof source === 'string' || typeof source[Symbol.iterator] !== 'function') {
+      throw new TypeError('Custom pattern cells must be iterable cell IDs.');
+    }
+    const cells = Object.freeze(normalizedCells(source, size, 'Custom pattern'));
+    if (!cells.length) throw new RangeError('Custom patterns need at least one cell.');
+    return Object.freeze({ id: definition.id, name, size, cells,
+      budget: Math.min(size * size, Math.ceil(cells.length * 115 / 100)), custom: true });
   }
 
   function normalizedCells(input, size, name) {
@@ -416,13 +481,249 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     return Math.max(minimum, start - (round - 1) * decrement);
   }
 
-  root.GlyphDuelRules = Object.freeze({ getPattern, scoreDrawing, resolveAttack, getDrawSeconds });
+  root.GlyphDuelRules = Object.freeze({ getPattern, createPattern, scoreDrawing, resolveAttack, getDrawSeconds });
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
-<script>/* Standalone local experiment. No Wizzy imports, accounts, storage or requests. */
+<script>(function (root) {
+  'use strict';
+  const R = root.GlyphDuelRules, SIZE = 16, MAX_SHAPES = 50;
+  const STORAGE_KEY = 'spell-sketch.custom-shapes.v1';
+  const $ = id => document.getElementById(id);
+  const dialog = $('shape-editor-dialog'), editor = $('shape-editor'), board = $('shape-editor-board');
+  const subscribers = new Set(), sessionEdits = new Map();
+  let patterns = [], persistentNotice = '', editingId = null, cells = new Set(), history = [];
+  let tool = 'draw', stroke = null, cursor = { x: 7, y: 7 }, renderRequest = 0;
+
+  function decodeStore(text) {
+    if (!text) return { patterns: [], ignored: false, overflow: false };
+    if (text.length > 1000000) throw new Error('Saved shape data is larger than this editor supports.');
+    const value = JSON.parse(text), records = Array.isArray(value) ? value : value?.version === 1 ? value.patterns : null;
+    if (!Array.isArray(records)) throw new Error('Saved shape data could not be read.');
+    const found = new Map(); let ignored = false, overflow = false;
+    for (const entry of records) {
+      try {
+        if (!entry || entry.size !== undefined && entry.size !== SIZE || !Array.isArray(entry.cells)) throw new Error('Invalid saved shape.');
+        const pattern = R.createPattern(entry, SIZE);
+        if (found.has(pattern.id)) { ignored = true; continue; }
+        if (found.size >= MAX_SHAPES) { overflow = true; continue; }
+        found.set(pattern.id, pattern);
+      } catch { ignored = true; }
+    }
+    return { patterns: [...found.values()], ignored, overflow };
+  }
+
+  function paintMask(canvas, mask, grid = false) {
+    const rect = canvas.getBoundingClientRect(), side = rect.width || (grid ? 400 : 64);
+    const ratio = grid ? Math.max(1, root.devicePixelRatio || 1) : 1;
+    const pixels = Math.max(16, Math.round(side * ratio));
+    if (canvas.width !== pixels || canvas.height !== pixels) { canvas.width = pixels; canvas.height = pixels; }
+    const ctx = canvas.getContext('2d'); ctx.setTransform(ratio, 0, 0, ratio, 0, 0); ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#eae3ce'; ctx.fillRect(0, 0, side, side);
+    const step = side / SIZE;
+    ctx.fillStyle = '#294a35';
+    for (const id of mask) ctx.fillRect((id % SIZE) * step, Math.floor(id / SIZE) * step, step, step);
+    if (grid) {
+      ctx.strokeStyle = '#aeb6a0'; ctx.lineWidth = 1;
+      for (let i = 0; i <= SIZE; i++) {
+        const p = Math.round(i * step) + .5;
+        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, side); ctx.moveTo(0, p); ctx.lineTo(side, p); ctx.stroke();
+      }
+      if (document.activeElement === board) { ctx.strokeStyle = '#b37e23'; ctx.lineWidth = 3; ctx.strokeRect(cursor.x * step + 2, cursor.y * step + 2, step - 4, step - 4); }
+    }
+  }
+
+  function showNotice(text = '') {
+    $('custom-shape-status').textContent = text;
+    const global = $('shape-library-status'); global.textContent = persistentNotice; global.hidden = !persistentNotice;
+  }
+
+  function renderSavedList() {
+    const list = $('custom-shape-list'); list.replaceChildren();
+    if (!patterns.length) {
+      const empty = document.createElement('p'); empty.className = 'custom-shape-empty';
+      empty.textContent = 'No custom shapes yet. Create one to add it to the spell picker.'; list.append(empty);
+    }
+    for (const pattern of patterns) {
+      const row = document.createElement('article'); row.className = 'custom-shape-row'; row.dataset.customShape = pattern.id;
+      const preview = document.createElement('canvas'); preview.width = 64; preview.height = 64; preview.className = 'custom-shape-preview'; preview.setAttribute('aria-hidden', 'true');
+      const name = document.createElement('strong'); name.className = 'custom-shape-name'; name.textContent = pattern.name;
+      const meta = document.createElement('small'); meta.textContent = `${pattern.cells.length} blocks · 16 × 16`;
+      const label = document.createElement('div'); label.className = 'custom-shape-copy'; label.append(name, meta);
+      const actions = document.createElement('div'); actions.className = 'custom-shape-actions';
+      for (const action of ['edit', 'delete']) {
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'button button-quiet';
+        button.textContent = action === 'edit' ? 'Edit' : 'Delete'; button.dataset.customAction = action; button.dataset.customId = pattern.id;
+        button.setAttribute('aria-label', `${action === 'edit' ? 'Edit' : 'Delete'} ${pattern.name}`); actions.append(button);
+      }
+      row.append(preview, label, actions); list.append(row); paintMask(preview, pattern.cells);
+    }
+  }
+
+  function notify(event) {
+    renderSavedList();
+    for (const callback of [...subscribers]) { try { callback(Object.freeze({ ...event })); } catch {} }
+  }
+
+  function readInitialStore() {
+    try {
+      const stored = decodeStore(root.localStorage.getItem(STORAGE_KEY)); patterns = stored.patterns;
+      if (stored.overflow) persistentNotice = 'Only the first 50 valid saved shapes are shown. Existing storage has not been changed.';
+      else if (stored.ignored) persistentNotice = 'Some saved shape entries could not be read. Valid shapes are available; existing storage has not been changed.';
+    } catch { persistentNotice = 'Saved shapes could not be read. You can still create shapes for this tab; existing storage has not been changed.'; }
+  }
+
+  function persistEdits() {
+    try {
+      const stored = decodeStore(root.localStorage.getItem(STORAGE_KEY));
+      if (stored.overflow) throw new Error('The stored library exceeds 50 shapes.');
+      const merged = new Map(stored.patterns.map(pattern => [pattern.id, pattern]));
+      for (const [id, pattern] of sessionEdits) { if (pattern) merged.set(id, pattern); else merged.delete(id); }
+      if (merged.size > MAX_SHAPES) throw new Error('The stored library is full.');
+      const next = [...merged.values()];
+      root.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, patterns: next }));
+      patterns = next; sessionEdits.clear(); persistentNotice = ''; return true;
+    } catch {
+      persistentNotice = 'Shape changes are kept for this tab only. Browser storage is unavailable or full; keep this tab open to use them.';
+      return false;
+    }
+  }
+
+  function allowed() {
+    return !$('setup').hidden || !$('game').hidden && $('game').dataset.phase === 'choose';
+  }
+
+  function updateEditor() {
+    if (!dialog.open || editor.hidden) return;
+    paintMask(board, cells, true);
+    $('shape-editor-count').textContent = `${cells.size} / 256 blocks`;
+    $('shape-editor-undo').disabled = history.length === 0;
+    $('shape-editor-clear').disabled = cells.size === 0;
+    board.setAttribute('aria-label', `16 by 16 custom shape editor. Row ${cursor.y + 1}, column ${cursor.x + 1}. ${tool === 'draw' ? 'Draw' : 'Erase'} tool. ${cells.size} blocks.`);
+    for (const button of document.querySelectorAll('[data-editor-tool]')) button.setAttribute('aria-pressed', String(button.dataset.editorTool === tool));
+  }
+
+  function finishStroke() {
+    if (!stroke) return;
+    const previous = stroke; stroke = null;
+    if (board.hasPointerCapture?.(previous.pointerId)) board.releasePointerCapture(previous.pointerId);
+    if (previous.changed) { history.push(previous.before); if (history.length > 100) history.shift(); }
+    updateEditor();
+  }
+
+  function open(id) {
+    if (!allowed() || dialog.open) return false;
+    const existing = id === undefined || id === null ? null : patterns.find(pattern => pattern.id === id);
+    if (id !== undefined && id !== null && !existing) { showNotice('That saved shape is no longer available.'); return false; }
+    editingId = existing?.id || null; cells = new Set(existing?.cells || []); history = []; tool = 'draw'; stroke = null;
+    cursor = { x: 7, y: 7 }; $('shape-name').value = existing?.name || `Custom ${patterns.length + 1}`;
+    $('shape-editor-title').textContent = existing ? 'Edit your shape' : 'Create a shape';
+    $('save-shape').textContent = existing ? 'Save changes' : 'Create shape';
+    $('shape-editor-status').textContent = persistentNotice || 'Draw at least one block, then save your pattern.';
+    editor.hidden = false; dialog.showModal();
+    root.requestAnimationFrame(() => { updateEditor(); board.focus({ preventScroll: true }); });
+    return true;
+  }
+
+  function close() { finishStroke(); if (dialog.open) dialog.close(); editor.hidden = true; }
+  function cellAt(event) {
+    const rect = board.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX >= rect.right || event.clientY < rect.top || event.clientY >= rect.bottom) return null;
+    return { x: Math.min(15, Math.floor((event.clientX - rect.left) / rect.width * SIZE)), y: Math.min(15, Math.floor((event.clientY - rect.top) / rect.height * SIZE)) };
+  }
+  function mark(point) {
+    const id = point.y * SIZE + point.x;
+    const changed = tool === 'draw' ? !cells.has(id) : cells.has(id);
+    if (tool === 'draw') cells.add(id); else cells.delete(id);
+    if (stroke) stroke.changed ||= changed;
+    cursor = point;
+  }
+  function line(from, to) {
+    let x = from.x, y = from.y; const dx = Math.abs(to.x - x), sx = x < to.x ? 1 : -1;
+    const dy = -Math.abs(to.y - y), sy = y < to.y ? 1 : -1; let error = dx + dy;
+    while (true) { mark({ x, y }); if (x === to.x && y === to.y) break; const doubled = 2 * error; if (doubled >= dy) { error += dy; x += sx; } if (doubled <= dx) { error += dx; y += sy; } }
+  }
+
+  board.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || event.isPrimary === false || stroke || !dialog.open) return;
+    const point = cellAt(event); if (!point) return;
+    event.preventDefault(); board.focus({ preventScroll: true });
+    stroke = { pointerId: event.pointerId, before: [...cells], last: point, changed: false };
+    board.setPointerCapture(event.pointerId); mark(point); updateEditor();
+  });
+  board.addEventListener('pointermove', event => {
+    if (!stroke || event.pointerId !== stroke.pointerId) return;
+    event.preventDefault(); const point = cellAt(event);
+    if (!point) { stroke.last = null; return; }
+    if (stroke.last) line(stroke.last, point); else mark(point);
+    stroke.last = point; updateEditor();
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) board.addEventListener(type, event => { if (stroke?.pointerId === event.pointerId) finishStroke(); });
+  board.addEventListener('keydown', event => {
+    if (!dialog.open) return;
+    const moves = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (moves[event.key]) {
+      event.preventDefault(); const [x, y] = moves[event.key]; cursor = { x: Math.max(0, Math.min(15, cursor.x + x)), y: Math.max(0, Math.min(15, cursor.y + y)) }; updateEditor();
+    } else if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault(); const before = [...cells]; const had = cells.has(cursor.y * SIZE + cursor.x); mark(cursor);
+      if (had !== cells.has(cursor.y * SIZE + cursor.x)) { history.push(before); if (history.length > 100) history.shift(); } updateEditor();
+    }
+  });
+  for (const event of ['focus', 'blur']) board.addEventListener(event, updateEditor);
+  for (const button of document.querySelectorAll('[data-editor-tool]')) button.addEventListener('click', () => { finishStroke(); tool = button.dataset.editorTool; updateEditor(); });
+  $('shape-editor-undo').addEventListener('click', () => { finishStroke(); if (history.length) cells = new Set(history.pop()); updateEditor(); });
+  $('shape-editor-clear').addEventListener('click', () => { finishStroke(); if (cells.size) { history.push([...cells]); cells.clear(); } updateEditor(); });
+  for (const id of ['close-shape-editor', 'cancel-shape-editor']) $(id).addEventListener('click', close);
+  dialog.addEventListener('close', () => { finishStroke(); editor.hidden = true; });
+  dialog.addEventListener('cancel', () => { finishStroke(); editor.hidden = true; });
+  $('shape-editor-form').addEventListener('submit', event => {
+    event.preventDefault(); if (!dialog.open || editor.hidden || !allowed()) return; finishStroke();
+    try {
+      if (!editingId && patterns.length >= MAX_SHAPES) throw new Error('You have 50 saved shapes. Edit or delete one before creating another.');
+      let id = editingId || `custom-${root.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`}`;
+      if (!editingId) { const base = id; let suffix = 1; while (patterns.some(pattern => pattern.id === id)) id = `${base}-${suffix++}`; }
+      const pattern = R.createPattern({ id, name: $('shape-name').value.trim(), cells: [...cells] }, SIZE);
+      const next = new Map(patterns.map(value => [value.id, value])); next.set(id, pattern); patterns = [...next.values()];
+      sessionEdits.set(id, pattern); const persisted = persistEdits(); editingId = id;
+      close(); notify({ type: 'save', id }); showNotice(persisted ? `${pattern.name} saved on this device.` : persistentNotice);
+    } catch (error) { $('shape-editor-status').textContent = error.message || 'Give your shape a name and draw at least one block.'; }
+  });
+  for (const id of ['open-shape-editor', 'edit-shapes-ingame']) $(id).addEventListener('click', () => open());
+  $('custom-shape-list').addEventListener('click', event => {
+    const button = event.target.closest('[data-custom-action]'); if (!button || !allowed()) return;
+    const id = button.dataset.customId, pattern = patterns.find(value => value.id === id); if (!pattern) return;
+    if (button.dataset.customAction === 'edit') { open(id); return; }
+    if (!root.confirm(`Delete “${pattern.name}”? This removes it from your saved shape library.`)) return;
+    patterns = patterns.filter(value => value.id !== id); sessionEdits.set(id, null);
+    const persisted = persistEdits(); notify({ type: 'delete', id }); showNotice(persisted ? `${pattern.name} deleted.` : persistentNotice);
+  });
+  root.addEventListener('storage', event => {
+    if (event.key !== STORAGE_KEY && event.key !== null) return;
+    try {
+      const remote = decodeStore(root.localStorage.getItem(STORAGE_KEY)), merged = new Map(remote.patterns.map(pattern => [pattern.id, pattern]));
+      for (const [id, pattern] of sessionEdits) { if (pattern) merged.set(id, pattern); else merged.delete(id); }
+      // Session edits remain usable even when a previous write was blocked.
+      const pending = [...sessionEdits.values()].filter(Boolean), rest = [...merged.values()].filter(pattern => !sessionEdits.has(pattern.id));
+      patterns = [...pending, ...rest].slice(0, MAX_SHAPES);
+      if (!sessionEdits.size) persistentNotice = remote.overflow ? 'Only the first 50 valid saved shapes are shown. Existing storage has not been changed.' : remote.ignored ? 'Some saved shape entries could not be read. Valid shapes are available; existing storage has not been changed.' : '';
+      notify({ type: 'reload' }); showNotice(persistentNotice);
+    } catch { persistentNotice ||= 'Saved shapes could not be refreshed. Your current shapes remain available in this tab.'; showNotice(persistentNotice); }
+  });
+  root.addEventListener('resize', () => { if (!dialog.open || renderRequest) return; renderRequest = root.requestAnimationFrame(() => { renderRequest = 0; updateEditor(); }); });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (dialog.open) updateEditor(); }).observe(board);
+
+  readInitialStore(); renderSavedList(); showNotice(persistentNotice);
+  root.GlyphShapeLibrary = Object.freeze({
+    list: () => [...patterns], get: id => patterns.find(pattern => pattern.id === id) || null,
+    subscribe: callback => { if (typeof callback !== 'function') throw new TypeError('A shape library subscriber must be a function.'); subscribers.add(callback); return () => subscribers.delete(callback); },
+    open,
+  });
+})(window);
+</script>
+<script>/* Standalone local experiment. Custom patterns live in their own local library. */
 (() => {
   'use strict';
   const R = window.GlyphDuelRules;
+  const library = window.GlyphShapeLibrary;
   const $ = id => document.getElementById(id);
   const SIZE = 16, START_HP = 100;
   const board = $('board'), ctx = board.getContext('2d');
@@ -430,6 +731,11 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     correct: '#85d5b0', missing: '#df7d8b', extra: '#f3bd68', counter: '#a6dbea' };
   let state = null, clock = null, raf = 0, alarm = 0, generation = 0;
   let stroke = null, undo = [], tool = 'draw', cursor = null;
+  let preferredShape = 'circle';
+  const builtins = ['circle', 'square', 'triangle'];
+  const findPattern = id => builtins.includes(id) ? R.getPattern(id, SIZE) : library.get(id);
+  const selectedPattern = () => findPattern(state?.selected || preferredShape) || R.getPattern('circle', SIZE);
+  const inkBudget = (pattern, percentage) => Math.min(SIZE * SIZE, Math.ceil(pattern.cells.length * percentage / 100));
 
   const setText = (id, value) => { $(id).textContent = value; };
   const show = (id, visible) => { $(id).hidden = !visible; };
@@ -470,7 +776,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
   function startMatch(config) {
     stopAttempt();
     state = { config: { ...config }, mode: config.mode, round: 1, caster: 0, role: 'attacker', phase: 'choose',
-      hp: [START_HP, START_HP], selected: 'circle', turn: null, ink: new Set(), history: [], best: 0, last: null };
+      hp: [START_HP, START_HP], selected: selectedPattern().id, turn: null, ink: new Set(), history: [], best: 0, last: null };
     undo = []; tool = 'draw';
     show('setup', false); show('game', true);
     announce(config.mode === 'practice' ? 'Solo practice started. Choose a symbol.' : 'Local duel started. Player 1 chooses a spell.');
@@ -530,7 +836,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
   }
 
   function updateInk() {
-    const budget = state?.turn?.budget || (state ? Math.ceil(R.getPattern(state.selected, SIZE).cells.length * state.config.inkPercent / 100) : 0);
+    const budget = state?.turn?.budget || (state ? inkBudget(selectedPattern(), state.config.inkPercent) : 0);
     const count = ['result', 'finished'].includes(state?.phase) ? state.turn[state.role]?.cells.length || 0 : state?.ink.size || 0;
     setText('budget-text', `${count} / ${budget} blocks`);
     $('budget-fill').style.width = `${budget ? count / budget * 100 : 0}%`;
@@ -545,6 +851,10 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
   function render() {
     if (!state) return;
     const phase = state.phase, drawing = phase === 'draw', studying = phase === 'study';
+    if (phase === 'choose') {
+      if (!findPattern(state.selected)) state.selected = 'circle';
+      renderShapeOptions();
+    }
     Object.assign($('game').dataset, { phase, mode: state.mode, role: state.role, round: String(state.round), caster: String(state.caster) });
     setText('round-label', `Round ${state.round}`);
     setText('turn-label', state.mode === 'practice' ? 'Solo practice' : `${playerName(state.caster)} attacks`);
@@ -557,8 +867,9 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     const labels = { choose: 'Choose your spell', study: 'Memorize the outline', draw: state.role === 'defender' ? 'Draw to counter' : 'Draw to cast',
       handoff: 'Pass the screen', result: 'Spell resolved', finished: 'Duel complete' };
     setText('phase-label', labels[phase]);
-    const pattern = state.turn?.pattern || R.getPattern(state.selected, SIZE);
+    const pattern = state.turn?.pattern || selectedPattern();
     setText('shape-label', pattern.name);
+    show('edit-selected-shape', phase === 'choose' && Boolean(pattern.custom));
     show('spell-picker', phase === 'choose'); show('board-shell', drawing || studying);
     show('drawing-tools', drawing); show('submit-drawing', drawing);
     show('handoff', phase === 'handoff'); show('result', phase === 'result' || phase === 'finished');
@@ -569,7 +880,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
       button.classList.toggle('is-active', button.dataset.shape === state.selected);
       button.setAttribute('aria-pressed', String(button.dataset.shape === state.selected));
     }
-    setText('begin-cast', `Study ${R.getPattern(state.selected, SIZE).name.toLowerCase()}`);
+    setText('begin-cast', `Study ${selectedPattern().name.toLowerCase()}`);
     const hints = {
       choose: `Both attempts get ${roundSeconds()} seconds. ${state.config.tolerance ? 'One-block position grace is on.' : 'Exact positions count.'}`,
       study: `${state.mode === 'practice' ? 'Your' : playerName(attemptPlayer()) + '’s'} reference. It disappears when the study timer ends.`,
@@ -768,14 +1079,20 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
       if ($('setup-error')) { $('setup-error').hidden = false; $('setup-error').textContent = error.message; }
     }
   });
-  for (const button of document.querySelectorAll('[data-shape]')) button.addEventListener('click', () => {
-    if (state?.phase !== 'choose') return; state.selected = button.dataset.shape; render();
+  $('shape-options').addEventListener('click', event => {
+    const button = event.target.closest?.('[data-shape]');
+    if (state?.phase !== 'choose' || !button || !findPattern(button.dataset.shape)) return;
+    state.selected = button.dataset.shape; preferredShape = state.selected; render();
   });
   $('begin-cast').addEventListener('click', () => {
     if (state?.phase !== 'choose') return;
-    const pattern = R.getPattern(state.selected, SIZE);
-    state.turn = { pattern, budget: Math.ceil(pattern.cells.length * state.config.inkPercent / 100), windowSeconds: roundSeconds() };
+    const pattern = selectedPattern();
+    // Frozen pattern snapshot keeps this cast stable if another tab edits its library.
+    state.turn = { pattern, budget: inkBudget(pattern, state.config.inkPercent), windowSeconds: roundSeconds() };
     beginStudy('attacker');
+  });
+  $('edit-selected-shape').addEventListener('click', () => {
+    if (state?.phase === 'choose' && selectedPattern().custom) library.open(state.selected);
   });
   $('ready').addEventListener('click', () => { if (state?.phase === 'handoff') beginStudy('defender'); });
   $('submit-drawing').addEventListener('click', () => { if (canDraw()) finishDrawing('submitted'); });
@@ -816,20 +1133,49 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     if (state && ['study', 'draw'].includes(state.phase)) renderBoard();
   });
 
-  // The picker uses schematic icons rather than the exact, memorized block map.
-  for (const canvas of document.querySelectorAll('[data-shape-preview]')) {
+  // Built-ins use schematic icons; custom cards preview the user's saved pixels.
+  function paintPickerIcon(canvas, pattern) {
     const c = canvas.getContext('2d'), width = canvas.width, center = width / 2, radius = width * .3;
+    if (pattern.custom) {
+      c.fillStyle = colors.target;
+      const cell = width / SIZE;
+      for (const id of pattern.cells) c.fillRect(id % SIZE * cell + .5, Math.floor(id / SIZE) * cell + .5, cell - 1, cell - 1);
+      return;
+    }
     c.strokeStyle = colors.target; c.lineWidth = 3; c.lineJoin = 'miter'; c.beginPath();
-    const shape = canvas.dataset.shapePreview;
+    const shape = pattern.id;
     if (shape === 'circle') c.arc(center, center, radius, 0, Math.PI * 2);
     else if (shape === 'square') c.rect(center - radius, center - radius, radius * 2, radius * 2);
     else {
-      for (let i = 0; i < 10; i++) { const angle = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? radius * .45 : radius;
-        const x = center + Math.cos(angle) * r, y = center + Math.sin(angle) * r; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.moveTo(center, center - radius); c.lineTo(center + radius, center + radius); c.lineTo(center - radius, center + radius);
       c.closePath();
     }
     c.stroke();
   }
+  function renderShapeOptions() {
+    const patterns = [...builtins.map(id => R.getPattern(id, SIZE)), ...library.list()];
+    const fragment = document.createDocumentFragment();
+    for (const pattern of patterns) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'shape-option';
+      button.dataset.shape = pattern.id; button.setAttribute('aria-label', `Choose ${pattern.name}`);
+      button.setAttribute('aria-pressed', String(state?.selected === pattern.id));
+      const canvas = document.createElement('canvas'); canvas.width = 96; canvas.height = 96;
+      canvas.dataset.shapePreview = pattern.id; canvas.setAttribute('aria-hidden', 'true');
+      const name = document.createElement('strong'); name.textContent = pattern.name;
+      button.append(canvas, name); paintPickerIcon(canvas, pattern); fragment.append(button);
+    }
+    $('shape-options').replaceChildren(fragment);
+  }
+  library.subscribe(event => {
+    if (event?.type === 'save' && findPattern(event.id)) {
+      preferredShape = event.id;
+      if (state?.phase === 'choose') state.selected = event.id;
+    }
+    if (!findPattern(preferredShape)) preferredShape = 'circle';
+    if (state?.phase === 'choose') render();
+    else if (!state) renderShapeOptions();
+  });
+  renderShapeOptions();
 })();
 </script>
 </body>
