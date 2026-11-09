@@ -6,7 +6,7 @@ test('the shared map and journal use the fourteen approved district IDs and norm
   assert.deepEqual(DISTRICTS.map(item => item.id), [1,2,3,4,5,6,7,8,9,10,11,12,14,15]);
   assert.equal(new Set(DISTRICTS.map(item => item.id)).size, 14);
   for (const item of DISTRICTS) {
-    assert.ok(Object.isFrozen(item) && Object.isFrozen(item.position) && Object.isFrozen(item.chapters));
+    assert.ok(Object.isFrozen(item) && Object.isFrozen(item.position));
     assert.ok(item.name && item.position.x > 0 && item.position.x < 1 && item.position.y > 0 && item.position.y < 1);
     assert.equal(getDistrict(String(item.id)), item);
   }
@@ -30,15 +30,10 @@ test('Storybook deep links select valid districts and safely fall back to the fu
   for (const hash of ['#home','#deck','#storybooks','#battle',null,undefined,{}]) assert.equal(parseStorybookRoute(hash), null);
 });
 
-test('mainline journal preserves the approved actors, revisits and intentionally unassigned district', () => {
-  const text = JSON.stringify(DISTRICTS);
-  assert.match(text, /Jimi Hendrix/); assert.doesNotMatch(text, /Jimmy|Yang/);
-  assert.ok(getDistrict(3).chapters[0].actors.includes('Yeng'));
-  assert.ok(getDistrict(4).chapters.some(item => item.actors.includes('Kai’Ru')));
-  assert.ok(getDistrict(5).chapters.some(item => item.actors.includes('Bruce Lee')));
-  assert.match(getDistrict(14).chapters[0].onward, /district 5.*return here.*Seattle Center/);
-  assert.equal(getDistrict(15).name, 'Seattle Center');
-  assert.match(getDistrict(15).note, /Queen Anne/);
-  assert.deepEqual(getDistrict(10).chapters, []);
-  assert.match(getDistrict(10).note, /No mainline chapter/);
+test('the current journal exposes only district identity, position and the approved boss labels', () => {
+  const expected = {1:'Goblin',2:'Tsoqua',3:'Yeng',4:'Kai’Ru',5:'',6:'',7:'George Washington',8:'Kraken',9:'',10:'',11:'Fremont Troll',12:'Freddie Footsplinters',14:'',15:'Bwizzy Leader'};
+  for (const item of DISTRICTS) {
+    assert.equal(item.boss, expected[item.id]);
+    assert.deepEqual(Object.keys(item).sort(), ['boss','id','name','position']);
+  }
 });

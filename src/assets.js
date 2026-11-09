@@ -11,6 +11,7 @@ export const ASSET_FILES = Object.freeze({
   iconAtlas: 'Wizzy Interface Icons.png',
   appIcon: 'Wizzy App Icon.png',
   storybookIcon: 'Wizzy Storybook Icon.png',
+  storybookPaper: 'Wizzy Storybook Pixel Paper.png',
   fireSlabSheet: 'Pixel-Art Fire Card Collection.png',
   fireZeroSlab: 'Wizzy Fire-0 Slab.png',
   waterSlabSheet: 'Pixel-Art Water Card Collection.png',

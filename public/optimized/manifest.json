@@ -59,6 +59,16 @@
     "width": 1312,
     "height": 1199
   },
+  "storybookPaper": {
+    "file": "storybookPaper-6348b152854f.webp",
+    "source": "Wizzy Storybook Pixel Paper.png",
+    "sourceSha256": "2d749a7d66b18c4d3121f76b7009c8a9b9cb0d57da61cefe95efe44db52620c1",
+    "optimizedSha256": "6348b152854f25159c80a7dab91ab5287d318534f2e1329256dda717fb0dd821",
+    "bytes": 788054,
+    "sourceBytes": 1251082,
+    "width": 1254,
+    "height": 1254
+  },
   "fireSlabSheet": {
     "file": "fireSlabSheet-e353c368a94f.webp",
     "source": "Pixel-Art Fire Card Collection.png",

@@ -47,8 +47,10 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   const map = assets.seattleExpanded || ASSETS.seattleExpanded;
   const atlas = assets.iconAtlas || ASSETS.iconAtlas;
   const storybook = assets.storybookIcon || ASSETS.storybookIcon;
+  const storybookPaper = assets.storybookPaper || ASSETS.storybookPaper;
   if (scene) root.style.setProperty('--wz-title-scene', `url("${scene}")`);
   if (map) root.style.setProperty('--wz-map-scene', `url("${map}")`);
+  if (storybookPaper) root.style.setProperty('--wz-storybook-paper', `url("${storybookPaper}")`);
   if (atlas) {
     root.style.setProperty('--wz-icon-atlas', `url("${atlas}")`);
     root.classList.add('wz-has-atlas');
@@ -148,7 +150,12 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
       <nav class="wz-map-controls" aria-label="Game screens"><div class="wz-left-controls"><button type="button" class="wz-map-button wz-storybook-button" data-wz-action="storybook" aria-label="Open your Storybook district journal" title="Your Seattle Storybook">${storyIcon}<span>Storybook</span></button><button class="wz-map-button wz-character-button" data-wz-action="character">${hubIcon('character')}<span>Character</span></button></div><div class="wz-right-controls"><button class="wz-map-button wz-battle-button" data-wz-action="battle">${hubIcon('battle')}<span>Battle<small>PLAYTEST</small></span></button><button class="wz-map-button" data-wz-action="friends">${hubIcon('friends')}<span>Friends</span></button><button class="wz-map-button" data-wz-action="deck">${hubIcon('deck')}<span>Deck</span></button></div></nav><p class="wz-map-preview">MAP PREVIEW · LOCATION NOT CONNECTED</p>${footerHub()}</section>`;
   }
   function storybookHub() {
-    return `<section class="wz-phone wz-panel-screen wz-storybook-screen">${topHub('Storybook', 'YOUR SEATTLE JOURNEY')}<div class="wz-storybook-scroll" data-wz-scroll="storybook"><div class="wz-journal-intro"><p class="wz-eyebrow">THE CITY IS PART OF YOUR STORY</p><h2>A little warmth, one chapter at a time.</h2><p>Open a district to read its mainline journey. These are draft story notes; photos and quest progress will join your journal in a later chapter.</p></div><div class="wz-journal-districts">${DISTRICTS.map(item => `<details class="wz-journal-district" id="wz-story-district-${item.id}" data-wz-story-district="${item.id}" ${expandedDistricts.has(item.id)?'open':''}><summary id="wz-district-summary-${item.id}" data-wz-focus="journal-${item.id}" aria-controls="wz-district-content-${item.id}"><span class="wz-journal-number" aria-hidden="true">${item.id}</span><span><strong>${escapeHub(item.name)}</strong><small>${item.chapters.length?`${item.chapters.length} ${item.chapters.length===1?'chapter':'chapters'}`:'Mainline chapter to come'}</small></span><span class="wz-journal-chevron" aria-hidden="true">⌄</span></summary><div class="wz-district-content" id="wz-district-content-${item.id}">${item.note?`<p class="wz-journal-unassigned">${escapeHub(item.note)}</p>`:''}${item.chapters.map((item,index) => `<article class="wz-journal-chapter"><p class="wz-chapter-eyebrow">MAINLINE · CHAPTER ${index+1}</p><h3>${escapeHub(item.title)}</h3><p class="wz-journal-actors"><strong>Who you’ll meet</strong>${item.actors.map(escapeHub).join(' · ')}</p><ol>${item.steps.map(step=>`<li>${escapeHub(step)}</li>`).join('')}</ol>${item.reward?`<p class="wz-journal-reward"><strong>Story reward</strong>${escapeHub(item.reward)}</p>`:''}${item.onward?`<p class="wz-journal-onward"><strong>Where the story leads</strong>${escapeHub(item.onward)}</p>`:''}</article>`).join('')}</div></details>`).join('')}</div><p class="wz-page-note">Your journey begins with connection. District numbers match the Seattle map.</p></div>${footerHub()}</section>`;
+    return `<section class="wz-phone wz-panel-screen wz-storybook-screen">${topHub('Storybook', 'YOUR SEATTLE JOURNEY')}<div class="wz-storybook-scroll" data-wz-scroll="storybook"><div class="wz-journal-districts">${DISTRICTS.map(item => `<details class="wz-journal-district" id="wz-story-district-${item.id}" data-wz-story-district="${item.id}" ${expandedDistricts.has(item.id)?'open':''}><summary id="wz-district-summary-${item.id}" data-wz-focus="journal-${item.id}" aria-controls="wz-district-content-${item.id}"><span class="wz-journal-number" aria-hidden="true">${item.id}</span><span><strong>${escapeHub(item.name)}</strong></span><span class="wz-journal-arrow" aria-hidden="true"><i></i></span></summary><div class="wz-district-content" id="wz-district-content-${item.id}"><h2 class="wz-mainquest-title">Mainquest ${item.id}</h2><p class="wz-mainquest-boss"${item.boss?'':' aria-hidden="true"'}>${escapeHub(item.boss)||'&nbsp;'}</p></div></details>`).join('')}</div></div>${footerHub()}</section>`;
+  }
+  function resetStorybook() {
+    storybookDistrictId=null;
+    expandedDistricts.clear();
+    for(const details of root.querySelectorAll('[data-wz-story-district][open]'))details.open=false;
   }
   function focusStorybookDistrict(id) {
     const details=root.querySelector(`[data-wz-story-district="${id}"]`);
@@ -161,7 +168,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   }
   root.addEventListener('toggle',event=>{
     const details=event.target;
-    if(!details.matches?.('[data-wz-story-district]'))return;
+    if(!visible||screen!=='storybook'||!root.contains(details)||!details.matches?.('[data-wz-story-district]'))return;
     const id=normalizeDistrictId(details.dataset.wzStoryDistrict);
     if(id===null)return;
     if(details.open)expandedDistricts.add(id);else expandedDistricts.delete(id);
@@ -317,6 +324,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     const next = HUB_SCREENS.has(nextScreen) ? nextScreen : 'title';
     const districtId=next==='storybook'?normalizeDistrictId(options.districtId):null;
     const changed = !visible || next !== screen || next==='storybook'&&districtId!==storybookDistrictId;
+    if(screen==='storybook'||next==='storybook')resetStorybook();
     if(next==='storybook'){
       storybookDistrictId=districtId;
       if(districtId!==null)expandedDistricts.add(districtId);
@@ -335,7 +343,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
       root.querySelector('h1')?.focus({preventScroll:true});
     }
   }
-  function hide() { finishMapDrag(); mapObserver?.disconnect(); visible = false; root.hidden = true; }
+  function hide() { finishMapDrag(); mapObserver?.disconnect(); resetStorybook(); visible = false; root.hidden = true; }
   function getSavedDecks() { return cloneHub(savedDecks); }
   function getProfile() { return cloneHub(profile); }
   function getLocalData() { return { profile: getProfile(), decks: getSavedDecks() }; }
