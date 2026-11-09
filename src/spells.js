@@ -24,7 +24,7 @@ const fire = [
   [11, 3, 'Deal 8 damage and gain 2 Embers. On a 7+, gain +2 to your next roll. On a 10+, gain +4 instead.'],
   [12, 4, 'Deal 14 damage. You may spend up to 2 Embers to deal 8 additional damage per Ember. On a 7+, remove up to 10 Shield before dealing damage.'],
   [13, 6, 'Deal 30 damage. On a 7+, deal 38 instead. On a 10+, deal 45 instead.'],
-  [14, 8, 'Spend all Embers. Deal 20 damage plus 9 per Ember spent. On an 8+, deal 12 per Ember instead.'],
+  [14, 8, 'Spend all Embers. Deal 20 damage plus 7 per Ember spent. On an 8+, deal 9 per Ember instead.'],
   [15, 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
 ];
 const water = [

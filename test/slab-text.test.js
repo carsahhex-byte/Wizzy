@@ -22,7 +22,7 @@ test('compact resource and damage math distinguishes gains, replacements and ext
   for (const id of ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4', 'Fire-6', 'Fire-7', 'Fire-9', 'Fire-11', 'Fire-13', 'Fire-14', 'Water-3']) assert.match(slabRulesText(id), /instead/, id);
   for (const id of ['Fire-8', 'Fire-10', 'Water-1', 'Water-6', 'Water-7', 'Water-8', 'Water-9', 'Water-10', 'Water-13', 'Water-14']) assert.match(slabRulesText(id), /extra/, id);
   assert.match(slabRulesText('Fire-7'), /Spend all Embers.*15 \+ 7×Ember spent.*9\+ 15 \+ 10×Ember instead/);
-  assert.match(slabRulesText('Fire-14'), /Spend all Embers.*20 \+ 9×Ember spent.*8\+ 20 \+ 12×Ember instead/);
+  assert.match(slabRulesText('Fire-14'), /Spend all Embers.*20 \+ 7×Ember spent.*8\+ 20 \+ 9×Ember instead/);
   assert.equal(COMPACT_SPELL_TEXT['Fire-9'][2].threshold, undefined, 'the Shield check is independent of the roll tier');
   assert.equal(COMPACT_SPELL_TEXT['Fire-9'][2].text, 'Then 4+ Embers: +8 Shield');
 });

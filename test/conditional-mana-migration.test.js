@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createGame, rollInitiative, selectCard, castSelected, rollDice, resolveSpell,
+  createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell,
   migrateSavedGame, validateSavedGame, SPELL_CATALOG,
 } from '../src/game.js';
 
-const previousText = { 'Fire-15': 'Gain 1 Ember and 1 Mana.', 'Water-0': 'Gain 1 Mana.' };
+const previousText = { 'Fire-14': 'Spend all Embers. Deal 20 damage plus 9 per Ember spent. On an 8+, deal 12 per Ember instead.', 'Fire-15': 'Gain 1 Ember and 1 Mana.', 'Water-0': 'Gain 1 Mana.' };
 const cardsOf = player => ['hand', 'deck', 'discard'].flatMap(zone => player[zone]);
 function fresh(first = 0) {
   const definition = (element, spellId) => ({ element, entries: [{ spellId, quantity: 3 }] });
@@ -147,4 +147,129 @@ test('current Water-0 pending saves cannot replay or omit their on-cast marker',
     assert.equal(migrateSavedGame(invalid),null);
   }
   assert.equal(castSelected(state),state);
+});
+
+
+function fireFourteenFresh() {
+  const fire = { element: 'fire', entries: [
+    { spellId: 'Fire-14', quantity: 3 }, { spellId: 'FAT-001', quantity: 1 }, { spellId: 'FAT-003', quantity: 1 },
+  ] };
+  const water = { element: 'water', entries: [
+    { spellId: 'Water-1', quantity: 1 }, { spellId: 'FAT-002', quantity: 1 }, { spellId: 'FAT-003', quantity: 1 },
+  ] };
+  let state = createGame(37, { fire, water });
+  state = rollInitiative(rollInitiative(state, 0, () => .9), 1, () => 0);
+  Object.assign(state.players[0], { mana: 10, element: 3 });
+  return state;
+}
+function castFireFourteen(state) {
+  return castSelected(selectCard(state, state.players[0].hand.find(card => card.spellId === 'Fire-14').id));
+}
+function rollPair(state, dice) {
+  let index = 0;
+  return rollDice(state, () => (dice[index++] - 1) / 6);
+}
+function passFate(state) {
+  while (state.phase === 'fate') state = skipFate(state);
+  return state;
+}
+
+test('old Fire-14 text refreshes in every zone and preserves selected cards and all duel data', () => {
+  const current = fireFourteenFresh(), fire = current.players[0];
+  const fireCards = fire.hand.filter(card => card.spellId === 'Fire-14');
+  fire.deck.push(fire.hand.splice(fire.hand.indexOf(fireCards[1]), 1)[0]);
+  fire.discard.push(fire.hand.splice(fire.hand.indexOf(fireCards[2]), 1)[0]);
+  Object.assign(fire, { hp: 81, shield: 21, loaded: 4, loadedPending: 2, enhancement: 20, auraTurns: 2 });
+  const selected = selectCard(current, fireCards[0].id);
+  assert.equal(validateSavedGame(selected), true);
+  const old = previousDefinitions(selected), before = structuredClone(old);
+  assert.equal(validateSavedGame(old), false);
+  const upgraded = migrateSavedGame(old);
+  assert.deepEqual(upgraded, selected);
+  assert.deepEqual(old, before);
+  assert.equal(upgraded.version, 14);
+  assert.equal(upgraded.selectedCardId, fireCards[0].id);
+  assert.equal(migrateSavedGame(upgraded), upgraded);
+});
+
+test('Fire-14 pending rolling, selected Fate, paid Fate and resolving saves preserve reservations and priority', () => {
+  const initial = fireFourteenFresh(); initial.players[0].loaded = 2;
+  const rolling = castFireFourteen(initial), fate = rollPair(rolling, [2, 3]);
+  const defenderId = fate.players[1].hand.find(card => card.spellId === 'FAT-002').id;
+  const fateSelected = selectCard(fate, defenderId), fatePaid = castFateSelected(fateSelected);
+  const resolving = passFate(fatePaid);
+  assert.deepEqual([rolling.players[0].mana, rolling.players[0].element, rolling.pendingSpell.emberSpent], [2, 0, 3]);
+  for (const current of [rolling, fate, fateSelected, fatePaid, resolving]) {
+    const old = previousDefinitions(current), before = structuredClone(old);
+    const upgraded = migrateSavedGame(old);
+    assert.deepEqual(upgraded, current, current.phase);
+    assert.deepEqual(old, before);
+    assert.equal(validateSavedGame(upgraded), true);
+    assert.equal(migrateSavedGame(upgraded), upgraded);
+    assert.deepEqual([upgraded.players[0].mana, upgraded.players[0].element, upgraded.pendingSpell.emberSpent], [2, 0, 3]);
+    if (upgraded.lastRoll) assert.equal(rollDice(upgraded, () => { throw new Error('saved dice must not reroll'); }), upgraded);
+  }
+});
+
+test('migrated committed Fire-14 resolves new seven/nine scaling once without re-paying its cost or Embers', () => {
+  for (const [dice, total, damage] of [[[3, 4], 7, 41], [[4, 4], 8, 47]]) {
+    const rolling = castFireFourteen(fireFourteenFresh());
+    const rolled = rollPair(rolling, dice), resolving = passFate(rolled);
+    for (const pending of [rolling, rolled, resolving]) {
+      let upgraded = migrateSavedGame(previousDefinitions(pending));
+      const reservedId = upgraded.pendingCardId;
+      if (upgraded.phase === 'rolling') upgraded = rollPair(upgraded, dice);
+      upgraded = resolveSpell(passFate(upgraded));
+      assert.equal(upgraded.lastRoll.total, total);
+      assert.deepEqual([upgraded.players[0].mana, upgraded.players[0].element, upgraded.players[1].hp], [2, 0, 100 - damage]);
+      assert.equal(upgraded.players[0].discard.filter(card => card.id === reservedId).length, 1);
+      assert.equal(upgraded.players[0].hand.some(card => card.id === reservedId), false);
+      assert.equal(upgraded.log.filter(entry => entry.type === 'cast').length, 1);
+      assert.equal(upgraded.log.filter(entry => entry.type === 'damage').length, 1);
+      assert.match(upgraded.log.find(entry => entry.type === 'damage').message, new RegExp(`Base ${damage} `));
+      assert.equal(validateSavedGame(upgraded), true);
+      assert.equal(resolveSpell(upgraded), upgraded);
+      assert.equal(migrateSavedGame(upgraded), upgraded);
+    }
+  }
+});
+
+test('old completed and finished Fire-14 outcomes stay historical after the card definition refresh', () => {
+  for (const hp of [100, 40]) {
+    const initial = fireFourteenFresh(); initial.players[1].hp = hp;
+    const completed = resolveSpell(passFate(rollPair(castFireFourteen(initial), [4, 4])));
+    // Model the prior paid 20 + 12×3 = 56 outcome, rather than replaying it
+    // with the current multiplier. Completed logs and HP are historical data.
+    completed.players[1].hp = Math.max(0, hp - 56);
+    completed.log.find(entry => entry.type === 'damage').message = `Base 56 + 0% Enhancement + 0% Aura = 56 damage. Water takes 56 damage; ${Math.min(hp, 56)} HP damage.`;
+    assert.equal(completed.status, hp === 40 ? 'finished' : 'playing');
+    assert.equal(validateSavedGame(completed), true);
+    const old = previousDefinitions(completed), before = structuredClone(old);
+    const upgraded = migrateSavedGame(old);
+    assert.deepEqual(upgraded, completed);
+    assert.deepEqual(upgraded.log, before.log);
+    assert.deepEqual(old, before);
+    assert.equal(resolveSpell(upgraded), upgraded);
+    assert.equal(rollDice(upgraded, () => { throw new Error('a completed old spell must not reroll'); }), upgraded);
+    assert.deepEqual([upgraded.players[0].mana, upgraded.players[0].element, upgraded.players[1].hp], [2, 0, Math.max(0, hp - 56)]);
+  }
+});
+
+test('Fire-14 refresh cannot repair mismatched text, unexpected definitions, reservations or missing cards', () => {
+  const initial = fireFourteenFresh();
+  const selected = selectCard(initial, initial.players[0].hand.find(card => card.spellId === 'Fire-14').id);
+  const previous = previousDefinitions(selected);
+  for (const mutate of [
+    state => { state.players[0].hand.find(card => card.spellId === 'Fire-14').description = 'Changed description.'; },
+    state => { state.players[0].hand.find(card => card.spellId === 'Fire-14').effectText = 'Spend all Embers. Deal 99 damage.'; },
+    state => { state.players[0].hand.find(card => card.spellId === 'Fire-14').manaCost = 0; },
+    state => { state.players[0].hand.pop(); },
+    state => { state.players[0].element = 6; },
+  ]) {
+    const corrupt = structuredClone(previous); mutate(corrupt);
+    assert.equal(migrateSavedGame(corrupt), null, mutate.toString());
+  }
+  const corruptReservation = previousDefinitions(castFireFourteen(fireFourteenFresh()));
+  corruptReservation.pendingSpell.emberSpent = 6;
+  assert.equal(migrateSavedGame(corruptReservation), null);
 });

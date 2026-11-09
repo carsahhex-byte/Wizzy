@@ -59,8 +59,8 @@ const cases = [
   ['Fire-13 base damage', 'Fire-13', { roll: 6 }, {}, { hp: 70 }],
   ['Fire-13 seven damage', 'Fire-13', { roll: 7 }, {}, { hp: 62 }],
   ['Fire-13 ten replaces seven damage', 'Fire-13', { roll: 10 }, {}, { hp: 55 }],
-  ['Fire-14 base nine-per-Ember scaling', 'Fire-14', { roll: 7, spent: 3 }, {}, { hp: 53 }],
-  ['Fire-14 eight replaces multiplier and retains twenty base', 'Fire-14', { roll: 8, spent: 3 }, {}, { hp: 44 }],
+  ['Fire-14 base seven-per-Ember scaling', 'Fire-14', { roll: 7, spent: 3 }, {}, { hp: 59 }],
+  ['Fire-14 eight replaces seven per Ember with nine and retains twenty base', 'Fire-14', { roll: 8, spent: 3 }, {}, { hp: 53 }],
   ['Fire-14 zero paid Embers still deals twenty', 'Fire-14', { roll: 12 }, {}, { hp: 80 }],
   ['Water-1 base damage', 'Water-1', { roll: 6 }, { element: 1 }, { hp: 94 }],
   ['Water-1 seven adds three damage', 'Water-1', { roll: 7 }, { element: 1 }, { hp: 91 }],
@@ -455,4 +455,45 @@ test('Water-0 resolution adds ordinary plus conditional Flow, capped at five, wi
   }
   assert.throws(() => resolve('Water-0', { roll: null }), /requires a resolved Modified Roll/);
   assert.throws(() => resolve('Water-0', { roll: 7, spent: 1 }), /Invalid Ember spending/);
+});
+
+test('Fire-14 seven/nine scaling matches golden damage values across all Ember banks, bonuses and Shield', () => {
+  assert.equal(SPELL_CATALOG['Fire-14'].manaCost, 8);
+  assert.equal(SPELL_CATALOG['Fire-14'].effectText,
+    'Spend all Embers. Deal 20 damage plus 7 per Ember spent. On an 8+, deal 9 per Ember instead.');
+  assert.deepEqual(SPELL_RULES['Fire-14'], { requiresRoll: true, emberSpend: 'all' });
+  // Independent golden values include fractions that round down and exact halves
+  // that round up. The separate drawing prototype's ceiling rule does not apply.
+  const golden = [
+    { roll: 7, amounts: {
+      '0:0': [20, 27, 34, 41, 48, 55], '0:10': [22, 30, 37, 45, 53, 61],
+      '30:0': [26, 35, 44, 53, 62, 72], '30:10': [28, 38, 48, 57, 67, 77],
+    } },
+    { roll: 8, amounts: {
+      '0:0': [20, 29, 38, 47, 56, 65], '0:10': [22, 32, 42, 52, 62, 72],
+      '30:0': [26, 38, 49, 61, 73, 85], '30:10': [28, 41, 53, 66, 78, 91],
+    } },
+  ];
+  for (const row of golden) for (const [key, amounts] of Object.entries(row.amounts)) {
+    const [enhancement, aura] = key.split(':').map(Number);
+    for (let spent = 0; spent <= 5; spent++) for (const shield of [0, 30]) {
+      const result = resolve('Fire-14', { roll: row.roll, spent,
+        caster: { element: 0, enhancement, auraTurns: aura ? 2 : 0, loadedPending: 2 }, opponent: { shield } });
+      const damage = result.events.find(event => event.type === 'damage');
+      const total = amounts[spent], absorbed = Math.min(shield, total), base = row.amounts['0:0'][spent];
+      assert.deepEqual([damage.baseDamage, damage.enhancement, damage.aura, damage.totalDamage, damage.absorbed, damage.hpDamage],
+        [base, enhancement, aura, total, absorbed, total - absorbed], `${row.roll}/${spent}/${key}/Shield${shield}`);
+      assert.deepEqual([result.opponent.shield, result.opponent.hp], [shield - absorbed, 100 - total + absorbed]);
+      assert.deepEqual([result.caster.element, result.caster.enhancement, result.caster.auraTurns, result.caster.loadedPending], [0, 0, aura ? 2 : 0, 2]);
+      assert.equal(result.events.filter(event => event.type === 'enhancement').length, enhancement ? 1 : 0,
+        'a damaging cast consumes the stored bank once, even when Shield absorbs all damage');
+      assert.equal(result.events.some(event => event.type === 'shield'), false, 'Fire-14 does not strip Shield');
+      assert.deepEqual(getEmberSpendRange('Fire-14', spent), { min: spent, max: spent, mandatory: true });
+    }
+  }
+  assert.throws(() => resolve('Fire-14', { spent: 6, roll: 8 }), /Invalid Ember spending/);
+  assert.equal(resolve('Fire-7', { spent: 5, roll: 8 }).events[0].amount, 50, 'Fire-7 stays at seven/ten per Ember');
+  assert.equal(resolve('Fire-7', { spent: 5, roll: 9 }).events[0].amount, 65);
+  assert.equal(resolve('Water-14', { roll: 7, caster: { element: 5 } }).events[0].amount, 40, 'Water-14 stays unchanged');
+  assert.equal(resolve('Water-14', { roll: 8, caster: { element: 5 } }).events[0].amount, 52);
 });

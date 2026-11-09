@@ -7,7 +7,7 @@ export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange }
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'water-zero-oncast-flow-v1';
+export const COMBAT_RULES_VERSION = 'fire14-seven-nine-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -809,8 +809,9 @@ export function validateSavedGame(value) {
 
 // Refresh only exact known previous definitions. Completed outcomes stay paid;
 // an already-committed legacy Water-0 receives its new on-cast Mana once.
-function refreshConditionalManaCards(state) {
+function refreshCurrentSpellCards(state) {
   const previousText = {
+    'Fire-14': ['Spend all Embers. Deal 20 damage plus 9 per Ember spent. On an 8+, deal 12 per Ember instead.'],
     'Fire-15': ['Gain 1 Ember and 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
   };
@@ -843,7 +844,7 @@ export function migrateSavedGame(value) {
   try {
     if (value.version === 10 && (!Array.isArray(value.players) || value.players.some(player => !Array.isArray(player?.hand) || player.hand.length > 5))) return null;
     const next = structuredClone(value);
-    const refreshedCards = refreshConditionalManaCards(next);
+    const refreshedCards = refreshCurrentSpellCards(next);
     if (value.version === SAVE_VERSION) {
       if (!refreshedCards) return null;
       assertGame(next);

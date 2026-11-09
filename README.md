@@ -135,7 +135,9 @@ Use **Larger view** for a larger, scrollable portrait board and **Fit screen** t
 
 `src/spells.js` contains **31 definitions** transcribed from **Wizzy Master Spellbook Nov4.pdf**, *Master Spellbook V2.1*, dated November 4, 2026: Fire-1 through Fire-14, Water-1 through Water-14, and Fortune/Misfortune/Twist. The user-defined **Fire-0, Fire-15 and Water-0** make 34. Fire-15 gains 1 Ember and gains 1 Mana on 7+. Water-0 gains 1 Mana on cast and gains 1 additional Flow after resolution on 7+, alongside the standing Water passive. Spell IDs, existing decks and save/book compatibility are retained. Effects execute in `src/effects.js`; combat timing lives in `src/game.js`.
 
-The user's instructions explicitly replace the previous catalog and override the PDF's older pre-roll Fate timing and its experimental-version note. Fire and Water Mana costs and effect descriptions retain the PDF wording. The PDF leaves Fate Mana unspecified; the game retains its existing **0 Mana** Fate cost pending another ruling. There are no prescribed Fire/Water decklists in this release.
+The **Fire-14 balance update** keeps its **8 Mana**, **20 base damage**, **8+ threshold** and mandatory spending of all Embers. Damage is now **20 + 7 × Embers spent**, or **20 + 9 × Embers spent on 8+**. At five Embers this is **55 / 65 damage**, or **77 / 91** with 30% Enhancement plus 10% Aura, before Shield. The other spells retain their existing effects. Save version 14 and the spellbook family remain unchanged; the exact earlier Fire-14 text is upgraded in compatible saves without resetting decks or replaying committed actions/results.
+
+The user's instructions explicitly replace the previous catalog and override the PDF's older pre-roll Fate timing, its experimental-version note and Fire-14's former per-Ember values. Other printed Fire/Water costs and effect descriptions retain the PDF wording. The PDF leaves Fate Mana unspecified; the game retains its existing **0 Mana** Fate cost pending another ruling. There are no prescribed Fire/Water decklists in this release.
 
 See [spell IDs, Mana costs, construction rules, and the JSON decklist format](docs/decklists.md).
 
