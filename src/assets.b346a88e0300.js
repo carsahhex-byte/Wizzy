@@ -1,8 +1,8 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { resolveAssetUrl } from './asset-url.45812afae8ac.js';
+import { resolveAssetUrl } from './asset-url.47775ebd570c.js';
 import { SPELL_CATALOG } from './spells.8d3adc552bdd.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.ca515a0c6c7a.js';
-import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.64d1be3e3f29.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.19168fb65b45.js';
+import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.20165ecbdfc6.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -57,6 +57,8 @@ export const ASSET_FILES = Object.freeze({
   stoneSign: 'Mossy Pixel Stone Sign.png',
   battlePixelIcons: PIXEL_ICON_FILE,
   battleSwordIcon: 'Wizzy Pixel Sword Icon.png',
+  mapUIConcept: 'Wizzy Rough Map UI Concept.png',
+  mapControls: 'Wizzy Rough Map Controls.png',
 });
 
 /** Original overworld wizards: fixed logical cells, source PNG left intact. */
@@ -428,4 +430,36 @@ export const ASSET_CROPS = Object.freeze({
   iconMana: PIXEL_ICON_CROPS.mana,
   iconShield: PIXEL_ICON_CROPS.shield,
   iconDie: PIXEL_ICON_CROPS.die,
+  mapUIConcept: { width: 948, height: 1659, x: 0, y: 0, w: 948, h: 1659 },
+  mapControls: { width: 1536, height: 1024, x: 0, y: 0, w: 1536, h: 1024 },
+});
+
+/** Original approved UI pixels. Keep the live Seattle map as a separate image. */
+export const MAP_UI_CROPS = Object.freeze({
+  mapStorybook: { asset: 'mapControls', width: 1536, height: 1024, x: 93, y: 27, w: 645, h: 187 },
+  mapCharacter: { asset: 'mapControls', width: 1536, height: 1024, x: 799, y: 27, w: 644, h: 187 },
+  mapBattle: { asset: 'mapControls', width: 1536, height: 1024, x: 93, y: 232, w: 644, h: 183 },
+  mapFriends: { asset: 'mapControls', width: 1536, height: 1024, x: 799, y: 232, w: 644, h: 183 },
+  mapDeck: { asset: 'mapControls', width: 1536, height: 1024, x: 94, y: 433, w: 644, h: 180 },
+  mapFit: { asset: 'mapControls', width: 1536, height: 1024, x: 799, y: 433, w: 644, h: 180 },
+  mapZoomOut: { asset: 'mapControls', width: 1536, height: 1024, x: 94, y: 633, w: 643, h: 171 },
+  mapZoomIn: { asset: 'mapControls', width: 1536, height: 1024, x: 799, y: 633, w: 644, h: 170 },
+  mapBack: { asset: 'mapControls', width: 1536, height: 1024, x: 94, y: 822, w: 643, h: 177 },
+  mapCompass: { asset: 'mapControls', width: 1536, height: 1024, x: 799, y: 822, w: 644, h: 177 },
+  mapBanner: { asset: 'mapUIConcept', width: 948, height: 1659, x: 165, y: 0, w: 624, h: 145 },
+  mapTopBack: { asset: 'mapUIConcept', width: 948, height: 1659, x: 18, y: 16, w: 104, h: 110 },
+  mapToolbarFit: { asset: 'mapUIConcept', width: 948, height: 1659, x: 214, y: 151, w: 145, h: 94 },
+  mapToolbarZoomOut: { asset: 'mapUIConcept', width: 948, height: 1659, x: 374, y: 157, w: 105, h: 90 },
+  mapToolbarZoomIn: { asset: 'mapUIConcept', width: 948, height: 1659, x: 491, y: 157, w: 104, h: 90 },
+  mapToolbarCompass: { asset: 'mapUIConcept', width: 948, height: 1659, x: 604, y: 153, w: 126, h: 96 },
+  mapStoneTexture: { asset: 'mapUIConcept', width: 948, height: 1659, x: 480, y: 1240, w: 36, h: 36 },
+  mapFrameTop: { asset: 'mapUIConcept', width: 948, height: 1659, x: 80, y: 252, w: 788, h: 27 },
+  mapFrameBottom: { asset: 'mapUIConcept', width: 948, height: 1659, x: 80, y: 1168, w: 788, h: 26 },
+  mapFrameLeft: { asset: 'mapUIConcept', width: 948, height: 1659, x: 7, y: 318, w: 27, h: 810 },
+  mapFrameRight: { asset: 'mapUIConcept', width: 948, height: 1659, x: 917, y: 318, w: 27, h: 810 },
+  // The L-shaped masks remove every baked-map pixel inside the four corners.
+  mapFrameNW: { asset: 'mapUIConcept', width: 948, height: 1659, x: 7, y: 245, w: 72, h: 72, clipPath: 'polygon(0 0,100% 0,100% 47.2222%,37.5% 47.2222%,37.5% 100%,0 100%)' },
+  mapFrameNE: { asset: 'mapUIConcept', width: 948, height: 1659, x: 869, y: 245, w: 72, h: 72, clipPath: 'polygon(0 0,100% 0,100% 100%,66.6667% 100%,66.6667% 47.2222%,0 47.2222%)' },
+  mapFrameSW: { asset: 'mapUIConcept', width: 948, height: 1659, x: 7, y: 1129, w: 72, h: 72, clipPath: 'polygon(0 0,37.5% 0,37.5% 54.1667%,100% 54.1667%,100% 100%,0 100%)' },
+  mapFrameSE: { asset: 'mapUIConcept', width: 948, height: 1659, x: 869, y: 1129, w: 72, h: 72, clipPath: 'polygon(66.6667% 0,100% 0,100% 100%,0 100%,0 54.1667%,66.6667% 54.1667%)' },
 });

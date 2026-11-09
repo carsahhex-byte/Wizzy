@@ -1,4 +1,4 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.js';
+import { ASSETS, ASSET_CROPS, MAP_UI_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.js';
 import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.js';
 import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.js';
@@ -23,7 +23,21 @@ const librarySpells = Object.values(SPELL_CATALOG).sort((a, b) => {
 function hubArt(key, className = '', cropOverride = null) {
   const crop = ASSET_CROPS[key] && { ...ASSET_CROPS[key], ...cropOverride };
   if (!crop || !ASSETS[key]) return '';
-  return `<span class="wz-cropped ${className}" style="aspect-ratio:${crop.w}/${crop.h}"><img alt="" draggable="false" src="${escapeHub(ASSETS[key])}" style="width:${crop.width / crop.w * 100}%;height:${crop.height / crop.h * 100}%;left:${-crop.x / crop.w * 100}%;top:${-crop.y / crop.h * 100}%"></span>`;
+  return `<span class="wz-cropped ${className}" style="aspect-ratio:${crop.w}/${crop.h}${crop.clipPath?`;clip-path:${crop.clipPath}`:''}"><img alt="" draggable="false" src="${escapeHub(ASSETS[key])}" style="width:${crop.width / crop.w * 100}%;height:${crop.height / crop.h * 100}%;left:${-crop.x / crop.w * 100}%;top:${-crop.y / crop.h * 100}%"></span>`;
+}
+
+function mapUiArt(name, className = '') {
+  const crop=MAP_UI_CROPS[name];
+  return crop?hubArt(crop.asset,`wz-map-ui-art ${className}`,crop):'';
+}
+
+function mapFrameArt() {
+  return `<div class="wz-map-frame-art" aria-hidden="true">${[
+    ['mapFrameTop','wz-frame-top'],['mapFrameBottom','wz-frame-bottom'],
+    ['mapFrameLeft','wz-frame-left'],['mapFrameRight','wz-frame-right'],
+    ['mapFrameNW','wz-frame-nw'],['mapFrameNE','wz-frame-ne'],
+    ['mapFrameSW','wz-frame-sw'],['mapFrameSE','wz-frame-se'],
+  ].map(([name,style])=>mapUiArt(name,style)).join('')}</div>`;
 }
 
 function hubHead(element) {
@@ -132,10 +146,11 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     return `<section class="wz-phone wz-title-screen"><div class="wz-title-shade"></div><div class="wz-title-brand"><p class="wz-eyebrow">A LITTLE MAGIC. A WHOLE CITY.</p><h1 tabindex="-1">Wizzy</h1><p class="wz-title-subtitle">YOUR JOURNEY BEGINS IN SEATTLE</p></div><div class="wz-title-entry"><span class="wz-spark wz-spark-left" aria-hidden="true">✦</span><button class="wz-pixel-button wz-enter" data-wz-action="enter">Enter Game <span aria-hidden="true">→</span></button><span class="wz-spark wz-spark-right" aria-hidden="true">✦</span><p>EXPLORE THE CITY. FIND YOUR MAGIC.</p><button class="wz-title-account" data-wz-action="account">${activeAccountId ? 'Your account' : 'Sign in / Create account'}</button></div><div class="wz-title-bottom"><span class="wz-tiny-star" aria-hidden="true">✧</span><p>FIRE · WATER · FATE</p></div>${footerHub()}</section>`;
   }
   function homeHub() {
-    const storyIcon = storybook ? `<span class="wz-storybook-icon" aria-hidden="true"><img alt="" draggable="false" src="${escapeHub(storybook)}"></span>` : '<span class="wz-storybook-icon wz-storybook-fallback" aria-hidden="true">▤</span>';
     return `<section class="wz-phone wz-home-screen">
-      <header class="wz-map-header"><button class="wz-small-wordmark" data-wz-action="title" aria-label="Return to Wizzy title screen">Wizzy<span>SEATTLE</span></button><button class="wz-profile-chip" data-wz-action="character">${hubHead(profile.element)}<span>${escapeHub(profile.name)}<small>${elementName(profile.element)} wizard</small></span></button></header>
-      <div class="wz-map-toolbar"><div class="wz-map-note">Seattle awaits.<strong>Drag to explore.</strong></div><div class="wz-map-view-controls" role="group" aria-label="Map view"><button type="button" data-wz-action="map-overview" aria-label="Show the whole Seattle map" title="Whole map">Fit</button><button type="button" data-wz-action="map-zoom-out" aria-label="Zoom out on map">−</button><output class="wz-map-zoom" aria-label="Map zoom">4×</output><button type="button" data-wz-action="map-zoom-in" aria-label="Zoom in on map">+</button><button type="button" data-wz-action="map-center" aria-label="Center map on South Lake Union" title="South Lake Union">${hubIcon('compass')}</button></div></div>
+      <div class="wz-home-stone" aria-hidden="true">${Array.from({length:72},()=>mapUiArt('mapStoneTexture','wz-map-stone-tile')).join('')}</div>
+      <header class="wz-map-header"><button type="button" class="wz-small-wordmark wz-map-back" data-wz-action="title" aria-label="Return to Wizzy title screen" title="Back to title">${mapUiArt('mapTopBack')}</button><button type="button" class="wz-profile-chip wz-map-banner" data-wz-action="character" aria-label="Open ${escapeHub(profile.name)}’s ${elementName(profile.element)} character" title="Open your character">${mapUiArt('mapBanner')}</button></header>
+      <div class="wz-map-toolbar"><div class="wz-map-view-controls" role="group" aria-label="Map view"><button type="button" class="wz-map-toolbar-fit" data-wz-action="map-overview" aria-label="Show the whole Seattle map" title="Whole map">${mapUiArt('mapToolbarFit')}</button><button type="button" data-wz-action="map-zoom-out" aria-label="Zoom out on map">${mapUiArt('mapToolbarZoomOut')}</button><output class="wz-map-zoom" aria-label="Map zoom">4×</output><button type="button" data-wz-action="map-zoom-in" aria-label="Zoom in on map">${mapUiArt('mapToolbarZoomIn')}</button><button type="button" data-wz-action="map-center" aria-label="Center map on South Lake Union" title="South Lake Union">${mapUiArt('mapToolbarCompass')}</button></div></div>
+      <div class="wz-map-frame">
       <div class="wz-map-viewport" tabindex="0" role="region" aria-label="Seattle district map, drag to explore" aria-describedby="wz-map-instructions">
         <div class="wz-map-world">
           <div class="wz-map-art" aria-hidden="true"></div>
@@ -145,10 +160,12 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
           </div>
         </div>
       </div>
+      ${mapFrameArt()}</div>
       <p id="wz-map-instructions" class="sr-only">Drag the map with a mouse or finger. Tap a numbered district to read its Storybook chapter. Fit shows the complete city. With the map focused, use arrow keys to explore, plus and minus to zoom, or Home to center South Lake Union.</p>
 
-      <nav class="wz-map-controls" aria-label="Game screens"><div class="wz-left-controls"><button type="button" class="wz-map-button wz-storybook-button" data-wz-action="storybook" aria-label="Open your Storybook district journal" title="Your Seattle Storybook">${storyIcon}<span>Storybook</span></button><button class="wz-map-button wz-character-button" data-wz-action="character">${hubIcon('character')}<span>Character</span></button></div><div class="wz-right-controls"><button class="wz-map-button wz-battle-button" data-wz-action="battle">${hubIcon('battle')}<span>Battle<small>PLAYTEST</small></span></button><button class="wz-map-button" data-wz-action="friends">${hubIcon('friends')}<span>Friends</span></button><button class="wz-map-button" data-wz-action="deck">${hubIcon('deck')}<span>Deck</span></button></div></nav><p class="wz-map-preview">MAP PREVIEW · LOCATION NOT CONNECTED</p>${footerHub()}</section>`;
+      <nav class="wz-map-controls" aria-label="Game screens"><div class="wz-left-controls"><button type="button" class="wz-map-button wz-storybook-button" data-wz-action="storybook" aria-label="Open your Storybook district journal" title="Your Seattle Storybook">${mapUiArt('mapStorybook')}</button><button type="button" class="wz-map-button wz-character-button" data-wz-action="character" aria-label="Open your character">${mapUiArt('mapCharacter')}</button></div><div class="wz-right-controls"><button type="button" class="wz-map-button wz-battle-button" data-wz-action="battle" aria-label="Open battle playtest">${mapUiArt('mapBattle')}</button><button type="button" class="wz-map-button" data-wz-action="friends" aria-label="Open Friends">${mapUiArt('mapFriends')}</button><button type="button" class="wz-map-button" data-wz-action="deck" aria-label="Open deck workshop">${mapUiArt('mapDeck')}</button></div></nav><p class="wz-map-preview">MAP PREVIEW · LOCATION NOT CONNECTED</p>${footerHub()}</section>`;
   }
+
   function storybookHub() {
     return `<section class="wz-phone wz-panel-screen wz-storybook-screen">${topHub('Storybook', 'YOUR SEATTLE JOURNEY')}<div class="wz-storybook-scroll" data-wz-scroll="storybook"><div class="wz-journal-districts">${DISTRICTS.map(item => `<details class="wz-journal-district" id="wz-story-district-${item.id}" data-wz-story-district="${item.id}" ${expandedDistricts.has(item.id)?'open':''}><summary id="wz-district-summary-${item.id}" data-wz-focus="journal-${item.id}" aria-controls="wz-district-content-${item.id}"><span class="wz-journal-number" aria-hidden="true">${item.id}</span><span><strong>${escapeHub(item.name)}</strong></span><span class="wz-journal-arrow" aria-hidden="true"><i></i></span></summary><div class="wz-district-content" id="wz-district-content-${item.id}"><h2 class="wz-mainquest-title">Mainquest ${item.id}</h2><p class="wz-mainquest-boss"${item.boss?'':' aria-hidden="true"'}>${escapeHub(item.boss)||'&nbsp;'}</p></div></details>`).join('')}</div></div>${footerHub()}</section>`;
   }
