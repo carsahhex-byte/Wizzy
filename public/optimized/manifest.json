@@ -518,5 +518,25 @@
     "sourceBytes": 415139,
     "width": 1254,
     "height": 1254
+  },
+  "mapUIConcept": {
+    "file": "mapUIConcept-94ae67d3dbde.webp",
+    "source": "Wizzy Rough Map UI Concept.png",
+    "sourceSha256": "1e50bf764b90f84196e661bd6e8124caeae2a2314bd1dc6fcef30b91b74868ed",
+    "optimizedSha256": "94ae67d3dbde4e45aa9ce4bb6bc66abe1ab1b91fb7ada0eac10b5bc86029afa7",
+    "bytes": 2160520,
+    "sourceBytes": 2554707,
+    "width": 948,
+    "height": 1659
+  },
+  "mapControls": {
+    "file": "mapControls-ec3547fdd752.webp",
+    "source": "Wizzy Rough Map Controls.png",
+    "sourceSha256": "e0d44847f5b939f6ffe10c88027ff29d478db06fad19d0c6bb42430613cda569",
+    "optimizedSha256": "ec3547fdd752864d154f97ddcd4d1e0fb688a4b10d4b9539b7cee2d8b8006edf",
+    "bytes": 1495490,
+    "sourceBytes": 1953328,
+    "width": 1536,
+    "height": 1024
   }
 }

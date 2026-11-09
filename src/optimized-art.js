@@ -259,5 +259,15 @@ export const OPTIMIZED_ART = {
     "file": "battleSwordIcon-cf53c7c1b7d0.webp",
     "sourceSha256": "018ee1b0e60886f2023aa5fdb0b9807793da50cab59f875eea41922708dd1dd9",
     "optimizedSha256": "cf53c7c1b7d01a77abcdcdd88a8da97edfdad4d691f0f704be28a935d4f50781"
+  },
+  "mapUIConcept": {
+    "file": "mapUIConcept-94ae67d3dbde.webp",
+    "sourceSha256": "1e50bf764b90f84196e661bd6e8124caeae2a2314bd1dc6fcef30b91b74868ed",
+    "optimizedSha256": "94ae67d3dbde4e45aa9ce4bb6bc66abe1ab1b91fb7ada0eac10b5bc86029afa7"
+  },
+  "mapControls": {
+    "file": "mapControls-ec3547fdd752.webp",
+    "sourceSha256": "e0d44847f5b939f6ffe10c88027ff29d478db06fad19d0c6bb42430613cda569",
+    "optimizedSha256": "ec3547fdd752864d154f97ddcd4d1e0fb688a4b10d4b9539b7cee2d8b8006edf"
   }
 };
