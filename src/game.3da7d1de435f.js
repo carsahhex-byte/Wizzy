@@ -1,13 +1,13 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.c32e89bc5577.js';
-import { normalizeDeck, validateDeck } from './decks.df489a11fb82.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.d98b16c8e5e1.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.b52a7a1b1922.js';
+import { normalizeDeck, validateDeck } from './decks.9947d0a2f30d.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.95841f53ce31.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'fire-mana-tempo-v1';
+export const COMBAT_RULES_VERSION = 'fire-water-three-mana-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -817,6 +817,7 @@ function refreshCurrentSpellCards(state) {
     'Fire-15': ['Gain 1 Ember and 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
   };
+  const previousCosts = { 'Fire-11': 2, 'Water-12': 4 };
   let changed = false;
   const upgradedWaterCards = new Set();
   for (const player of state.players) for (const zone of ['hand', 'deck', 'discard']) {
@@ -829,6 +830,14 @@ function refreshCurrentSpellCards(state) {
         if (card.spellId === 'Fire-11') card.manaCost = card.cost = SPELL_CATALOG['Fire-11'].manaCost;
         card.effectText = SPELL_CATALOG[card.spellId].effectText;
         card.description = card.effectText;
+        changed = true;
+      }
+      // Refresh exact prior prices without changing already-paid Mana or logs.
+      if (Object.hasOwn(previousCosts, card?.spellId)
+        && card.manaCost === previousCosts[card.spellId] && card.cost === card.manaCost
+        && card.effectText === SPELL_CATALOG[card.spellId].effectText
+        && card.description === card.effectText) {
+        card.manaCost = card.cost = SPELL_CATALOG[card.spellId].manaCost;
         changed = true;
       }
     }

@@ -1,5 +1,5 @@
-import { SPELLBOOK_VERSION } from './spells.c32e89bc5577.js';
-import { createStarterDeck, validateDeckSlot, normalizeDeckSlot, setDeckQuantity } from './decks.df489a11fb82.js';
+import { SPELLBOOK_VERSION } from './spells.b52a7a1b1922.js';
+import { createStarterDeck, validateDeckSlot, normalizeDeckSlot, setDeckQuantity } from './decks.9947d0a2f30d.js';
 
 // Build hashes, page paths and spellbook labels must never change where a
 // compatible deck is saved. The payload still records its originating book.

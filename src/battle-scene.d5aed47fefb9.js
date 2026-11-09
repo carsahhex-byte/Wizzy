@@ -1,4 +1,4 @@
-import { ASSETS, WIZARD_SPRITES } from './assets.1bc55e2a1a15.js';
+import { ASSETS, WIZARD_SPRITES } from './assets.33a7b54e1110.js';
 
 let atlasReady;
 

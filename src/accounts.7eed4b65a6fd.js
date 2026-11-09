@@ -1,5 +1,5 @@
-import { validateDeckSlot, normalizeDeckSlot } from './decks.df489a11fb82.js';
-import { SPELLBOOK_VERSION } from './spells.c32e89bc5577.js';
+import { validateDeckSlot, normalizeDeckSlot } from './decks.9947d0a2f30d.js';
+import { SPELLBOOK_VERSION } from './spells.b52a7a1b1922.js';
 
 const ACCOUNT_STORAGE_KEY = 'wizzy.account.v1';
 const accountEscape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));

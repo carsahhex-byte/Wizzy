@@ -1,5 +1,5 @@
-import { SPELL_CATALOG } from './spells.c32e89bc5577.js';
-import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.6abf2387f5c4.js';
+import { SPELL_CATALOG } from './spells.b52a7a1b1922.js';
+import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.3da7d1de435f.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
 const DAMAGING_SPELLS = new Set([
@@ -70,10 +70,10 @@ function castSpellId(entry, player) {
   const spellId = SPELL_NAMES.get(printedName);
   const visual = getSpellVisual(spellId);
   if (!visual || visual.element.toLowerCase() !== player.id) return null;
-  // A saved Fire-11 already committed at its former 3-Mana cost keeps that
-  // historical log/payment when resumed; its new resolution still animates.
-  const legacyFireEleven = spellId === 'Fire-11' && entry.message === `${prefix}${printedName} for 3 mana.`;
-  return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyFireEleven ? spellId : null;
+  // Resumed casts keep their historical payment while using current visuals.
+  const previousCost = spellId === 'Fire-11' ? 2 : spellId === 'Water-12' ? 4 : null;
+  const legacyCost = previousCost !== null && entry.message === `${prefix}${printedName} for ${previousCost} mana.`;
+  return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyCost ? spellId : null;
 }
 
 /**
