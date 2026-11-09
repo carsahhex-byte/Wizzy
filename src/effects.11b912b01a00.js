@@ -1,4 +1,4 @@
-import { SPELL_CATALOG } from './spells.f5ff5497ce14.js';
+import { SPELL_CATALOG } from './spells.c44ab9064f55.js';
 
 export const MAX_HP = 100;
 export const MAX_MANA = 10;
@@ -173,7 +173,7 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       damage(opponent, rollTotal >= 10 ? 45 : rollTotal >= 7 ? 38 : 30);
       break;
     case 'Fire-14':
-      damage(opponent, 20 + (rollTotal >= 8 ? 12 : 9) * emberSpent);
+      damage(opponent, 20 + (rollTotal >= 8 ? 9 : 7) * emberSpent);
       break;
     case 'Fire-15':
       gainElement(1);
