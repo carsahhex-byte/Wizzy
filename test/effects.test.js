@@ -120,8 +120,8 @@ test('the current collection completely replaces old IDs and has no starter comp
     assert.ok(cases.some(entry => entry[1] === spell.id), `${spell.id} has independent numerical checks`);
   }
   assert.deepEqual([MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS], [100, 10, 30, 5, 5]);
-  assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Fire').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,2,4,6,8,0]);
-  assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Water').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,4,6,8]);
+  assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Fire').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,4,6,8,0]);
+  assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Water').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,3,6,8]);
   assert.equal(SOURCE_INFO.playableSpellCount, 34);
   assert.deepEqual(SOURCE_INFO.additionalSpells, ['Fire-0', 'Fire-15', 'Water-0']);
   assert.deepEqual([SOURCE_INFO.spellbook.librarySpellCount, SOURCE_INFO.spellbook.importedSpellCount], [31, 31]);
@@ -517,8 +517,8 @@ test('Fire-9 grants one capped Mana only when the capped post-gain Ember total i
   }
 });
 
-test('Fire-11 costs two Mana and resolves damage, capped Embers and one conditional Mana without granting Loaded', () => {
-  assert.equal(SPELL_CATALOG['Fire-11'].manaCost, 2);
+test('Fire-11 costs three Mana and resolves damage, capped Embers and one conditional Mana without granting Loaded', () => {
+  assert.equal(SPELL_CATALOG['Fire-11'].manaCost, 3);
   assert.equal(SPELL_CATALOG['Fire-11'].effectText,
     'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.');
   assert.deepEqual(SPELL_RULES['Fire-11'], { requiresRoll: true, emberSpend: 'none' });

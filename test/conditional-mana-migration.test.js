@@ -300,14 +300,6 @@ function fireBuffFresh() {
 function castBuff(state, spellId) {
   return castSelected(selectCard(state, state.players[0].hand.find(card => card.spellId === spellId).id));
 }
-function oldPaidFireEleven(state) {
-  // A committed cast from the prior build already paid three, regardless of
-  // the refreshed slab's lower price. Its cast log remains historical too.
-  const next = structuredClone(state); next.players[0].mana -= 1;
-  const log = next.log.find(entry => entry.type === 'cast');
-  log.message = log.message.replace('for 2 mana', 'for 3 mana');
-  return next;
-}
 
 test('Fire-9 and Fire-11 old definitions refresh in all zones while preserving selected state and banks', () => {
   const current = fireBuffFresh(), fire = current.players[0];
@@ -322,17 +314,17 @@ test('Fire-9 and Fire-11 old definitions refresh in all zones while preserving s
   assert.deepEqual(upgraded, selected); assert.deepEqual(previous, before);
   for (const zone of ['hand', 'deck', 'discard']) {
     const card = upgraded.players[0][zone].find(card => card.spellId === 'Fire-11');
-    assert.deepEqual([card.manaCost, card.cost], [2, 2]);
+    assert.deepEqual([card.manaCost, card.cost], [3, 3]);
   }
   assert.equal(migrateSavedGame(upgraded), upgraded);
   const newCast = castSelected(upgraded);
-  assert.equal(newCast.players[0].mana, 8);
-  assert.match(newCast.log.findLast(entry => entry.type === 'cast').message, /for 2 mana/);
+  assert.equal(newCast.players[0].mana, 7);
+  assert.match(newCast.log.findLast(entry => entry.type === 'cast').message, /for 3 mana/);
 });
 
 test('old-paid Fire-11 retains its three-Mana payment through rolling and every post-roll Fate stage', () => {
   const initial = fireBuffFresh(); initial.players[0].loaded = 4; initial.players[0].loadedPending = 2;
-  const rolling = oldPaidFireEleven(castBuff(initial, 'Fire-11')), fate = rollPair(rolling, [1, 2]);
+  const rolling = castBuff(initial, 'Fire-11'), fate = rollPair(rolling, [1, 2]);
   const fateSelected = selectCard(fate, fate.players[1].hand.find(card => card.spellId === 'FAT-002').id);
   const defenderPaid = castFateSelected(fateSelected);
   const attackerPaid = castFateSelected(selectCard(defenderPaid, defenderPaid.players[0].hand.find(card => card.spellId === 'FAT-001').id));
@@ -352,7 +344,7 @@ test('old-paid Fire-11 retains its three-Mana payment through rolling and every 
 test('migrated pending Fire-11 applies its new damage and conditional Mana once with no cost refund', () => {
   for (const [dice, total] of [[[3, 3], 6], [[3, 4], 7], [[5, 5], 10]]) {
     const initial = fireBuffFresh(); initial.players[0].loadedPending = 2;
-    const rolling = oldPaidFireEleven(castBuff(initial, 'Fire-11'));
+    const rolling = castBuff(initial, 'Fire-11');
     const rolled = rollPair(rolling, dice), resolving = passFate(rolled);
     for (const current of [rolling, rolled, resolving]) {
       let upgraded = migrateSavedGame(previousDefinitions(current));
@@ -372,7 +364,6 @@ test('migrated pending Fire-11 applies its new damage and conditional Mana once 
 function historicalBuffCompletion(spellId, total, hp = 100) {
   const initial = fireBuffFresh(); initial.players[0].loadedPending = 1; initial.players[1].hp = hp;
   let state = castBuff(initial, spellId);
-  if (spellId === 'Fire-11') state = oldPaidFireEleven(state);
   state = resolveSpell(passFate(rollPair(state, total === 10 ? [5, 5] : [3, total - 3])));
   const player = state.players[0], beforeResolve = state.log.filter(entry => !['resource', 'shield', 'loaded', 'damage', 'resolve', 'victory'].includes(entry.type));
   const events = [];
@@ -418,7 +409,7 @@ test('Fire-11 requires both exact old cost fields and paired old text; partial o
   for (const mutate of [
     card => { card.description = 'Unexpected text.'; },
     card => { card.effectText = 'Deal 99 damage.'; },
-    card => { card.description = card.effectText = SPELL_CATALOG['Fire-11'].effectText; },
+    card => { card.description = card.effectText = SPELL_CATALOG['Fire-11'].effectText; card.cost = card.manaCost = 4; },
     card => { card.name = 'Unknown slab'; },
   ]) {
     const invalid = structuredClone(previous); mutate(invalid.players[0].hand.find(card => card.spellId === 'Fire-11'));
@@ -444,6 +435,90 @@ test('migrated pending Fire-9 uses its new post-gain Mana condition once without
       assert.equal(upgraded.log.filter(entry => entry.type === 'resource' && entry.message.includes('Mana')).length, mana - 8);
       assert.equal(upgraded.log.filter(entry => entry.type === 'shield').length, 0);
       assert.equal(resolveSpell(upgraded), upgraded); assert.equal(migrateSavedGame(upgraded), upgraded);
+    }
+  }
+});
+
+
+const previousCost = { 'Fire-11': 2, 'Water-12': 4 };
+function costSnapshotFresh(first = 0) {
+  const definition = (element, spellId, fateId) => ({ element, entries: [
+    { spellId, quantity: 3 }, { spellId: fateId, quantity: 1 }, { spellId: 'FAT-003', quantity: 1 },
+  ] });
+  let state = createGame(89, { fire: definition('fire', 'Fire-11', 'FAT-001'), water: definition('water', 'Water-12', 'FAT-002') });
+  state = rollInitiative(rollInitiative(state, 0, () => first === 0 ? .9 : 0), 1, () => first === 1 ? .9 : 0);
+  for (const player of state.players) Object.assign(player, { mana: 10, element: 2, loadedPending: 2 });
+  return state;
+}
+function previousCostSnapshots(state) {
+  const previous = structuredClone(state);
+  for (const player of previous.players) for (const card of cardsOf(player)) {
+    if (Object.hasOwn(previousCost, card.spellId)) card.manaCost = card.cost = previousCost[card.spellId];
+  }
+  return previous;
+}
+function previouslyPaidCostCast(state, spellId) {
+  const currentCost = SPELL_CATALOG[spellId].manaCost;
+  const cast = castSelected(selectCard(state, state.players[state.activePlayer].hand.find(card => card.spellId === spellId).id));
+  cast.players[state.activePlayer].mana += currentCost - previousCost[spellId];
+  cast.log.findLast(entry => entry.type === 'cast').message = cast.log.findLast(entry => entry.type === 'cast').message.replace(`for ${currentCost} mana`, `for ${previousCost[spellId]} mana`);
+  return cast;
+}
+
+test('current-text Fire-11 and Water-12 previous prices refresh across all zones without changing selected state', () => {
+  for (const first of [0, 1]) {
+    const current = costSnapshotFresh(first);
+    for (const player of current.players) {
+      const spellId = player.id === 'fire' ? 'Fire-11' : 'Water-12';
+      for (const zone of ['deck', 'discard']) player[zone].push(player.hand.splice(player.hand.findIndex(card => card.spellId === spellId), 1)[0]);
+      Object.assign(player, { hp: 81, shield: 17, loaded: 4, enhancement: 20, auraTurns: 2 });
+    }
+    const selected = selectCard(current, current.players[first].hand.find(card => card.spellId === (first === 0 ? 'Fire-11' : 'Water-12')).id);
+    const previous = previousCostSnapshots(selected), before = structuredClone(previous);
+    assert.equal(validateSavedGame(previous), false);
+    const upgraded = migrateSavedGame(previous);
+    assert.deepEqual(upgraded, selected); assert.deepEqual(previous, before);
+    for (const player of upgraded.players) for (const card of cardsOf(player)) if (Object.hasOwn(previousCost, card.spellId)) assert.deepEqual([card.manaCost, card.cost], [3, 3]);
+    assert.equal(migrateSavedGame(upgraded), upgraded);
+    const newCast = castSelected(upgraded);
+    assert.equal(newCast.players[first].mana, 7);
+    assert.match(newCast.log.findLast(entry => entry.type === 'cast').message, /for 3 mana/);
+  }
+});
+
+test('previous two/four-Mana payments and cast logs survive price refresh through pending and completed rolls', () => {
+  for (const [spellId, first, finalMana] of [['Fire-11', 0, 9], ['Water-12', 1, 6]]) {
+    const rolling = previouslyPaidCostCast(costSnapshotFresh(first), spellId);
+    const fate = rollPair(rolling, [3, 4]), resolving = passFate(fate), completed = resolveSpell(resolving);
+    assert.equal(completed.players[first].mana, finalMana);
+    for (const current of [rolling, fate, resolving, completed]) {
+      const previous = previousCostSnapshots(current), before = structuredClone(previous), upgraded = migrateSavedGame(previous);
+      assert.deepEqual(upgraded, current); assert.deepEqual(previous, before);
+      assert.match(upgraded.log.find(entry => entry.type === 'cast').message, new RegExp(`for ${previousCost[spellId]} mana`));
+      assert.equal(migrateSavedGame(upgraded), upgraded);
+      if (upgraded.lastRoll) assert.equal(rollDice(upgraded, () => { throw new Error('saved dice cannot reroll'); }), upgraded);
+      let continued = upgraded;
+      if (continued.phase === 'rolling') continued = rollPair(continued, [3, 4]);
+      continued = resolveSpell(passFate(continued));
+      assert.deepEqual(continued, completed);
+      assert.equal(continued.players[first].mana, finalMana);
+      assert.equal(continued.players[first].discard.filter(card => card.spellId === spellId).length, 1);
+      assert.equal(resolveSpell(continued), continued);
+    }
+  }
+});
+
+test('price refresh rejects mismatched fields, unknown prices and unpaired canonical descriptions', () => {
+  for (const spellId of ['Fire-11', 'Water-12']) {
+    for (const [manaCost, cost] of [[previousCost[spellId], 3], [3, previousCost[spellId]], [1, 1], [previousCost[spellId], undefined]]) {
+      const previous = previousCostSnapshots(costSnapshotFresh()), card = cardsOf(previous.players[spellId === 'Fire-11' ? 0 : 1]).find(card => card.spellId === spellId);
+      Object.assign(card, { manaCost, cost });
+      assert.equal(migrateSavedGame(previous), null, `${spellId}: ${manaCost}/${cost}`);
+    }
+    for (const key of ['effectText', 'description']) {
+      const previous = previousCostSnapshots(costSnapshotFresh()), card = cardsOf(previous.players[spellId === 'Fire-11' ? 0 : 1]).find(card => card.spellId === spellId);
+      card[key] = 'Unexpected rules text.';
+      assert.equal(migrateSavedGame(previous), null, `${spellId}: ${key}`);
     }
   }
 });

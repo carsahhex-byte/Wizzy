@@ -47,7 +47,7 @@ test('Fire-9 and Fire-11 display the new Mana rewards with no former Shield or L
   assert.deepEqual(COMPACT_SPELL_TEXT['Fire-11'], [
     { text: 'Deal 10, +2 Embers' }, { threshold: '7+', text: '+1 Mana' },
   ]);
-  assert.equal(SPELL_CATALOG['Fire-11'].manaCost, 2);
+  assert.equal(SPELL_CATALOG['Fire-11'].manaCost, 3);
   assert.equal(SPELL_CATALOG['Fire-11'].effectText, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.');
   assert.doesNotMatch(slabRulesText('Fire-11'), /Next|roll|10\+|instead/);
   for (const id of ['Fire-9', 'Fire-11']) {

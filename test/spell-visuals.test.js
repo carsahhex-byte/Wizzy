@@ -9,8 +9,8 @@ import {
 } from '../src/game.js';
 
 const EXPECTED = {
-  'basic-attack': ['Fire-1', 'Fire-4', 'Fire-5', 'Fire-8', 'Fire-11', 'Water-1', 'Water-2', 'Water-4', 'Water-5', 'Water-8', 'Water-9', 'Water-11'],
-  'simple-cast': ['Fire-6', 'Fire-12', 'Water-6', 'Water-12'],
+  'basic-attack': ['Fire-1', 'Fire-4', 'Fire-5', 'Fire-8', 'Fire-11', 'Water-1', 'Water-2', 'Water-4', 'Water-5', 'Water-8', 'Water-9', 'Water-11', 'Water-12'],
+  'simple-cast': ['Fire-6', 'Fire-12', 'Water-6'],
   'large-cast': ['Fire-7', 'Fire-13', 'Fire-14', 'Water-7', 'Water-13', 'Water-14'],
   shield: ['Fire-3', 'Fire-10', 'Water-3', 'Water-10'],
   'power-up': ['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15', 'Water-0'],
@@ -98,7 +98,7 @@ test('all 31 primary spells have the specified routes and Fate has no animation'
 test('damage routing covers Mana boundaries while Shield and power-up override the price tiers', () => {
   for (const [spellId, cost, kind] of [
     ['Fire-5', 3, 'basic-attack'], ['Fire-12', 4, 'simple-cast'], ['Fire-6', 5, 'simple-cast'], ['Fire-13', 6, 'large-cast'],
-    ['Water-5', 3, 'basic-attack'], ['Water-12', 4, 'simple-cast'], ['Water-6', 5, 'simple-cast'], ['Water-13', 6, 'large-cast'],
+    ['Water-5', 3, 'basic-attack'], ['Water-12', 3, 'basic-attack'], ['Water-6', 5, 'simple-cast'], ['Water-13', 6, 'large-cast'],
     ['Fire-0', 0, 'power-up'], ['Fire-15', 0, 'power-up'], ['Fire-9', 2, 'power-up'], ['Fire-10', 3, 'shield'], ['Water-10', 3, 'shield'],
     ['Water-0', 0, 'power-up'],
   ]) {
@@ -106,26 +106,31 @@ test('damage routing covers Mana boundaries while Shield and power-up override t
   }
 });
 
-test('resuming an old paid 3-Mana Fire-11 animates its new resolution without rewriting cost history or replaying it', () => {
-  const pending = cast(fresh({ fire: ['Fire-11'] }), 'Fire-11');
-  assert.equal(SPELL_CATALOG['Fire-11'].manaCost, 2);
-  pending.players[0].mana -= 1; // The old cast already spent 3 Mana, not 2.
-  const commitment = pending.log.find(entry => entry.type === 'cast');
-  commitment.message = 'Fire casts Fire-11 for 3 mana.';
-  const snapshot = structuredClone(pending), after = complete(pending);
-  const events = getResolvedSpellVisuals(pending, after);
-  assert.equal(events.length, 1);
-  assert.equal(events[0].spellId, 'Fire-11'); assert.equal(events[0].kind, 'basic-attack');
-  assert.equal(events[0].manaCost, 2);
-  assert.equal(after.log.find(entry => entry.type === 'cast').message, commitment.message);
-  assert.deepEqual(pending, snapshot);
-  assert.equal(getResolvedSpellVisuals(privateView(pending, 1), privateView(after, 1)).length, 1);
-  assert.deepEqual(getResolvedSpellVisuals(after, after), []);
-  assert.deepEqual(getResolvedSpellVisuals(null, after), []);
-  for (const cost of [1, 4, 30]) {
-    const wrongBefore = structuredClone(pending), wrongAfter = structuredClone(after);
-    for (const state of [wrongBefore, wrongAfter]) state.log.find(entry => entry.type === 'cast').message = `Fire casts Fire-11 for ${cost} mana.`;
-    assert.deepEqual(getResolvedSpellVisuals(wrongBefore, wrongAfter), [], `unexpected cost ${cost} is not a legacy exception`);
+test('resumed casts at prior Fire-11 and Water-12 prices animate once without changing paid costs', () => {
+  for (const [spellId, casterIndex, oldCost] of [['Fire-11', 0, 2], ['Water-12', 1, 4]]) {
+    let initial = fresh({ fire: ['Fire-11'], water: ['Water-12'] });
+    if (casterIndex === 1) initial = pass(initial);
+    initial.players[casterIndex].mana = 10;
+    const pending = cast(initial, spellId);
+    assert.equal(SPELL_CATALOG[spellId].manaCost, 3);
+    pending.players[casterIndex].mana = 10 - oldCost;
+    const commitment = pending.log.findLast(entry => entry.type === 'cast');
+    commitment.message = `${pending.players[casterIndex].name} casts ${spellId} for ${oldCost} mana.`;
+    const snapshot = structuredClone(pending), after = complete(pending);
+    const events = getResolvedSpellVisuals(pending, after);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].spellId, spellId); assert.equal(events[0].kind, 'basic-attack');
+    assert.equal(events[0].manaCost, 3);
+    assert.equal(after.log.findLast(entry => entry.type === 'cast').message, commitment.message);
+    assert.deepEqual(pending, snapshot);
+    assert.equal(getResolvedSpellVisuals(privateView(pending, 1 - casterIndex), privateView(after, 1 - casterIndex)).length, 1);
+    assert.deepEqual(getResolvedSpellVisuals(after, after), []);
+    assert.deepEqual(getResolvedSpellVisuals(null, after), []);
+    for (const cost of [1, 5, 30]) {
+      const wrongBefore = structuredClone(pending), wrongAfter = structuredClone(after);
+      for (const state of [wrongBefore, wrongAfter]) state.log.findLast(entry => entry.type === 'cast').message = `${state.players[casterIndex].name} casts ${spellId} for ${cost} mana.`;
+      assert.deepEqual(getResolvedSpellVisuals(wrongBefore, wrongAfter), [], `unexpected cost ${cost} is not a legacy exception`);
+    }
   }
 });
 
