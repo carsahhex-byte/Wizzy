@@ -136,14 +136,14 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
 <body>
   <main class="app-shell">
     <header class="brand-header">
-      <div><p class="kicker">COMBAT LAB</p><h1>Spell Sketch</h1><p class="tagline">remember. draw. counter.</p></div>
+      <div><p class="kicker">COMBAT LAB · 16 × 16</p><h1>Spell Sketch</h1><p class="tagline">remember. draw. counter.</p></div>
       <div class="brand-glyphs" aria-hidden="true"><i class="glyph-circle"></i><i class="glyph-square"></i><i class="glyph-star">✦</i></div>
     </header>
 
     <section id="setup" class="panel setup-panel" aria-labelledby="setup-title">
       <p class="eyebrow">A LITTLE MEMORY. A LITTLE MAGIC.</p>
       <h2 id="setup-title">Make every block count.</h2>
-      <p class="intro-copy">Choose a spell, remember its shape, then draw it from memory. Your opponent gets the same reference and the same time to counter.</p>
+      <p class="intro-copy">Choose a spell, remember its shape, then draw it from memory on a 16 × 16 grid. Your opponent gets the same reference and the same time to counter.</p>
       <form id="setup-form">
         <fieldset class="mode-picker">
           <legend>How are you playing?</legend>
@@ -200,7 +200,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
           <button type="button" id="begin-cast" class="button button-primary">Memorize & draw <span aria-hidden="true">→</span></button>
         </div>
 
-        <div id="board-shell" class="board-shell" hidden><canvas id="board" width="576" height="576" aria-label="24 by 24 block spell drawing board">Your browser needs canvas support to draw a spell.</canvas></div>
+        <div id="board-shell" class="board-shell" hidden><canvas id="board" width="576" height="576" aria-label="16 by 16 block spell drawing board">Your browser needs canvas support to draw a spell.</canvas></div>
         <div id="drawing-tools" class="drawing-tools" role="toolbar" aria-label="Drawing tools" hidden>
           <button type="button" class="button tool-button" data-tool="draw" aria-pressed="true">Draw</button>
           <button type="button" class="button tool-button" data-tool="erase" aria-pressed="false">Erase</button>
@@ -281,7 +281,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     } while (removed.length);
   }
 
-  function getPattern(shape, size = 24) {
+  function getPattern(shape, size = 16) {
     size = gridSize(size);
     if (!Object.prototype.hasOwnProperty.call(SHAPES, shape)) throw new RangeError('Choose circle, square, or star.');
     const center = Math.floor(size / 2), radius = Math.floor(size / 3), cells = new Set();
@@ -341,7 +341,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
   function scoreDrawing(drawn, target, options = {}) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) throw new TypeError('Scoring options must be an object.');
     const patternSize = target && typeof target === 'object' && 'cells' in target ? target.size : undefined;
-    const size = gridSize(options.size === undefined ? patternSize === undefined ? 24 : patternSize : options.size);
+    const size = gridSize(options.size === undefined ? patternSize === undefined ? 16 : patternSize : options.size);
     const tolerance = options.tolerance === undefined ? 1 : options.tolerance;
     if (tolerance !== 0 && tolerance !== 1) throw new RangeError('Tolerance must be zero or one cell.');
     const drawing = normalizedCells(drawn, size, 'Drawing'), goal = normalizedCells(target, size, 'Target');
@@ -424,7 +424,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
   'use strict';
   const R = window.GlyphDuelRules;
   const $ = id => document.getElementById(id);
-  const SIZE = 24, START_HP = 100;
+  const SIZE = 16, START_HP = 100;
   const board = $('board'), ctx = board.getContext('2d');
   const colors = { background: '#101b27', grid: '#263343', ink: '#f8d088', target: '#f8d088',
     correct: '#85d5b0', missing: '#df7d8b', extra: '#f3bd68', counter: '#a6dbea' };
@@ -501,7 +501,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     context.stroke();
     // Slightly stronger quarter-grid guides help recall positions on every device.
     context.strokeStyle = '#415166'; context.beginPath();
-    for (const i of [6, 12, 18]) {
+    for (const i of [SIZE / 4, SIZE / 2, SIZE * 3 / 4]) {
       context.moveTo(i * w + .5, 0); context.lineTo(i * w + .5, height);
       context.moveTo(0, i * h + .5); context.lineTo(width, i * h + .5);
     }
@@ -512,7 +512,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     const isReference = state?.phase === 'study';
     const isDrawing = state?.phase === 'draw';
     // Match physical display pixels so downscaling never erases thin grid lines.
-    // Input and scoring always use the same 24 logical cells on every screen.
+    // Input and scoring always use the same 16 logical cells on every screen.
     const visibleWidth = board.getBoundingClientRect().width;
     if (visibleWidth > 0) {
       const physical = Math.max(SIZE * 4, Math.round(visibleWidth * Math.min(3, window.devicePixelRatio || 1)));
@@ -563,7 +563,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     show('drawing-tools', drawing); show('submit-drawing', drawing);
     show('handoff', phase === 'handoff'); show('result', phase === 'result' || phase === 'finished');
     $('board').tabIndex = drawing ? 0 : -1;
-    $('board').setAttribute('aria-label', `${pattern.name} ${studying ? 'reference outline' : 'drawing canvas'}, 24 by 24 blocks`);
+    $('board').setAttribute('aria-label', `${pattern.name} ${studying ? 'reference outline' : 'drawing canvas'}, ${SIZE} by ${SIZE} blocks`);
     $('submit-drawing').textContent = state.role === 'defender' ? 'Finish counter' : 'Finish cast';
     for (const button of document.querySelectorAll('[data-shape]')) {
       button.classList.toggle('is-active', button.dataset.shape === state.selected);
@@ -750,7 +750,7 @@ footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Cou
     if (!canDraw()) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); undoStroke(); return; }
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'd', 'e'].includes(event.key)) return;
-    event.preventDefault(); cursor ||= { x: 12, y: 12 };
+    event.preventDefault(); cursor ||= { x: Math.floor(SIZE / 2), y: Math.floor(SIZE / 2) };
     if (event.key === 'ArrowLeft') cursor.x = Math.max(0, cursor.x - 1);
     if (event.key === 'ArrowRight') cursor.x = Math.min(SIZE - 1, cursor.x + 1);
     if (event.key === 'ArrowUp') cursor.y = Math.max(0, cursor.y - 1);

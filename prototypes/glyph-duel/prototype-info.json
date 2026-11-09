@@ -1,8 +1,9 @@
 {
   "format": "spell-sketch-standalone",
-  "version": 1,
+  "version": 2,
   "integration": "independent-prototype",
   "entry": "./index.html",
+  "launch": "./spell-sketch-16x16.html",
   "offline": "./spell-sketch.html",
   "zip": "./spell-sketch.zip",
   "networkRequired": false,
@@ -16,7 +17,7 @@
     "square",
     "star"
   ],
-  "grid": 24,
+  "grid": 16,
   "defaults": {
     "studySeconds": 3,
     "startSeconds": 12,
@@ -29,16 +30,20 @@
   },
   "files": {
     "index.html": {
-      "bytes": 58398,
-      "sha256": "ada38acc1e6005ec1b0133aa036e78e521ec2ca34bf8ec1e011da256d5e80aae"
+      "bytes": 58498,
+      "sha256": "65e6a2ed3547d6e1769e104b49b86a5deff12ca391242e509d9aead044a63205"
+    },
+    "spell-sketch-16x16.html": {
+      "bytes": 58498,
+      "sha256": "65e6a2ed3547d6e1769e104b49b86a5deff12ca391242e509d9aead044a63205"
     },
     "spell-sketch.html": {
-      "bytes": 58398,
-      "sha256": "ada38acc1e6005ec1b0133aa036e78e521ec2ca34bf8ec1e011da256d5e80aae"
+      "bytes": 58498,
+      "sha256": "65e6a2ed3547d6e1769e104b49b86a5deff12ca391242e509d9aead044a63205"
     },
     "README.md": {
-      "bytes": 5450,
-      "sha256": "9c4fb00ca6976b72a0b31f30fb36059741080f460ff54221261a1f695b8424a2"
+      "bytes": 5531,
+      "sha256": "ae582fca819c6fe16221139811ab58ec2336955dcb7e5f8b28c8861e318aa11c"
     }
   }
 }
