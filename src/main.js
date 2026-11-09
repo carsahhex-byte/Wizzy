@@ -4,6 +4,7 @@ import { SPELL_CATALOG } from './spells.js';
 import { validateDeck, getDeckValidation } from './decks.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.js';
 import { createHub } from './hub.js';
+import { parseStorybookRoute } from './districts.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createAccounts } from './accounts.js';
 import { fitSlabText } from './slab-text.js';
@@ -79,7 +80,8 @@ function loadGame() {
     catch { return null; }
   };
   const saved=readSave(SAVE_KEY);
-  if(validateSavedGame(saved))return saved;
+  const current=migrateSavedGame(saved);
+  if(current)return current;
   for(const key of ['wizzy.duel.v13','wizzy.duel.v12','wizzy.duel.v11','wizzy.duel.v10']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
@@ -866,13 +868,13 @@ function enterBattle(){
   if(location.hash!=='#battle')history.pushState(null,'','#battle');
   render();document.querySelector('#battle-home').focus({preventScroll:true});
 }
-function leaveBattle(screen='home'){
+function leaveBattle(screen='home',options={}){
   cancelSpellPresentation();
   battleScene.hide();
   clearCombatTimers();
   pendingBattleDecks=null;shouldEnterAfterRestart=false;
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
-  restoreLocalBattle();multiplayer?.hide();accounts?.hide();battleView.hidden=true;hub.show(screen);
+  restoreLocalBattle();multiplayer?.hide();accounts?.hide();battleView.hidden=true;hub.show(screen,options);
 }
 function requestNewBattle(decks=hub.getSavedDecks(),enterAfter=false){
   if(isOnlineBattle())return;
@@ -918,6 +920,8 @@ document.querySelector('#restart').addEventListener('cancel',()=>{pendingBattleD
 document.querySelector('#restart').addEventListener('close',scheduleCombat);
 function syncAppRoute(){
   const screen=location.hash.slice(1);
+  const storybookRoute=parseStorybookRoute(location.hash);
+  if(storybookRoute){leaveBattle('storybook',{districtId:storybookRoute.districtId,history:false});return;}
   if(screen==='account'){openAccountScreen();return;}
   if(screen==='online'){openOnlineLobby();return;}
   if(screen==='battle'){

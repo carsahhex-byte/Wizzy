@@ -1,18 +1,19 @@
-import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.fe61e0e398a5.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.badcbf3104c2.js';
-import { SPELL_CATALOG } from './spells.4bc9cedcaabc.js';
-import { validateDeck, getDeckValidation } from './decks.7eaf2934a702.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.83dd974820b3.js';
-import { createHub } from './hub.cc5b1353e487.js';
-import { createMultiplayer } from './multiplayer.fbcdb55f4414.js';
-import { createAccounts } from './accounts.e00d3ed97358.js';
-import { fitSlabText } from './slab-text.24236dc32206.js';
-import { createBattleScene } from './battle-scene.206a2e4a24f0.js';
-import { createSpellAnimator } from './spell-animation.0d0575e2a320.js';
-import { createAuraAnimator } from './aura-animation.8a4a4c274972.js';
-import { getResolvedBattleVisuals } from './spell-visuals.778564f22ac9.js';
+import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.f71205c84eb6.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.f2b415fa45e6.js';
+import { SPELL_CATALOG } from './spells.8d3adc552bdd.js';
+import { validateDeck, getDeckValidation } from './decks.e74bb31a96f4.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.a8d885dde429.js';
+import { createHub } from './hub.51f819fb634b.js';
+import { parseStorybookRoute } from './districts.2b05b4e27c21.js';
+import { createMultiplayer } from './multiplayer.76c03f187cb8.js';
+import { createAccounts } from './accounts.a885375884da.js';
+import { fitSlabText } from './slab-text.7c605af20c0d.js';
+import { createBattleScene } from './battle-scene.cba551daf53a.js';
+import { createSpellAnimator } from './spell-animation.de96c06d9a37.js';
+import { createAuraAnimator } from './aura-animation.4a404805a96f.js';
+import { getResolvedBattleVisuals } from './spell-visuals.1295f8570cfc.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
-import { pixelIconMarkup } from './pixel-icons.0985f1ae2a5d.js';
+import { pixelIconMarkup } from './pixel-icons.4fa31443ac23.js';
 
 const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
 const app = document.querySelector('#app');
@@ -79,7 +80,8 @@ function loadGame() {
     catch { return null; }
   };
   const saved=readSave(SAVE_KEY);
-  if(validateSavedGame(saved))return saved;
+  const current=migrateSavedGame(saved);
+  if(current)return current;
   for(const key of ['wizzy.duel.v13','wizzy.duel.v12','wizzy.duel.v11','wizzy.duel.v10']){
     const migrated=migrateSavedGame(readSave(key));
     if(migrated)return migrated;
@@ -866,13 +868,13 @@ function enterBattle(){
   if(location.hash!=='#battle')history.pushState(null,'','#battle');
   render();document.querySelector('#battle-home').focus({preventScroll:true});
 }
-function leaveBattle(screen='home'){
+function leaveBattle(screen='home',options={}){
   cancelSpellPresentation();
   battleScene.hide();
   clearCombatTimers();
   pendingBattleDecks=null;shouldEnterAfterRestart=false;
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
-  restoreLocalBattle();multiplayer?.hide();accounts?.hide();battleView.hidden=true;hub.show(screen);
+  restoreLocalBattle();multiplayer?.hide();accounts?.hide();battleView.hidden=true;hub.show(screen,options);
 }
 function requestNewBattle(decks=hub.getSavedDecks(),enterAfter=false){
   if(isOnlineBattle())return;
@@ -918,6 +920,8 @@ document.querySelector('#restart').addEventListener('cancel',()=>{pendingBattleD
 document.querySelector('#restart').addEventListener('close',scheduleCombat);
 function syncAppRoute(){
   const screen=location.hash.slice(1);
+  const storybookRoute=parseStorybookRoute(location.hash);
+  if(storybookRoute){leaveBattle('storybook',{districtId:storybookRoute.districtId,history:false});return;}
   if(screen==='account'){openAccountScreen();return;}
   if(screen==='online'){openOnlineLobby();return;}
   if(screen==='battle'){

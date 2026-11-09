@@ -1,4 +1,4 @@
-import { SPELL_CATALOG } from './spells.4bc9cedcaabc.js';
+import { SPELL_CATALOG } from './spells.8d3adc552bdd.js';
 
 export const MAX_HP = 100;
 export const MAX_MANA = 10;
@@ -10,11 +10,11 @@ const rule = (emberSpend = 'none', maxEmbers) => Object.freeze({
   requiresRoll: true, emberSpend,
   ...(maxEmbers === undefined ? {} : { maxEmbers }),
 });
-/** Threshold spells roll; resource-preparation spells resolve immediately. Spending precedes resolution. */
+/** Threshold spells roll; Fire-0 resolves immediately. Spending precedes resolution. */
 export const SPELL_RULES = Object.freeze(Object.fromEntries(
   Object.values(SPELL_CATALOG).filter(card => card.category !== 'Fate').map(card => [
     card.spellId,
-    ['Fire-0', 'Fire-15', 'Water-0'].includes(card.spellId) ? Object.freeze({ requiresRoll: false, emberSpend: 'none' })
+    card.spellId === 'Fire-0' ? Object.freeze({ requiresRoll: false, emberSpend: 'none' })
       : card.spellId === 'Fire-5' ? rule('optional', 1)
       : card.spellId === 'Fire-12' ? rule('optional', 2)
         : ['Fire-7', 'Fire-14'].includes(card.spellId) ? rule('all') : rule(),
@@ -177,10 +177,10 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       break;
     case 'Fire-15':
       gainElement(1);
-      gainMana(1);
+      if (rollTotal >= 7) gainMana(1);
       break;
     case 'Water-0':
-      gainMana(1);
+      if (rollTotal >= 7) gainMana(1);
       break;
     case 'Water-1':
       damage(opponent, 6 + (rollTotal >= 7 ? 3 : 0));

@@ -1,11 +1,12 @@
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.badcbf3104c2.js';
-import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.4bc9cedcaabc.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.83dd974820b3.js';
-import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.7eaf2934a702.js';
-import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.0f8120846f04.js';
-import { fitSlabText } from './slab-text.24236dc32206.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.f2b415fa45e6.js';
+import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.8d3adc552bdd.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.a8d885dde429.js';
+import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckList, MAX_DECK_FILE_BYTES } from './decks.e74bb31a96f4.js';
+import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.7d4249af7d8e.js';
+import { fitSlabText } from './slab-text.7c605af20c0d.js';
+import { DISTRICTS, getDistrict, normalizeDistrictId, parseStorybookRoute } from './districts.2b05b4e27c21.js';
 
-const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck']);
+const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck', 'storybook']);
 // The square artwork includes ocean around the city. Its artwork and labels
 // share one coordinate system, so the coast moves with every pan and zoom.
 const MAP_SIZE = 2048;
@@ -62,8 +63,10 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   let selectedElement = 'fire';
   let filter = 'All';
   let inDeckOnly = false;
-  let placeOpen = false;
-  const mapStart = { zoom: 4, cx: .5, cy: .51 };
+  let storybookDistrictId = null;
+  let mapReturnDistrictId = null;
+  const expandedDistricts = new Set();
+  const mapStart = { zoom: 4, cx: .505, cy: .436 };
   let mapView = { ...mapStart };
   let mapDrag = null;
   let suppressMapClickUntil = 0;
@@ -131,26 +134,38 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     return `<section class="wz-phone wz-home-screen">
       <header class="wz-map-header"><button class="wz-small-wordmark" data-wz-action="title" aria-label="Return to Wizzy title screen">Wizzy<span>SEATTLE</span></button><button class="wz-profile-chip" data-wz-action="character">${hubHead(profile.element)}<span>${escapeHub(profile.name)}<small>${elementName(profile.element)} wizard</small></span></button></header>
       <div class="wz-map-toolbar"><div class="wz-map-note">Seattle awaits.<strong>Drag to explore.</strong></div><div class="wz-map-view-controls" role="group" aria-label="Map view"><button type="button" data-wz-action="map-overview" aria-label="Show the whole Seattle map" title="Whole map">Fit</button><button type="button" data-wz-action="map-zoom-out" aria-label="Zoom out on map">−</button><output class="wz-map-zoom" aria-label="Map zoom">4×</output><button type="button" data-wz-action="map-zoom-in" aria-label="Zoom in on map">+</button><button type="button" data-wz-action="map-center" aria-label="Center map on South Lake Union" title="South Lake Union">${hubIcon('compass')}</button></div></div>
-      <div class="wz-map-viewport" tabindex="0" role="region" aria-label="Seattle map preview, drag to explore" aria-describedby="wz-map-instructions">
+      <div class="wz-map-viewport" tabindex="0" role="region" aria-label="Seattle district map, drag to explore" aria-describedby="wz-map-instructions">
         <div class="wz-map-world">
           <div class="wz-map-art" aria-hidden="true"></div>
-          <div class="wz-map-city">
-          <div class="wz-map-label wz-northgate">NORTHGATE</div>
-          <div class="wz-map-label wz-magnolia">MAGNOLIA</div>
-          <div class="wz-map-label wz-magnuson">MAGNUSON<br>PARK</div>
-          <div class="wz-map-label wz-lake-union">LAKE UNION</div>
-          <div class="wz-map-label wz-south-lake-union">SOUTH LAKE UNION</div>
-          <div class="wz-map-label wz-rainier">RAINIER BEACH</div>
-          <div class="wz-locked-district" aria-label="West Seattle, locked"><div class="wz-locked-copy"><span aria-hidden="true">▧</span><strong>WEST<br>SEATTLE</strong><small>LOCKED</small></div></div>
-          <div class="wz-you-marker" role="img" aria-label="Your location, preview position"><span class="wz-location-dot" aria-hidden="true"></span></div>
-          <button class="wz-market-marker ${placeOpen ? 'wz-open' : ''}" data-wz-action="market" aria-label="View Pike Place Market starting location">${hubIcon('pin')}<span>PIKE PLACE<small>START HERE</small></span></button>
+          <div class="wz-map-city" aria-label="Storybook districts">
+          ${DISTRICTS.map(item => `<button type="button" class="wz-district-marker" data-wz-action="district" data-wz-district="${item.id}" data-wz-focus="district-${item.id}" style="left:${item.position.x*100}%;top:${item.position.y*100}%;--wz-marker-offset-y:${({1:4,10:-4,14:4,15:-4})[item.id]||0}px" aria-label="District ${item.id}: ${escapeHub(item.name)}. Open Storybook chapter." title="${item.id} · ${escapeHub(item.name)}"><span class="wz-district-number" aria-hidden="true">${item.id}</span></button>`).join('')}
+          <div class="wz-you-marker" role="img" aria-label="Your location, preview position only"><span class="wz-location-dot" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
-      <p id="wz-map-instructions" class="sr-only">Drag the map with a mouse or finger. Fit shows the complete city. With the map focused, use arrow keys to explore, plus and minus to zoom, or Home to center South Lake Union.</p>
-      ${placeOpen ? `<aside class="wz-place-panel"><button data-wz-action="market" class="wz-place-close" aria-label="Close Pike Place preview">×</button><p class="wz-eyebrow">THE FIRST CHAPTER</p><h2>Pike Place Market</h2><p>Every wizard needs a beginning. Yours is waiting at the Market.</p><span class="wz-preview-tag">LOCATION PREVIEW</span><small>Arrival unlocks will be connected in a later build.</small></aside>` : ''}
-      <nav class="wz-map-controls" aria-label="Game screens"><div class="wz-left-controls"><button type="button" class="wz-map-button wz-storybook-button" data-wz-action="storybook" aria-label="Storybook, photo album coming later" title="Your photo album · coming later">${storyIcon}<span>Storybook</span></button><button class="wz-map-button wz-character-button" data-wz-action="character">${hubIcon('character')}<span>Character</span></button></div><div class="wz-right-controls"><button class="wz-map-button wz-battle-button" data-wz-action="battle">${hubIcon('battle')}<span>Battle<small>PLAYTEST</small></span></button><button class="wz-map-button" data-wz-action="friends">${hubIcon('friends')}<span>Friends</span></button><button class="wz-map-button" data-wz-action="deck">${hubIcon('deck')}<span>Deck</span></button></div></nav><p class="wz-map-preview">MAP PREVIEW · LOCATION NOT CONNECTED</p>${footerHub()}</section>`;
+      <p id="wz-map-instructions" class="sr-only">Drag the map with a mouse or finger. Tap a numbered district to read its Storybook chapter. Fit shows the complete city. With the map focused, use arrow keys to explore, plus and minus to zoom, or Home to center South Lake Union.</p>
+
+      <nav class="wz-map-controls" aria-label="Game screens"><div class="wz-left-controls"><button type="button" class="wz-map-button wz-storybook-button" data-wz-action="storybook" aria-label="Open your Storybook district journal" title="Your Seattle Storybook">${storyIcon}<span>Storybook</span></button><button class="wz-map-button wz-character-button" data-wz-action="character">${hubIcon('character')}<span>Character</span></button></div><div class="wz-right-controls"><button class="wz-map-button wz-battle-button" data-wz-action="battle">${hubIcon('battle')}<span>Battle<small>PLAYTEST</small></span></button><button class="wz-map-button" data-wz-action="friends">${hubIcon('friends')}<span>Friends</span></button><button class="wz-map-button" data-wz-action="deck">${hubIcon('deck')}<span>Deck</span></button></div></nav><p class="wz-map-preview">MAP PREVIEW · LOCATION NOT CONNECTED</p>${footerHub()}</section>`;
   }
+  function storybookHub() {
+    return `<section class="wz-phone wz-panel-screen wz-storybook-screen">${topHub('Storybook', 'YOUR SEATTLE JOURNEY')}<div class="wz-storybook-scroll" data-wz-scroll="storybook"><div class="wz-journal-intro"><p class="wz-eyebrow">THE CITY IS PART OF YOUR STORY</p><h2>A little warmth, one chapter at a time.</h2><p>Open a district to read its mainline journey. These are draft story notes; photos and quest progress will join your journal in a later chapter.</p></div><div class="wz-journal-districts">${DISTRICTS.map(item => `<details class="wz-journal-district" id="wz-story-district-${item.id}" data-wz-story-district="${item.id}" ${expandedDistricts.has(item.id)?'open':''}><summary id="wz-district-summary-${item.id}" data-wz-focus="journal-${item.id}" aria-controls="wz-district-content-${item.id}"><span class="wz-journal-number" aria-hidden="true">${item.id}</span><span><strong>${escapeHub(item.name)}</strong><small>${item.chapters.length?`${item.chapters.length} ${item.chapters.length===1?'chapter':'chapters'}`:'Mainline chapter to come'}</small></span><span class="wz-journal-chevron" aria-hidden="true">⌄</span></summary><div class="wz-district-content" id="wz-district-content-${item.id}">${item.note?`<p class="wz-journal-unassigned">${escapeHub(item.note)}</p>`:''}${item.chapters.map((item,index) => `<article class="wz-journal-chapter"><p class="wz-chapter-eyebrow">MAINLINE · CHAPTER ${index+1}</p><h3>${escapeHub(item.title)}</h3><p class="wz-journal-actors"><strong>Who you’ll meet</strong>${item.actors.map(escapeHub).join(' · ')}</p><ol>${item.steps.map(step=>`<li>${escapeHub(step)}</li>`).join('')}</ol>${item.reward?`<p class="wz-journal-reward"><strong>Story reward</strong>${escapeHub(item.reward)}</p>`:''}${item.onward?`<p class="wz-journal-onward"><strong>Where the story leads</strong>${escapeHub(item.onward)}</p>`:''}</article>`).join('')}</div></details>`).join('')}</div><p class="wz-page-note">Your journey begins with connection. District numbers match the Seattle map.</p></div>${footerHub()}</section>`;
+  }
+  function focusStorybookDistrict(id) {
+    const details=root.querySelector(`[data-wz-story-district="${id}"]`);
+    const scroll=root.querySelector('.wz-storybook-scroll');
+    if(!details||!scroll)return;
+    details.open=true;
+    expandedDistricts.add(id);
+    scroll.scrollTop+=details.getBoundingClientRect().top-scroll.getBoundingClientRect().top-10;
+    details.querySelector('summary')?.focus({preventScroll:true});
+  }
+  root.addEventListener('toggle',event=>{
+    const details=event.target;
+    if(!details.matches?.('[data-wz-story-district]'))return;
+    const id=normalizeDistrictId(details.dataset.wzStoryDistrict);
+    if(id===null)return;
+    if(details.open)expandedDistricts.add(id);else expandedDistricts.delete(id);
+  },true);
   function characterHub() {
     const deck = savedDecks[profile.element];
     return `<section class="wz-phone wz-panel-screen wz-character-screen">${topHub('Your Wizzy', 'CHARACTER')}<div class="wz-page-scroll" data-wz-scroll="character">${accountPanelHub()}<div class="wz-character-stage wz-${profile.element}"><span class="wz-character-halo"></span>${hubArt(profile.element === 'water' ? 'waterMage' : 'fireMage', 'wz-character-art')}<div class="wz-character-plaque"><strong>${escapeHub(profile.name)}</strong><span>${elementName(profile.element)} wizard</span></div></div><div class="wz-paper-panel"><form class="wz-profile-form"><label for="wz-character-name">Wizard name</label><div class="wz-name-row"><input id="wz-character-name" name="wizardName" maxlength="24" value="${escapeHub(profile.name)}" autocomplete="nickname" data-wz-focus="wizard-name"><button class="wz-small-button" type="submit">Save</button></div></form><p class="wz-field-label">YOUR ELEMENT</p>${elementSwitch('profile')}<p class="wz-element-help">Your element chooses your wizard portrait and the deck you open first.</p><div class="wz-stat-heading">DUEL STARTING STATS · CURRENT / MAXIMUM</div><div class="wz-profile-stats"><div><span>HP</span><strong>${MAX_HP} / ${MAX_HP}</strong></div><div><span>MANA</span><strong>3 / ${MAX_MANA}</strong></div><div><span>SHIELD</span><strong>0 / ${MAX_SHIELD}</strong></div><div><span>${profile.element === 'water' ? 'FLOW' : 'EMBERS'}</span><strong>0 / ${profile.element === 'water' ? MAX_FLOW : MAX_EMBERS}</strong></div></div><button class="wz-profile-deck" data-wz-action="deck">${hubIcon('deck')}<span>${elementName(profile.element)} spell deck<small>${getDeckValidation(deck).total} slabs · ${validateDeck(deck) ? 'ready for battle' : 'add at least 1 slab'}</small></span><b aria-hidden="true">›</b></button></div><p class="wz-page-note">Your name, element, and decks stay on this device. Story progression will grow with the city.</p></div>${footerHub()}</section>`;
@@ -286,7 +301,7 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     const focusKey = active?.dataset.wzFocus;
     const selection = active?.tagName === 'INPUT' && active.type === 'text' ? [active.selectionStart, active.selectionEnd] : null;
     root.dataset.wzScreen = screen;
-    root.innerHTML = ({ title: titleHub, home: homeHub, character: characterHub, friends: friendsHub, deck: deckHub }[screen])() + (notice ? `<div class="wz-notice" role="status">${escapeHub(notice)}</div>` : '');
+    root.innerHTML = ({ title: titleHub, home: homeHub, character: characterHub, friends: friendsHub, deck: deckHub, storybook: storybookHub }[screen])() + (notice ? `<div class="wz-notice" role="status">${escapeHub(notice)}</div>` : '');
     fitSlabText(root);
     applyMapView();
     const mapViewport = root.querySelector('.wz-map-viewport');
@@ -300,14 +315,25 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
   }
   function show(nextScreen = 'title', options = {}) {
     const next = HUB_SCREENS.has(nextScreen) ? nextScreen : 'title';
-    const changed = !visible || next !== screen;
+    const districtId=next==='storybook'?normalizeDistrictId(options.districtId):null;
+    const changed = !visible || next !== screen || next==='storybook'&&districtId!==storybookDistrictId;
+    if(next==='storybook'){
+      storybookDistrictId=districtId;
+      if(districtId!==null)expandedDistricts.add(districtId);
+    }
     if (next === 'deck' && screen !== 'deck') selectedElement = profile.element;
     screen = next;
     visible = true;
     root.hidden = false;
-    if (options.history !== false && location.hash !== `#${next}`) history.pushState({ wizzyScreen: next }, '', `#${next}`);
+    const hash=next==='storybook'&&districtId!==null?`#storybook/district/${districtId}`:`#${next}`;
+    if (options.history !== false && location.hash !== hash) history.pushState({ wizzyScreen: next, districtId }, '', hash);
     render();
-    if (changed) root.querySelector('h1')?.focus({ preventScroll: true });
+    if(next==='storybook'&&districtId!==null)focusStorybookDistrict(districtId);
+    else if(next==='home'&&mapReturnDistrictId!==null)root.querySelector(`[data-wz-district="${mapReturnDistrictId}"]`)?.focus({preventScroll:true});
+    else if(changed){
+      if(next==='storybook')root.querySelector('.wz-storybook-scroll').scrollTop=0;
+      root.querySelector('h1')?.focus({preventScroll:true});
+    }
   }
   function hide() { finishMapDrag(); mapObserver?.disconnect(); visible = false; root.hidden = true; }
   function getSavedDecks() { return cloneHub(savedDecks); }
@@ -449,12 +475,16 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     switch (button.dataset.wzAction) {
       case 'enter': show('home'); break;
       case 'title': case 'home': case 'character': case 'friends': case 'deck': show(button.dataset.wzAction); break;
-      case 'market': placeOpen = !placeOpen; render(); break;
+      case 'district': {
+        const id=normalizeDistrictId(button.dataset.wzDistrict);
+        if(getDistrict(id)){mapReturnDistrictId=id;show('storybook',{districtId:id});}
+        break;
+      }
       case 'map-zoom-in': zoomMap(1.25); break;
       case 'map-zoom-out': zoomMap(1 / 1.25); break;
       case 'map-center': mapView = { ...mapStart }; applyMapView(); break;
       case 'map-overview': mapView = { zoom: 1, cx: .5, cy: .5 }; applyMapView(); break;
-      case 'storybook': break;
+      case 'storybook': show('storybook'); break;
       case 'battle': battleHub(); break;
       case 'multiplayer': onMultiplayer({ decks: getSavedDecks(), profile: getProfile() }); break;
       case 'account': onAccount(); break;
@@ -486,6 +516,8 @@ export function createHub({ root, onBattle = () => {}, onMultiplayer = () => {},
     render();
   });
   const followHashHub = () => {
+    const journal=parseStorybookRoute(location.hash);
+    if(journal){show('storybook',{districtId:journal.districtId,history:false});return;}
     const next = location.hash.slice(1);
     if (HUB_SCREENS.has(next)) show(next, { history: false });
   };

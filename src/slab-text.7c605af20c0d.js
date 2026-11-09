@@ -1,4 +1,4 @@
-import { pixelIconMarkup } from './pixel-icons.0985f1ae2a5d.js';
+import { pixelIconMarkup } from './pixel-icons.4fa31443ac23.js';
 
 // Display copy only. Canonical descriptions and combat remain in the spellbook.
 // "Instead" replaces the preceding tier; "extra" adds to the base effect.
@@ -20,8 +20,8 @@ export const COMPACT_SPELL_TEXT = Object.freeze(Object.fromEntries(Object.entrie
   'Fire-12': [line('Deal 14'), line('Spend 0–2 Embers: +8 damage each'), at('7+', 'Cut ≤10 Shield first')],
   'Fire-13': [line('Deal 30'), at('7+', 'Deal 38 instead'), at('10+', 'Deal 45 instead')],
   'Fire-14': [line('Spend all Embers'), line('Deal 20 + 9×Ember spent'), at('8+', '20 + 12×Ember instead')],
-  'Fire-15': [line('+1 Ember, +1 Mana')],
-  'Water-0': [line('+1 Mana')],
+  'Fire-15': [line('+1 Ember'), at('7+', '+1 Mana')],
+  'Water-0': [at('7+', '+1 Mana')],
   'Water-1': [line('Deal 6'), at('7+', 'Deal +3 extra')],
   'Water-2': [line('Deal 4 + 2×Flow'), at('8+', 'After spell: +1 extra Flow')],
   'Water-3': [line('+10 Shield'), at('7+', 'Heal 5'), at('10+', 'Heal 10 instead')],
