@@ -538,5 +538,15 @@
     "sourceBytes": 1953328,
     "width": 1536,
     "height": 1024
+  },
+  "mapTitle": {
+    "file": "mapTitle-46fc9eab154b.webp",
+    "source": "Wizzy Map Title Banner.png",
+    "sourceSha256": "e479de45de587601de951010fb0fec911e32ff4089730e182303321310bffa5a",
+    "optimizedSha256": "46fc9eab154b395936cb4741c385c5d6102000a9ea8ddd3fbf838691368e1e42",
+    "bytes": 818246,
+    "sourceBytes": 1222570,
+    "width": 2126,
+    "height": 740
   }
 }

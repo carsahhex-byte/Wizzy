@@ -269,5 +269,10 @@ export const OPTIMIZED_ART = {
     "file": "mapControls-ec3547fdd752.webp",
     "sourceSha256": "e0d44847f5b939f6ffe10c88027ff29d478db06fad19d0c6bb42430613cda569",
     "optimizedSha256": "ec3547fdd752864d154f97ddcd4d1e0fb688a4b10d4b9539b7cee2d8b8006edf"
+  },
+  "mapTitle": {
+    "file": "mapTitle-46fc9eab154b.webp",
+    "sourceSha256": "e479de45de587601de951010fb0fec911e32ff4089730e182303321310bffa5a",
+    "optimizedSha256": "46fc9eab154b395936cb4741c385c5d6102000a9ea8ddd3fbf838691368e1e42"
   }
 };
