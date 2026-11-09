@@ -28,7 +28,7 @@ const fire = [
   [15, 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
 ];
 const water = [
-  [0, 0, 'On a 7+, gain 1 Mana.'],
+  [0, 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.'],
   [1, 1, 'Deal 6 damage. On a 7+, deal 3 additional damage.'],
   [2, 1, 'Deal 4 + 2 × Flow damage. On an 8+, gain 1 additional Flow after resolution.'],
   [3, 2, 'Gain 10 Shield. On a 7+, heal 5 HP. On a 10+, heal 10 instead.'],

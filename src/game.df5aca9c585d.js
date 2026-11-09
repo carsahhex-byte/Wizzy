@@ -1,13 +1,13 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.8d3adc552bdd.js';
-import { normalizeDeck, validateDeck } from './decks.e74bb31a96f4.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.a8d885dde429.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.f5ff5497ce14.js';
+import { normalizeDeck, validateDeck } from './decks.b43edcf928b7.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.38ec7abccca8.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'conditional-mana-v1';
+export const COMBAT_RULES_VERSION = 'water-zero-oncast-flow-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -58,6 +58,14 @@ function makeDeck(owner, random, deckDefinition) {
 
 function addLog(state, message, type = 'info', playerId = null) {
   state.log.push({ id: state.log.length + 1, round: state.round, playerId, message, type });
+}
+
+function applyWaterZeroCastMana(state) {
+  const caster = state.players[state.pendingSpell.casterIndex];
+  const gained = Math.min(1, Math.max(0, MAX_MANA - caster.mana));
+  caster.mana += gained;
+  state.pendingSpell.manaOnCastApplied = true;
+  addLog(state, `${caster.name} gains ${gained} Mana on cast${caster.mana === MAX_MANA ? ` (maximum ${MAX_MANA})` : ''}.`, 'resource', caster.id);
 }
 
 function inPhase(state, ...phases) {
@@ -221,6 +229,7 @@ export function castSelected(state, { emberSpend = 0 } = {}) {
   next.selectedFateCardIds = [];
   next.lastRoll = null;
   addLog(next, `${player.name} casts ${card.name} for ${card.manaCost} mana${emberSpent ? ` and ${emberSpent} Embers` : ''}.`, 'cast', player.id);
+  if (card.spellId === 'Water-0') applyWaterZeroCastMana(next);
   if (rule.requiresRoll) {
     caster.loaded = 0;
     next.phase = 'rolling';
@@ -703,6 +712,9 @@ export function assertGame(state) {
     requireValue(pending && ['spell', 'enhancement'].includes(pending.kind)
       && pending.casterIndex === state.activePlayer && state.primaryUsed
       && state.primaryAction === pending.kind, 'committed primary action');
+    requireValue(pending.kind === 'spell' && pending.spellId === 'Water-0'
+      ? pending.manaOnCastApplied === true
+      : !Object.hasOwn(pending, 'manaOnCastApplied'), 'on-cast Mana tracking');
     if (pending.kind === 'enhancement') {
       requireValue(state.pendingCardId === null && pending.cardId === null && pending.spellId === null
         && pending.emberSpent === 0 && pending.loadedBonus === 0
@@ -795,21 +807,31 @@ export function validateSavedGame(value) {
   try { assertGame(value); return true; } catch { return false; }
 }
 
-// These same-ID cards used to resolve immediately. Refresh only their exact
-// previous printed definitions; preserve every zone, paid result and log entry.
+// Refresh only exact known previous definitions. Completed outcomes stay paid;
+// an already-committed legacy Water-0 receives its new on-cast Mana once.
 function refreshConditionalManaCards(state) {
-  const previousText = { 'Fire-15': 'Gain 1 Ember and 1 Mana.', 'Water-0': 'Gain 1 Mana.' };
+  const previousText = {
+    'Fire-15': ['Gain 1 Ember and 1 Mana.'],
+    'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
+  };
   let changed = false;
+  const upgradedWaterCards = new Set();
   for (const player of state.players) for (const zone of ['hand', 'deck', 'discard']) {
     for (const card of player[zone]) {
       if (Object.hasOwn(previousText, card?.spellId)
-        && card.effectText === previousText[card.spellId]
-        && card.description === previousText[card.spellId]) {
+        && previousText[card.spellId].includes(card.effectText)
+        && card.description === card.effectText) {
+        if (card.spellId === 'Water-0') upgradedWaterCards.add(card.id);
         card.effectText = SPELL_CATALOG[card.spellId].effectText;
         card.description = card.effectText;
         changed = true;
       }
     }
+  }
+  if (PENDING_PHASES.includes(state.phase) && state.pendingSpell?.spellId === 'Water-0'
+    && upgradedWaterCards.has(state.pendingSpell.cardId)
+    && !Object.hasOwn(state.pendingSpell, 'manaOnCastApplied')) {
+    applyWaterZeroCastMana(state);
   }
   return changed;
 }

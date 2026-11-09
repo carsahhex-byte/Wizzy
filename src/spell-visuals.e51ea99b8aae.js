@@ -1,5 +1,5 @@
-import { SPELL_CATALOG } from './spells.8d3adc552bdd.js';
-import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.f71205c84eb6.js';
+import { SPELL_CATALOG } from './spells.f5ff5497ce14.js';
+import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.df5aca9c585d.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
 const DAMAGING_SPELLS = new Set([

@@ -1,17 +1,17 @@
-import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.f71205c84eb6.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.1779f1362747.js';
-import { SPELL_CATALOG } from './spells.8d3adc552bdd.js';
-import { validateDeck, getDeckValidation } from './decks.e74bb31a96f4.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.a8d885dde429.js';
-import { createHub } from './hub.4e7c390b2917.js';
+import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.df5aca9c585d.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.546c1b22a293.js';
+import { SPELL_CATALOG } from './spells.f5ff5497ce14.js';
+import { validateDeck, getDeckValidation } from './decks.b43edcf928b7.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.38ec7abccca8.js';
+import { createHub } from './hub.408f6e0a1dfa.js';
 import { parseStorybookRoute } from './districts.41d180c8958a.js';
-import { createMultiplayer } from './multiplayer.76c03f187cb8.js';
-import { createAccounts } from './accounts.a885375884da.js';
-import { fitSlabText } from './slab-text.ee4880d9780c.js';
-import { createBattleScene } from './battle-scene.a30cdd5133f7.js';
-import { createSpellAnimator } from './spell-animation.9c8223b49e7e.js';
-import { createAuraAnimator } from './aura-animation.b2e726d8813c.js';
-import { getResolvedBattleVisuals } from './spell-visuals.1295f8570cfc.js';
+import { createMultiplayer } from './multiplayer.97529a98c5a6.js';
+import { createAccounts } from './accounts.e9ce2e5bc8ae.js';
+import { fitSlabText } from './slab-text.8348722846bb.js';
+import { createBattleScene } from './battle-scene.521387961a4d.js';
+import { createSpellAnimator } from './spell-animation.3b47c40d5239.js';
+import { createAuraAnimator } from './aura-animation.2a61b2310f65.js';
+import { getResolvedBattleVisuals } from './spell-visuals.e51ea99b8aae.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
 import { pixelIconMarkup } from './pixel-icons.6683d76908aa.js';
 
@@ -320,7 +320,7 @@ function spellVisualBusy() {
 }
 function displayedStats(player,index) {
   const held=presentedPlayers?.[index];
-  // Mana gains wait for impact; committed costs remain visible immediately.
+  // Resolution gains wait for impact. Costs and on-cast Mana are visible now.
   return held ? {...player,...held,mana:Math.min(player.mana,held.mana)} : player;
 }
 function cancelSpellPresentation() {
@@ -382,6 +382,14 @@ function update(next,message) {
     }));
     const duelKey=isOnlineBattle()?`online-${onlineCode}`:localEntranceKey||'saved-local';
     spellVisualQueue.push(...visuals.map(event=>({...event,key:`${duelKey}:${event.key}`})));
+  }
+  // A server response can contain both commitment and resolution when Fate
+  // passes automatically. Keep Water-0's committed Mana visible even while its
+  // later Flow gain waits for the power-up impact. Callbacks never pay it again.
+  if(presentedPlayers)for(const entry of next.log.slice(state.log.length)){
+    const match=entry.type==='resource'&&entry.playerId==='water'
+      ? /^Water gains ([01]) Mana on cast(?: \(maximum 10\))?\.$/.exec(entry.message):null;
+    if(match)presentedPlayers[1].mana=Math.min(next.players[1].mana,presentedPlayers[1].mana+Number(match[1]));
   }
   if(wasPlaying && next.status==='finished' && !battleView.hidden)pendingVictory=true;
   state=next;saveGame();render();

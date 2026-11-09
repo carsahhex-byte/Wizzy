@@ -1,5 +1,5 @@
-import { SPELLBOOK_VERSION } from './spells.8d3adc552bdd.js';
-import { SAVE_VERSION, COMBAT_RULES_VERSION } from './game.f71205c84eb6.js';
+import { SPELLBOOK_VERSION } from './spells.f5ff5497ce14.js';
+import { SAVE_VERSION, COMBAT_RULES_VERSION } from './game.df5aca9c585d.js';
 
 const ONLINE_STORAGE_KEY = 'wizzy.multiplayer.v2';
 const ONLINE_STATUSES = new Set(['waiting', 'playing', 'finished']);
@@ -123,7 +123,7 @@ export function createMultiplayer({ root, getSavedDecks, getProfile = () => ({ n
       && (view.status === 'waiting' || (view.state && Array.isArray(view.state.players) && view.state.players.length === 2));
   }
   function applyOnlineView(view, { first = false, deliver = true } = {}) {
-    if(view?.spellbookVersion!==SPELLBOOK_VERSION||view.combatRulesVersion!==COMBAT_RULES_VERSION||(view.state&&view.state.version!==SAVE_VERSION))throw new Error('Update and restart the game server for the latest 7+ Mana, Fate, Aura and Enhancement rules before starting or joining a battle.');
+    if(view?.spellbookVersion!==SPELLBOOK_VERSION||view.combatRulesVersion!==COMBAT_RULES_VERSION||(view.state&&view.state.version!==SAVE_VERSION))throw new Error('Update and restart the game server for the latest Water-0 Mana and Flow, Fate, Aura and Enhancement rules before starting or joining a battle.');
     if (!validView(view)) throw new Error('The server sent an incomplete battle response.');
     if (!first && session && (view.code !== session.code || view.revision < session.revision)) return null;
     const previousRevision = session?.revision;

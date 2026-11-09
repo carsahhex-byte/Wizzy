@@ -320,7 +320,7 @@ function spellVisualBusy() {
 }
 function displayedStats(player,index) {
   const held=presentedPlayers?.[index];
-  // Mana gains wait for impact; committed costs remain visible immediately.
+  // Resolution gains wait for impact. Costs and on-cast Mana are visible now.
   return held ? {...player,...held,mana:Math.min(player.mana,held.mana)} : player;
 }
 function cancelSpellPresentation() {
@@ -382,6 +382,14 @@ function update(next,message) {
     }));
     const duelKey=isOnlineBattle()?`online-${onlineCode}`:localEntranceKey||'saved-local';
     spellVisualQueue.push(...visuals.map(event=>({...event,key:`${duelKey}:${event.key}`})));
+  }
+  // A server response can contain both commitment and resolution when Fate
+  // passes automatically. Keep Water-0's committed Mana visible even while its
+  // later Flow gain waits for the power-up impact. Callbacks never pay it again.
+  if(presentedPlayers)for(const entry of next.log.slice(state.log.length)){
+    const match=entry.type==='resource'&&entry.playerId==='water'
+      ? /^Water gains ([01]) Mana on cast(?: \(maximum 10\))?\.$/.exec(entry.message):null;
+    if(match)presentedPlayers[1].mana=Math.min(next.players[1].mana,presentedPlayers[1].mana+Number(match[1]));
   }
   if(wasPlaying && next.status==='finished' && !battleView.hidden)pendingVictory=true;
   state=next;saveGame();render();

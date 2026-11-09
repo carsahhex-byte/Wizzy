@@ -1,4 +1,4 @@
-import { SPELL_CATALOG } from './spells.8d3adc552bdd.js';
+import { SPELL_CATALOG } from './spells.f5ff5497ce14.js';
 
 export const MAX_HP = 100;
 export const MAX_MANA = 10;
@@ -180,7 +180,7 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       if (rollTotal >= 7) gainMana(1);
       break;
     case 'Water-0':
-      if (rollTotal >= 7) gainMana(1);
+      if (rollTotal >= 7) flowGain += 1;
       break;
     case 'Water-1':
       damage(opponent, 6 + (rollTotal >= 7 ? 3 : 0));
