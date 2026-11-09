@@ -71,7 +71,7 @@ The example is a playable deck of 30 Fire-1 slabs; a playable file may list **1�
 
 The PDF leaves Fate Mana unspecified. This implementation retains the previous **0 Mana** cost pending a different ruling; that cost is an implementation assumption, not a printed PDF value. Play one eligible Fate slab per response; each Twist has its own explicit sign choice. Any number of responses may be played as the chain alternates, while cards remain available.
 
-All 34 slabs use the same proportional rules font, **17 px at a 170 px card width**, without reducing it for longer descriptions. Titles stay at the parchment's top and the rules are centered in the remaining space, with **bold roll thresholds**. The upper-left yellow number is the Mana cost; its accessible label still says “N Mana.” **Read Slab** shows the complete spellbook wording, and supplied artwork remains unchanged.
+All 34 slabs use the same proportional rules font, **17 px at a 170 px card width**, without reducing it for longer descriptions. Titles stay at the parchment's top and the rules are centered in the remaining space, with **bold roll thresholds and no tinted threshold backgrounds**. Their stepped outer corners are transparent while dark outlines and interior artwork remain intact; hover/selection feedback is 5% stronger. The upper-left yellow number is the Mana cost; its accessible label still says “N Mana.” **Read Slab** shows the complete spellbook wording, and supplied artwork remains unchanged.
 
 Compact rules use swords for outgoing damage, hearts for healing, and matching
 Shield, Mana and die icons. Flames mean Ember/Embers; drops mean Flow. A drop in

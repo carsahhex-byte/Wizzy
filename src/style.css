@@ -153,10 +153,12 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .pixel-icon > img { position: absolute; display: block; max-width: none; image-rendering: pixelated; pointer-events: none; user-select: none; }
 .slab-symbol { display: inline; white-space: nowrap; }
 .slab-rule-icon { width: .88em; height: .88em; vertical-align: -.06em; }
-.slab-live-paper .slab-rule-threshold { color: #48152e; font-weight: 950; -webkit-text-stroke: .2px currentColor; background: #e5b96e66; padding: 0 .5cqw; }
+.slab-live-paper .slab-rule-threshold { color: #48152e; font-weight: 950; -webkit-text-stroke: .2px currentColor; background: transparent; padding: 0 .5cqw; }
 .slab-mana { position: absolute; top: 4.5%; left: 7%; z-index: 1; padding: 0; color: #ffe16b; font: 900 16cqw/1 'Trebuchet MS',Arial,sans-serif; white-space: nowrap; -webkit-text-stroke: .4px #391b12; text-shadow: 1px 1px #241228, -1px -1px #241228; pointer-events: none; }
-.spell-card:hover:not(:disabled):not(.discard-selected) { transform: translateY(-5px); filter: brightness(1.1); }
 .spell-card.selected { transform: translateY(-5px); box-shadow: 0 0 0 3px #fff6b4, 0 0 0 6px #ffcc3e, 0 0 20px #ffd94c66; }
+.spell-card.selected:not(:disabled):not(.discard-selected):not(.fate-muted):not(.fate-unavailable) { filter: brightness(1.05); box-shadow: 0 0 0 3px #fff6b4, 0 0 0 6px #ffcc3e, 0 0 20px rgb(255 217 76 / .42); }
+.spell-card:hover:not(:disabled):not(.discard-selected):not(.fate-muted):not(.fate-unavailable) { transform: translateY(-5px); }
+@media (hover: hover) { .spell-card:hover:not(:disabled):not(.discard-selected):not(.fate-muted):not(.fate-unavailable) { filter: brightness(1.15); } }
 .card-name { position: absolute; top: 6.5%; left: 10%; right: 10%; font: 900 var(--name-size,21px) 'Trebuchet MS', sans-serif; color: white; text-shadow: 2px 2px #120c1e, -1px -1px #120c1e, 1px -1px #120c1e, -1px 1px #120c1e; line-height: 1.1; }
 .card-copy { position: absolute; top: 62%; bottom: 9%; left: 12%; right: 12%; display: flex; flex-direction: column; justify-content: center; gap: 4px; color: #291d19; line-height: 1.1; text-shadow: none; }
 .card-copy .mana-cost { font-size: 18px; flex-shrink: 0; }
@@ -275,7 +277,7 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .deck-group h3>span { color: #ada1b6; font-size: 11px; font-weight: normal; }
 .deck-row { display: grid; grid-template-columns: 34px 1fr 38px 30px; align-items: center; gap: 11px; width: 100%; border: 0; border-top: 1px solid #403a4e; padding: 8px 3px; background: none; text-align: left; }
 .deck-row:hover { background: #ffffff08; }
-.deck-thumbnail { display: block; position: relative; width: 34px; }
+.deck-thumbnail { display: block; position: relative; width: 34px; aspect-ratio: 947/1250; }
 .deck-spell-name { color: #f3e6ce; font-size: 14px; font-weight: bold; }
 .deck-spell-name>small { display: block; color: #ab9db6; font: 9px monospace; margin-top: 5px; }
 .deck-mana { color: #85d7ed; font-size: 15px; text-align: center; }
