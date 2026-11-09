@@ -70,7 +70,10 @@ function castSpellId(entry, player) {
   const spellId = SPELL_NAMES.get(printedName);
   const visual = getSpellVisual(spellId);
   if (!visual || visual.element.toLowerCase() !== player.id) return null;
-  return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) ? spellId : null;
+  // A saved Fire-11 already committed at its former 3-Mana cost keeps that
+  // historical log/payment when resumed; its new resolution still animates.
+  const legacyFireEleven = spellId === 'Fire-11' && entry.message === `${prefix}${printedName} for 3 mana.`;
+  return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyFireEleven ? spellId : null;
 }
 
 /**

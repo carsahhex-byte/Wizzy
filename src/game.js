@@ -7,7 +7,7 @@ export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange }
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'fire14-seven-nine-v1';
+export const COMBAT_RULES_VERSION = 'fire-mana-tempo-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -811,6 +811,8 @@ export function validateSavedGame(value) {
 // an already-committed legacy Water-0 receives its new on-cast Mana once.
 function refreshCurrentSpellCards(state) {
   const previousText = {
+    'Fire-9': ['Gain 2 Embers. On a 7+, gain 3 instead. If you have 4 or more Embers after resolution, gain 8 Shield.'],
+    'Fire-11': ['Deal 8 damage and gain 2 Embers. On a 7+, gain +2 to your next roll. On a 10+, gain +4 instead.'],
     'Fire-14': ['Spend all Embers. Deal 20 damage plus 9 per Ember spent. On an 8+, deal 12 per Ember instead.'],
     'Fire-15': ['Gain 1 Ember and 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
@@ -821,8 +823,10 @@ function refreshCurrentSpellCards(state) {
     for (const card of player[zone]) {
       if (Object.hasOwn(previousText, card?.spellId)
         && previousText[card.spellId].includes(card.effectText)
-        && card.description === card.effectText) {
+        && card.description === card.effectText
+        && (card.spellId !== 'Fire-11' || card.manaCost === 3 && card.cost === 3)) {
         if (card.spellId === 'Water-0') upgradedWaterCards.add(card.id);
+        if (card.spellId === 'Fire-11') card.manaCost = card.cost = SPELL_CATALOG['Fire-11'].manaCost;
         card.effectText = SPELL_CATALOG[card.spellId].effectText;
         card.description = card.effectText;
         changed = true;

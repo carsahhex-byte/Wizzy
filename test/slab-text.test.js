@@ -19,12 +19,12 @@ test('compact resource and damage math distinguishes gains, replacements and ext
   assert.equal(slabRulesText('Fire-0'), '+1 Ember');
   assert.equal(slabRulesText('Fire-15'), '+1 Ember 7+ +1 Mana');
   assert.equal(slabRulesText('Water-0'), '+1 Mana on cast 7+ +1 extra Flow');
-  for (const id of ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4', 'Fire-6', 'Fire-7', 'Fire-9', 'Fire-11', 'Fire-13', 'Fire-14', 'Water-3']) assert.match(slabRulesText(id), /instead/, id);
+  for (const id of ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4', 'Fire-6', 'Fire-7', 'Fire-9', 'Fire-13', 'Fire-14', 'Water-3']) assert.match(slabRulesText(id), /instead/, id);
   for (const id of ['Fire-8', 'Fire-10', 'Water-1', 'Water-6', 'Water-7', 'Water-8', 'Water-9', 'Water-10', 'Water-13', 'Water-14']) assert.match(slabRulesText(id), /extra/, id);
   assert.match(slabRulesText('Fire-7'), /Spend all Embers.*15 \+ 7×Ember spent.*9\+ 15 \+ 10×Ember instead/);
   assert.match(slabRulesText('Fire-14'), /Spend all Embers.*20 \+ 7×Ember spent.*8\+ 20 \+ 9×Ember instead/);
-  assert.equal(COMPACT_SPELL_TEXT['Fire-9'][2].threshold, undefined, 'the Shield check is independent of the roll tier');
-  assert.equal(COMPACT_SPELL_TEXT['Fire-9'][2].text, 'Then 4+ Embers: +8 Shield');
+  assert.equal(COMPACT_SPELL_TEXT['Fire-9'][2].threshold, undefined, 'the Mana check is independent of the roll tier');
+  assert.equal(COMPACT_SPELL_TEXT['Fire-9'][2].text, 'Then 4+ Embers: +1 Mana');
 });
 
 test('Water-0 separates its unconditional on-cast Mana from extra Flow at the rolled threshold', () => {
@@ -39,6 +39,22 @@ test('Water-0 separates its unconditional on-cast Mana from extra Flow at the ro
   assert.match(markup, /data-rule-word="Mana"/);
   assert.match(markup, /data-rule-word="Flow"/);
   assert.equal(slabRulesText('Fire-15'), '+1 Ember 7+ +1 Mana', 'Fire-15 keeps its separate conditional Mana rule');
+});
+
+test('Fire-9 and Fire-11 display the new Mana rewards with no former Shield or Loaded reward', () => {
+  assert.equal(slabRulesText('Fire-9'), '+2 Embers 7+ +3 instead Then 4+ Embers: +1 Mana');
+  assert.doesNotMatch(slabRulesText('Fire-9'), /Shield|roll|10\+/);
+  assert.deepEqual(COMPACT_SPELL_TEXT['Fire-11'], [
+    { text: 'Deal 10, +2 Embers' }, { threshold: '7+', text: '+1 Mana' },
+  ]);
+  assert.equal(SPELL_CATALOG['Fire-11'].manaCost, 2);
+  assert.equal(SPELL_CATALOG['Fire-11'].effectText, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.');
+  assert.doesNotMatch(slabRulesText('Fire-11'), /Next|roll|10\+|instead/);
+  for (const id of ['Fire-9', 'Fire-11']) {
+    const markup = slabRulesMarkup(id);
+    assert.equal((markup.match(/data-rule-word="Mana"/g) || []).length, 1, id);
+    assert.doesNotMatch(markup, /data-rule-word="Shield"|data-rule-word="roll"/, id);
+  }
 });
 
 test('optional spending, Shield removal order, Loaded and extra Flow timing remain explicit', () => {

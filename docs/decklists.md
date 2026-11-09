@@ -2,9 +2,11 @@
 
 The current catalog contains **34 unique spells: 16 Fire, 15 Water, and 3 Fate**, including **31 primaries**. The 31 original spells come from **Wizzy Master Spellbook Nov4.pdf**, *Wizzy / Master Spellbook V2.1*, dated November 4, 2026. The user-defined additions are **Fire-0: 0 Mana, gain 1 Ember; Fire-15: 0 Mana, gain 1 Ember and gain 1 Mana on 7+; Water-0: 0 Mana, gain 1 Mana on cast and gain 1 additional Flow after resolution on 7+.** Water-0 also receives the normal Water passive: 1 Flow total below 7, or 2 total on 7+, capped at 5. Its Mana is guaranteed before the dice roll, capped at 10. The previous Fire, Water, and Neutral catalog and its prescribed decklists are no longer playable. Earth and Air are outside this update.
 
-Printed Fire/Water costs and effect text come from that PDF, with the user-approved Fire-14 balance change below. The user's combat instructions take precedence over the PDF's older pre-roll Fate paragraph and its note about retaining the earlier approved spellbook. This update replaces that earlier spellbook and applies Fate **after** rolling.
+Printed Fire/Water costs and effect text come from that PDF, with the user-approved Fire-9, Fire-11 and Fire-14 balance changes below. The user's combat instructions take precedence over the PDF's older pre-roll Fate paragraph and its note about retaining the earlier approved spellbook. This update replaces that earlier spellbook and applies Fate **after** rolling.
 
-**Fire-14** still costs **8 Mana**, spends all available Embers, and has **20 base damage** with an **8+ Modified Roll threshold**. Its per-Ember damage is now **7**, increasing to **9 on 8+**: `20 + 7 × spent` or `20 + 9 × spent`. Five Embers therefore deal **55 / 65** before bonuses; 30% Enhancement plus 10% Aura increases those totals to **77 / 91 before Shield**. No other spell is rebalanced. The catalog family and save version 14 stay unchanged; compatible saves with the exact former Fire-14 text are upgraded without resetting decks or replaying committed actions/results.
+**Fire-9** keeps its **2 Mana** cost and gains **2 Embers**, or **3 on 7+**. It then checks the capped Ember counter: **4 or more grants 1 Mana instead of 8 Shield**. **Fire-11** costs **2 Mana** and reads: “Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.” The Mana replaces both former Loaded thresholds; no new Loaded is awarded, and existing queued Loaded is preserved. Gains resolve once after Fate and respect the 10-Mana cap. Compatible old saves retain paid costs and completed results, including old Shield/Loaded awards; a pending Fire-11 that already paid 3 Mana is not refunded, and future casts cost 2.
+
+**Fire-14** still costs **8 Mana**, spends all available Embers, and has **20 base damage** with an **8+ Modified Roll threshold**. Its per-Ember damage is **7**, increasing to **9 on 8+**: `20 + 7 × spent` or `20 + 9 × spent`. Five Embers therefore deal **55 / 65** before bonuses; 30% Enhancement plus 10% Aura increases those totals to **77 / 91 before Shield**. Other spell effects, unlimited copies including Fate, the catalog family and save version 14 stay unchanged. Exact earlier spell definitions are upgraded without resetting decks or replaying committed actions/results.
 
 ## Build and save a deck
 
@@ -59,7 +61,7 @@ The example is a playable deck of 30 Fire-1 slabs; a playable file may list **1�
 | Fire-8 | 2 | Water-8 | 2 |
 | Fire-9 | 2 | Water-9 | 2 |
 | Fire-10 | 3 | Water-10 | 3 |
-| Fire-11 | 3 | Water-11 | 3 |
+| Fire-11 | 2 | Water-11 | 3 |
 | Fire-12 | 4 | Water-12 | 4 |
 | Fire-13 | 6 | Water-13 | 6 |
 | Fire-14 | 8 | Water-14 | 8 |

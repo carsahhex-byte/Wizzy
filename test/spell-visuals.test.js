@@ -106,6 +106,29 @@ test('damage routing covers Mana boundaries while Shield and power-up override t
   }
 });
 
+test('resuming an old paid 3-Mana Fire-11 animates its new resolution without rewriting cost history or replaying it', () => {
+  const pending = cast(fresh({ fire: ['Fire-11'] }), 'Fire-11');
+  assert.equal(SPELL_CATALOG['Fire-11'].manaCost, 2);
+  pending.players[0].mana -= 1; // The old cast already spent 3 Mana, not 2.
+  const commitment = pending.log.find(entry => entry.type === 'cast');
+  commitment.message = 'Fire casts Fire-11 for 3 mana.';
+  const snapshot = structuredClone(pending), after = complete(pending);
+  const events = getResolvedSpellVisuals(pending, after);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].spellId, 'Fire-11'); assert.equal(events[0].kind, 'basic-attack');
+  assert.equal(events[0].manaCost, 2);
+  assert.equal(after.log.find(entry => entry.type === 'cast').message, commitment.message);
+  assert.deepEqual(pending, snapshot);
+  assert.equal(getResolvedSpellVisuals(privateView(pending, 1), privateView(after, 1)).length, 1);
+  assert.deepEqual(getResolvedSpellVisuals(after, after), []);
+  assert.deepEqual(getResolvedSpellVisuals(null, after), []);
+  for (const cost of [1, 4, 30]) {
+    const wrongBefore = structuredClone(pending), wrongAfter = structuredClone(after);
+    for (const state of [wrongBefore, wrongAfter]) state.log.find(entry => entry.type === 'cast').message = `Fire casts Fire-11 for ${cost} mana.`;
+    assert.deepEqual(getResolvedSpellVisuals(wrongBefore, wrongAfter), [], `unexpected cost ${cost} is not a legacy exception`);
+  }
+});
+
 test('unknown, retired, malformed and prototype names never produce an animation', () => {
   for (const value of [null, undefined, 1, {}, [], 'Fire-16', 'Fire--1', 'FIR-001', 'Earth-1', 'fire-1', '__proto__', 'constructor']) {
     assert.equal(getSpellVisual(value), null);

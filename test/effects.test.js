@@ -46,14 +46,14 @@ const cases = [
   ['Fire-8 base damage and Ember', 'Fire-8', { roll: 7 }, { element: 1 }, { hp: 90 }],
   ['Fire-8 eight adds four damage', 'Fire-8', { roll: 8 }, { element: 1 }, { hp: 86 }],
   ['Fire-9 below seven gains two', 'Fire-9', { roll: 6 }, { element: 2, shield: 0 }, {}],
-  ['Fire-9 checks total after its gain', 'Fire-9', { roll: 7, caster: { element: 1 } }, { element: 4, shield: 8 }, {}],
-  ['Fire-9 base gain can also enable Shield', 'Fire-9', { roll: 6, caster: { element: 2 } }, { element: 4, shield: 8 }, {}],
-  ['Fire-9 cap does not prevent its Shield condition', 'Fire-9', { roll: 7, caster: { element: 4 } }, { element: 5, shield: 8 }, {}],
+  ['Fire-9 checks total after its gain for Mana', 'Fire-9', { roll: 7, caster: { element: 1 } }, { element: 4, mana: 4, shield: 0 }, {}],
+  ['Fire-9 base gain can also enable Mana', 'Fire-9', { roll: 6, caster: { element: 2 } }, { element: 4, mana: 4, shield: 0 }, {}],
+  ['Fire-9 cap does not prevent its Mana condition', 'Fire-9', { roll: 7, caster: { element: 4 } }, { element: 5, mana: 4, shield: 0 }, {}],
   ['Fire-10 base Shield and Ember', 'Fire-10', { roll: 7 }, { shield: 16, element: 1 }, {}],
   ['Fire-10 eight adds eight Shield', 'Fire-10', { roll: 8 }, { shield: 24, element: 1 }, {}],
-  ['Fire-11 base damage and two Embers', 'Fire-11', { roll: 6 }, { element: 2, loadedPending: 0 }, { hp: 92 }],
-  ['Fire-11 seven queues two Loaded', 'Fire-11', { roll: 7 }, { element: 2, loadedPending: 2 }, { hp: 92 }],
-  ['Fire-11 ten replaces two Loaded with four', 'Fire-11', { roll: 10 }, { element: 2, loadedPending: 4 }, { hp: 92 }],
+  ['Fire-11 base damage and two Embers', 'Fire-11', { roll: 6 }, { element: 2, mana: 3, loadedPending: 0 }, { hp: 90 }],
+  ['Fire-11 seven grants one Mana without Loaded', 'Fire-11', { roll: 7 }, { element: 2, mana: 4, loadedPending: 0 }, { hp: 90 }],
+  ['Fire-11 ten still grants only one Mana without Loaded', 'Fire-11', { roll: 10 }, { element: 2, mana: 4, loadedPending: 0 }, { hp: 90 }],
   ['Fire-12 two Embers add sixteen damage', 'Fire-12', { roll: 6, spent: 2 }, {}, { hp: 70 }],
   ['Fire-12 Shield strip and paid damage both apply', 'Fire-12', { roll: 7, spent: 2, opponent: { shield: 20 } }, {}, { hp: 80, shield: 0 }],
   ['Fire-13 base damage', 'Fire-13', { roll: 6 }, {}, { hp: 70 }],
@@ -120,7 +120,7 @@ test('the current collection completely replaces old IDs and has no starter comp
     assert.ok(cases.some(entry => entry[1] === spell.id), `${spell.id} has independent numerical checks`);
   }
   assert.deepEqual([MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS], [100, 10, 30, 5, 5]);
-  assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Fire').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,4,6,8,0]);
+  assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Fire').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,2,4,6,8,0]);
   assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Water').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,4,6,8]);
   assert.equal(SOURCE_INFO.playableSpellCount, 34);
   assert.deepEqual(SOURCE_INFO.additionalSpells, ['Fire-0', 'Fire-15', 'Water-0']);
@@ -288,12 +288,12 @@ test('Flow contributes before Enhancement while healing and Flow gain retain pri
   assert.deepEqual(result.events.map(entry => [entry.type, entry.amount]), [['damage', 23], ['heal', 6], ['enhancement', -30], ['resource', 1]]);
 });
 
-test('Enhancement does not increase Shield grants, Ember gains or queued Loaded', () => {
+test('Enhancement does not increase Shield grants, Ember gains or Mana rewards', () => {
   const shield = resolve('Fire-10', { roll: 8, caster: { enhancement: 30 } });
   assert.deepEqual([shield.caster.shield, shield.caster.element], [24, 1]);
   assert.equal(shield.caster.enhancement, 30);
   const preparation = resolve('Fire-11', { roll: 10, caster: { enhancement: 30 } });
-  assert.deepEqual([preparation.opponent.hp, preparation.caster.element, preparation.caster.loadedPending], [90, 2, 4]);
+  assert.deepEqual([preparation.opponent.hp, preparation.caster.element, preparation.caster.mana, preparation.caster.loadedPending], [87, 2, 4, 0]);
   assert.equal(preparation.caster.enhancement, 0);
 });
 
@@ -377,7 +377,7 @@ test('resource, healing and Shield spells preserve both bonuses without boosting
   for (const [spellId, expected] of [
     ['Fire-2', { hp: 60, shield: 0, element: 3 }],
     ['Fire-3', { hp: 60, shield: 12, element: 2 }],
-    ['Fire-9', { hp: 60, shield: 8, element: 5 }],
+    ['Fire-9', { hp: 60, shield: 0, element: 5, mana: 4 }],
     ['Water-3', { hp: 70, shield: 10, element: 4 }],
     ['Water-10', { hp: 71, shield: 14, element: 4 }],
   ]) {
@@ -496,4 +496,53 @@ test('Fire-14 seven/nine scaling matches golden damage values across all Ember b
   assert.equal(resolve('Fire-7', { spent: 5, roll: 9 }).events[0].amount, 65);
   assert.equal(resolve('Water-14', { roll: 7, caster: { element: 5 } }).events[0].amount, 40, 'Water-14 stays unchanged');
   assert.equal(resolve('Water-14', { roll: 8, caster: { element: 5 } }).events[0].amount, 52);
+});
+
+test('Fire-9 grants one capped Mana only when the capped post-gain Ember total is at least four', () => {
+  assert.equal(SPELL_CATALOG['Fire-9'].manaCost, 2);
+  assert.equal(SPELL_CATALOG['Fire-9'].effectText,
+    'Gain 2 Embers. On a 7+, gain 3 instead. If you have 4 or more Embers after resolution, gain 1 Mana.');
+  assert.deepEqual(SPELL_RULES['Fire-9'], { requiresRoll: true, emberSpend: 'none' });
+  for (let element = 0; element <= 5; element++) for (const roll of [6, 7, 10]) for (const mana of [0, 9, 10]) {
+    const caster = { element, mana, hp: 72, shield: 12, loaded: 4, loadedPending: 2, enhancement: 30, auraTurns: 2 };
+    const result = resolve('Fire-9', { roll, caster, opponent: { shield: 20 } });
+    const afterEmbers = Math.min(5, element + (roll >= 7 ? 3 : 2));
+    const qualifies = afterEmbers >= 4, manaGain = qualifies ? Math.min(1, 10 - mana) : 0;
+    assert.deepEqual(result.caster, player('fire', { ...caster, element: afterEmbers, mana: mana + manaGain }),
+      `Embers ${element}, final roll ${roll}, Mana ${mana}`);
+    assert.deepEqual(result.opponent, player('water', { shield: 20 }));
+    assert.deepEqual(result.events.map(event => [event.type, event.resource, event.amount]), [
+      ['resource', 'element', afterEmbers - element], ...(qualifies ? [['resource', 'mana', manaGain]] : []),
+    ], 'the Ember gain precedes the independent Mana check; Shield and Loaded are never granted');
+  }
+});
+
+test('Fire-11 costs two Mana and resolves damage, capped Embers and one conditional Mana without granting Loaded', () => {
+  assert.equal(SPELL_CATALOG['Fire-11'].manaCost, 2);
+  assert.equal(SPELL_CATALOG['Fire-11'].effectText,
+    'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.');
+  assert.deepEqual(SPELL_RULES['Fire-11'], { requiresRoll: true, emberSpend: 'none' });
+  const bonuses = [
+    { enhancement: 0, auraTurns: 0, total: 10 }, { enhancement: 30, auraTurns: 0, total: 13 },
+    { enhancement: 0, auraTurns: 2, total: 11 }, { enhancement: 30, auraTurns: 2, total: 14 },
+  ];
+  for (const roll of [6, 7, 10]) for (const mana of [0, 9, 10]) for (let element = 0; element <= 5; element++) {
+    for (const { enhancement, auraTurns, total } of bonuses) for (const shield of [0, 30]) {
+      const caster = { element, mana, hp: 72, shield: 12, loaded: 4, loadedPending: 2, enhancement, auraTurns };
+      const result = resolve('Fire-11', { roll, caster, opponent: { shield } });
+      const afterEmbers = Math.min(5, element + 2), manaGain = roll >= 7 ? Math.min(1, 10 - mana) : 0;
+      const absorbed = Math.min(shield, total);
+      assert.deepEqual(result.caster, player('fire', { ...caster, element: afterEmbers, mana: mana + manaGain, enhancement: 0 }),
+        `final roll ${roll}, Mana ${mana}, Embers ${element}, Enhancement ${enhancement}, Aura ${auraTurns}, Shield ${shield}`);
+      assert.deepEqual(result.opponent, player('water', { shield: shield - absorbed, hp: 100 - total + absorbed }));
+      const damage = result.events[0];
+      assert.deepEqual([damage.type, damage.baseDamage, damage.amount, damage.absorbed, damage.hpDamage],
+        ['damage', 10, total, absorbed, total - absorbed]);
+      assert.deepEqual(result.events.slice(1).map(event => [event.type, event.resource, event.amount]), [
+        ['resource', 'element', afterEmbers - element],
+        ...(roll >= 7 ? [['resource', 'mana', manaGain]] : []),
+        ...(enhancement ? [['enhancement', undefined, -enhancement]] : []),
+      ], 'a final ten has the same one-Mana reward as seven, and no threshold adds or clears Loaded');
+    }
+  }
 });
