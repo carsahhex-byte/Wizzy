@@ -244,7 +244,7 @@ test('removing the last slab makes an editable empty slot without changing the s
 test('Water-0 is Water-only and round-trips unrestricted copies without changing existing deck files', () => {
   assert.equal(SPELLBOOK_VERSION, 'nov4-v2.1');
   assert.equal(SPELL_CATALOG['Water-0'].manaCost, 0);
-  assert.equal(SPELL_CATALOG['Water-0'].effectText, 'On a 7+, gain 1 Mana.');
+  assert.equal(SPELL_CATALOG['Water-0'].effectText, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.');
   assert.equal(getEligibleSpells('water').some(card => card.spellId === 'Water-0'), true);
   assert.equal(getEligibleSpells('fire').some(card => card.spellId === 'Water-0'), false);
   assert.throws(() => setDeckQuantity(createStarterDeck('fire'), 'Water-0', 1), /other main element/);

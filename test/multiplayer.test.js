@@ -384,7 +384,7 @@ test('Fire-0 resolves online at zero Mana without dice or Fate, preserves Loaded
   }
 });
 
-test('Fire-15 and Water-0 use server rolls plus Loaded for conditional Mana with independent resource caps', async t => {
+test('server rolls and Loaded decide Fire-15 Mana or Water-0 extra Flow with independent caps', async t => {
   const cases = [
     ['Fire-15', 0, 4, 0, [3, 3], 0, 5],
     ['Fire-15', 0, 0, 0, [3, 4], 1, 1],
@@ -393,14 +393,15 @@ test('Fire-15 and Water-0 use server rolls plus Loaded for conditional Mana with
     ['Fire-15', 9, 5, 0, [3, 3], 9, 5],
     ['Fire-15', 0, 0, 4, [1, 1], 0, 1],
     ['Fire-15', 0, 0, 4, [1, 2], 1, 1],
-    ['Water-0', 0, 0, 0, [3, 3], 0, 1],
-    ['Water-0', 0, 0, 0, [3, 4], 1, 1],
+    ['Water-0', 0, 0, 0, [3, 3], 1, 1],
+    ['Water-0', 0, 0, 0, [3, 4], 1, 2],
     ['Water-0', 9, 4, 0, [3, 4], 10, 5],
     ['Water-0', 10, 4, 0, [3, 3], 10, 5],
-    ['Water-0', 9, 5, 0, [3, 3], 9, 5],
+    ['Water-0', 9, 5, 0, [3, 3], 10, 5],
     ['Water-0', 0, 5, 0, [3, 4], 1, 5],
-    ['Water-0', 0, 0, 4, [1, 1], 0, 1],
-    ['Water-0', 9, 0, 4, [1, 2], 10, 1],
+    ['Water-0', 0, 0, 4, [1, 1], 1, 1],
+    ['Water-0', 9, 0, 4, [1, 2], 10, 2],
+    ['Water-0', 10, 0, 0, [3, 4], 10, 2],
   ];
   for (const [spellId, mana, element, loaded, dice, expectedMana, expectedElement] of cases) {
     await t.test(`${spellId}: Mana ${mana}, resource ${element}, dice ${dice.join('+')}, Loaded ${loaded}`, async t => {
@@ -414,7 +415,7 @@ test('Fire-15 and Water-0 use server rolls plus Loaded for conditional Mana with
       const initial = (await api.get(host)).state, defending = (await api.get(guest)).state;
       const [primary, second] = initial.players[index].hand.filter(card => card.spellId === spellId);
       assert.equal(primary.manaCost, 0);
-      assert.equal(primary.effectText, spellId === 'Fire-15' ? 'Gain 1 Ember. On a 7+, gain 1 Mana.' : 'On a 7+, gain 1 Mana.');
+      assert.equal(primary.effectText, spellId === 'Fire-15' ? 'Gain 1 Ember. On a 7+, gain 1 Mana.' : 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.');
       assert.equal((await api.action(guest, 'castSpell')).status, 403);
       await api.action(host, 'selectCard', { cardId: primary.id });
       const selected = await api.get(host);
@@ -448,13 +449,13 @@ test('Fire-15 and Water-0 use server rolls plus Loaded for conditional Mana with
   }
 });
 
-test('Fate decides the final 7+ Mana threshold for Fire-15 and Water-0 once, without early resource gains or private-hand leaks', async t => {
+test('Fate changes Fire-15 conditional Mana or Water-0 extra Flow without repeating cast Mana or leaking hands', async t => {
   for (const spellId of ['Fire-15', 'Water-0']) {
     for (const raise of [true, false]) {
       await t.test(`${spellId}: ${raise ? 'Fortune raises 3 to 7' : 'Misfortune lowers 7 to 3'}`, async t => {
         let samples = 0;
         const dice = raise ? [1, 2] : [3, 4], index = spellId === 'Fire-15' ? 0 : 1, role = index === 0 ? 'fire' : 'water';
-        const mana = 0, element = 4;
+        const mana = 0, element = index === 1 ? 2 : 4, castMana = index === 1 ? 1 : 0;
         const api = await service(t, { rollRandom: () => {
           assert.ok(samples < 2, 'Fate modifies the captured roll instead of sampling again');
           return (dice[samples++] - .5) / 6;
@@ -470,13 +471,17 @@ test('Fate decides the final 7+ Mana threshold for Fire-15 and Water-0 once, wit
         assert.deepEqual([pending.data.state.phase, pending.data.state.fatePlayer, pending.data.state.primaryUsed], ['fate', 1 - index, true]);
         assert.equal(pending.data.state.pendingSpell.kind, 'spell');
         assert.equal(pending.data.state.pendingSpell.cardId, primary.id);
-        assert.deepEqual([pending.data.state.players[index].mana, pending.data.state.players[index].element, pending.data.state.players[index].discard.length], [0, 4, 0],
-          'neither conditional Mana nor the guaranteed Ember/Flow applies before Fate resolves');
+        if (index === 1) assert.equal(pending.data.state.pendingSpell.manaOnCastApplied, true);
+        else assert.equal(Object.hasOwn(pending.data.state.pendingSpell, 'manaOnCastApplied'), false);
+        assert.deepEqual([pending.data.state.players[index].mana, pending.data.state.players[index].element, pending.data.state.players[index].discard.length], [castMana, element, 0],
+          'Water-0 Mana is immediate; all element gains and Fire-15 Mana wait for Fate');
         const defenderView = (await api.get(guest)).state;
         assert.equal(defenderView.pendingSpell.spellId, spellId);
         assert.equal(defenderView.pendingSpell.cardId, undefined);
         assert.equal(defenderView.players[index].hand.length, 0);
         assert.equal(defenderView.players[index].handCount, 5);
+        assert.equal(defenderView.players[index].mana, castMana);
+        assert.equal(defenderView.players[index].element, element);
         assert.deepEqual((await cast()).data, pending.data, 'a pending-cast retry opens no second roll or Fate chain');
         assert.equal(samples, 2);
         if (raise) assert.equal((await api.action(guest, 'skipFate')).status, 200);
@@ -489,7 +494,7 @@ test('Fate decides the final 7+ Mana threshold for Fire-15 and Water-0 once, wit
         const linked = await castFate(); assert.equal(linked.status, 200);
         const modified = raise ? 7 : 3;
         assert.deepEqual([linked.data.state.lastRoll.rawTotal, linked.data.state.lastRoll.total], [dice[0] + dice[1], modified]);
-        assert.deepEqual([linked.data.state.players[index].mana, linked.data.state.players[index].element], [0, 4]);
+        assert.deepEqual([linked.data.state.players[index].mana, linked.data.state.players[index].element], [castMana, element]);
         assert.equal(linked.data.state.phase, 'fate');
         assert.deepEqual((await castFate()).data, linked.data, 'repeating Cast Fate consumes no second slab or modifier');
         const firstPass = raise ? guest : host, finalPass = raise ? host : guest;
@@ -503,7 +508,7 @@ test('Fate decides the final 7+ Mana threshold for Fire-15 and Water-0 once, wit
         let state = (await api.get(host)).state;
         assert.equal(state.lastRoll.total, modified);
         assert.deepEqual(state.lastRoll.dice, dice);
-        assertResourceResolution(state, { index, spellId, primaryId: primary.id, element, expectedMana: raise ? 1 : 0, expectedElement: 5 });
+        assertResourceResolution(state, { index, spellId, primaryId: primary.id, element, expectedMana: index === 1 ? 1 : raise ? 1 : 0, expectedElement: index === 1 ? (raise ? 4 : 3) : 5 });
         assert.equal(state.players[index].handCount, raise ? 3 : 4);
         assert.equal(state.players[1 - index].handCount, raise ? 5 : 4);
         assert.deepEqual(state.players[index].discard.map(card => card.id), raise ? [fate.id, primary.id] : [primary.id]);
@@ -516,8 +521,8 @@ test('Fate decides the final 7+ Mana threshold for Fire-15 and Water-0 once, wit
         state = (await api.get(guest)).state;
         assert.equal(state.players[index].hand.length, 0);
         assert.equal(state.players[index].handCount, raise ? 3 : 4);
-        assert.equal(state.players[index].mana, raise ? 1 : 0);
-        assert.equal(state.players[index].element, 5);
+        assert.equal(state.players[index].mana, index === 1 ? 1 : raise ? 1 : 0);
+        assert.equal(state.players[index].element, index === 1 ? (raise ? 4 : 3) : 5);
         assert.equal(samples, 2);
       });
     }
@@ -932,4 +937,36 @@ test('server Enhancement without playable Fate uses raw tiers and retries preser
   const before = await api.get(host), priorSamples = samples;
   assert.equal((await api.action(host, 'enhance')).status, 422);
   assert.equal(samples, priorSamples); assert.deepEqual(await api.get(host), before, 'a full bank cannot spend the primary or roll');
+});
+
+test('Water-0 fills Mana at commitment during a private pending Fate chain, caps it and never credits retries or resolution', async t => {
+  for (const mana of [9, 10]) await t.test(`starting Mana ${mana}`, async t => {
+    let samples = 0;
+    const api = await service(t, { rollRandom: () => { samples++; return 0; },
+      createMatch: decks => resourceFixture(decks, { spellId: 'Water-0', mana, element: 4, fate: true }) });
+    const host = await api.create('water', resourceDeck('water', 'Water-0')), guest = await api.join(host);
+    const initial = (await api.get(host)).state, card = initial.players[1].hand.find(card => card.spellId === 'Water-0');
+    await api.action(host, 'selectCard', { cardId: card.id });
+    const selected = await api.get(host);
+    const body = { type: 'castSpell', payload: {}, revision: selected.revision, requestId: 'water-mana-on-cast-once' };
+    const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body });
+    const response = await send(); assert.equal(response.status, 200);
+    const pending = response.data.state;
+    assert.deepEqual([pending.phase, pending.fatePlayer, pending.lastRoll.rawTotal], ['fate', 0, 2]);
+    assert.deepEqual([pending.players[1].mana, pending.players[1].element, pending.players[1].discard.length], [10, 4, 0]);
+    assert.equal(pending.pendingSpell.manaOnCastApplied, true);
+    const manaEvents = state => state.log.filter(entry => entry.type === 'resource' && entry.message.includes('Mana'));
+    assert.equal(manaEvents(pending).length, 1, 'cast emits its capped Mana result exactly once');
+    assert.deepEqual((await send()).data, response.data); assert.equal(samples, 2);
+    const privateView = (await api.get(guest)).state;
+    assert.deepEqual([privateView.players[1].mana, privateView.players[1].element, privateView.players[1].hand,
+      privateView.players[1].handCount, privateView.pendingSpell.cardId], [10, 4, [], 5, undefined]);
+    assert.deepEqual((await api.get(host)).state, pending, 'poll/reconnect snapshot does not grant or resolve anything');
+    assert.equal((await api.action(guest, 'skipFate')).status, 200);
+    assert.equal((await api.action(host, 'skipFate')).status, 200);
+    const settled = await api.get(host);
+    assertResourceResolution(settled.state, { index: 1, spellId: 'Water-0', primaryId: card.id, expectedMana: 10, expectedElement: 5 });
+    assert.deepEqual(manaEvents(settled.state), manaEvents(pending), 'resolution emits Flow only, not another Mana reward');
+    assert.deepEqual((await send()).data, settled); assert.equal(samples, 2);
+  });
 });

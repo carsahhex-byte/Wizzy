@@ -131,6 +131,8 @@ test('Fire-15 gets one power-up visual after its conditional resource roll resol
   const before = fresh({fire:['Fire-15'],water:['Water-1']});
   before.players[0].mana=0;
   const committed=cast(before,'Fire-15');
+  assert.equal(committed.players[0].mana,0,'Fire-15 still waits for its resolved Mana threshold');
+  assert.equal(Object.hasOwn(committed.pendingSpell,'manaOnCastApplied'),false);
   assert.deepEqual(getResolvedBattleVisuals(before,committed),[]);
   const after=complete(committed);
   const [event]=getResolvedSpellVisuals(before,after);
@@ -142,18 +144,26 @@ test('Fire-15 gets one power-up visual after its conditional resource roll resol
   assert.deepEqual(getResolvedSpellVisuals(after,JSON.parse(JSON.stringify(after))),[]);
 });
 
-test('Water-0 has one Water power-up only after dice and Fate finish', () => {
+test('Water-0 cast Mana has no visual and its completed Flow has one Water power-up', () => {
   const before = pass(fresh({fire:['Fire-1','FAT-001'],water:['Water-0','FAT-003']}));
   Object.assign(before.players[1], {mana:0,element:4,loaded:4,enhancement:20,auraTurns:3});
   const card = before.players[1].hand.find(card => card.spellId === 'Water-0');
   const committed = cast(before,'Water-0');
+  const commitment = committed.log.find(entry => entry.id > before.log.length && entry.type === 'cast');
   assert.equal(committed.phase,'rolling');
+  assert.equal(committed.pendingSpell.manaOnCastApplied,true);
+  assert.deepEqual([committed.players[1].mana,committed.players[1].element],[1,4], 'Mana is already granted while Flow still waits');
   assert.deepEqual(getResolvedBattleVisuals(before,committed),[]);
-  const after = complete(committed), events = getResolvedBattleVisuals(before,after);
+  assert.deepEqual(getResolvedBattleVisuals(null,committed),[], 'a cast-time Mana gain is not an animation completion');
+  const rolled = rollDice(committed,()=>.5);
+  assert.equal(rolled.pendingSpell.manaOnCastApplied,true);
+  assert.equal(rolled.players[1].mana,1);
+  assert.deepEqual(getResolvedBattleVisuals(committed,rolled),[]);
+  const after = complete(JSON.parse(JSON.stringify(rolled))), events = getResolvedBattleVisuals(before,after);
   assert.equal(events.length,1);
   assert.deepEqual(events[0], {
-    key:`${after.log.at(-1).id}:${before.log.length+1}:1:Water-0`,
-    logId:after.log.at(-1).id,commitLogId:before.log.length+1,cardId:card.id,
+    key:`${after.log.at(-1).id}:${commitment.id}:1:Water-0`,
+    logId:after.log.at(-1).id,commitLogId:commitment.id,cardId:card.id,
     casterIndex:1,spellId:'Water-0',kind:'power-up',element:'Water',manaCost:0,damaging:false,
   });
   assert.deepEqual([after.phase,after.primaryUsed,after.primaryAction,after.pendingSpell],['main',true,'spell',null]);
@@ -162,22 +172,50 @@ test('Water-0 has one Water power-up only after dice and Fate finish', () => {
   assert.deepEqual([after.players[1].mana,after.players[1].element,after.players[1].loaded,after.players[1].enhancement,after.players[1].auraTurns],[1,5,0,20,3]);
   assert.equal(after.players[1].discard.filter(card=>card.spellId==='Water-0').length,1);
   assert.deepEqual(getResolvedSpellVisuals(before,after),events);
+  assert.deepEqual(getResolvedBattleVisuals(rolled,after),events, 'resuming after the cast does not create a second Mana visual');
   for(const viewer of[0,1])assert.deepEqual(getResolvedBattleVisuals(privateView(before,viewer),privateView(after,viewer)),events);
   assert.deepEqual(getResolvedBattleVisuals(after,structuredClone(after)),[]);
   assert.deepEqual(getResolvedBattleVisuals(null,after),[]);
   assert.deepEqual(getResolvedBattleVisuals(after,endTurn(after)),[]);
 });
 
-test('a failed Water-0 Mana roll still plays its normal Flow power-up once', () => {
+test('Water-0 below seven keeps its cast Mana and plays only the ordinary Flow power-up', () => {
   const before=pass(fresh({fire:['Fire-1'],water:['Water-0']}));
   before.players[1].mana=0;
   const committed=cast(before,'Water-0'), rolled=rollDice(committed,()=>0);
+  assert.deepEqual([committed.players[1].mana,committed.players[1].element],[1,0]);
+  assert.deepEqual(getResolvedBattleVisuals(before,committed),[]);
+  assert.deepEqual(getResolvedBattleVisuals(committed,rolled),[]);
   const after=resolveSpell(rolled), events=getResolvedBattleVisuals(rolled,after);
   assert.equal(after.lastRoll.total,2);
-  assert.deepEqual([after.players[1].mana,after.players[1].element],[0,1]);
+  assert.deepEqual([after.players[1].mana,after.players[1].element],[1,1]);
   assert.equal(events.length,1);
   assert.equal(events[0].kind,'power-up');
   assert.deepEqual(getResolvedBattleVisuals(after,structuredClone(after)),[]);
+});
+
+test('Water-0 Fate changes only its resolved Flow reward, with one completion visual', () => {
+  const before=pass(fresh({fire:['Fire-1','FAT-002'],water:['Water-0','FAT-001','FAT-003']}));
+  before.players[1].mana=0;
+  const committed=cast(before,'Water-0');
+  const dice=[2.5/6,3.5/6];
+  const rolled=rollDice(committed,()=>dice.shift());
+  const defend=castFateSelected(selectCard(rolled,rolled.players[0].hand.find(card=>card.spellId==='FAT-002').id));
+  assert.equal(defend.lastRoll.total,3);
+  const linked=castFateSelected(selectCard(defend,defend.players[1].hand.find(card=>card.spellId==='FAT-001').id));
+  assert.equal(linked.lastRoll.total,7);
+  for(const pending of [committed,rolled,defend,linked]){
+    assert.deepEqual([pending.players[1].mana,pending.players[1].element],[1,0]);
+    assert.deepEqual(getResolvedBattleVisuals(before,pending),[], 'cast Mana and Fate never start the Flow animation early');
+  }
+  const after=complete(linked), events=getResolvedBattleVisuals(before,after);
+  assert.deepEqual([after.players[1].mana,after.players[1].element],[1,2]);
+  assert.equal(events.length,1);assert.equal(events[0].kind,'power-up');assert.equal(events[0].spellId,'Water-0');
+  for(const viewer of [0,1])assert.deepEqual(getResolvedBattleVisuals(privateView(linked,viewer),privateView(after,viewer)),events);
+  const snapshot=structuredClone(after);
+  assert.deepEqual(getResolvedBattleVisuals(after,snapshot),[]);
+  assert.deepEqual(getResolvedBattleVisuals(null,snapshot),[]);
+  assert.deepEqual(after,snapshot, 'visual collection never reapplies the immediate Mana or resolved Flow');
 });
 
 test('rolled spells animate only on completion and the same commitment has one stable key', () => {

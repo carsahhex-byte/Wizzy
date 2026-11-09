@@ -1480,7 +1480,7 @@ test('cancelling End Turn after Aura activation preserves its primary marker and
   state = pass(state); assert.equal(state.players[0].auraTurns, 2); assertGame(state);
 });
 
-test('both conditional-Mana resource spells use final Fate-modified totals, not the raw dice', () => {
+test('Fire-15 Mana and Water-0 extra Flow use final Fate-modified totals, not the raw dice', () => {
   for (const spellId of ['Fire-15', 'Water-0']) for (const [dice, response, direction, final, mana] of [
     [[3, 3], 'FAT-001', undefined, 10, 1], [[3, 4], 'FAT-002', undefined, 3, 0],
     [[3, 3], 'FAT-003', 2, 8, 1], [[3, 4], 'FAT-003', -2, 5, 0],
@@ -1493,29 +1493,29 @@ test('both conditional-Mana resource spells use final Fate-modified totals, not 
     let state = cast(initial, spellId), samples = 0;
     state = rollDice(state, () => (dice[samples++] - 1) / 6);
     assert.equal(samples, 2); assert.equal(state.fatePlayer, 1 - index);
-    assert.deepEqual([state.players[index].mana, state.players[index].element], [0, 2]);
+    assert.deepEqual([state.players[index].mana, state.players[index].element], [index === 1 ? 1 : 0, 2]);
     if (response === 'FAT-001') state = skipFate(state);
     state = fate(state, [response], direction);
     assert.equal(state.lastRoll.total, final);
-    assert.deepEqual([state.players[index].mana, state.players[index].element], [0, 2]);
+    assert.deepEqual([state.players[index].mana, state.players[index].element], [index === 1 ? 1 : 0, 2]);
     assert.equal(rollDice(state, () => { samples++; return .9; }), state); assert.equal(samples, 2);
     state = complete(state);
     assert.deepEqual([state.players[index].mana, state.players[index].element, state.players[index].loadedPending,
-      state.players[index].enhancement, state.players[index].auraTurns], [mana, 3, 2, 20, 2]);
+      state.players[index].enhancement, state.players[index].auraTurns], [index === 1 ? 1 : mana, index === 1 ? 3 + Number(final >= 7) : 3, 2, 20, 2]);
     assert.equal(state.primaryUsed, true); assert.equal(state.primaryAction, 'spell');
     assert.equal(state.players[index].discard.filter(card => card.spellId === spellId).length, 1);
     assert.equal(allCards(state.players[index]).length, 30); assert.equal(resolveSpell(state), state); assertGame(state);
   }
 });
 
-test('a failed conditional Mana roll still spends the primary and grants Fire Ember or Water passive Flow', () => {
+test('below seven Fire-15 misses Mana while Water-0 retains cast Mana and gains normal passive Flow', () => {
   for (const spellId of ['Fire-15', 'Water-0']) {
     const index = spellId.startsWith('Water') ? 1 : 0;
     const initial = fresh({ first: index, fire: ['Fire-15'], water: ['Water-0'] });
     handOf(initial, index, [spellId, index === 0 ? 'Fire-1' : 'Water-1']);
     Object.assign(initial.players[index], { mana: 0, element: 0, enhancement: 20, auraTurns: 2 });
     const state = complete(cast(initial, spellId), [3, 3]);
-    assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.total, state.players[index].mana, state.players[index].element], [6, 6, 0, 1]);
+    assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.total, state.players[index].mana, state.players[index].element], [6, 6, index === 1 ? 1 : 0, 1]);
     assert.equal(state.primaryUsed, true); assert.equal(canEnhance(state), false); assert.equal(canActivateAura(state), false);
     const selected = selectCard(state, state.players[index].hand[0].id); assert.equal(canCastSelected(selected), false);
     assert.deepEqual([state.players[index].enhancement, state.players[index].auraTurns], [20, 2]);
@@ -1523,7 +1523,7 @@ test('a failed conditional Mana roll still spends the primary and grants Fire Em
   }
 });
 
-test('Loaded can reach conditional Mana seven and is consumed only once by either resource spell', () => {
+test('Loaded reaches seven for Fire-15 Mana or Water-0 extra Flow and is consumed once', () => {
   for (const spellId of ['Fire-15', 'Water-0']) {
     const index = spellId.startsWith('Water') ? 1 : 0;
     const initial = fresh({ first: index, fire: ['Fire-15'], water: ['Water-0'] }); handOf(initial, index, [spellId]);
@@ -1534,18 +1534,19 @@ test('Loaded can reach conditional Mana seven and is consumed only once by eithe
     const state = complete(pending, [1, 2]);
     assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.loadedBonus, state.lastRoll.total], [3, 4, 7]);
     assert.deepEqual([state.players[index].mana, state.players[index].loaded, state.players[index].loadedPending], [1, 0, 2]);
+    assert.equal(state.players[index].element, index === 1 ? 2 : 1);
     assert.equal(state.players[index].discard.length, 1); assertGame(state);
   }
 });
 
-test('conditional Mana and elemental gains respect independent caps below and above seven', () => {
+test('on-cast Water Mana and conditional Fire Mana or extra Flow respect independent caps', () => {
   for (const spellId of ['Fire-15', 'Water-0']) for (const dice of [[3, 3], [3, 4]]) {
     for (const mana of [0, 9, 10]) for (const element of [0, 4, 5]) {
       const index = spellId.startsWith('Water') ? 1 : 0;
       const initial = fresh({ first: index, fire: ['Fire-15'], water: ['Water-0'] }); handOf(initial, index, [spellId]);
       Object.assign(initial.players[index], { mana, element, loadedPending: 2, enhancement: 30, auraTurns: 2 });
       const state = complete(cast(initial, spellId), dice), gain = dice[1] === 4 ? 1 : 0;
-      assert.deepEqual([state.players[index].mana, state.players[index].element], [Math.min(10, mana + gain), Math.min(5, element + 1)]);
+      assert.deepEqual([state.players[index].mana, state.players[index].element], [Math.min(10, mana + (index === 1 ? 1 : gain)), Math.min(5, element + 1 + (index === 1 ? gain : 0))]);
       assert.deepEqual([state.players[index].loadedPending, state.players[index].enhancement, state.players[index].auraTurns], [2, 30, 2]);
       assert.equal(state.players[index].discard.length, 1); assert.equal(allCards(state.players[index]).length, 30);
       assert.equal(state.primaryUsed, true); assertGame(state);
@@ -1553,7 +1554,7 @@ test('conditional Mana and elemental gains respect independent caps below and ab
   }
 });
 
-test('conditional Mana spells reject all Ember payments and save safely before and after dice', () => {
+test('rolled resource spells reject all Ember payments and save safely before and after dice', () => {
   for (const spellId of ['Fire-15', 'Water-0']) {
     const index = spellId.startsWith('Water') ? 1 : 0;
     const initial = fresh({ first: index, fire: ['Fire-15'], water: ['Water-0'] }); handOf(initial, index, [spellId]);
@@ -1572,13 +1573,44 @@ test('a one-slab rolled Water-0 deck resumes without rerolling, replaying gains 
   state = rollInitiative(rollInitiative(state, 0, () => 0), 1, () => .9);
   state = cast(state, 'Water-0');
   const pending = JSON.parse(JSON.stringify(state)); assert.equal(validateSavedGame(pending), true);
-  assert.deepEqual([pending.players[1].mana, pending.players[1].element, pending.players[1].hand.length, pending.players[1].discard.length], [3, 0, 1, 0]);
+  assert.deepEqual([pending.players[1].mana, pending.players[1].element, pending.players[1].hand.length, pending.players[1].discard.length], [4, 0, 1, 0]);
   state = complete(pending, [3, 4]);
-  assert.deepEqual([state.players[1].mana, state.players[1].element, state.players[1].hand.length, state.players[1].deck.length, state.players[1].discard.length], [4, 1, 0, 0, 1]);
+  assert.deepEqual([state.players[1].mana, state.players[1].element, state.players[1].hand.length, state.players[1].deck.length, state.players[1].discard.length], [4, 2, 0, 0, 1]);
   const saved = JSON.parse(JSON.stringify(state)), snapshot = structuredClone(saved);
   assert.equal(saved.version, 14); assert.equal(validateSavedGame(saved), true); assert.equal(migrateSavedGame(saved), saved);
   assert.equal(resolveSpell(saved), saved); assert.deepEqual(saved, snapshot);
   state = pass(pass(saved));
-  assert.deepEqual([state.players[1].mana, state.players[1].element, state.players[1].hand.length, state.players[1].deck.length, state.players[1].discard.length], [6, 1, 0, 0, 1]);
+  assert.deepEqual([state.players[1].mana, state.players[1].element, state.players[1].hand.length, state.players[1].deck.length, state.players[1].discard.length], [6, 2, 0, 0, 1]);
   assert.equal(allCards(state.players[1]).length, 1); assertGame(state);
+});
+
+test('Water-0 grants capped Mana exactly at commitment and reserves its primary before rolling or Fate', () => {
+  for (const mana of [0, 9, 10]) for (const flow of [0, 4, 5]) {
+    const initial = fresh({ first: 1, water: ['Water-0'] });
+    handOf(initial, 1, ['Water-0', 'Water-1']); handOf(initial, 0, ['Fire-1']);
+    Object.assign(initial.players[1], { mana, element: flow, loaded: 4, loadedPending: 2, enhancement: 20, auraTurns: 2 });
+    const initialSnapshot = structuredClone(initial), card = initial.players[1].hand[0];
+    const selected = selectCard(initial, card.id);
+    assert.equal(selected.players[1].mana, mana, 'selection does not earn Mana');
+    const committed = castSelected(selected);
+    assert.deepEqual(initial, initialSnapshot, 'committing does not mutate the input snapshot');
+    assert.deepEqual([committed.phase, committed.primaryUsed, committed.primaryAction], ['rolling', true, 'spell']);
+    assert.equal(committed.pendingSpell.manaOnCastApplied, true);
+    assert.deepEqual([committed.players[1].mana, committed.players[1].element], [Math.min(10, mana + 1), flow]);
+    assert.deepEqual([committed.players[1].loaded, committed.pendingSpell.loadedBonus,
+      committed.players[1].loadedPending, committed.players[1].enhancement, committed.players[1].auraTurns], [0, 4, 2, 20, 2]);
+    assert.equal(committed.players[1].hand[0].id, card.id); assert.equal(committed.players[1].discard.length, 0);
+    for (const repeat of [castSelected, endTurn, beginRefresh, cancelStagedAction]) assert.equal(repeat(committed), committed);
+    assert.equal(canEnhance(committed), false); assert.equal(canActivateAura(committed), false);
+    const saved = JSON.parse(JSON.stringify(committed));
+    assert.equal(validateSavedGame(saved), true); assert.equal(migrateSavedGame(saved), saved);
+    assert.equal(saved.players[1].mana, Math.min(10, mana + 1), 'reload grants no second Mana');
+    const completeState = complete(saved, [1, 2]);
+    assert.deepEqual([completeState.lastRoll.rawTotal, completeState.lastRoll.loadedBonus, completeState.lastRoll.total], [3, 4, 7]);
+    assert.deepEqual([completeState.players[1].mana, completeState.players[1].element], [Math.min(10, mana + 1), Math.min(5, flow + 2)]);
+    assert.deepEqual([completeState.players[1].loadedPending, completeState.players[1].enhancement, completeState.players[1].auraTurns], [2, 20, 2]);
+    assert.equal(completeState.players[1].discard.filter(card => card.spellId === 'Water-0').length, 1);
+    assert.equal(resolveSpell(completeState), completeState);
+    assert.equal(allCards(completeState.players[1]).length, 30); assertGame(completeState);
+  }
 });

@@ -180,7 +180,7 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       if (rollTotal >= 7) gainMana(1);
       break;
     case 'Water-0':
-      if (rollTotal >= 7) gainMana(1);
+      if (rollTotal >= 7) flowGain += 1;
       break;
     case 'Water-1':
       damage(opponent, 6 + (rollTotal >= 7 ? 3 : 0));

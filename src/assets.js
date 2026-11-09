@@ -3,7 +3,6 @@ import { resolveAssetUrl } from './asset-url.js';
 import { SPELL_CATALOG } from './spells.js';
 import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.js';
 import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.js';
-import { getSlabOutline } from './slab-outline.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -349,21 +348,15 @@ export const SPELL_SLABS = Object.freeze(Object.fromEntries([
 
 const cropImage = crop => `<img alt="" draggable="false" src="${ASSETS[crop.asset]}" style="position:absolute;display:block;max-width:none;width:${crop.width/crop.w*100}%;height:${crop.height/crop.h*100}%;left:${-crop.x/crop.w*100}%;top:${-crop.y/crop.h*100}%;image-rendering:pixelated;pointer-events:none;user-select:none" />`;
 
-/** Display-only exterior traces; identical source crops share one outline. */
-export const SPELL_SLAB_OUTLINES = Object.freeze(Object.fromEntries(
-  Object.entries(SPELL_SLABS).map(([id, crop]) => [id, getSlabOutline(crop)]),
-));
-
 /** Original frame and illustration with readable live rules at the existing size. */
 export function spellSlabMarkup(spellId, className = '') {
   const crop = SPELL_SLABS[spellId];
   if (!crop) return '';
-  const outline = SPELL_SLAB_OUTLINES[spellId];
   const definition = SPELL_CATALOG[spellId];
   const lines = COMPACT_SPELL_TEXT[spellId] || [];
   const length = lines.reduce((total,line)=>total+line.text.length+(line.threshold?line.threshold.length+1:0),0);
   const density = length>60?'long':length<35&&lines.length<3?'short':'normal';
-  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" data-copy-density="${density}" data-copy-type="${definition.type}" data-slab-outline="${outline ? 'stepped' : 'none'}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:transparent${outline ? `;clip-path:${outline.clipPath}` : ''}">${cropImage(crop)}<span class="slab-live-paper"><strong class="slab-live-title">${definition.name}</strong><span class="slab-live-rules" data-slab-rules="${spellId}">${slabRulesMarkup(spellId)}</span></span></span>`;
+  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" data-copy-density="${density}" data-copy-type="${definition.type}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:#030308">${cropImage(crop)}<span class="slab-live-paper"><strong class="slab-live-title">${definition.name}</strong><span class="slab-live-rules" data-slab-rules="${spellId}">${slabRulesMarkup(spellId)}</span></span></span>`;
 }
 
 /** Art-only viewports are available where a smaller illustration is needed. */

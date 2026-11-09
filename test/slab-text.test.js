@@ -18,13 +18,27 @@ test('all 34 immutable display definitions retain their canonical roll threshold
 test('compact resource and damage math distinguishes gains, replacements and extra effects', () => {
   assert.equal(slabRulesText('Fire-0'), '+1 Ember');
   assert.equal(slabRulesText('Fire-15'), '+1 Ember 7+ +1 Mana');
-  assert.equal(slabRulesText('Water-0'), '7+ +1 Mana');
+  assert.equal(slabRulesText('Water-0'), '+1 Mana on cast 7+ +1 extra Flow');
   for (const id of ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4', 'Fire-6', 'Fire-7', 'Fire-9', 'Fire-11', 'Fire-13', 'Fire-14', 'Water-3']) assert.match(slabRulesText(id), /instead/, id);
   for (const id of ['Fire-8', 'Fire-10', 'Water-1', 'Water-6', 'Water-7', 'Water-8', 'Water-9', 'Water-10', 'Water-13', 'Water-14']) assert.match(slabRulesText(id), /extra/, id);
   assert.match(slabRulesText('Fire-7'), /Spend all Embers.*15 \+ 7×Ember spent.*9\+ 15 \+ 10×Ember instead/);
   assert.match(slabRulesText('Fire-14'), /Spend all Embers.*20 \+ 9×Ember spent.*8\+ 20 \+ 12×Ember instead/);
   assert.equal(COMPACT_SPELL_TEXT['Fire-9'][2].threshold, undefined, 'the Shield check is independent of the roll tier');
   assert.equal(COMPACT_SPELL_TEXT['Fire-9'][2].text, 'Then 4+ Embers: +8 Shield');
+});
+
+test('Water-0 separates its unconditional on-cast Mana from extra Flow at the rolled threshold', () => {
+  assert.deepEqual(COMPACT_SPELL_TEXT['Water-0'], [
+    { text: '+1 Mana on cast' }, { threshold: '7+', text: '+1 extra Flow' },
+  ]);
+  assert.equal(SPELL_CATALOG['Water-0'].effectText,
+    'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.');
+  const markup = slabRulesMarkup('Water-0');
+  assert.equal((markup.match(/class="slab-rule-threshold"/g) || []).length, 1);
+  assert.ok(markup.indexOf('on cast') < markup.indexOf('slab-rule-threshold'));
+  assert.match(markup, /data-rule-word="Mana"/);
+  assert.match(markup, /data-rule-word="Flow"/);
+  assert.equal(slabRulesText('Fire-15'), '+1 Ember 7+ +1 Mana', 'Fire-15 keeps its separate conditional Mana rule');
 });
 
 test('optional spending, Shield removal order, Loaded and extra Flow timing remain explicit', () => {
