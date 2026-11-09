@@ -59,6 +59,7 @@ export const ASSET_FILES = Object.freeze({
   battleSwordIcon: 'Wizzy Pixel Sword Icon.png',
   mapUIConcept: 'Wizzy Rough Map UI Concept.png',
   mapControls: 'Wizzy Rough Map Controls.png',
+  mapTitle: 'Wizzy Map Title Banner.png',
 });
 
 /** Original overworld wizards: fixed logical cells, source PNG left intact. */
@@ -432,6 +433,7 @@ export const ASSET_CROPS = Object.freeze({
   iconDie: PIXEL_ICON_CROPS.die,
   mapUIConcept: { width: 948, height: 1659, x: 0, y: 0, w: 948, h: 1659 },
   mapControls: { width: 1536, height: 1024, x: 0, y: 0, w: 1536, h: 1024 },
+  mapTitle: { width: 2126, height: 740, x: 28, y: 135, w: 2070, h: 481 },
 });
 
 /** Original approved UI pixels. Keep the live Seattle map as a separate image. */
@@ -446,7 +448,7 @@ export const MAP_UI_CROPS = Object.freeze({
   mapZoomIn: { asset: 'mapControls', width: 1536, height: 1024, x: 799, y: 633, w: 644, h: 170 },
   mapBack: { asset: 'mapControls', width: 1536, height: 1024, x: 94, y: 822, w: 643, h: 177 },
   mapCompass: { asset: 'mapControls', width: 1536, height: 1024, x: 799, y: 822, w: 644, h: 177 },
-  mapBanner: { asset: 'mapUIConcept', width: 948, height: 1659, x: 165, y: 0, w: 624, h: 145 },
+  mapBanner: { asset: 'mapTitle', width: 2126, height: 740, x: 28, y: 135, w: 2070, h: 481 },
   mapTopBack: { asset: 'mapUIConcept', width: 948, height: 1659, x: 18, y: 16, w: 104, h: 110 },
   mapToolbarFit: { asset: 'mapUIConcept', width: 948, height: 1659, x: 214, y: 151, w: 145, h: 94 },
   mapToolbarZoomOut: { asset: 'mapUIConcept', width: 948, height: 1659, x: 374, y: 157, w: 105, h: 90 },

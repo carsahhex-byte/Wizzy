@@ -1,6 +1,6 @@
-import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS } from './assets.b346a88e0300.js';
+import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS } from './assets.2b70da707201.js';
 import { getSpellVisual } from './spell-visuals.1295f8570cfc.js';
-import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.fc7dc44c9d91.js';
+import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.45ed317d4355.js';
 
 const FRAME_MS = 125;
 const ACTOR_END = 2000;
