@@ -244,7 +244,7 @@ test('removing the last slab makes an editable empty slot without changing the s
 test('Water-0 is Water-only and round-trips unrestricted copies without changing existing deck files', () => {
   assert.equal(SPELLBOOK_VERSION, 'nov4-v2.1');
   assert.equal(SPELL_CATALOG['Water-0'].manaCost, 0);
-  assert.equal(SPELL_CATALOG['Water-0'].effectText, 'Gain 1 Mana.');
+  assert.equal(SPELL_CATALOG['Water-0'].effectText, 'On a 7+, gain 1 Mana.');
   assert.equal(getEligibleSpells('water').some(card => card.spellId === 'Water-0'), true);
   assert.equal(getEligibleSpells('fire').some(card => card.spellId === 'Water-0'), false);
   assert.throws(() => setDeckQuantity(createStarterDeck('fire'), 'Water-0', 1), /other main element/);
@@ -271,4 +271,22 @@ test('Water-0 is Water-only and round-trips unrestricted copies without changing
   assert.deepEqual(restored, normalizeDeck(old));
   assert.equal(getDeckCount(restored, 'Water-0'), 0, 'adding Water-0 never inserts it into an older deck');
   assert.deepEqual(old.entries, [{ spellId: 'Water-1', quantity: 27 }, { spellId: 'FAT-003', quantity: 3 }]);
+});
+
+test('existing Fire-15 and Water-0 deck files retain their composition after the roll-rule revision', () => {
+  // Existing files contain stable spell IDs and quantities, not the old effect text.
+  const existing = [
+    { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 1 }] },
+    { element: 'fire', entries: [{ spellId: 'FAT-003', quantity: 4 }, { spellId: 'Fire-15', quantity: 26 }] },
+    { element: 'water', entries: [{ spellId: 'Water-0', quantity: 1 }] },
+    { element: 'water', entries: [{ spellId: 'Water-0', quantity: 30 }] },
+  ];
+  for (const deck of existing) {
+    const file = JSON.stringify({ format: 'wizzy-deck', version: 1, spellbook: 'nov4-v2.1', ...deck });
+    const restored = parseDeckList(file);
+    assert.deepEqual(restored, deck, 'imports neither replace IDs nor fill a short deck');
+    assert.deepEqual(parseDeckList(serializeDeck(restored)), deck);
+    const wrongElement = { ...JSON.parse(file), element: deck.element === 'fire' ? 'water' : 'fire' };
+    assert.throws(() => parseDeckList(JSON.stringify(wrongElement)), /main element/);
+  }
 });

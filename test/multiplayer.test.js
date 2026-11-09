@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createMultiplayerServer } from '../server/room-server.js';
-import { createGame, rollInitiative, ENHANCEMENT_ROLL_RULE } from '../src/game.js';
+import { createGame, rollInitiative, ENHANCEMENT_ROLL_RULE, COMBAT_RULES_VERSION } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
 
@@ -39,6 +39,41 @@ function fixtureWithoutFate(decks) {
   arrangeHand(state, 0, ['Fire-1', 'Fire-2', 'Fire-3', 'Fire-4', 'Fire-5']);
   arrangeHand(state, 1, ['Water-1', 'Water-2', 'Water-3', 'Water-4', 'Water-5']);
   return state;
+}
+
+function resourceDeck(element, spellId) {
+  const deck = legalDeck(element);
+  deck.entries.find(entry => entry.spellId === `${element === 'fire' ? 'Fire' : 'Water'}-6`).quantity = 1;
+  deck.entries.push({ spellId, quantity: 2 });
+  return deck;
+}
+
+function resourceFixture(decks, { spellId, mana, element, loaded = 0, fate = false }) {
+  const index = spellId === 'Fire-15' ? 0 : 1;
+  let state = createGame(24, decks);
+  state = rollInitiative(rollInitiative(state, 0, () => index === 0 ? .99 : 0), 1, () => index === 1 ? .99 : 0);
+  const prefix = index === 0 ? 'Fire' : 'Water';
+  const otherPrefix = index === 0 ? 'Water' : 'Fire';
+  arrangeHand(state, index, fate
+    ? [spellId, spellId, 'FAT-001', 'FAT-003', `${prefix}-1`]
+    : [spellId, spellId, `${prefix}-1`, `${prefix}-2`, `${prefix}-3`]);
+  arrangeHand(state, 1 - index, fate
+    ? ['FAT-002', 'FAT-003', `${otherPrefix}-1`, `${otherPrefix}-2`, `${otherPrefix}-3`]
+    : Array.from({ length: 5 }, (_, i) => `${otherPrefix}-${i + 1}`));
+  Object.assign(state.players[index], { mana, element, loaded, loadedPending: 2, enhancement: 20, auraTurns: 2 });
+  return state;
+}
+
+function assertResourceResolution(state, { index, spellId, primaryId, expectedMana, expectedElement }) {
+  const player = state.players[index];
+  assert.deepEqual([state.phase, state.primaryUsed, state.primaryAction], ['main', true, 'spell']);
+  assert.deepEqual([player.mana, player.element], [expectedMana, expectedElement]);
+  assert.deepEqual([player.loaded, player.loadedPending, player.enhancement, player.auraTurns], [0, 2, 20, 2]);
+  assert.deepEqual(state.players.map(player => [player.hp, player.shield]), [[100, 0], [100, 0]]);
+  assert.equal(state.pendingSpell, null); assert.equal(state.fatePlayer, null);
+  assert.equal(player.discard.filter(card => card.id === primaryId).length, 1);
+  assert.equal(state.log.filter(entry => entry.message === `${spellId} resolves and moves to discard.`).length, 1);
+  for (const wizard of state.players) assert.equal(wizard.handCount + wizard.deckCount + wizard.discard.length, 30);
 }
 
 async function service(t, options = {}) {
@@ -77,6 +112,7 @@ test('room creation, opposite-element joins and private player views support two
   const api = await service(t);
   assert.deepEqual((await api.request('/api/health')).data, { ok: true, service: 'wizzy-multiplayer', storage: 'memory', spellbookVersion: SPELLBOOK_VERSION, accounts: { enabled: true, storage: 'memory' } });
   const host = await api.create();
+  assert.equal(host.combatRulesVersion, COMBAT_RULES_VERSION);
   assert.match(host.code, /^[A-Z2-9]{8}$/); assert.match(host.token, /^[A-Za-z0-9_-]{43}$/);
   assert.deepEqual([host.revision, host.status, host.state, host.playerIndex], [0, 'waiting', null, 0]);
   const info = await api.request(`/api/rooms/${host.code}/info`);
@@ -84,6 +120,7 @@ test('room creation, opposite-element joins and private player views support two
   assert.equal((await api.request(`/api/rooms/${host.code}`)).status, 401);
   assert.equal((await api.request(`/api/rooms/${host.code}?token=${host.token}`)).status, 401, 'query strings do not authenticate');
   const guest = await api.join(host);
+  assert.equal(guest.combatRulesVersion, COMBAT_RULES_VERSION);
   assert.notEqual(guest.token, host.token);
   assert.deepEqual([guest.playerIndex, guest.element, guest.status, guest.revision], [1, 'water', 'playing', 1]);
   const fire = await api.get(host), water = await api.get(guest);
@@ -347,99 +384,143 @@ test('Fire-0 resolves online at zero Mana without dice or Fate, preserves Loaded
   }
 });
 
-test('Fire-15 gains independently capped Ember and Mana online without rolls, Fate or duplicate rewards', async t => {
-  const deck = legalDeck('fire');
-  deck.entries.find(entry => entry.spellId === 'Fire-6').quantity = 1;
-  deck.entries.push({ spellId: 'Fire-15', quantity: 2 });
-  for (const [mana, embers, expectedMana, expectedEmbers] of [[0, 4, 1, 5], [9, 4, 10, 5], [10, 4, 10, 5], [0, 5, 1, 5], [10, 5, 10, 5]]) {
-    let samples = 0;
-    const api = await service(t, { rollRandom: () => { samples += 1; return .5; }, createMatch: decks => {
-      const state = fixtureMatch(decks);
-      arrangeHand(state, 0, ['Fire-15', 'Fire-15', 'FAT-001', 'Fire-1', 'Fire-3']);
-      Object.assign(state.players[0], { mana, element: embers, loaded: 4, loadedPending: 2, enhancement: 20, auraTurns: 2 });
-      return state;
-    } });
-    const host = await api.create('fire', deck), guest = await api.join(host);
-    const [primary, anotherPrimary] = (await api.get(host)).state.players[0].hand.filter(card => card.spellId === 'Fire-15');
-    assert.deepEqual([primary.manaCost, primary.effectText], [0, 'Gain 1 Ember and 1 Mana.']);
-    const defending = (await api.get(guest)).state;
-    assert.ok(defending.players[1].hand.some(card => card.spellId === 'FAT-002'));
-    assert.equal((await api.action(guest, 'castSpell')).status, 403);
-    await api.action(host, 'selectCard', { cardId: primary.id });
-    const selected = await api.get(host);
-    assert.equal((await api.action(host, 'castSpell', { emberSpend: 1 })).status, 422, 'this spell never spends Embers');
-    assert.deepEqual(await api.get(host), selected, 'an invalid spend changes no card, resource or revision');
-    const request = { type: 'castSpell', payload: {}, revision: selected.revision, requestId: 'fire-fifteen-once' };
-    const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: request });
-    const result = await send(); assert.equal(result.status, 200);
-    const state = result.data.state;
-    assert.deepEqual([state.phase, state.primaryUsed, state.primaryAction, state.players[0].mana, state.players[0].element], ['main', true, 'spell', expectedMana, expectedEmbers]);
-    assert.deepEqual([state.players[0].loaded, state.players[0].loadedPending, state.players[0].enhancement, state.players[0].auraTurns], [4, 2, 20, 2]);
-    assert.deepEqual(state.players.map(player => [player.hp, player.shield]), [[100, 0], [100, 0]], 'a resource spell deals no damage');
-    assert.equal(state.lastRoll, null); assert.equal(state.pendingSpell, null); assert.equal(state.fatePlayer, null);
-    assert.deepEqual(state.players[0].discard.map(card => card.id), [primary.id]);
-    assert.equal(state.players[0].hand.length, 4);
-    assert.ok(state.players[0].hand.some(card => card.spellId === 'FAT-001'));
-    const duplicate = await send(); assert.equal(duplicate.status, 200);
-    assert.equal(duplicate.data.revision, result.data.revision);
-    assert.deepEqual([duplicate.data.state.players[0].mana, duplicate.data.state.players[0].element], [expectedMana, expectedEmbers], 'retry never grants resources twice');
-    const visible = (await api.get(guest)).state;
-    assert.deepEqual([visible.players[0].mana, visible.players[0].element, visible.players[0].hand, visible.players[0].handCount], [expectedMana, expectedEmbers, [], 4]);
-    assert.deepEqual(visible.players[1].hand, defending.players[1].hand, 'Fate is skipped even when the defender can respond');
-    assert.equal((await api.action(guest, 'skipFate')).status, 403);
-    await api.action(host, 'selectCard', { cardId: anotherPrimary.id });
-    assert.equal((await api.action(host, 'castSpell')).status, 422, 'the zero-Mana resource slab consumes the normal primary action');
-    assert.equal((await api.action(host, 'enhance')).status, 422);
-    assert.equal(samples, 0, 'Fire-15 never asks the server for a die roll');
+test('Fire-15 and Water-0 use server rolls plus Loaded for conditional Mana with independent resource caps', async t => {
+  const cases = [
+    ['Fire-15', 0, 4, 0, [3, 3], 0, 5],
+    ['Fire-15', 0, 0, 0, [3, 4], 1, 1],
+    ['Fire-15', 9, 4, 0, [3, 4], 10, 5],
+    ['Fire-15', 10, 4, 0, [3, 4], 10, 5],
+    ['Fire-15', 9, 5, 0, [3, 3], 9, 5],
+    ['Fire-15', 0, 0, 4, [1, 1], 0, 1],
+    ['Fire-15', 0, 0, 4, [1, 2], 1, 1],
+    ['Water-0', 0, 0, 0, [3, 3], 0, 1],
+    ['Water-0', 0, 0, 0, [3, 4], 1, 1],
+    ['Water-0', 9, 4, 0, [3, 4], 10, 5],
+    ['Water-0', 10, 4, 0, [3, 3], 10, 5],
+    ['Water-0', 9, 5, 0, [3, 3], 9, 5],
+    ['Water-0', 0, 5, 0, [3, 4], 1, 5],
+    ['Water-0', 0, 0, 4, [1, 1], 0, 1],
+    ['Water-0', 9, 0, 4, [1, 2], 10, 1],
+  ];
+  for (const [spellId, mana, element, loaded, dice, expectedMana, expectedElement] of cases) {
+    await t.test(`${spellId}: Mana ${mana}, resource ${element}, dice ${dice.join('+')}, Loaded ${loaded}`, async t => {
+      let samples = 0;
+      const index = spellId === 'Fire-15' ? 0 : 1, role = index === 0 ? 'fire' : 'water';
+      const api = await service(t, { rollRandom: () => {
+        assert.ok(samples < 2, 'the server samples exactly two dice for this cast');
+        return (dice[samples++] - .5) / 6;
+      }, createMatch: decks => resourceFixture(decks, { spellId, mana, element, loaded }) });
+      const host = await api.create(role, resourceDeck(role, spellId)), guest = await api.join(host);
+      const initial = (await api.get(host)).state, defending = (await api.get(guest)).state;
+      const [primary, second] = initial.players[index].hand.filter(card => card.spellId === spellId);
+      assert.equal(primary.manaCost, 0);
+      assert.equal(primary.effectText, spellId === 'Fire-15' ? 'Gain 1 Ember. On a 7+, gain 1 Mana.' : 'On a 7+, gain 1 Mana.');
+      assert.equal((await api.action(guest, 'castSpell')).status, 403);
+      await api.action(host, 'selectCard', { cardId: primary.id });
+      const selected = await api.get(host);
+      assert.equal((await api.action(host, 'castSpell', { emberSpend: 1 })).status, 422);
+      assert.deepEqual(await api.get(host), selected, 'invalid payment cannot consume Loaded, roll, or change a card');
+      assert.equal(samples, 0);
+      const body = { type: 'castSpell', payload: {}, revision: selected.revision, requestId: 'resource-primary-once' };
+      const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body });
+      const result = await send(); assert.equal(result.status, 200);
+      const state = result.data.state;
+      assert.deepEqual(state.lastRoll.dice, dice);
+      assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.loadedBonus, state.lastRoll.total],
+        [dice[0] + dice[1], loaded, dice[0] + dice[1] + loaded]);
+      assertResourceResolution(state, { index, spellId, primaryId: primary.id, element, expectedMana, expectedElement });
+      assert.deepEqual(state.players[index].discard.map(card => card.id), [primary.id]);
+      assert.equal(state.players[index].hand.length, 4);
+      assert.equal(samples, 2);
+      const retried = await send(); assert.equal(retried.status, 200); assert.deepEqual(retried.data, result.data);
+      assert.equal(samples, 2, 'a retry never rerolls or repeats the resource gain');
+      const visible = (await api.get(guest)).state;
+      assert.deepEqual([visible.players[index].mana, visible.players[index].element, visible.players[index].hand, visible.players[index].handCount],
+        [expectedMana, expectedElement, [], 4]);
+      assert.equal(visible.players[index].deckDefinition, null);
+      assert.deepEqual(visible.players[1 - index].hand, defending.players[1 - index].hand, 'automatic passes spend no Fate');
+      await api.action(host, 'selectCard', { cardId: second.id });
+      assert.equal((await api.action(host, 'castSpell')).status, 422, 'the zero-Mana spell still uses one primary');
+      assert.equal((await api.action(host, 'enhance')).status, 422);
+      assert.equal((await api.action(host, 'aura')).status, 422);
+      assert.equal(samples, 2);
+    });
   }
 });
 
-test('Water-0 gains capped Mana and passive Flow online without dice, Fate or duplicate rewards', async t => {
-  const deck = legalDeck('water');
-  deck.entries.find(entry => entry.spellId === 'Water-6').quantity = 1;
-  deck.entries.push({ spellId: 'Water-0', quantity: 2 });
-  for (const [mana, flow, expectedMana, expectedFlow] of [[0, 0, 1, 1], [9, 4, 10, 5], [10, 4, 10, 5], [0, 5, 1, 5], [10, 5, 10, 5]]) {
-    let samples = 0;
-    const api = await service(t, { rollRandom: () => { samples += 1; return .5; }, createMatch: decks => {
-      let state = createGame(24, decks);
-      state = rollInitiative(rollInitiative(state, 0, () => 0), 1, () => .99);
-      arrangeHand(state, 0, ['FAT-002', 'Fire-1', 'Fire-2', 'Fire-3', 'Fire-4']);
-      arrangeHand(state, 1, ['Water-0', 'Water-0', 'FAT-001', 'Water-1', 'Water-3']);
-      Object.assign(state.players[1], { mana, element: flow, loaded: 4, loadedPending: 2, enhancement: 20, auraTurns: 2 });
-      return state;
-    } });
-    const host = await api.create('water', deck), guest = await api.join(host);
-    const initial = (await api.get(host)).state;
-    const [primary, second] = initial.players[1].hand.filter(card => card.spellId === 'Water-0');
-    assert.deepEqual([primary.name, primary.type, primary.manaCost, primary.effectText], ['Water-0', 'Water', 0, 'Gain 1 Mana.']);
-    assert.ok(initial.players[1].hand.some(card => card.spellId === 'FAT-001'));
-    const defending = (await api.get(guest)).state;
-    assert.ok(defending.players[0].hand.some(card => card.spellId === 'FAT-002'));
-    assert.equal((await api.action(guest, 'castSpell')).status, 403);
-    await api.action(host, 'selectCard', { cardId: primary.id });
-    const selected = await api.get(host);
-    assert.equal((await api.action(host, 'castSpell', { emberSpend: 1 })).status, 422);
-    assert.deepEqual(await api.get(host), selected, 'Water-0 cannot spend either elemental resource');
-    const request = { type: 'castSpell', payload: {}, revision: selected.revision, requestId: 'water-zero-once' };
-    const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: request });
-    const result = await send(); assert.equal(result.status, 200);
-    const state = result.data.state;
-    assert.deepEqual([state.phase, state.primaryUsed, state.primaryAction, state.players[1].mana, state.players[1].element], ['main', true, 'spell', expectedMana, expectedFlow]);
-    assert.deepEqual([state.lastRoll, state.pendingSpell, state.fatePlayer], [null, null, null]);
-    assert.deepEqual([state.players[1].loaded, state.players[1].loadedPending, state.players[1].enhancement, state.players[1].auraTurns], [4, 2, 20, 2]);
-    assert.deepEqual(state.players.map(player => [player.hp, player.shield]), [[100, 0], [100, 0]]);
-    assert.deepEqual(state.players[1].discard.map(card => card.id), [primary.id]);
-    assert.equal(state.players[1].hand.length, 4);
-    const retry = await send(); assert.equal(retry.status, 200); assert.deepEqual(retry.data, result.data);
-    const visible = (await api.get(guest)).state;
-    assert.deepEqual([visible.players[1].mana, visible.players[1].element, visible.players[1].hand, visible.players[1].handCount], [expectedMana, expectedFlow, [], 4]);
-    assert.deepEqual(visible.players[0].hand, defending.players[0].hand, 'the opponent spends no Fate');
-    assert.equal((await api.action(guest, 'skipFate')).status, 403);
-    await api.action(host, 'selectCard', { cardId: second.id });
-    assert.equal((await api.action(host, 'castSpell')).status, 422);
-    assert.equal((await api.action(host, 'enhance')).status, 422);
-    assert.equal((await api.action(host, 'aura')).status, 422);
-    assert.equal(samples, 0, 'an immediate Water slab never samples server dice');
+test('Fate decides the final 7+ Mana threshold for Fire-15 and Water-0 once, without early resource gains or private-hand leaks', async t => {
+  for (const spellId of ['Fire-15', 'Water-0']) {
+    for (const raise of [true, false]) {
+      await t.test(`${spellId}: ${raise ? 'Fortune raises 3 to 7' : 'Misfortune lowers 7 to 3'}`, async t => {
+        let samples = 0;
+        const dice = raise ? [1, 2] : [3, 4], index = spellId === 'Fire-15' ? 0 : 1, role = index === 0 ? 'fire' : 'water';
+        const mana = 0, element = 4;
+        const api = await service(t, { rollRandom: () => {
+          assert.ok(samples < 2, 'Fate modifies the captured roll instead of sampling again');
+          return (dice[samples++] - .5) / 6;
+        }, createMatch: decks => resourceFixture(decks, { spellId, mana, element, fate: true }) });
+        const host = await api.create(role, resourceDeck(role, spellId)), guest = await api.join(host);
+        const initial = (await api.get(host)).state;
+        const [primary, second] = initial.players[index].hand.filter(card => card.spellId === spellId);
+        await api.action(host, 'selectCard', { cardId: primary.id });
+        const selected = await api.get(host);
+        const castBody = { type: 'castSpell', payload: {}, revision: selected.revision, requestId: 'threshold-primary-once' };
+        const cast = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: host.token, body: castBody });
+        const pending = await cast(); assert.equal(pending.status, 200);
+        assert.deepEqual([pending.data.state.phase, pending.data.state.fatePlayer, pending.data.state.primaryUsed], ['fate', 1 - index, true]);
+        assert.equal(pending.data.state.pendingSpell.kind, 'spell');
+        assert.equal(pending.data.state.pendingSpell.cardId, primary.id);
+        assert.deepEqual([pending.data.state.players[index].mana, pending.data.state.players[index].element, pending.data.state.players[index].discard.length], [0, 4, 0],
+          'neither conditional Mana nor the guaranteed Ember/Flow applies before Fate resolves');
+        const defenderView = (await api.get(guest)).state;
+        assert.equal(defenderView.pendingSpell.spellId, spellId);
+        assert.equal(defenderView.pendingSpell.cardId, undefined);
+        assert.equal(defenderView.players[index].hand.length, 0);
+        assert.equal(defenderView.players[index].handCount, 5);
+        assert.deepEqual((await cast()).data, pending.data, 'a pending-cast retry opens no second roll or Fate chain');
+        assert.equal(samples, 2);
+        if (raise) assert.equal((await api.action(guest, 'skipFate')).status, 200);
+        const fateActor = raise ? host : guest, fateIndex = raise ? index : 1 - index, fateId = raise ? 'FAT-001' : 'FAT-002';
+        const fate = (await api.get(fateActor)).state.players[fateIndex].hand.find(card => card.spellId === fateId);
+        await api.action(fateActor, 'selectCard', { cardId: fate.id });
+        const fateSelected = await api.get(fateActor);
+        const fateBody = { type: 'castFate', payload: {}, revision: fateSelected.revision, requestId: 'threshold-fate-once' };
+        const castFate = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: fateActor.token, body: fateBody });
+        const linked = await castFate(); assert.equal(linked.status, 200);
+        const modified = raise ? 7 : 3;
+        assert.deepEqual([linked.data.state.lastRoll.rawTotal, linked.data.state.lastRoll.total], [dice[0] + dice[1], modified]);
+        assert.deepEqual([linked.data.state.players[index].mana, linked.data.state.players[index].element], [0, 4]);
+        assert.equal(linked.data.state.phase, 'fate');
+        assert.deepEqual((await castFate()).data, linked.data, 'repeating Cast Fate consumes no second slab or modifier');
+        const firstPass = raise ? guest : host, finalPass = raise ? host : guest;
+        const first = await api.action(firstPass, 'skipFate'); assert.equal(first.status, 200);
+        assert.equal(first.data.state.phase, 'fate'); assert.equal(first.data.state.pendingSpell.fatePasses, 1);
+        const beforeClose = await api.get(finalPass);
+        const closeBody = { type: 'skipFate', payload: {}, revision: beforeClose.revision, requestId: 'threshold-close-once' };
+        const close = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: finalPass.token, body: closeBody });
+        const closed = await close(); assert.equal(closed.status, 200);
+        assert.deepEqual((await close()).data, closed.data, 'retrying the closing pass never awards a second Mana or element point');
+        let state = (await api.get(host)).state;
+        assert.equal(state.lastRoll.total, modified);
+        assert.deepEqual(state.lastRoll.dice, dice);
+        assertResourceResolution(state, { index, spellId, primaryId: primary.id, element, expectedMana: raise ? 1 : 0, expectedElement: 5 });
+        assert.equal(state.players[index].handCount, raise ? 3 : 4);
+        assert.equal(state.players[1 - index].handCount, raise ? 5 : 4);
+        assert.deepEqual(state.players[index].discard.map(card => card.id), raise ? [fate.id, primary.id] : [primary.id]);
+        assert.deepEqual(state.players[1 - index].discard.map(card => card.id), raise ? [] : [fate.id]);
+        const settled = await api.get(host);
+        assert.deepEqual((await cast()).data, settled, 'late cast retries return the current result without reapplying it');
+        assert.equal(samples, 2);
+        assert.equal((await api.action(host, 'selectCard', { cardId: second.id })).status, 200);
+        assert.equal((await api.action(host, 'castSpell')).status, 422);
+        state = (await api.get(guest)).state;
+        assert.equal(state.players[index].hand.length, 0);
+        assert.equal(state.players[index].handCount, raise ? 3 : 4);
+        assert.equal(state.players[index].mana, raise ? 1 : 0);
+        assert.equal(state.players[index].element, 5);
+        assert.equal(samples, 2);
+      });
+    }
   }
 });
 

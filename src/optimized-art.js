@@ -11,9 +11,9 @@ export const OPTIMIZED_ART = {
     "optimizedSha256": "550c4d2c80dbb390243f42bfdf6c6c61914520e50eeac165e45f379f9201e37b"
   },
   "seattleExpanded": {
-    "file": "seattleExpanded-e9c618d29859.webp",
-    "sourceSha256": "12cbbdaac812fd6bd024c202efebc7c120364c3e446fb77ef72901f3f2e2a89f",
-    "optimizedSha256": "e9c618d29859e563e2c0cad85d0ff4c958e0d5e41d0efda6eaebce765c434bf6"
+    "file": "seattleExpanded-90799b4dc266.webp",
+    "sourceSha256": "b2483c08f9b97d08946da92716b0e6a479509caad32a20b0f9a90aebd43d9d8d",
+    "optimizedSha256": "90799b4dc2665b0b1d7905838c12e88b29293a610ab79b3e3051f9381cd6f980"
   },
   "iconAtlas": {
     "file": "iconAtlas-b50d0616369c.webp",

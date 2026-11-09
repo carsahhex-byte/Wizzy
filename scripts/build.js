@@ -6,7 +6,7 @@ import { OPTIMIZED_ART } from '../src/optimized-art.js';
 
 const webOnly = process.argv.includes('--web');
 // Dependencies precede their importers in both the hosted and standalone builds.
-const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'asset-url.js', 'pixel-icons.js', 'slab-text.js', 'assets.js', 'spell-visuals.js', 'battle-scene.js', 'animation-sprites.js', 'spell-animation.js', 'aura-animation.js', 'health-bars.js', 'hub-storage.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
+const moduleNames = ['optimized-art.js', 'spells.js', 'decks.js', 'effects.js', 'game.js', 'asset-url.js', 'pixel-icons.js', 'slab-text.js', 'assets.js', 'spell-visuals.js', 'battle-scene.js', 'animation-sprites.js', 'spell-animation.js', 'aura-animation.js', 'health-bars.js', 'hub-storage.js', 'districts.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
 const styleNames = ['style.css', 'hub.css', 'multiplayer.css', 'accounts.css'];
 for (const filename of moduleNames) execFileSync(process.execPath, ['--check', `src/${filename}`], { stdio: 'inherit' });
 await rm('dist', { recursive: true, force: true });
@@ -78,7 +78,7 @@ if (webOnly) {
   // A new pathname avoids reusing a previously cached index document. Both
   // entries live at the project root, so asset paths and hash navigation agree.
   await writeFile(`dist/${launch.slice(2)}`, html);
-  await writeFile('dist/build-info.json', JSON.stringify({ id, launch, layout: 'portrait-1024x1536', screens: ['title', 'home', 'character', 'friends', 'decks', 'online', 'account', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
+  await writeFile('dist/build-info.json', JSON.stringify({ id, launch, layout: 'portrait-1024x1536', screens: ['title', 'home', 'storybook', 'character', 'friends', 'decks', 'online', 'account', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
   console.log(`Built hosted game ${id} with content-hashed modules, styles, and artwork.`);
   process.exit(0);
 }

@@ -127,10 +127,12 @@ test('an immediate Fire-0 completion produces exactly one keyed primary event', 
   assert.deepEqual(getResolvedSpellVisuals(after, endTurn(after)), []);
 });
 
-test('Fire-15 gets one power-up visual for its immediate resource gain', () => {
+test('Fire-15 gets one power-up visual after its conditional resource roll resolves', () => {
   const before = fresh({fire:['Fire-15'],water:['Water-1']});
   before.players[0].mana=0;
-  const after=cast(before,'Fire-15');
+  const committed=cast(before,'Fire-15');
+  assert.deepEqual(getResolvedBattleVisuals(before,committed),[]);
+  const after=complete(committed);
   const [event]=getResolvedSpellVisuals(before,after);
   assert.equal(event.spellId,'Fire-15');
   assert.equal(event.kind,'power-up');
@@ -140,25 +142,42 @@ test('Fire-15 gets one power-up visual for its immediate resource gain', () => {
   assert.deepEqual(getResolvedSpellVisuals(after,JSON.parse(JSON.stringify(after))),[]);
 });
 
-test('Water-0 has one immediate Water power-up event without dice or Fate', () => {
+test('Water-0 has one Water power-up only after dice and Fate finish', () => {
   const before = pass(fresh({fire:['Fire-1','FAT-001'],water:['Water-0','FAT-003']}));
   Object.assign(before.players[1], {mana:0,element:4,loaded:4,enhancement:20,auraTurns:3});
   const card = before.players[1].hand.find(card => card.spellId === 'Water-0');
-  const after = cast(before,'Water-0'), events = getResolvedBattleVisuals(before,after);
+  const committed = cast(before,'Water-0');
+  assert.equal(committed.phase,'rolling');
+  assert.deepEqual(getResolvedBattleVisuals(before,committed),[]);
+  const after = complete(committed), events = getResolvedBattleVisuals(before,after);
   assert.equal(events.length,1);
   assert.deepEqual(events[0], {
     key:`${after.log.at(-1).id}:${before.log.length+1}:1:Water-0`,
     logId:after.log.at(-1).id,commitLogId:before.log.length+1,cardId:card.id,
     casterIndex:1,spellId:'Water-0',kind:'power-up',element:'Water',manaCost:0,damaging:false,
   });
-  assert.deepEqual([after.phase,after.primaryUsed,after.primaryAction,after.pendingSpell,after.lastRoll],['main',true,'spell',null,null]);
-  assert.deepEqual([after.players[1].mana,after.players[1].element,after.players[1].loaded,after.players[1].enhancement,after.players[1].auraTurns],[1,5,4,20,3]);
+  assert.deepEqual([after.phase,after.primaryUsed,after.primaryAction,after.pendingSpell],['main',true,'spell',null]);
+  assert.equal(after.lastRoll.spellId,'Water-0');
+  assert.equal(after.lastRoll.loadedBonus,4);
+  assert.deepEqual([after.players[1].mana,after.players[1].element,after.players[1].loaded,after.players[1].enhancement,after.players[1].auraTurns],[1,5,0,20,3]);
   assert.equal(after.players[1].discard.filter(card=>card.spellId==='Water-0').length,1);
   assert.deepEqual(getResolvedSpellVisuals(before,after),events);
   for(const viewer of[0,1])assert.deepEqual(getResolvedBattleVisuals(privateView(before,viewer),privateView(after,viewer)),events);
   assert.deepEqual(getResolvedBattleVisuals(after,structuredClone(after)),[]);
   assert.deepEqual(getResolvedBattleVisuals(null,after),[]);
   assert.deepEqual(getResolvedBattleVisuals(after,endTurn(after)),[]);
+});
+
+test('a failed Water-0 Mana roll still plays its normal Flow power-up once', () => {
+  const before=pass(fresh({fire:['Fire-1'],water:['Water-0']}));
+  before.players[1].mana=0;
+  const committed=cast(before,'Water-0'), rolled=rollDice(committed,()=>0);
+  const after=resolveSpell(rolled), events=getResolvedBattleVisuals(rolled,after);
+  assert.equal(after.lastRoll.total,2);
+  assert.deepEqual([after.players[1].mana,after.players[1].element],[0,1]);
+  assert.equal(events.length,1);
+  assert.equal(events[0].kind,'power-up');
+  assert.deepEqual(getResolvedBattleVisuals(after,structuredClone(after)),[]);
 });
 
 test('rolled spells animate only on completion and the same commitment has one stable key', () => {

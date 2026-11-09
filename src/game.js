@@ -6,6 +6,8 @@ export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange }
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
+// Network rules can change while deck IDs and local save formats stay compatible.
+export const COMBAT_RULES_VERSION = 'conditional-mana-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -793,13 +795,38 @@ export function validateSavedGame(value) {
   try { assertGame(value); return true; } catch { return false; }
 }
 
+// These same-ID cards used to resolve immediately. Refresh only their exact
+// previous printed definitions; preserve every zone, paid result and log entry.
+function refreshConditionalManaCards(state) {
+  const previousText = { 'Fire-15': 'Gain 1 Ember and 1 Mana.', 'Water-0': 'Gain 1 Mana.' };
+  let changed = false;
+  for (const player of state.players) for (const zone of ['hand', 'deck', 'discard']) {
+    for (const card of player[zone]) {
+      if (Object.hasOwn(previousText, card?.spellId)
+        && card.effectText === previousText[card.spellId]
+        && card.description === previousText[card.spellId]) {
+        card.effectText = SPELL_CATALOG[card.spellId].effectText;
+        card.description = card.effectText;
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
 /** Upgrade current-catalog duels without re-dealing or replaying paid effects. */
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![10, 11, 12, 13].includes(value.version)) return null;
+  if (!value || ![10, 11, 12, 13, SAVE_VERSION].includes(value.version)) return null;
   try {
     if (value.version === 10 && (!Array.isArray(value.players) || value.players.some(player => !Array.isArray(player?.hand) || player.hand.length > 5))) return null;
     const next = structuredClone(value);
+    const refreshedCards = refreshConditionalManaCards(next);
+    if (value.version === SAVE_VERSION) {
+      if (!refreshedCards) return null;
+      assertGame(next);
+      return next;
+    }
     next.version = SAVE_VERSION;
     const beforeEnhancement = value.version < 12;
     if (beforeEnhancement && next.phase === 'enhancing') return null;

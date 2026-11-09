@@ -16,8 +16,10 @@ function resolve(spellId, { caster = {}, opponent = {}, roll = 2, spent = 0 } = 
   return { state, caster: state.players[casterIndex], opponent: state.players[1 - casterIndex], events };
 }
 const cases = [
-  ['Water-0 gains one Mana and the ordinary one Flow without a roll', 'Water-0', { roll: null, caster: { mana: 0 } }, { mana: 1, element: 1 }, {}],
-  ['Fire-15 gains one Ember and one Mana without a roll', 'Fire-15', { roll: null, caster: { mana: 0 } }, { element: 1, mana: 1 }, {}],
+  ['Water-0 below seven still gains the ordinary Flow but no Mana', 'Water-0', { roll: 6, caster: { mana: 0 } }, { mana: 0, element: 1 }, {}],
+  ['Water-0 seven gains one Mana and the ordinary Flow', 'Water-0', { roll: 7, caster: { mana: 0 } }, { mana: 1, element: 1 }, {}],
+  ['Fire-15 below seven gains one Ember but no Mana', 'Fire-15', { roll: 6, caster: { mana: 0 } }, { element: 1, mana: 0 }, {}],
+  ['Fire-15 seven gains one Ember and one Mana', 'Fire-15', { roll: 7, caster: { mana: 0 } }, { element: 1, mana: 1 }, {}],
   ['Fire-0 gains one Ember without a roll', 'Fire-0', { roll: null }, { element: 1 }, {}],
   ['Fire-0 has no roll threshold or enhanced resource gain', 'Fire-0', { roll: 12, caster: { enhancement: 30 } }, { element: 1 }, {}],
   ['Fire-1 base attack has no automatic Ember', 'Fire-1', { roll: 6 }, { element: 0 }, { hp: 94 }],
@@ -114,7 +116,7 @@ test('the current collection completely replaces old IDs and has no starter comp
   assert.ok(Object.keys(SPELL_CATALOG).every(id => !/^(FIR|WAT|NEU)-/.test(id)));
   assert.deepEqual(DECK_LISTS, { fire: [], water: [] });
   for (const spell of Object.values(SPELL_CATALOG).filter(s => s.category !== 'Fate')) {
-    assert.equal(SPELL_RULES[spell.id].requiresRoll, !['Fire-0', 'Fire-15', 'Water-0'].includes(spell.id));
+    assert.equal(SPELL_RULES[spell.id].requiresRoll, spell.id !== 'Fire-0');
     assert.ok(cases.some(entry => entry[1] === spell.id), `${spell.id} has independent numerical checks`);
   }
   assert.deepEqual([MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS], [100, 10, 30, 5, 5]);
@@ -411,44 +413,45 @@ test('Fire-0 has exact printed text and adds only one capped Ember without dice 
   assert.throws(() => resolve('Fire-0', { roll: null, spent: 1 }), /Invalid Ember spending/);
 });
 
-test('Fire-15 independently caps one Ember and one Mana without consuming or scaling other resources', () => {
-  assert.deepEqual(SPELL_RULES['Fire-15'], { requiresRoll: false, emberSpend: 'none' });
-  assert.deepEqual([SPELL_CATALOG['Fire-15'].name, SPELL_CATALOG['Fire-15'].manaCost, SPELL_CATALOG['Fire-15'].effectText], ['Fire-15', 0, 'Gain 1 Ember and 1 Mana.']);
-  for (const element of [0, 4, 5]) for (const mana of [0, 9, 10]) {
+test('Fire-15 always grants one capped Ember and grants capped Mana only on a final seven or higher', () => {
+  assert.deepEqual(SPELL_RULES['Fire-15'], { requiresRoll: true, emberSpend: 'none' });
+  assert.deepEqual([SPELL_CATALOG['Fire-15'].name, SPELL_CATALOG['Fire-15'].manaCost, SPELL_CATALOG['Fire-15'].effectText],
+    ['Fire-15', 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.']);
+  for (const rollTotal of [-2, 6, 7, 12]) for (const element of [0, 4, 5]) for (const mana of [0, 9, 10]) {
     const state = { players: [player('fire', { element, mana, hp: 60, shield: 12, loaded: 4, loadedPending: 2, enhancement: 30, auraTurns: 2 }), player('water', { shield: 12 })] };
-    const opponent = structuredClone(state.players[1]);
-    const events = applySpellEffect(state, { casterIndex: 0, spellId: 'Fire-15' });
-    assert.deepEqual([state.players[0].element, state.players[0].mana], [Math.min(5, element + 1), Math.min(10, mana + 1)]);
-    assert.deepEqual([state.players[0].hp, state.players[0].shield, state.players[0].loaded, state.players[0].loadedPending, state.players[0].enhancement, state.players[0].auraTurns], [60, 12, 4, 2, 30, 2]);
-    assert.deepEqual(state.players[1], opponent);
-    assert.deepEqual(events.map(event => [event.type, event.resource, event.amount]), [['resource', 'element', element < 5 ? 1 : 0], ['resource', 'mana', mana < 10 ? 1 : 0]]);
+    const before = structuredClone(state), events = applySpellEffect(state, { casterIndex: 0, spellId: 'Fire-15', rollTotal });
+    const gain = rollTotal >= 7 ? Math.min(1, 10 - mana) : 0;
+    assert.deepEqual(state.players[0], { ...before.players[0], element: Math.min(5, element + 1), mana: mana + gain });
+    assert.deepEqual(state.players[1], before.players[1]);
+    assert.deepEqual(events.map(event => [event.type, event.resource, event.amount]), [
+      ['resource', 'element', element < 5 ? 1 : 0], ...(rollTotal >= 7 ? [['resource', 'mana', gain]] : []),
+    ]);
     assert.deepEqual(getEmberSpendRange('Fire-15', element), { min: 0, max: 0, mandatory: false });
-    if (element === 5) assert.match(events[0].message, /gains 0 Embers.*maximum 5/);
-    if (mana === 10) assert.match(events[1].message, /gains 0 Mana.*maximum 10/);
   }
-  assert.throws(() => resolve('Fire-15', { roll: null, spent: 1 }), /Invalid Ember spending/);
+  assert.throws(() => resolve('Fire-15', { roll: null }), /requires a resolved Modified Roll/);
+  assert.throws(() => resolve('Fire-15', { roll: 7, spent: 1 }), /Invalid Ember spending/);
   const original = resolve('Fire-0', { roll: null, caster: { mana: 0 } });
-  assert.deepEqual([original.caster.element, original.caster.mana], [1, 0], 'Fire-0 retains its original one-Ember effect');
+  assert.deepEqual([original.caster.element, original.caster.mana], [1, 0], 'Fire-0 stays immediate and gains only one Ember');
 });
 
-test('Water-0 gains capped Mana then the universal capped Flow without dice, damage or bonus consumption', () => {
+test('Water-0 grants Mana only on a final seven and always gains the ordinary capped Flow last', () => {
   const spell = SPELL_CATALOG['Water-0'];
   assert.deepEqual([spell.name, spell.element, spell.category, spell.manaCost, spell.effectText, spell.art, spell.purpose],
-    ['Water-0', 'Water', 'Elemental', 0, 'Gain 1 Mana.', 'waterCard', 'Resource preparation']);
-  assert.deepEqual(SPELL_RULES['Water-0'], { requiresRoll: false, emberSpend: 'none' });
-  for (const mana of [0, 9, 10]) for (const element of [0, 4, 5]) {
+    ['Water-0', 'Water', 'Elemental', 0, 'On a 7+, gain 1 Mana.', 'waterCard', 'Resource preparation']);
+  assert.deepEqual(SPELL_RULES['Water-0'], { requiresRoll: true, emberSpend: 'none' });
+  for (const rollTotal of [-2, 6, 7, 12]) for (const mana of [0, 9, 10]) for (const element of [0, 4, 5]) {
     const state = { players: [player('fire', { mana: 5, shield: 12 }),
       player('water', { mana, element, hp: 72, shield: 15, loaded: 4, loadedPending: 2, enhancement: 30, auraTurns: 2 })] };
-    const before = structuredClone(state), events = applySpellEffect(state, { casterIndex: 1, spellId: 'Water-0' });
-    assert.deepEqual([state.players[1].mana, state.players[1].element], [Math.min(10, mana + 1), Math.min(5, element + 1)]);
+    const before = structuredClone(state), events = applySpellEffect(state, { casterIndex: 1, spellId: 'Water-0', rollTotal });
+    const gain = rollTotal >= 7 ? Math.min(1, 10 - mana) : 0;
+    assert.deepEqual(state.players[1], { ...before.players[1], mana: mana + gain, element: Math.min(5, element + 1) });
     assert.deepEqual(state.players[0], before.players[0]);
-    assert.deepEqual(state.players[1], { ...before.players[1], mana: Math.min(10, mana + 1), element: Math.min(5, element + 1) });
-    assert.deepEqual(events.map(event => [event.type, event.resource, event.amount]),
-      [['resource', 'mana', mana < 10 ? 1 : 0], ['resource', 'element', element < 5 ? 1 : 0]]);
-    assert.equal(events.at(-1).resource, 'element', 'ordinary Water Flow is gained after the printed Mana effect');
-    if (mana === 10) assert.match(events[0].message, /gains 0 Mana.*maximum 10/);
-    if (element === 5) assert.match(events[1].message, /gains 0 Flow.*maximum 5/);
+    assert.deepEqual(events.map(event => [event.type, event.resource, event.amount]), [
+      ...(rollTotal >= 7 ? [['resource', 'mana', gain]] : []), ['resource', 'element', element < 5 ? 1 : 0],
+    ]);
+    assert.equal(events.at(-1).resource, 'element', 'Water gains Flow after the conditional Mana effect, even on a miss');
     assert.deepEqual(getEmberSpendRange('Water-0', element), { min: 0, max: 0, mandatory: false });
   }
-  assert.throws(() => resolve('Water-0', { roll: null, spent: 1 }), /Invalid Ember spending/);
+  assert.throws(() => resolve('Water-0', { roll: null }), /requires a resolved Modified Roll/);
+  assert.throws(() => resolve('Water-0', { roll: 7, spent: 1 }), /Invalid Ember spending/);
 });

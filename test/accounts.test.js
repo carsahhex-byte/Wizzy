@@ -176,6 +176,52 @@ test('accounts save unrestricted spell quantities across login and SQLite restar
   assert.deepEqual((await restarted.login(input.username)).account, saved.data.account, 'unrestricted quantities survive persistent storage and a fresh login');
 });
 
+test('compatible Fire-15 and Water-0 rule changes preserve saved account decks across SQLite restart', async t => {
+  const folder = await mkdtemp(path.join(tmpdir(), 'wizzy-resource-rule-decks-'));
+  t.after(() => rm(folder, { recursive: true, force: true }));
+  const dbPath = path.join(folder, 'accounts.sqlite');
+  const first = await service(t, { accountDbPath: dbPath });
+  const compositions = [
+    {
+      fire: { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 1 }] },
+      water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 30 }] },
+    },
+    {
+      fire: { element: 'fire', entries: [{ spellId: 'FAT-003', quantity: 4 }, { spellId: 'Fire-15', quantity: 26 }] },
+      water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 1 }] },
+    },
+  ];
+  const savedAccounts = [];
+  for (const [index, composition] of compositions.entries()) {
+    const input = { ...registration(`resource_rules_${index}`), decks: composition };
+    const created = await first.register(input);
+    const saved = await first.request('/api/accounts/me', { method: 'PUT', token: created.token,
+      body: { profile, decks: composition, revision: 0, spellbookVersion: 'nov4-v2.1' } });
+    assert.equal(saved.status, 200);
+    assert.deepEqual(saved.data.account.decks, composition);
+    assert.equal(saved.data.account.revision, 1);
+    savedAccounts.push({ token: created.token, account: saved.data.account });
+  }
+  await first.stop();
+  const restarted = await service(t, { accountDbPath: dbPath });
+  for (const saved of savedAccounts) {
+    assert.deepEqual((await restarted.request('/api/accounts/me', { token: saved.token })).data.account, saved.account);
+    assert.deepEqual((await restarted.login(saved.account.username)).account, saved.account, 'a rule change does not reset decks or increment their revision');
+    for (const [element, spellId] of [['fire', 'Water-0'], ['water', 'Fire-15']]) {
+      const invalid = { ...saved.account.decks, [element]: { element, entries: [{ spellId, quantity: 1 }] } };
+      const rejected = await restarted.request('/api/accounts/me', { method: 'PUT', token: saved.token,
+        body: { profile, decks: invalid, revision: 1 } });
+      assert.equal(rejected.status, 400, 'changed rules do not relax the main-element restriction');
+      assert.deepEqual((await restarted.request('/api/accounts/me', { token: saved.token })).data.account, saved.account);
+    }
+  }
+  await restarted.stop();
+  const db = new DatabaseSync(dbPath);
+  try {
+    assert.equal(db.prepare('SELECT COUNT(*) AS count FROM account_deck_archives').get().count, 0, 'compatible rule changes never archive existing compositions');
+  } finally { db.close(); }
+});
+
 test('old account databases archive replaced decks without losing identities or active sessions', async t => {
   const folder = await mkdtemp(path.join(tmpdir(), 'wizzy-legacy-accounts-'));
   t.after(() => rm(folder, { recursive: true, force: true }));

@@ -307,3 +307,42 @@ test('Water-0 short decks and unrestricted drafts survive guest backups and acco
   assert.deepEqual(createHubStorage(disk).readGuest().savedDecks, guest.savedDecks);
   assert.deepEqual(original.savedDecks.water, { element: 'water', entries: [{ spellId: 'Water-1', quantity: 30 }] });
 });
+
+test('existing Fire-15 and Water-0 guest and account caches survive compatible rule changes independently', () => {
+  const guest = { version: 2, spellbook: 'nov4-v2.1', savedAt: 100, ...snapshot('Resource guest') };
+  guest.savedDecks = {
+    fire: { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 30 }] },
+    water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 1 }] },
+  };
+  guest.drafts = {
+    fire: { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 4 }] },
+    water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 29 }] },
+  };
+  const account = { ...structuredClone(guest), savedAt: 200, accountId: 'resource-owner', accountUsername: 'resource_owner' };
+  account.savedDecks = {
+    fire: { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 1 }] },
+    water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 30 }] },
+  };
+  account.drafts = structuredClone(account.savedDecks);
+  account.cloudDecks = structuredClone(guest.savedDecks);
+  const disk = new BrowserStorage([
+    [GUEST_SAVE_KEY, json(guest)], [HUB_SAVE_KEY, json(account)],
+    ['wizzy.hub.account.v2.resource-owner', json(account)],
+  ]);
+  const store = createHubStorage(disk);
+  const restored = store.load();
+  assert.equal(restored.state.accountId, account.accountId);
+  assert.deepEqual(restored.state.savedDecks, account.savedDecks);
+  assert.deepEqual(restored.state.drafts, account.drafts);
+  assert.deepEqual(restored.state.cloudDecks, account.cloudDecks, 'an unsynced saved deck does not replace its cloud baseline');
+  assert.deepEqual(restored.guestSnapshot.savedDecks, guest.savedDecks);
+  assert.equal(store.save(restored.state), true);
+  assert.equal(disk.getItem(GUEST_SAVE_KEY), json(guest), 'saving the account leaves the distinct guest backup intact');
+  disk.removeItem(HUB_SAVE_KEY);
+  const reloaded = createHubStorage(disk);
+  assert.deepEqual(reloaded.readAccount(account.accountId).savedDecks, account.savedDecks);
+  assert.deepEqual(reloaded.readAccount(account.accountId).drafts, account.drafts);
+  assert.deepEqual(reloaded.readAccount(account.accountId).cloudDecks, account.cloudDecks);
+  assert.deepEqual(reloaded.readGuest().savedDecks, guest.savedDecks);
+  assert.deepEqual(reloaded.readGuest().drafts, guest.drafts);
+});

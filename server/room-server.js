@@ -6,7 +6,7 @@ import {
   createGame, assertGame, getActingPlayerIndex, selectCard, castSelected,
   castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh,
   toggleRefreshCard, confirmRefresh, cancelStagedAction, rollInitiative, OPENING_HAND_SIZE,
-  activateEnhancement, rollEnhancement, activateAura,
+  activateEnhancement, rollEnhancement, activateAura, COMBAT_RULES_VERSION,
 } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
@@ -77,6 +77,7 @@ function roomView(room, playerIndex) {
   }
   return {
     spellbookVersion: SPELLBOOK_VERSION,
+    combatRulesVersion: COMBAT_RULES_VERSION,
     code: room.code, playerIndex, element: playerIndex === 0 ? 'fire' : 'water',
     revision: room.revision,
     status: room.state ? room.state.status : 'waiting',
