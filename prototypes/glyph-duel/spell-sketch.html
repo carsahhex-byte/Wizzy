@@ -1,0 +1,836 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Spell Sketch · Combat Lab</title>
+  <style>:root { color-scheme: dark; --bg:#171b18; --panel:#222720; --panel-deep:#1b201c; --line:#655b42; --ink:#eee8d4; --muted:#b5b9a7; --gold:#e3bd70; --gold-deep:#725b31; --green:#79bc95; --matching:#85d5b0; --missing:#df7d8b; --extra:#f3bd68; background:var(--bg); color:var(--ink); font-family:Arial,sans-serif; }
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+body { margin:0; padding:max(20px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); }
+button,input,select { font:inherit; }
+button { cursor:pointer; touch-action:manipulation; }
+button:disabled { cursor:default; opacity:.42; }
+button,input,select,summary { -webkit-tap-highlight-color:transparent; }
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible { outline:3px solid #b9dbb7; outline-offset:4px; }
+h1,h2,h3,p { margin-top:0; }
+.app-shell { width:min(100%,920px); margin:0 auto; }
+.brand-header { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:7px 2px 26px; }
+.kicker,.eyebrow { margin:0 0 9px; color:var(--gold); font:700 10px/1.4 'Courier New',monospace; letter-spacing:2px; }
+h1 { margin:0; color:#f0dfb2; font-size:clamp(36px,7vw,56px); line-height:1; letter-spacing:-2px; }
+.tagline { margin:11px 0 0; color:var(--muted); font-size:14px; letter-spacing:.3px; }
+.brand-glyphs { display:flex; align-items:center; gap:14px; color:var(--gold); }
+.brand-glyphs i { display:block; width:24px; height:24px; font-style:normal; }
+.glyph-circle { border:3px solid #bcba8b; border-radius:50%; }
+.glyph-square { border:3px solid #81b195; transform:rotate(10deg); }
+.brand-glyphs .glyph-star { width:30px; height:34px; font-size:35px; line-height:1; }
+.panel { padding:26px; border:2px solid var(--line); background:var(--panel); box-shadow:5px 5px #0f130f; }
+.setup-panel > h2 { margin-bottom:13px; font-size:29px; line-height:1.15; color:#eee1bf; }
+.intro-copy { max-width:680px; margin:0 0 24px; color:#c3c8b9; font-size:15px; line-height:1.7; }
+.mode-picker { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0 0 21px; padding:0; border:0; }
+.mode-picker legend { margin-bottom:11px; color:#dfdfcb; font-size:12px; font-weight:700; }
+.mode-option { display:flex; align-items:flex-start; gap:11px; padding:16px; border:2px solid #566047; background:var(--panel-deep); cursor:pointer; }
+.mode-option:has(input:checked) { border-color:var(--gold); background:#302f23; }
+.mode-option input { flex:0 0 auto; width:19px; height:19px; margin:1px 0 0; accent-color:var(--gold); }
+.mode-option strong { display:block; color:#eee0b7; font-size:16px; }
+.mode-option small { display:block; margin-top:6px; color:var(--muted); font-size:12px; line-height:1.6; }
+.settings-panel { margin:0 0 20px; border:1px solid #535b46; background:#1d231d; }
+.settings-panel > summary { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:47px; padding:12px 15px; color:#d7d8c2; font-size:13px; font-weight:700; list-style:none; cursor:pointer; }
+.settings-panel > summary::-webkit-details-marker { display:none; }
+.settings-panel > summary::marker { content:''; }
+.settings-panel summary > span { color:var(--gold); font:24px/1 'Courier New',monospace; }
+.settings-panel[open] summary > span { transform:rotate(45deg); }
+.settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:7px 16px 16px; }
+.settings-grid > label { display:flex; flex-direction:column; gap:8px; color:#bec7b7; font-size:12px; line-height:1.4; }
+.settings-wide { grid-column:1 / -1; }
+.input-unit { display:flex; align-items:center; gap:10px; min-width:0; }
+.input-unit small { min-width:64px; color:#919e8d; font-size:11px; }
+input[type='number'],select { width:100%; min-width:0; min-height:44px; padding:9px 10px; border:2px solid #5a674f; border-radius:0; background:#111b15; color:#f0e2bb; }
+.field-note { margin:0; padding:0 16px 16px; color:#8fa18c; font-size:11px; line-height:1.6; }
+.form-error { margin:0 0 16px; padding:12px; border:2px solid #aa775b; background:#3c2821; color:#f1c8ad; font-size:13px; line-height:1.6; }
+.button { display:inline-flex; justify-content:center; align-items:center; gap:8px; min-height:46px; padding:12px 18px; border:2px solid #716b4f; border-radius:0; color:#e1ddc8; background:#33392b; box-shadow:inset 2px 2px #50553d,2px 3px #11180f; font-size:13px; font-weight:700; }
+.button:hover:not(:disabled) { filter:brightness(1.1); }
+.button:active:not(:disabled) { transform:translateY(1px); }
+.button-primary { border-color:#e2c37e; color:#211d15; background:#dab367; box-shadow:inset 2px 2px #f5d99e,2px 3px #11180f; }
+.button-quiet { border-color:#4e5c46; color:#b7c3ac; background:#222d23; box-shadow:inset 1px 1px #3c4834,2px 3px #11180f; }
+.start-button { width:100%; min-height:52px; font-size:16px; }
+.setup-help { margin-top:23px; padding-top:17px; border-top:1px dashed #596046; color:#929f8d; font-size:12px; line-height:1.7; }
+.setup-help p { margin:0 0 10px; }
+.setup-help p:last-child { margin-bottom:0; }
+.match-header { display:grid; grid-template-columns:1fr; gap:13px; align-items:center; margin:0 0 19px; }
+.health-bars { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; }
+.practice-summary { margin:0; padding:13px 15px; border:2px solid #5c634a; color:#c9d7b8; background:#242c22; font:700 13px/1.5 'Courier New',monospace; }
+.player-panel { min-width:0; padding:15px; border:2px solid #5c634a; background:#242c22; box-shadow:3px 3px #10170f; }
+.player-heading { display:flex; justify-content:space-between; align-items:center; gap:9px; margin-bottom:10px; }
+.player-heading strong { min-width:0; color:#dfe2c9; font-size:13px; overflow-wrap:anywhere; }
+.player-heading > span { flex:0 0 auto; color:#cfdfb8; font:700 12px 'Courier New',monospace; white-space:nowrap; }
+.health-track { height:11px; padding:2px; border:1px solid #566344; background:#121c14; }
+.health-fill { display:block; height:100%; background:#85b66e; transition:width .3s ease-in-out; }
+.player-two .health-fill { background:#87b4a6; }
+.round-status { display:flex; flex-direction:row; justify-content:center; align-items:center; gap:7px; text-align:center; }
+.round-badge { display:block; padding:8px 13px; border:2px solid #9c8250; color:#dfc98c; background:#393321; font:700 11px 'Courier New',monospace; white-space:nowrap; }
+#turn-label { max-width:145px; color:#9da98e; font-size:10px; line-height:1.35; }
+.phase-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; }
+.phase-heading h2 { margin:0; color:#ece0bc; font-size:25px; line-height:1.15; }
+.shape-badge { flex:0 0 auto; padding:7px 9px; border:1px solid #727b55; color:#c3ccab; background:#2d3526; font:700 10px 'Courier New',monospace; }
+.status-grid { display:grid; grid-template-columns:1fr 1fr; gap:21px; margin-bottom:15px; }
+.status-meter { min-width:0; }
+.meter-label { display:flex; justify-content:space-between; align-items:baseline; gap:8px; min-height:29px; }
+.meter-label > span { color:#9aa78c; font:700 9px 'Courier New',monospace; letter-spacing:.7px; }
+.meter-label > strong { min-width:0; color:#ead29c; font:700 19px 'Courier New',monospace; text-align:right; }
+.budget-meter .meter-label > strong { color:#b8cba3; font-size:13px; overflow-wrap:anywhere; }
+.meter-track { height:7px; overflow:hidden; background:#121a13; border:1px solid #525f43; }
+.meter-track > span { display:block; height:100%; background:#c3a15e; }
+.budget-meter .meter-track > span { background:#829e69; }
+.hint { min-height:39px; margin:0 0 18px; color:#a8b59d; font-size:13px; line-height:1.6; }
+.shape-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; margin:0 0 20px; }
+.shape-option { display:flex; flex-direction:column; align-items:center; min-width:0; padding:18px 10px 14px; border:2px solid #58664c; border-radius:0; background:#1a241b; color:#bdcaaa; }
+.shape-option[aria-pressed='true'] { border-color:var(--gold); background:#373421; box-shadow:inset 0 0 0 2px #967742; color:#f0d595; }
+.shape-option canvas { display:block; width:min(100%,96px); height:auto; margin-bottom:14px; image-rendering:pixelated; }
+.shape-option strong { font:700 12px 'Courier New',monospace; }
+#begin-cast { width:100%; }
+.board-shell { width:min(100%,480px); margin:0 auto 17px; padding:10px; border:3px solid #88764a; background:#141c16; box-shadow:4px 4px #0d140e; }
+#board { display:block; width:100%; height:auto; aspect-ratio:1; background:#ebe3ce; image-rendering:pixelated; touch-action:none; user-select:none; -webkit-user-select:none; cursor:crosshair; }
+.drawing-tools { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; width:min(100%,480px); margin:0 auto 14px; }
+.tool-button[aria-pressed='true'] { border-color:#d7be79; color:#f1d69c; background:#51482a; }
+.submit-button { display:flex; width:min(100%,480px); margin:0 auto; }
+.handoff-tile { min-height:310px; padding:28px 23px; border:2px dashed #8d8055; background:#1c251d; text-align:center; }
+.handoff-symbol { display:block; margin:0 0 13px; color:#c7a969; font-size:44px; }
+.handoff-tile h3 { margin:13px 0 12px; color:#f1dfac; font-size:29px; }
+.handoff-tile > p:not(.eyebrow) { max-width:470px; margin:0 auto 24px; color:#b6c0a9; font-size:14px; line-height:1.7; }
+.handoff-tile .button { min-width:200px; }
+.result-panel > h3 { margin:11px 0 12px; color:#f0d89c; font-size:29px; }
+.result-summary { margin:0 0 14px; color:#c7d1b8; font-size:15px; line-height:1.65; }
+.result-details { margin:0 0 19px; color:#a9b99e; font-size:13px; line-height:1.65; }
+.result-boards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:18px 0; }
+.game-panel[data-mode='practice'] .result-boards { grid-template-columns:1fr; max-width:480px; margin-inline:auto; }
+.score-card { min-width:0; padding:14px; border:1px solid #657454; background:#1a241b; }
+.score-card h3,.score-card h4 { margin:0 0 11px; color:#d5dfbd; font-size:14px; }
+.result-board { display:block; width:100%; height:auto; background:#ebe3ce; image-rendering:pixelated; }
+.result-board canvas,.score-card canvas { display:block; width:100%; height:auto; image-rendering:pixelated; }
+.metric { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px 12px; margin-top:10px; color:#a7b79b; font-size:12px; }
+.metric strong,.metric dd { margin:0; color:#dfd6b4; font:700 17px 'Courier New',monospace; }
+.metric dt { margin:0; }
+.result-legend { display:flex; justify-content:center; flex-wrap:wrap; gap:12px 18px; padding:0; margin:15px 0 22px; list-style:none; color:#a9b59d; font-size:11px; }
+.result-legend li { display:flex; align-items:center; gap:7px; }
+.swatch { width:12px; height:12px; border:1px solid #d3d5bf99; }
+.swatch.matching { background:var(--matching); }.swatch.missing { background:var(--missing); }.swatch.extra { background:var(--extra); }
+#next-turn { width:100%; }
+.match-actions { display:flex; justify-content:space-between; gap:12px; margin-top:21px; }
+.match-actions .button { min-width:150px; }
+footer { padding:30px 0 3px; color:#77846c; text-align:center; font:9px/1.6 'Courier New',monospace; letter-spacing:1px; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.confirm-dialog { width:min(calc(100% - 32px),440px); padding:24px; border:2px solid #9b8350; border-radius:0; background:#252b21; color:#dfdfc9; box-shadow:5px 5px #0b100a; }
+.confirm-dialog::backdrop { background:#080d09cf; }
+.confirm-dialog h2 { margin:8px 0 14px; color:#efdcac; font-size:26px; }
+.confirm-dialog p:not(.eyebrow) { color:#b8c3ad; font-size:14px; line-height:1.7; }
+.dialog-actions { display:flex; justify-content:flex-end; gap:11px; margin-top:21px; }
+@media (max-width:640px) { .brand-glyphs { gap:10px; }.brand-glyphs i { width:18px;height:18px; }.brand-glyphs .glyph-star { width:24px;height:27px;font-size:28px; }.panel { padding:19px; }.match-header { grid-template-columns:1fr; gap:12px; }.health-bars { gap:12px; }.round-status { flex-direction:row; justify-content:center; }.player-two { grid-column:2;grid-row:1; }.player-panel { padding:12px; }.phase-heading h2 { font-size:23px; }.status-grid { gap:15px; }.shape-options { gap:9px; }.shape-option { padding-inline:7px; }.result-boards { gap:10px; }.score-card { padding:10px; } }
+@media (max-width:380px) { body { padding-inline:12px; }.brand-header { gap:12px;padding-bottom:22px; }.brand-glyphs { gap:8px; }.brand-glyphs i { width:14px;height:14px;border-width:2px; }.brand-glyphs .glyph-star { width:18px;height:22px;font-size:23px; }h1 { font-size:36px; }.panel { padding:15px; }.setup-panel > h2 { font-size:25px; }.mode-picker { grid-template-columns:1fr; }.mode-option { padding:12px; }.settings-grid { grid-template-columns:1fr; }.settings-wide { grid-column:auto; }.player-heading { flex-direction:column; align-items:flex-start; gap:5px; }.phase-heading { gap:7px; }.phase-heading h2 { font-size:20px; }.shape-badge { font-size:9px;padding:6px; }.meter-label { flex-direction:column; align-items:flex-start; gap:4px;min-height:44px; }.budget-meter .meter-label > strong { font-size:12px; }.shape-options { gap:6px; }.shape-option strong { font-size:10px; }.board-shell { padding:6px; }.drawing-tools { gap:6px; }.drawing-tools .button { padding:10px 3px;font-size:12px; }.match-actions .button { min-width:0;flex:1;padding-inline:10px; }.result-boards { grid-template-columns:1fr; }.handoff-tile { padding:23px 15px; }.handoff-tile h3 { font-size:25px; }.handoff-tile .button { min-width:0;width:100%; } }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; } }
+</style>
+  
+  
+</head>
+<body>
+  <main class="app-shell">
+    <header class="brand-header">
+      <div><p class="kicker">COMBAT LAB</p><h1>Spell Sketch</h1><p class="tagline">remember. draw. counter.</p></div>
+      <div class="brand-glyphs" aria-hidden="true"><i class="glyph-circle"></i><i class="glyph-square"></i><i class="glyph-star">✦</i></div>
+    </header>
+
+    <section id="setup" class="panel setup-panel" aria-labelledby="setup-title">
+      <p class="eyebrow">A LITTLE MEMORY. A LITTLE MAGIC.</p>
+      <h2 id="setup-title">Make every block count.</h2>
+      <p class="intro-copy">Choose a spell, remember its shape, then draw it from memory. Your opponent gets the same reference and the same time to counter.</p>
+      <form id="setup-form">
+        <fieldset class="mode-picker">
+          <legend>How are you playing?</legend>
+          <label class="mode-option"><input type="radio" name="mode" value="duel" checked><span><strong>Pass & play</strong><small>Two players, one screen. Keep your drawings secret until the reveal.</small></span></label>
+          <label class="mode-option"><input type="radio" name="mode" value="practice"><span><strong>Practice</strong><small>Learn the shapes and test your memory on your own.</small></span></label>
+        </fieldset>
+        <details class="settings-panel">
+          <summary>Settings <span aria-hidden="true">+</span></summary>
+          <div class="settings-grid">
+            <label for="start-seconds">Starting draw time <span class="input-unit"><input id="start-seconds" name="startSeconds" type="number" min="1" max="60" step="1" value="12" inputmode="numeric" required><small>seconds</small></span></label>
+            <label for="min-seconds">Minimum draw time <span class="input-unit"><input id="min-seconds" name="minSeconds" type="number" min="1" max="60" step="1" value="4" inputmode="numeric" required><small>seconds</small></span></label>
+            <label for="step-seconds">Shorter after each round <span class="input-unit"><input id="step-seconds" name="stepSeconds" type="number" min="0" max="15" step="1" value="1" inputmode="numeric" required><small>seconds</small></span></label>
+            <label for="study-seconds">Time to memorize <span class="input-unit"><input id="study-seconds" name="studySeconds" type="number" min="1" max="15" step="1" value="3" inputmode="numeric" required><small>seconds</small></span></label>
+            <label for="base-power">Base spell power <span class="input-unit"><input id="base-power" name="basePower" type="number" min="1" max="100" step="1" value="30" inputmode="numeric" required><small>power</small></span></label>
+            <label for="ink-percent">Pixel budget <span class="input-unit"><input id="ink-percent" name="inkPercent" type="number" min="100" max="300" step="5" value="115" inputmode="numeric" required><small>% of shape</small></span></label>
+            <label for="tolerance" class="settings-wide">Matching precision<select id="tolerance" name="tolerance" title="1-block position grace pairs nearby blocks one-to-one"><option value="0">Exact</option><option value="1" selected>One block</option></select></label>
+          </div>
+          <p class="field-note">One-block grace pairs nearby blocks one-to-one. One drawn block cannot match several reference blocks.</p>
+        </details>
+        <p id="setup-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" class="button button-primary start-button">Start test <span aria-hidden="true">→</span></button>
+      </form>
+      <div id="setup-help" class="setup-help">
+        <p>Play locally, with no accounts or connection required. In a duel, pass the screen between players. Practice is a solo memory challenge.</p>
+        <p>Both players get the same drawing window. After each has taken one attacking turn, the round ends and the window gets shorter, down to your chosen minimum.</p>
+        <p>Results appear after both drawings. Erase or undo to return blocks to your pixel budget.</p>
+      </div>
+    </section>
+
+    <section id="game" class="game-panel" aria-label="Spell Sketch match" hidden>
+      <header id="match-header" class="match-header">
+        <div id="health-bars" class="health-bars">
+          <div class="player-panel player-one"><div class="player-heading"><strong id="player-0-name">Player 1</strong><span id="player-0-hp">100 / 100 HP</span></div><div class="health-track"><span id="player-0-bar" class="health-fill" style="width:100%"></span></div></div>
+          <div class="player-panel player-two"><div class="player-heading"><strong id="player-1-name">Player 2</strong><span id="player-1-hp">100 / 100 HP</span></div><div class="health-track"><span id="player-1-bar" class="health-fill" style="width:100%"></span></div></div>
+        </div>
+        <p id="practice-summary" class="practice-summary" hidden>Practice · Your best and last scores appear here.</p>
+        <div class="round-status"><strong id="round-label" class="round-badge">Round 1</strong><span id="turn-label">Player 1’s turn</span></div>
+      </header>
+
+      <div class="play-panel panel">
+        <div class="phase-heading"><h2 id="phase-label">Choose your spell</h2><span id="shape-label" class="shape-badge">Circle</span></div>
+        <div class="status-grid">
+          <div class="status-meter clock-meter"><div class="meter-label"><span>TIME</span><strong id="clock-text">Ready</strong></div><div class="meter-track"><span id="clock-fill" style="width:100%"></span></div></div>
+          <div class="status-meter budget-meter"><div class="meter-label"><span>PIXEL BUDGET</span><strong id="budget-text">—</strong></div><div class="meter-track"><span id="budget-fill" style="width:100%"></span></div></div>
+        </div>
+        <p id="hint" class="hint">Pick a shape. You’ll get a moment to memorize it before the drawing timer begins.</p>
+
+        <div id="spell-picker" class="spell-picker">
+          <div class="shape-options" role="group" aria-label="Choose a spell shape">
+            <button type="button" class="shape-option" data-shape="circle" aria-pressed="true" aria-label="Choose Circle"><canvas width="96" height="96" data-shape-preview="circle" aria-hidden="true"></canvas><strong>Circle</strong></button>
+            <button type="button" class="shape-option" data-shape="square" aria-pressed="false" aria-label="Choose Square"><canvas width="96" height="96" data-shape-preview="square" aria-hidden="true"></canvas><strong>Square</strong></button>
+            <button type="button" class="shape-option" data-shape="star" aria-pressed="false" aria-label="Choose Star"><canvas width="96" height="96" data-shape-preview="star" aria-hidden="true"></canvas><strong>Star</strong></button>
+          </div>
+          <button type="button" id="begin-cast" class="button button-primary">Memorize & draw <span aria-hidden="true">→</span></button>
+        </div>
+
+        <div id="board-shell" class="board-shell" hidden><canvas id="board" width="576" height="576" aria-label="24 by 24 block spell drawing board">Your browser needs canvas support to draw a spell.</canvas></div>
+        <div id="drawing-tools" class="drawing-tools" role="toolbar" aria-label="Drawing tools" hidden>
+          <button type="button" class="button tool-button" data-tool="draw" aria-pressed="true">Draw</button>
+          <button type="button" class="button tool-button" data-tool="erase" aria-pressed="false">Erase</button>
+          <button type="button" id="undo" class="button button-quiet">Undo</button>
+          <button type="button" id="clear" class="button button-quiet">Clear</button>
+        </div>
+        <button type="button" id="submit-drawing" class="button button-primary submit-button" hidden>Lock in drawing</button>
+
+        <section id="handoff" class="handoff-tile" aria-labelledby="handoff-title" hidden>
+          <span class="handoff-symbol" aria-hidden="true">◆</span><p class="eyebrow">A LITTLE PRIVACY, PLEASE</p><h3 id="handoff-title">Pass the screen</h3><p id="handoff-copy">Hand the screen to the next player before continuing.</p><button type="button" id="ready" class="button button-primary">I’m ready</button>
+        </section>
+
+        <section id="result" class="result-panel" aria-labelledby="result-title" hidden>
+          <p class="eyebrow">THE REVEAL</p><h3 id="result-title">Spell resolved</h3><p id="result-summary" class="result-summary"></p><div id="result-details" class="result-details"></div>
+          <div id="result-boards" class="result-boards"></div>
+          <ul class="result-legend" aria-label="Drawing comparison legend"><li><span class="swatch matching" aria-hidden="true"></span>Matching</li><li><span class="swatch missing" aria-hidden="true"></span>Missing</li><li><span class="swatch extra" aria-hidden="true"></span>Extra</li></ul>
+          <button type="button" id="next-turn" class="button button-primary">Next turn <span aria-hidden="true">→</span></button>
+        </section>
+      </div>
+      <nav class="match-actions" aria-label="Match options"><button type="button" id="exit-to-setup" class="button button-quiet">Back to setup</button><button type="button" id="restart-match" class="button button-quiet">Restart match</button></nav>
+    </section>
+    <p id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+    <footer>LOCAL PROTOTYPE <span aria-hidden="true">·</span> NO ACCOUNTS. JUST A LITTLE MAGIC. <span aria-hidden="true">·</span> <a href="spell-sketch.html" download="spell-sketch.html">Save offline copy</a></footer>
+  </main>
+
+  <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message"><form method="dialog"><p class="eyebrow">ONE MOMENT</p><h2 id="confirm-title">Start fresh?</h2><p id="confirm-message">This will restart the current match.</p><div class="dialog-actions"><button class="button button-quiet" value="cancel">Cancel</button><button id="confirm-yes" class="button button-primary" value="confirm">Confirm</button></div></form></dialog>
+<script>(function (root) {
+  'use strict';
+
+  const SHAPES = Object.freeze({ circle: 'Circle', square: 'Square', star: 'Five-point star' });
+
+  function gridSize(value) {
+    if (!Number.isSafeInteger(value) || value < 12 || value > 128) {
+      throw new RangeError('Grid size must be a whole number from 12 to 128.');
+    }
+    return value;
+  }
+
+  function finiteNumber(value, name, minimum = 0) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < minimum) {
+      throw new RangeError(name + ' must be a finite number at least ' + minimum + '.');
+    }
+    return value;
+  }
+
+  function traceLine(cells, size, start, end) {
+    let x = start[0], y = start[1];
+    const dx = Math.abs(end[0] - x), sx = x < end[0] ? 1 : -1;
+    const dy = -Math.abs(end[1] - y), sy = y < end[1] ? 1 : -1;
+    let error = dx + dy;
+    for (;;) {
+      cells.add(y * size + x);
+      if (x === end[0] && y === end[1]) break;
+      const twice = error * 2;
+      if (twice >= dy) { error += dy; x += sx; }
+      if (twice <= dx) { error += dx; y += sy; }
+    }
+  }
+
+  // Two rasterized sides of a very sharp star tip can share a one-cell stem.
+  // Remove only those terminal pixels; the remaining outline stays a closed loop.
+  function removeTerminalPixels(cells, size) {
+    let removed;
+    do {
+      removed = [];
+      for (const cell of cells) {
+        const x = cell % size, y = Math.floor(cell / size);
+        let neighbors = 0;
+        for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+          if (ox || oy) {
+            const nx = x + ox, ny = y + oy;
+            if (nx >= 0 && nx < size && ny >= 0 && ny < size && cells.has(ny * size + nx)) neighbors++;
+          }
+        }
+        if (neighbors < 2) removed.push(cell);
+      }
+      for (const cell of removed) cells.delete(cell);
+    } while (removed.length);
+  }
+
+  function getPattern(shape, size = 24) {
+    size = gridSize(size);
+    if (!Object.prototype.hasOwnProperty.call(SHAPES, shape)) throw new RangeError('Choose circle, square, or star.');
+    const center = Math.floor(size / 2), radius = Math.floor(size / 3), cells = new Set();
+    if (shape === 'circle') {
+      let x = radius, y = 0, error = 1 - radius;
+      while (x >= y) {
+        for (const point of [[x, y], [y, x], [-y, x], [-x, y], [-x, -y], [-y, -x], [y, -x], [x, -y]]) {
+          cells.add((center + point[1]) * size + center + point[0]);
+        }
+        y++;
+        if (error < 0) error += 2 * y + 1;
+        else { x--; error += 2 * (y - x) + 1; }
+      }
+    } else {
+      let points;
+      if (shape === 'square') {
+        points = [[-radius, -radius], [radius, -radius], [radius, radius], [-radius, radius]];
+      } else {
+        const unit = Array.from({ length: 10 }, (_, index) => {
+          const angle = -Math.PI / 2 + index * Math.PI / 5;
+          const distance = index % 2 ? .45 : 1;
+          return [Math.cos(angle) * distance, Math.sin(angle) * distance];
+        });
+        const left = Math.min(...unit.map(point => point[0])), right = Math.max(...unit.map(point => point[0]));
+        const top = Math.min(...unit.map(point => point[1])), bottom = Math.max(...unit.map(point => point[1]));
+        points = unit.map(point => [
+          -radius + (point[0] - left) / (right - left) * radius * 2,
+          -radius + (point[1] - top) / (bottom - top) * radius * 2,
+        ]);
+      }
+      points = points.map(point => [Math.round(center + point[0]), Math.round(center + point[1])]);
+      points.forEach((point, index) => traceLine(cells, size, point, points[(index + 1) % points.length]));
+      removeTerminalPixels(cells, size);
+    }
+    const sorted = Object.freeze(Array.from(cells).sort((a, b) => a - b));
+    return Object.freeze({ id: shape, name: SHAPES[shape], size, cells: sorted, budget: Math.ceil(sorted.length * 115 / 100) });
+  }
+
+  function normalizedCells(input, size, name) {
+    if (input && typeof input === 'object' && 'cells' in input && 'size' in input && input.size !== size) {
+      throw new RangeError(name + ' uses a different grid size.');
+    }
+    const values = input && typeof input === 'object' && 'cells' in input ? input.cells : input;
+    if (values === null || values === undefined) return [];
+    if (typeof values === 'string' || typeof values[Symbol.iterator] !== 'function') {
+      throw new TypeError(name + ' must contain iterable cell IDs.');
+    }
+    const cells = new Set();
+    for (const cell of values) {
+      if (!Number.isSafeInteger(cell) || cell < 0 || cell >= size * size) throw new RangeError(name + ' has an invalid cell ID.');
+      cells.add(cell);
+    }
+    return Array.from(cells).sort((a, b) => a - b);
+  }
+
+  /** Maximum-cardinality one-to-one matching, not independently dilated hits. */
+  function scoreDrawing(drawn, target, options = {}) {
+    if (!options || typeof options !== 'object' || Array.isArray(options)) throw new TypeError('Scoring options must be an object.');
+    const patternSize = target && typeof target === 'object' && 'cells' in target ? target.size : undefined;
+    const size = gridSize(options.size === undefined ? patternSize === undefined ? 24 : patternSize : options.size);
+    const tolerance = options.tolerance === undefined ? 1 : options.tolerance;
+    if (tolerance !== 0 && tolerance !== 1) throw new RangeError('Tolerance must be zero or one cell.');
+    const drawing = normalizedCells(drawn, size, 'Drawing'), goal = normalizedCells(target, size, 'Target');
+    const targetIndices = new Map(goal.map((cell, index) => [cell, index]));
+    const adjacency = drawing.map(cell => {
+      const x = cell % size, y = Math.floor(cell / size), neighbors = [];
+      for (let oy = -tolerance; oy <= tolerance; oy++) for (let ox = -tolerance; ox <= tolerance; ox++) {
+        const nx = x + ox, ny = y + oy;
+        if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+        const index = targetIndices.get(ny * size + nx);
+        if (index !== undefined) neighbors.push({ index, distance: ox * ox + oy * oy });
+      }
+      return neighbors.sort((a, b) => a.distance - b.distance || goal[a.index] - goal[b.index]).map(entry => entry.index);
+    });
+    const owner = Array(goal.length).fill(-1);
+    function match(drawingIndex, visited) {
+      for (const targetIndex of adjacency[drawingIndex]) {
+        if (visited.has(targetIndex)) continue;
+        visited.add(targetIndex);
+        if (owner[targetIndex] === -1 || match(owner[targetIndex], visited)) {
+          owner[targetIndex] = drawingIndex;
+          return true;
+        }
+      }
+      return false;
+    }
+    for (let index = 0; index < drawing.length; index++) match(index, new Set());
+    const matchedPairs = [], matchedDrawing = new Set(), matchedTarget = new Set();
+    owner.forEach((drawingIndex, targetIndex) => {
+      if (drawingIndex !== -1) {
+        const drawnCell = drawing[drawingIndex], targetCell = goal[targetIndex];
+        matchedDrawing.add(drawnCell); matchedTarget.add(targetCell);
+        matchedPairs.push({ drawn: drawnCell, target: targetCell });
+      }
+    });
+    matchedPairs.sort((a, b) => a.drawn - b.drawn);
+    const hits = matchedPairs.length, missing = goal.length - hits, extra = drawing.length - hits;
+    const total = drawing.length + goal.length;
+    return {
+      hits, missing, extra, drawnCount: drawing.length, targetCount: goal.length, size, tolerance,
+      accuracy: total ? 200 * hits / total : 100,
+      precision: drawing.length ? hits / drawing.length : goal.length ? 0 : 1,
+      recall: goal.length ? hits / goal.length : drawing.length ? 0 : 1,
+      correctCells: drawing.filter(cell => matchedDrawing.has(cell)),
+      matchedTargetCells: goal.filter(cell => matchedTarget.has(cell)),
+      missingCells: goal.filter(cell => !matchedTarget.has(cell)),
+      extraCells: drawing.filter(cell => !matchedDrawing.has(cell)), matchedPairs,
+    };
+  }
+
+  function resolveAttack(options = {}) {
+    if (!options || typeof options !== 'object' || Array.isArray(options)) throw new TypeError('Attack settings must be an object.');
+    const accuracy = (value, name) => {
+      if (typeof value !== 'number' || !Number.isFinite(value)) throw new RangeError(name + ' must be finite.');
+      return Math.min(100, Math.max(0, value));
+    };
+    const attackerAccuracy = accuracy(options.attackerAccuracy, 'Attacker accuracy');
+    const defenderAccuracy = accuracy(options.defenderAccuracy, 'Defender accuracy');
+    const basePower = finiteNumber(options.basePower === undefined ? 30 : options.basePower, 'Base power');
+    const defenderHp = finiteNumber(options.defenderHp === undefined ? 100 : options.defenderHp, 'Defender HP');
+    const damage = Math.ceil(basePower * attackerAccuracy / 100 * (1 - defenderAccuracy / 100));
+    return { damage, remainingHp: Math.max(0, defenderHp - damage), defenderHp, basePower, attackerAccuracy, defenderAccuracy };
+  }
+
+  function getDrawSeconds(round, settings = {}) {
+    if (!Number.isSafeInteger(round) || round < 1) throw new RangeError('Round must be a positive whole number.');
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new TypeError('Timing settings must be an object.');
+    const start = finiteNumber(settings.startSeconds === undefined ? 12 : settings.startSeconds, 'Starting seconds', Number.MIN_VALUE);
+    const minimum = finiteNumber(settings.minSeconds === undefined ? 4 : settings.minSeconds, 'Minimum seconds', Number.MIN_VALUE);
+    const decrement = finiteNumber(settings.decrement === undefined ? 1 : settings.decrement, 'Seconds decrement');
+    if (minimum > start) throw new RangeError('Minimum seconds cannot exceed starting seconds.');
+    return Math.max(minimum, start - (round - 1) * decrement);
+  }
+
+  root.GlyphDuelRules = Object.freeze({ getPattern, scoreDrawing, resolveAttack, getDrawSeconds });
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* Standalone local experiment. No Wizzy imports, accounts, storage or requests. */
+(() => {
+  'use strict';
+  const R = window.GlyphDuelRules;
+  const $ = id => document.getElementById(id);
+  const SIZE = 24, START_HP = 100;
+  const board = $('board'), ctx = board.getContext('2d');
+  const colors = { background: '#101b27', grid: '#263343', ink: '#f8d088', target: '#f8d088',
+    correct: '#85d5b0', missing: '#df7d8b', extra: '#f3bd68', counter: '#a6dbea' };
+  let state = null, clock = null, raf = 0, alarm = 0, generation = 0;
+  let stroke = null, undo = [], tool = 'draw', cursor = null;
+
+  const setText = (id, value) => { $(id).textContent = value; };
+  const show = (id, visible) => { $(id).hidden = !visible; };
+  const playerName = index => `Player ${index + 1}`;
+  const attemptPlayer = () => state.role === 'attacker' ? state.caster : 1 - state.caster;
+  const roundSeconds = () => R.getDrawSeconds(state.round, state.config);
+  const percent = value => `${Math.round(value)}%`;
+
+  function announce(message) { setText('announcement', message); }
+  function stopClock() {
+    generation++;
+    cancelAnimationFrame(raf); clearTimeout(alarm);
+    raf = 0; alarm = 0; clock = null;
+  }
+  function finishStroke() {
+    if (!stroke) return;
+    const finished = stroke; stroke = null;
+    if (finished.changed) { undo.push(finished.before); if (undo.length > 50) undo.shift(); }
+    try { if (board.hasPointerCapture(finished.pointer)) board.releasePointerCapture(finished.pointer); } catch {}
+  }
+  function stopAttempt() { finishStroke(); stopClock(); cursor = null; }
+
+  function configFromForm() {
+    const number = (id, min, max) => {
+      const value = Number($(id).value);
+      if (!Number.isFinite(value) || value < min || value > max) throw new Error(`${$(id).labels?.[0]?.textContent.trim() || id} must be between ${min} and ${max}.`);
+      return value;
+    };
+    const config = { mode: $('setup-form').querySelector('[name="mode"]:checked')?.value || 'duel',
+      startSeconds: number('start-seconds', 1, 60), minSeconds: number('min-seconds', 1, 60),
+      decrement: number('step-seconds', 0, 15), studySeconds: number('study-seconds', 1, 15),
+      basePower: number('base-power', 1, 100), inkPercent: number('ink-percent', 100, 300), tolerance: Number($('tolerance').value) };
+    if (!['duel', 'practice'].includes(config.mode) || ![0, 1].includes(config.tolerance)) throw new Error('Choose a supported mode and drawing tolerance.');
+    R.getDrawSeconds(1, config);
+    return config;
+  }
+
+  function startMatch(config) {
+    stopAttempt();
+    state = { config: { ...config }, mode: config.mode, round: 1, caster: 0, role: 'attacker', phase: 'choose',
+      hp: [START_HP, START_HP], selected: 'circle', turn: null, ink: new Set(), history: [], best: 0, last: null };
+    undo = []; tool = 'draw';
+    show('setup', false); show('game', true);
+    announce(config.mode === 'practice' ? 'Solo practice started. Choose a symbol.' : 'Local duel started. Player 1 chooses a spell.');
+    render();
+  }
+
+  function paintGrid(context, width, height, { drawing = [], target = [], score = null, reference = false } = {}) {
+    const w = width / SIZE, h = height / SIZE;
+    const lineScale = context.canvas === board ? Math.min(3, window.devicePixelRatio || 1) : 1;
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = colors.background; context.fillRect(0, 0, width, height);
+    function block(cell, color, inset = lineScale) {
+      context.fillStyle = color;
+      context.fillRect((cell % SIZE) * w + inset, Math.floor(cell / SIZE) * h + inset, Math.max(1, w - inset * 2), Math.max(1, h - inset * 2));
+    }
+    if (reference) for (const cell of target) block(cell, colors.target);
+    else if (score) {
+      for (const cell of score.missingCells) block(cell, colors.missing, 3);
+      for (const cell of score.correctCells) block(cell, colors.correct);
+      for (const cell of score.extraCells) block(cell, colors.extra);
+    } else for (const cell of drawing) block(cell, state?.role === 'defender' ? colors.counter : colors.ink);
+    context.strokeStyle = colors.grid; context.lineWidth = Math.max(1, lineScale);
+    context.beginPath();
+    for (let i = 0; i <= SIZE; i++) {
+      context.moveTo(Math.round(i * w) + .5, 0); context.lineTo(Math.round(i * w) + .5, height);
+      context.moveTo(0, Math.round(i * h) + .5); context.lineTo(width, Math.round(i * h) + .5);
+    }
+    context.stroke();
+    // Slightly stronger quarter-grid guides help recall positions on every device.
+    context.strokeStyle = '#415166'; context.beginPath();
+    for (const i of [6, 12, 18]) {
+      context.moveTo(i * w + .5, 0); context.lineTo(i * w + .5, height);
+      context.moveTo(0, i * h + .5); context.lineTo(width, i * h + .5);
+    }
+    context.stroke();
+  }
+
+  function renderBoard() {
+    const isReference = state?.phase === 'study';
+    const isDrawing = state?.phase === 'draw';
+    // Match physical display pixels so downscaling never erases thin grid lines.
+    // Input and scoring always use the same 24 logical cells on every screen.
+    const visibleWidth = board.getBoundingClientRect().width;
+    if (visibleWidth > 0) {
+      const physical = Math.max(SIZE * 4, Math.round(visibleWidth * Math.min(3, window.devicePixelRatio || 1)));
+      if (board.width !== physical) { board.width = physical; board.height = physical; }
+    }
+    paintGrid(ctx, board.width, board.height, { drawing: isDrawing ? state.ink : [],
+      target: isReference ? state.turn.pattern.cells : [], reference: isReference });
+    board.dataset.reference = String(Boolean(isReference));
+    board.dataset.ink = String(isDrawing ? state.ink.size : 0);
+    if (cursor && isDrawing) {
+      const cell = board.width / SIZE;
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+      ctx.strokeRect(cursor.x * cell + 2, cursor.y * cell + 2, cell - 4, cell - 4);
+    }
+  }
+
+  function updateInk() {
+    const budget = state?.turn?.budget || (state ? Math.ceil(R.getPattern(state.selected, SIZE).cells.length * state.config.inkPercent / 100) : 0);
+    const count = ['result', 'finished'].includes(state?.phase) ? state.turn[state.role]?.cells.length || 0 : state?.ink.size || 0;
+    setText('budget-text', `${count} / ${budget} blocks`);
+    $('budget-fill').style.width = `${budget ? count / budget * 100 : 0}%`;
+    $('undo').disabled = !undo.length && !stroke?.changed;
+    $('clear').disabled = count === 0;
+    for (const button of document.querySelectorAll('[data-tool]')) {
+      button.classList.toggle('is-active', button.dataset.tool === tool);
+      button.setAttribute('aria-pressed', String(button.dataset.tool === tool));
+    }
+  }
+
+  function render() {
+    if (!state) return;
+    const phase = state.phase, drawing = phase === 'draw', studying = phase === 'study';
+    Object.assign($('game').dataset, { phase, mode: state.mode, role: state.role, round: String(state.round), caster: String(state.caster) });
+    setText('round-label', `Round ${state.round}`);
+    setText('turn-label', state.mode === 'practice' ? 'Solo practice' : `${playerName(state.caster)} attacks`);
+    show('health-bars', state.mode === 'duel'); show('practice-summary', state.mode === 'practice');
+    setText('practice-summary', `Best ${percent(state.best)} · Last ${state.last === null ? '—' : percent(state.last)}`);
+    for (let i = 0; i < 2; i++) {
+      setText(`player-${i}-name`, playerName(i)); setText(`player-${i}-hp`, `${state.hp[i]} / ${START_HP} HP`);
+      $(`player-${i}-bar`).style.width = `${state.hp[i]}%`;
+    }
+    const labels = { choose: 'Choose your spell', study: 'Memorize the outline', draw: state.role === 'defender' ? 'Draw to counter' : 'Draw to cast',
+      handoff: 'Pass the screen', result: 'Spell resolved', finished: 'Duel complete' };
+    setText('phase-label', labels[phase]);
+    const pattern = state.turn?.pattern || R.getPattern(state.selected, SIZE);
+    setText('shape-label', pattern.name);
+    show('spell-picker', phase === 'choose'); show('board-shell', drawing || studying);
+    show('drawing-tools', drawing); show('submit-drawing', drawing);
+    show('handoff', phase === 'handoff'); show('result', phase === 'result' || phase === 'finished');
+    $('board').tabIndex = drawing ? 0 : -1;
+    $('board').setAttribute('aria-label', `${pattern.name} ${studying ? 'reference outline' : 'drawing canvas'}, 24 by 24 blocks`);
+    $('submit-drawing').textContent = state.role === 'defender' ? 'Finish counter' : 'Finish cast';
+    for (const button of document.querySelectorAll('[data-shape]')) {
+      button.classList.toggle('is-active', button.dataset.shape === state.selected);
+      button.setAttribute('aria-pressed', String(button.dataset.shape === state.selected));
+    }
+    setText('begin-cast', `Study ${R.getPattern(state.selected, SIZE).name.toLowerCase()}`);
+    const hints = {
+      choose: `Both attempts get ${roundSeconds()} seconds. ${state.config.tolerance ? 'One-block position grace is on.' : 'Exact positions count.'}`,
+      study: `${state.mode === 'practice' ? 'Your' : playerName(attemptPlayer()) + '’s'} reference. It disappears when the study timer ends.`,
+      draw: `${state.config.tolerance ? 'One-block position grace. ' : 'Exact positions. '}Missing blocks and extra marks reduce accuracy. Erase returns ink.`,
+      handoff: 'The cast is concealed. The counter uses the same original outline, time and ink budget.',
+      result: 'Green = matched ink · rose = missing target · amber = extra ink. Percentages include both missing and extra marks.',
+      finished: 'Start another duel or return to settings to tune the experiment.',
+    };
+    setText('hint', hints[phase]);
+    if (phase === 'handoff') {
+      setText('handoff-title', `${playerName(1 - state.caster)}, your counter`);
+      setText('handoff-copy', `Take the screen, then press Ready. You’ll study the same ${pattern.name.toLowerCase()} for ${state.config.studySeconds} seconds and draw for ${state.turn.windowSeconds} seconds, with ${state.turn.budget} blocks.`);
+    }
+    if (!clock) {
+      setText('clock-text', phase === 'choose' ? `${roundSeconds()}s to draw` : phase === 'handoff' ? 'Ready when you are' : 'Resolved');
+      $('clock-fill').style.width = phase === 'choose' ? '100%' : '0%';
+      $('game').classList.remove('is-urgent');
+    }
+    updateInk(); renderBoard();
+  }
+
+  function runClock(phase, end, duration) {
+    stopClock(); const token = generation;
+    clock = { phase, end, duration };
+    function tick() {
+      if (!clock || token !== generation || state?.phase !== phase) return;
+      const remaining = Math.max(0, end - Date.now());
+      setText('clock-text', `${phase === 'study' ? 'Study ' : ''}${(remaining / 1000).toFixed(1)}s`);
+      $('clock-fill').style.width = `${Math.min(100, remaining / duration * 100)}%`;
+      $('game').classList.toggle('is-urgent', phase === 'draw' && remaining <= Math.min(3000, duration / 3));
+      if (remaining <= 0) {
+        stopClock();
+        if (phase === 'study') beginDrawing(end);
+        else finishDrawing('timeout');
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    }
+    alarm = setTimeout(tick, Math.max(0, end - Date.now())); tick();
+  }
+
+  function beginStudy(role) {
+    stopAttempt(); state.role = role; state.phase = 'study'; state.ink = new Set(); undo = []; tool = 'draw';
+    render();
+    // Bring the reference and controls into reach before its timer starts.
+    $('phase-label').scrollIntoView({ block: 'start', behavior: 'auto' });
+    announce(`${state.mode === 'practice' ? 'Practice' : playerName(attemptPlayer())}: memorize ${state.turn.pattern.name}.`);
+    const duration = state.config.studySeconds * 1000;
+    runClock('study', Date.now() + duration, duration);
+  }
+  function beginDrawing(startedAt) {
+    if (!state || state.phase !== 'study') return;
+    state.phase = 'draw'; state.ink = new Set(); undo = []; tool = 'draw';
+    state.attemptStartedAt = startedAt;
+    render(); announce(`Draw now. ${state.turn.windowSeconds} seconds, ${state.turn.budget} blocks.`);
+    board.focus({ preventScroll: true });
+    runClock('draw', startedAt + state.turn.windowSeconds * 1000, state.turn.windowSeconds * 1000);
+  }
+  function canDraw() {
+    if (state?.phase !== 'draw') return false;
+    if (!clock || Date.now() >= clock.end) { finishDrawing('timeout'); return false; }
+    return true;
+  }
+
+  function resultBoard(title, ink, score) {
+    const card = document.createElement('article'); card.className = 'score-card';
+    const heading = document.createElement('h3'); heading.textContent = `${title} · ${percent(score.accuracy)}`;
+    const canvas = document.createElement('canvas'); canvas.className = 'result-board'; canvas.width = 384; canvas.height = 384;
+    canvas.setAttribute('aria-label', `${title} result: ${score.hits} matched, ${score.missing} missing, ${score.extra} extra blocks.`);
+    paintGrid(canvas.getContext('2d'), 384, 384, { drawing: ink, score });
+    const detail = document.createElement('p'); detail.textContent = `${score.hits} matched · ${score.missing} missing · ${score.extra} extra`;
+    card.append(heading, canvas, detail); return card;
+  }
+  function showResult() {
+    const t = state.turn;
+    const attack = R.scoreDrawing(t.attacker.cells, t.pattern, { size: SIZE, tolerance: state.config.tolerance });
+    const counter = state.mode === 'duel' ? R.scoreDrawing(t.defender.cells, t.pattern, { size: SIZE, tolerance: state.config.tolerance }) : null;
+    const report = { round: state.round, caster: state.caster, shape: t.pattern.id, seconds: t.windowSeconds,
+      budget: t.budget, attack, counter, attacker: t.attacker, defender: t.defender || null };
+    $('result-boards').replaceChildren(resultBoard(state.mode === 'practice' ? 'Your drawing' : `${playerName(state.caster)} · cast`, t.attacker.cells, attack));
+    if (state.mode === 'practice') {
+      state.best = Math.max(state.best, attack.accuracy); state.last = attack.accuracy;
+      setText('result-title', `${percent(attack.accuracy)} accuracy`);
+      setText('result-summary', `${attack.hits} of ${t.pattern.cells.length} target blocks matched; ${attack.extra} extra marks.`);
+      setText('result-details', `Accuracy = 2 × matched ÷ (target blocks + drawn blocks). ${state.config.tolerance ? 'Matches allow one block of position grace, one-to-one.' : 'Only exact positions match.'}`);
+      state.phase = 'result'; setText('next-turn', `Next attempt · ${R.getDrawSeconds(state.round + 1, state.config)}s`);
+    } else {
+      const defender = 1 - state.caster;
+      const outcome = R.resolveAttack({ attackerAccuracy: attack.accuracy, defenderAccuracy: counter.accuracy,
+        basePower: state.config.basePower, defenderHp: state.hp[defender] });
+      state.hp[defender] = outcome.remainingHp;
+      report.damage = outcome.damage;
+      $('result-boards').append(resultBoard(`${playerName(defender)} · counter`, t.defender.cells, counter));
+      state.phase = state.hp[defender] <= 0 ? 'finished' : 'result';
+      setText('result-title', state.phase === 'finished' ? `${playerName(state.caster)} wins` : outcome.damage ? `${outcome.damage} damage lands` : 'No damage lands');
+      setText('result-summary', `${percent(attack.accuracy)} cast · ${percent(counter.accuracy)} counter · ${playerName(defender)} has ${state.hp[defender]} HP.`);
+      setText('result-details', `${state.config.basePower} spell power × ${(attack.accuracy / 100).toFixed(3)} cast accuracy × ${(1 - counter.accuracy / 100).toFixed(3)} unblocked = ${outcome.damage} damage (rounded up once).`);
+      const nextRound = state.caster === 1 ? state.round + 1 : state.round;
+      setText('next-turn', state.phase === 'finished' ? 'Play again' : `${playerName(defender)} attacks · ${R.getDrawSeconds(nextRound, state.config)}s`);
+    }
+    state.history.push(report); render(); announce($('result-title').textContent);
+  }
+  function finishDrawing(reason) {
+    if (state?.phase !== 'draw') return;
+    const elapsed = Math.max(0, Math.min(state.turn.windowSeconds * 1000, Date.now() - state.attemptStartedAt));
+    finishStroke(); stopClock(); cursor = null;
+    const attempt = { cells: Array.from(state.ink).sort((a, b) => a - b), elapsedMs: elapsed, reason };
+    state.turn[state.role] = attempt;
+    state.ink = new Set(); undo = [];
+    if (state.mode === 'duel' && state.role === 'attacker') {
+      state.phase = 'handoff'; render(); announce('Cast locked. Pass the screen to the other player.');
+    } else showResult();
+  }
+
+  function editCell(cell) {
+    if (tool === 'erase') return state.ink.delete(cell);
+    if (state.ink.has(cell)) return false;
+    if (state.ink.size >= state.turn.budget) {
+      setText('hint', 'Ink budget reached. Erase or undo to reclaim blocks.'); return false;
+    }
+    state.ink.add(cell); return true;
+  }
+  function locate(event) {
+    const rect = board.getBoundingClientRect();
+    const x = Math.floor((event.clientX - rect.left) / rect.width * SIZE), y = Math.floor((event.clientY - rect.top) / rect.height * SIZE);
+    return x < 0 || x >= SIZE || y < 0 || y >= SIZE ? null : { x, y };
+  }
+  function drawLine(start, end) {
+    let x = start.x, y = start.y, changed = false;
+    const dx = Math.abs(end.x - x), dy = -Math.abs(end.y - y), sx = x < end.x ? 1 : -1, sy = y < end.y ? 1 : -1;
+    let error = dx + dy;
+    for (;;) {
+      changed = editCell(y * SIZE + x) || changed;
+      if (x === end.x && y === end.y) break;
+      const twice = error * 2;
+      if (twice >= dy) { error += dy; x += sx; }
+      if (twice <= dx) { error += dx; y += sy; }
+    }
+    return changed;
+  }
+  board.addEventListener('pointerdown', event => {
+    if (stroke || event.button !== 0 || !canDraw()) return;
+    event.preventDefault(); cursor = null;
+    const point = locate(event); if (!point) return;
+    stroke = { pointer: event.pointerId, last: point, before: new Set(state.ink), changed: false };
+    board.setPointerCapture(event.pointerId); stroke.changed = editCell(point.y * SIZE + point.x);
+    updateInk(); renderBoard();
+  });
+  board.addEventListener('pointermove', event => {
+    if (!stroke || stroke.pointer !== event.pointerId || !canDraw()) return;
+    event.preventDefault();
+    const points = typeof event.getCoalescedEvents === 'function' ? event.getCoalescedEvents() : [];
+    for (const sample of points.length ? points : [event]) {
+      const point = locate(sample);
+      if (point) stroke.changed = drawLine(stroke.last || point, point) || stroke.changed;
+      stroke.last = point;
+    }
+    updateInk(); renderBoard();
+  });
+  for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) board.addEventListener(name, event => {
+    if (stroke?.pointer !== event.pointerId) return;
+    if (!canDraw()) return;
+    finishStroke(); updateInk();
+  });
+  function undoStroke() {
+    if (!canDraw()) return; finishStroke();
+    if (undo.length) state.ink = new Set(undo.pop());
+    updateInk(); renderBoard();
+  }
+  for (const button of document.querySelectorAll('[data-tool]')) button.addEventListener('click', () => {
+    if (!canDraw()) return; finishStroke(); tool = button.dataset.tool; updateInk();
+  });
+  $('undo').addEventListener('click', undoStroke);
+  $('clear').addEventListener('click', () => {
+    if (!canDraw() || !state.ink.size) return; finishStroke(); undo.push(new Set(state.ink)); state.ink.clear(); updateInk(); renderBoard();
+  });
+  board.addEventListener('keydown', event => {
+    if (!canDraw()) return;
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); undoStroke(); return; }
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'd', 'e'].includes(event.key)) return;
+    event.preventDefault(); cursor ||= { x: 12, y: 12 };
+    if (event.key === 'ArrowLeft') cursor.x = Math.max(0, cursor.x - 1);
+    if (event.key === 'ArrowRight') cursor.x = Math.min(SIZE - 1, cursor.x + 1);
+    if (event.key === 'ArrowUp') cursor.y = Math.max(0, cursor.y - 1);
+    if (event.key === 'ArrowDown') cursor.y = Math.min(SIZE - 1, cursor.y + 1);
+    if (event.key === 'd' || event.key === 'e') tool = event.key === 'd' ? 'draw' : 'erase';
+    if (event.key === ' ') { undo.push(new Set(state.ink)); editCell(cursor.y * SIZE + cursor.x); }
+    updateInk(); renderBoard();
+  });
+
+  $('setup-form').addEventListener('submit', event => {
+    event.preventDefault();
+    if ($('setup-error')) { $('setup-error').hidden = true; $('setup-error').textContent = ''; }
+    try { startMatch(configFromForm()); } catch (error) {
+      announce(error.message);
+      if ($('setup-error')) { $('setup-error').hidden = false; $('setup-error').textContent = error.message; }
+    }
+  });
+  for (const button of document.querySelectorAll('[data-shape]')) button.addEventListener('click', () => {
+    if (state?.phase !== 'choose') return; state.selected = button.dataset.shape; render();
+  });
+  $('begin-cast').addEventListener('click', () => {
+    if (state?.phase !== 'choose') return;
+    const pattern = R.getPattern(state.selected, SIZE);
+    state.turn = { pattern, budget: Math.ceil(pattern.cells.length * state.config.inkPercent / 100), windowSeconds: roundSeconds() };
+    beginStudy('attacker');
+  });
+  $('ready').addEventListener('click', () => { if (state?.phase === 'handoff') beginStudy('defender'); });
+  $('submit-drawing').addEventListener('click', () => { if (canDraw()) finishDrawing('submitted'); });
+  $('next-turn').addEventListener('click', () => {
+    if (!state || !['result', 'finished'].includes(state.phase)) return;
+    if (state.phase === 'finished') { startMatch(state.config); return; }
+    if (state.mode === 'practice') state.round++;
+    else { if (state.caster === 1) state.round++; state.caster = 1 - state.caster; }
+    state.phase = 'choose'; state.role = 'attacker'; state.turn = null; state.ink.clear(); undo = []; render();
+  });
+
+  async function confirmReset(message) {
+    const dialog = $('confirm-dialog');
+    if (!dialog || typeof dialog.showModal !== 'function') return window.confirm(message);
+    setText('confirm-message', message); dialog.returnValue = 'cancel';
+    return new Promise(resolve => {
+      dialog.addEventListener('close', () => resolve(dialog.returnValue === 'confirm'), { once: true });
+      if (!dialog.open) dialog.showModal();
+    });
+  }
+  $('restart-match').addEventListener('click', async () => {
+    if (!state) return;
+    if (await confirmReset('Restart this test? Drawings and this match’s results will be cleared. Timers keep running until you confirm.')) startMatch(state.config);
+  });
+  $('exit-to-setup').addEventListener('click', async () => {
+    if (!state) return;
+    if (!await confirmReset('Return to setup? This ends the current test. Timers keep running until you confirm.')) return;
+    stopAttempt(); state = null; show('game', false); show('setup', true); renderBoard(); announce('Back at setup. Tune the settings and start another test.');
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (clock && Date.now() >= clock.end) {
+      const expired = clock;
+      stopClock();
+      if (expired.phase === 'study') beginDrawing(expired.end); else finishDrawing('timeout');
+    }
+  });
+  window.addEventListener('resize', () => {
+    if (state && ['study', 'draw'].includes(state.phase)) renderBoard();
+  });
+
+  // The picker uses schematic icons rather than the exact, memorized block map.
+  for (const canvas of document.querySelectorAll('[data-shape-preview]')) {
+    const c = canvas.getContext('2d'), width = canvas.width, center = width / 2, radius = width * .3;
+    c.strokeStyle = colors.target; c.lineWidth = 3; c.lineJoin = 'miter'; c.beginPath();
+    const shape = canvas.dataset.shapePreview;
+    if (shape === 'circle') c.arc(center, center, radius, 0, Math.PI * 2);
+    else if (shape === 'square') c.rect(center - radius, center - radius, radius * 2, radius * 2);
+    else {
+      for (let i = 0; i < 10; i++) { const angle = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? radius * .45 : radius;
+        const x = center + Math.cos(angle) * r, y = center + Math.sin(angle) * r; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.closePath();
+    }
+    c.stroke();
+  }
+})();
+</script>
+</body>
+</html>

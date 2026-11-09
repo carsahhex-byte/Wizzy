@@ -1,0 +1,44 @@
+{
+  "format": "spell-sketch-standalone",
+  "version": 1,
+  "integration": "independent-prototype",
+  "entry": "./index.html",
+  "offline": "./spell-sketch.html",
+  "zip": "./spell-sketch.zip",
+  "networkRequired": false,
+  "accountsRequired": false,
+  "localModes": [
+    "pass-and-play",
+    "practice"
+  ],
+  "shapes": [
+    "circle",
+    "square",
+    "star"
+  ],
+  "grid": 24,
+  "defaults": {
+    "studySeconds": 3,
+    "startSeconds": 12,
+    "minSeconds": 4,
+    "decrement": 1,
+    "basePower": 30,
+    "hp": 100,
+    "inkPercent": 115,
+    "tolerance": 1
+  },
+  "files": {
+    "index.html": {
+      "bytes": 58398,
+      "sha256": "ada38acc1e6005ec1b0133aa036e78e521ec2ca34bf8ec1e011da256d5e80aae"
+    },
+    "spell-sketch.html": {
+      "bytes": 58398,
+      "sha256": "ada38acc1e6005ec1b0133aa036e78e521ec2ca34bf8ec1e011da256d5e80aae"
+    },
+    "README.md": {
+      "bytes": 5450,
+      "sha256": "9c4fb00ca6976b72a0b31f30fb36059741080f460ff54221261a1f695b8424a2"
+    }
+  }
+}
