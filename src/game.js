@@ -7,7 +7,7 @@ export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange }
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'fire-water-three-mana-v1';
+export const COMBAT_RULES_VERSION = 'fire-two-water-three-mana-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -817,7 +817,7 @@ function refreshCurrentSpellCards(state) {
     'Fire-15': ['Gain 1 Ember and 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
   };
-  const previousCosts = { 'Fire-11': 2, 'Water-12': 4 };
+  const previousCosts = { 'Fire-11': 3, 'Water-12': 4 };
   let changed = false;
   const upgradedWaterCards = new Set();
   for (const player of state.players) for (const zone of ['hand', 'deck', 'discard']) {
