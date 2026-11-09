@@ -1,8 +1,8 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { resolveAssetUrl } from './asset-url.ea7bd4354fef.js';
+import { resolveAssetUrl } from './asset-url.45812afae8ac.js';
 import { SPELL_CATALOG } from './spells.8d3adc552bdd.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.7c605af20c0d.js';
-import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.4fa31443ac23.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.ca515a0c6c7a.js';
+import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.64d1be3e3f29.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -11,6 +11,7 @@ export const ASSET_FILES = Object.freeze({
   iconAtlas: 'Wizzy Interface Icons.png',
   appIcon: 'Wizzy App Icon.png',
   storybookIcon: 'Wizzy Storybook Icon.png',
+  storybookPaper: 'Wizzy Storybook Pixel Paper.png',
   fireSlabSheet: 'Pixel-Art Fire Card Collection.png',
   fireZeroSlab: 'Wizzy Fire-0 Slab.png',
   waterSlabSheet: 'Pixel-Art Water Card Collection.png',

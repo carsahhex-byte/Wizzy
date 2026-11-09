@@ -30,6 +30,11 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "649157e98eb95c1e510e82c936643400bd4fd9566a64385cbd7b15f7ca9cf54e",
     "optimizedSha256": "3faa800db3a0408489419b92801fedccead78769c1ec3e8c680c55098ff6cc14"
   },
+  "storybookPaper": {
+    "file": "storybookPaper-6348b152854f.webp",
+    "sourceSha256": "2d749a7d66b18c4d3121f76b7009c8a9b9cb0d57da61cefe95efe44db52620c1",
+    "optimizedSha256": "6348b152854f25159c80a7dab91ab5287d318534f2e1329256dda717fb0dd821"
+  },
   "fireSlabSheet": {
     "file": "fireSlabSheet-e353c368a94f.webp",
     "sourceSha256": "190e2c47f9ea679c9c4cab050c9f36310fba193b40f66db062ef98ff1e8ba4b4",
