@@ -3,7 +3,7 @@
   'use strict';
   const R = window.GlyphDuelRules;
   const $ = id => document.getElementById(id);
-  const SIZE = 24, START_HP = 100;
+  const SIZE = 16, START_HP = 100;
   const board = $('board'), ctx = board.getContext('2d');
   const colors = { background: '#101b27', grid: '#263343', ink: '#f8d088', target: '#f8d088',
     correct: '#85d5b0', missing: '#df7d8b', extra: '#f3bd68', counter: '#a6dbea' };
@@ -80,7 +80,7 @@
     context.stroke();
     // Slightly stronger quarter-grid guides help recall positions on every device.
     context.strokeStyle = '#415166'; context.beginPath();
-    for (const i of [6, 12, 18]) {
+    for (const i of [SIZE / 4, SIZE / 2, SIZE * 3 / 4]) {
       context.moveTo(i * w + .5, 0); context.lineTo(i * w + .5, height);
       context.moveTo(0, i * h + .5); context.lineTo(width, i * h + .5);
     }
@@ -91,7 +91,7 @@
     const isReference = state?.phase === 'study';
     const isDrawing = state?.phase === 'draw';
     // Match physical display pixels so downscaling never erases thin grid lines.
-    // Input and scoring always use the same 24 logical cells on every screen.
+    // Input and scoring always use the same 16 logical cells on every screen.
     const visibleWidth = board.getBoundingClientRect().width;
     if (visibleWidth > 0) {
       const physical = Math.max(SIZE * 4, Math.round(visibleWidth * Math.min(3, window.devicePixelRatio || 1)));
@@ -142,7 +142,7 @@
     show('drawing-tools', drawing); show('submit-drawing', drawing);
     show('handoff', phase === 'handoff'); show('result', phase === 'result' || phase === 'finished');
     $('board').tabIndex = drawing ? 0 : -1;
-    $('board').setAttribute('aria-label', `${pattern.name} ${studying ? 'reference outline' : 'drawing canvas'}, 24 by 24 blocks`);
+    $('board').setAttribute('aria-label', `${pattern.name} ${studying ? 'reference outline' : 'drawing canvas'}, ${SIZE} by ${SIZE} blocks`);
     $('submit-drawing').textContent = state.role === 'defender' ? 'Finish counter' : 'Finish cast';
     for (const button of document.querySelectorAll('[data-shape]')) {
       button.classList.toggle('is-active', button.dataset.shape === state.selected);
@@ -329,7 +329,7 @@
     if (!canDraw()) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); undoStroke(); return; }
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'd', 'e'].includes(event.key)) return;
-    event.preventDefault(); cursor ||= { x: 12, y: 12 };
+    event.preventDefault(); cursor ||= { x: Math.floor(SIZE / 2), y: Math.floor(SIZE / 2) };
     if (event.key === 'ArrowLeft') cursor.x = Math.max(0, cursor.x - 1);
     if (event.key === 'ArrowRight') cursor.x = Math.min(SIZE - 1, cursor.x + 1);
     if (event.key === 'ArrowUp') cursor.y = Math.max(0, cursor.y - 1);

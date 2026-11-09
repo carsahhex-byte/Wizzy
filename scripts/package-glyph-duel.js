@@ -18,14 +18,15 @@ html = html.replace('</body>', () => `<script>${safe(rules)}</script>\n<script>$
 if (/<(?:script|link)\b[^>]*(?:src|href)=["'](?:https?:|\.\/|rules\.js|app\.js|style\.css)/i.test(html)) {
   throw new Error('The standalone experiment must not depend on external scripts or styles.');
 }
+const grid = 16, launch = `spell-sketch-${grid}x${grid}.html`;
 const files = new Map([
-  ['index.html', Buffer.from(html)], ['spell-sketch.html', Buffer.from(html)], ['README.md', Buffer.from(readme)],
+  ['index.html', Buffer.from(html)], [launch, Buffer.from(html)], ['spell-sketch.html', Buffer.from(html)], ['README.md', Buffer.from(readme)],
 ]);
 const metadata = {
-  format: 'spell-sketch-standalone', version: 1, integration: 'independent-prototype',
-  entry: './index.html', offline: './spell-sketch.html', zip: './spell-sketch.zip',
+  format: 'spell-sketch-standalone', version: 2, integration: 'independent-prototype',
+  entry: './index.html', launch: `./${launch}`, offline: './spell-sketch.html', zip: './spell-sketch.zip',
   networkRequired: false, accountsRequired: false, localModes: ['pass-and-play', 'practice'],
-  shapes: ['circle', 'square', 'star'], grid: 24,
+  shapes: ['circle', 'square', 'star'], grid,
   defaults: { studySeconds: 3, startSeconds: 12, minSeconds: 4, decrement: 1, basePower: 30, hp: 100, inkPercent: 115, tolerance: 1 },
   files: Object.fromEntries([...files].map(([file, bytes]) => [file, { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }])),
 };

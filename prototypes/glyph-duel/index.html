@@ -12,14 +12,14 @@
 <body>
   <main class="app-shell">
     <header class="brand-header">
-      <div><p class="kicker">COMBAT LAB</p><h1>Spell Sketch</h1><p class="tagline">remember. draw. counter.</p></div>
+      <div><p class="kicker">COMBAT LAB · 16 × 16</p><h1>Spell Sketch</h1><p class="tagline">remember. draw. counter.</p></div>
       <div class="brand-glyphs" aria-hidden="true"><i class="glyph-circle"></i><i class="glyph-square"></i><i class="glyph-star">✦</i></div>
     </header>
 
     <section id="setup" class="panel setup-panel" aria-labelledby="setup-title">
       <p class="eyebrow">A LITTLE MEMORY. A LITTLE MAGIC.</p>
       <h2 id="setup-title">Make every block count.</h2>
-      <p class="intro-copy">Choose a spell, remember its shape, then draw it from memory. Your opponent gets the same reference and the same time to counter.</p>
+      <p class="intro-copy">Choose a spell, remember its shape, then draw it from memory on a 16 × 16 grid. Your opponent gets the same reference and the same time to counter.</p>
       <form id="setup-form">
         <fieldset class="mode-picker">
           <legend>How are you playing?</legend>
@@ -76,7 +76,7 @@
           <button type="button" id="begin-cast" class="button button-primary">Memorize & draw <span aria-hidden="true">→</span></button>
         </div>
 
-        <div id="board-shell" class="board-shell" hidden><canvas id="board" width="576" height="576" aria-label="24 by 24 block spell drawing board">Your browser needs canvas support to draw a spell.</canvas></div>
+        <div id="board-shell" class="board-shell" hidden><canvas id="board" width="576" height="576" aria-label="16 by 16 block spell drawing board">Your browser needs canvas support to draw a spell.</canvas></div>
         <div id="drawing-tools" class="drawing-tools" role="toolbar" aria-label="Drawing tools" hidden>
           <button type="button" class="button tool-button" data-tool="draw" aria-pressed="true">Draw</button>
           <button type="button" class="button tool-button" data-tool="erase" aria-pressed="false">Erase</button>

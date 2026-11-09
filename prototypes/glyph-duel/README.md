@@ -12,12 +12,12 @@ From the Wizzy repository root, package the separate hosted page and downloads:
 node scripts/package-glyph-duel.js
 ```
 
-The output lives under `dist/prototypes/glyph-duel/`, including the hosted `index.html`, a self-contained **`spell-sketch.html`** that can be opened offline, and a ZIP. Packaging this experiment does not rebuild or change the live Wizzy game. Its hosted location is [`prototypes/glyph-duel/`](https://carsahhex-byte.github.io/Wizzy/prototypes/glyph-duel/).
+The output lives under `dist/prototypes/glyph-duel/`, including the hosted `index.html`, a fresh **`spell-sketch-16x16.html`** launch page, a self-contained **`spell-sketch.html`** that can be opened offline, and a ZIP. Packaging this experiment does not rebuild or change the live Wizzy game. Open the [16 × 16 edition](https://carsahhex-byte.github.io/Wizzy/prototypes/glyph-duel/spell-sketch-16x16.html) to avoid a cached older page.
 
 ## Play a duel
 
 1. Choose **Pass & play**, optionally adjust Settings, then select **Start test**. Both players start at **100 HP**; Player 1 attacks first.
-2. The attacker chooses **Circle**, **Square** or **Star**, then studies its canonical **24 × 24** block outline. The default study period is **3 seconds**. The exact reference disappears before drawing begins.
+2. The attacker chooses **Circle**, **Square** or **Star**, then studies its canonical **16 × 16** block outline. The default study period is **3 seconds**. The exact reference disappears before drawing begins.
 3. Draw from memory with a finger, stylus or mouse. Use **Draw**, **Erase**, **Undo** or **Clear**, then finish early or let the timer lock the attempt. The ink budget counts unique occupied blocks; erasing, undoing or clearing returns those blocks to the available budget.
 4. Pass the screen without showing the cast. The defender receives the **same original outline**, study period, drawing time and ink budget, then draws a counter from memory.
 5. Both results are revealed together, with matched, missing and extra blocks. Damage is applied once, and the other player becomes the attacker. Reaching zero HP ends the duel.
@@ -34,9 +34,9 @@ Each spell is a deterministic outline, not a filled shape. The default budget is
 
 | Outline | Target blocks | Default budget |
 | --- | ---: | ---: |
-| Circle | 44 | 51 |
-| Square | 64 | 74 |
-| Five-point star | 52 | 60 |
+| Circle | 28 | 33 |
+| Square | 40 | 46 |
+| Five-point star | 34 | 40 |
 
 Accuracy uses the Dice overlap score:
 

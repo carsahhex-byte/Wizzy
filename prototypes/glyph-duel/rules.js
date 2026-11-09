@@ -52,7 +52,7 @@
     } while (removed.length);
   }
 
-  function getPattern(shape, size = 24) {
+  function getPattern(shape, size = 16) {
     size = gridSize(size);
     if (!Object.prototype.hasOwnProperty.call(SHAPES, shape)) throw new RangeError('Choose circle, square, or star.');
     const center = Math.floor(size / 2), radius = Math.floor(size / 3), cells = new Set();
@@ -112,7 +112,7 @@
   function scoreDrawing(drawn, target, options = {}) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) throw new TypeError('Scoring options must be an object.');
     const patternSize = target && typeof target === 'object' && 'cells' in target ? target.size : undefined;
-    const size = gridSize(options.size === undefined ? patternSize === undefined ? 24 : patternSize : options.size);
+    const size = gridSize(options.size === undefined ? patternSize === undefined ? 16 : patternSize : options.size);
     const tolerance = options.tolerance === undefined ? 1 : options.tolerance;
     if (tolerance !== 0 && tolerance !== 1) throw new RangeError('Tolerance must be zero or one cell.');
     const drawing = normalizedCells(drawn, size, 'Drawing'), goal = normalizedCells(target, size, 'Target');
