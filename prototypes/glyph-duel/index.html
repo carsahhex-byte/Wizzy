@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Spell Sketch · Combat Lab</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="rules.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="brand-header">
+      <div><p class="kicker">COMBAT LAB</p><h1>Spell Sketch</h1><p class="tagline">remember. draw. counter.</p></div>
+      <div class="brand-glyphs" aria-hidden="true"><i class="glyph-circle"></i><i class="glyph-square"></i><i class="glyph-star">✦</i></div>
+    </header>
+
+    <section id="setup" class="panel setup-panel" aria-labelledby="setup-title">
+      <p class="eyebrow">A LITTLE MEMORY. A LITTLE MAGIC.</p>
+      <h2 id="setup-title">Make every block count.</h2>
+      <p class="intro-copy">Choose a spell, remember its shape, then draw it from memory. Your opponent gets the same reference and the same time to counter.</p>
+      <form id="setup-form">
+        <fieldset class="mode-picker">
+          <legend>How are you playing?</legend>
+          <label class="mode-option"><input type="radio" name="mode" value="duel" checked><span><strong>Pass & play</strong><small>Two players, one screen. Keep your drawings secret until the reveal.</small></span></label>
+          <label class="mode-option"><input type="radio" name="mode" value="practice"><span><strong>Practice</strong><small>Learn the shapes and test your memory on your own.</small></span></label>
+        </fieldset>
+        <details class="settings-panel">
+          <summary>Settings <span aria-hidden="true">+</span></summary>
+          <div class="settings-grid">
+            <label for="start-seconds">Starting draw time <span class="input-unit"><input id="start-seconds" name="startSeconds" type="number" min="1" max="60" step="1" value="12" inputmode="numeric" required><small>seconds</small></span></label>
+            <label for="min-seconds">Minimum draw time <span class="input-unit"><input id="min-seconds" name="minSeconds" type="number" min="1" max="60" step="1" value="4" inputmode="numeric" required><small>seconds</small></span></label>
+            <label for="step-seconds">Shorter after each round <span class="input-unit"><input id="step-seconds" name="stepSeconds" type="number" min="0" max="15" step="1" value="1" inputmode="numeric" required><small>seconds</small></span></label>
+            <label for="study-seconds">Time to memorize <span class="input-unit"><input id="study-seconds" name="studySeconds" type="number" min="1" max="15" step="1" value="3" inputmode="numeric" required><small>seconds</small></span></label>
+            <label for="base-power">Base spell power <span class="input-unit"><input id="base-power" name="basePower" type="number" min="1" max="100" step="1" value="30" inputmode="numeric" required><small>power</small></span></label>
+            <label for="ink-percent">Pixel budget <span class="input-unit"><input id="ink-percent" name="inkPercent" type="number" min="100" max="300" step="5" value="115" inputmode="numeric" required><small>% of shape</small></span></label>
+            <label for="tolerance" class="settings-wide">Matching precision<select id="tolerance" name="tolerance" title="1-block position grace pairs nearby blocks one-to-one"><option value="0">Exact</option><option value="1" selected>One block</option></select></label>
+          </div>
+          <p class="field-note">One-block grace pairs nearby blocks one-to-one. One drawn block cannot match several reference blocks.</p>
+        </details>
+        <p id="setup-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" class="button button-primary start-button">Start test <span aria-hidden="true">→</span></button>
+      </form>
+      <div id="setup-help" class="setup-help">
+        <p>Play locally, with no accounts or connection required. In a duel, pass the screen between players. Practice is a solo memory challenge.</p>
+        <p>Both players get the same drawing window. After each has taken one attacking turn, the round ends and the window gets shorter, down to your chosen minimum.</p>
+        <p>Results appear after both drawings. Erase or undo to return blocks to your pixel budget.</p>
+      </div>
+    </section>
+
+    <section id="game" class="game-panel" aria-label="Spell Sketch match" hidden>
+      <header id="match-header" class="match-header">
+        <div id="health-bars" class="health-bars">
+          <div class="player-panel player-one"><div class="player-heading"><strong id="player-0-name">Player 1</strong><span id="player-0-hp">100 / 100 HP</span></div><div class="health-track"><span id="player-0-bar" class="health-fill" style="width:100%"></span></div></div>
+          <div class="player-panel player-two"><div class="player-heading"><strong id="player-1-name">Player 2</strong><span id="player-1-hp">100 / 100 HP</span></div><div class="health-track"><span id="player-1-bar" class="health-fill" style="width:100%"></span></div></div>
+        </div>
+        <p id="practice-summary" class="practice-summary" hidden>Practice · Your best and last scores appear here.</p>
+        <div class="round-status"><strong id="round-label" class="round-badge">Round 1</strong><span id="turn-label">Player 1’s turn</span></div>
+      </header>
+
+      <div class="play-panel panel">
+        <div class="phase-heading"><h2 id="phase-label">Choose your spell</h2><span id="shape-label" class="shape-badge">Circle</span></div>
+        <div class="status-grid">
+          <div class="status-meter clock-meter"><div class="meter-label"><span>TIME</span><strong id="clock-text">Ready</strong></div><div class="meter-track"><span id="clock-fill" style="width:100%"></span></div></div>
+          <div class="status-meter budget-meter"><div class="meter-label"><span>PIXEL BUDGET</span><strong id="budget-text">—</strong></div><div class="meter-track"><span id="budget-fill" style="width:100%"></span></div></div>
+        </div>
+        <p id="hint" class="hint">Pick a shape. You’ll get a moment to memorize it before the drawing timer begins.</p>
+
+        <div id="spell-picker" class="spell-picker">
+          <div class="shape-options" role="group" aria-label="Choose a spell shape">
+            <button type="button" class="shape-option" data-shape="circle" aria-pressed="true" aria-label="Choose Circle"><canvas width="96" height="96" data-shape-preview="circle" aria-hidden="true"></canvas><strong>Circle</strong></button>
+            <button type="button" class="shape-option" data-shape="square" aria-pressed="false" aria-label="Choose Square"><canvas width="96" height="96" data-shape-preview="square" aria-hidden="true"></canvas><strong>Square</strong></button>
+            <button type="button" class="shape-option" data-shape="star" aria-pressed="false" aria-label="Choose Star"><canvas width="96" height="96" data-shape-preview="star" aria-hidden="true"></canvas><strong>Star</strong></button>
+          </div>
+          <button type="button" id="begin-cast" class="button button-primary">Memorize & draw <span aria-hidden="true">→</span></button>
+        </div>
+
+        <div id="board-shell" class="board-shell" hidden><canvas id="board" width="576" height="576" aria-label="24 by 24 block spell drawing board">Your browser needs canvas support to draw a spell.</canvas></div>
+        <div id="drawing-tools" class="drawing-tools" role="toolbar" aria-label="Drawing tools" hidden>
+          <button type="button" class="button tool-button" data-tool="draw" aria-pressed="true">Draw</button>
+          <button type="button" class="button tool-button" data-tool="erase" aria-pressed="false">Erase</button>
+          <button type="button" id="undo" class="button button-quiet">Undo</button>
+          <button type="button" id="clear" class="button button-quiet">Clear</button>
+        </div>
+        <button type="button" id="submit-drawing" class="button button-primary submit-button" hidden>Lock in drawing</button>
+
+        <section id="handoff" class="handoff-tile" aria-labelledby="handoff-title" hidden>
+          <span class="handoff-symbol" aria-hidden="true">◆</span><p class="eyebrow">A LITTLE PRIVACY, PLEASE</p><h3 id="handoff-title">Pass the screen</h3><p id="handoff-copy">Hand the screen to the next player before continuing.</p><button type="button" id="ready" class="button button-primary">I’m ready</button>
+        </section>
+
+        <section id="result" class="result-panel" aria-labelledby="result-title" hidden>
+          <p class="eyebrow">THE REVEAL</p><h3 id="result-title">Spell resolved</h3><p id="result-summary" class="result-summary"></p><div id="result-details" class="result-details"></div>
+          <div id="result-boards" class="result-boards"></div>
+          <ul class="result-legend" aria-label="Drawing comparison legend"><li><span class="swatch matching" aria-hidden="true"></span>Matching</li><li><span class="swatch missing" aria-hidden="true"></span>Missing</li><li><span class="swatch extra" aria-hidden="true"></span>Extra</li></ul>
+          <button type="button" id="next-turn" class="button button-primary">Next turn <span aria-hidden="true">→</span></button>
+        </section>
+      </div>
+      <nav class="match-actions" aria-label="Match options"><button type="button" id="exit-to-setup" class="button button-quiet">Back to setup</button><button type="button" id="restart-match" class="button button-quiet">Restart match</button></nav>
+    </section>
+    <p id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+    <footer>LOCAL PROTOTYPE <span aria-hidden="true">·</span> NO ACCOUNTS. JUST A LITTLE MAGIC.</footer>
+  </main>
+
+  <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message"><form method="dialog"><p class="eyebrow">ONE MOMENT</p><h2 id="confirm-title">Start fresh?</h2><p id="confirm-message">This will restart the current match.</p><div class="dialog-actions"><button class="button button-quiet" value="cancel">Cancel</button><button id="confirm-yes" class="button button-primary" value="confirm">Confirm</button></div></form></dialog>
+</body>
+</html>

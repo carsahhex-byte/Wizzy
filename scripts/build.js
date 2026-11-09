@@ -38,6 +38,8 @@ execFileSync(process.execPath,['scripts/package-animation-review.js','dist/previ
 // Idle sprites stay in a separate review gallery until they are approved for battle.
 execFileSync(process.execPath,['scripts/package-idle-review.js','dist/previews/idle-wizards'],{stdio:'inherit'});
 execFileSync(process.execPath,['scripts/package-earth-air-review.js','dist/previews/earth-air'],{stdio:'inherit'});
+// Distribute the independent drawing experiment without connecting game state.
+execFileSync(process.execPath,['scripts/package-glyph-duel.js','dist/prototypes/glyph-duel'],{stdio:'inherit'});
 await writeFile('dist/.nojekyll', '');
 
 if (webOnly) {

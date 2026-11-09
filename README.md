@@ -145,6 +145,10 @@ If the tower runs out, drawing stops, so automatic draws and hand refresh can pr
 
 The in-game settings/handbook describes the active rules and local two-player flow.
 
+## Separate experiments
+
+[Spell Sketch](prototypes/glyph-duel/README.md) is a standalone drawing-duel experiment at [`prototypes/glyph-duel/`](https://carsahhex-byte.github.io/Wizzy/prototypes/glyph-duel/), with local two-player pass-and-play, solo practice and an offline download. Memorize a Circle, Square or Star, then draw and counter it on a timed block grid. It has no connection to Wizzy accounts, saved decks or live combat, and remote two-phone play is not implemented for this experiment.
+
 ## Project structure
 
 - `src/spells.js` — current master spell metadata, catalog version, and PDF source references.
