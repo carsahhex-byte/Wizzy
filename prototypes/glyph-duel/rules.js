@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
 
-  const SHAPES = Object.freeze({ circle: 'Circle', square: 'Square', star: 'Five-point star' });
+  const SHAPES = Object.freeze({ circle: 'Circle', square: 'Square', triangle: 'Triangle' });
 
   function gridSize(value) {
     if (!Number.isSafeInteger(value) || value < 12 || value > 128) {
@@ -31,7 +31,7 @@
     }
   }
 
-  // Two rasterized sides of a very sharp star tip can share a one-cell stem.
+  // Two rasterized sides of a sharp polygon tip can share a one-cell stem.
   // Remove only those terminal pixels; the remaining outline stays a closed loop.
   function removeTerminalPixels(cells, size) {
     let removed;
@@ -54,7 +54,7 @@
 
   function getPattern(shape, size = 16) {
     size = gridSize(size);
-    if (!Object.prototype.hasOwnProperty.call(SHAPES, shape)) throw new RangeError('Choose circle, square, or star.');
+    if (!Object.prototype.hasOwnProperty.call(SHAPES, shape)) throw new RangeError('Choose circle, square, or triangle.');
     const center = Math.floor(size / 2), radius = Math.floor(size / 3), cells = new Set();
     if (shape === 'circle') {
       let x = radius, y = 0, error = 1 - radius;
@@ -71,17 +71,7 @@
       if (shape === 'square') {
         points = [[-radius, -radius], [radius, -radius], [radius, radius], [-radius, radius]];
       } else {
-        const unit = Array.from({ length: 10 }, (_, index) => {
-          const angle = -Math.PI / 2 + index * Math.PI / 5;
-          const distance = index % 2 ? .45 : 1;
-          return [Math.cos(angle) * distance, Math.sin(angle) * distance];
-        });
-        const left = Math.min(...unit.map(point => point[0])), right = Math.max(...unit.map(point => point[0]));
-        const top = Math.min(...unit.map(point => point[1])), bottom = Math.max(...unit.map(point => point[1]));
-        points = unit.map(point => [
-          -radius + (point[0] - left) / (right - left) * radius * 2,
-          -radius + (point[1] - top) / (bottom - top) * radius * 2,
-        ]);
+        points = [[0, -radius], [radius, radius], [-radius, radius]];
       }
       points = points.map(point => [Math.round(center + point[0]), Math.round(center + point[1])]);
       points.forEach((point, index) => traceLine(cells, size, point, points[(index + 1) % points.length]));
@@ -89,6 +79,28 @@
     }
     const sorted = Object.freeze(Array.from(cells).sort((a, b) => a - b));
     return Object.freeze({ id: shape, name: SHAPES[shape], size, cells: sorted, budget: Math.ceil(sorted.length * 115 / 100) });
+  }
+
+  /** Custom test masks may be disconnected or filled; only their data is constrained. */
+  function createPattern(definition, size = 16) {
+    size = gridSize(size);
+    if (!definition || typeof definition !== 'object' || Array.isArray(definition)) throw new TypeError('A custom pattern must be an object.');
+    if (typeof definition.id !== 'string' || !/^custom-[A-Za-z0-9_-]+$/.test(definition.id)) {
+      throw new RangeError('Custom pattern IDs must start with custom- and contain letters, numbers, underscores or hyphens.');
+    }
+    if (typeof definition.name !== 'string' || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(definition.name)) {
+      throw new RangeError('Custom pattern names must be a single line without control characters.');
+    }
+    const name = definition.name.trim();
+    if (!name.length || name.length > 40) throw new RangeError('Custom pattern names must contain 1 to 40 characters.');
+    const source = definition.cells;
+    if (source === null || source === undefined || typeof source === 'string' || typeof source[Symbol.iterator] !== 'function') {
+      throw new TypeError('Custom pattern cells must be iterable cell IDs.');
+    }
+    const cells = Object.freeze(normalizedCells(source, size, 'Custom pattern'));
+    if (!cells.length) throw new RangeError('Custom patterns need at least one cell.');
+    return Object.freeze({ id: definition.id, name, size, cells,
+      budget: Math.min(size * size, Math.ceil(cells.length * 115 / 100)), custom: true });
   }
 
   function normalizedCells(input, size, name) {
@@ -187,5 +199,5 @@
     return Math.max(minimum, start - (round - 1) * decrement);
   }
 
-  root.GlyphDuelRules = Object.freeze({ getPattern, scoreDrawing, resolveAttack, getDrawSeconds });
+  root.GlyphDuelRules = Object.freeze({ getPattern, createPattern, scoreDrawing, resolveAttack, getDrawSeconds });
 })(typeof window !== 'undefined' ? window : globalThis);

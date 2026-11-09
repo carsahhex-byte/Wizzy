@@ -6,27 +6,30 @@ import path from 'node:path';
 // Distribution only: this experiment never imports the Wizzy runtime.
 const source = path.resolve(import.meta.dirname, '../prototypes/glyph-duel');
 const output = path.resolve(process.argv[2] || 'dist/prototypes/glyph-duel');
-const [template, css, rules, app, readme] = await Promise.all(
-  ['index.html', 'style.css', 'rules.js', 'app.js', 'README.md'].map(file => readFile(path.join(source, file), 'utf8')),
+const [template, css, rules, editor, app, readme] = await Promise.all(
+  ['index.html', 'style.css', 'rules.js', 'shape-editor.js', 'app.js', 'README.md'].map(file => readFile(path.join(source, file), 'utf8')),
 );
 const safe = text => text.replace(/<\/script/gi, '<\\/script');
 let html = template.replace('<link rel="stylesheet" href="style.css">', () => `<style>${css}</style>`)
   .replace('<script defer src="rules.js"></script>', '')
+  .replace('<script defer src="shape-editor.js"></script>', '')
   .replace('<script defer src="app.js"></script>', '');
 html = html.replace('</footer>', ' <span aria-hidden="true">·</span> <a href="spell-sketch.html" download="spell-sketch.html">Save offline copy</a></footer>');
-html = html.replace('</body>', () => `<script>${safe(rules)}</script>\n<script>${safe(app)}</script>\n</body>`);
-if (/<(?:script|link)\b[^>]*(?:src|href)=["'](?:https?:|\.\/|rules\.js|app\.js|style\.css)/i.test(html)) {
+html = html.replace('</body>', () => `<script>${safe(rules)}</script>\n<script>${safe(editor)}</script>\n<script>${safe(app)}</script>\n</body>`);
+if (/<(?:script|link)\b[^>]*(?:src|href)=["'](?:https?:|\.\/|rules\.js|shape-editor\.js|app\.js|style\.css)/i.test(html)) {
   throw new Error('The standalone experiment must not depend on external scripts or styles.');
 }
-const grid = 16, launch = `spell-sketch-${grid}x${grid}.html`;
+const grid = 16, launch = `spell-sketch-${grid}x${grid}-creator.html`;
 const files = new Map([
-  ['index.html', Buffer.from(html)], [launch, Buffer.from(html)], ['spell-sketch.html', Buffer.from(html)], ['README.md', Buffer.from(readme)],
+  ['index.html', Buffer.from(html)], [launch, Buffer.from(html)], [`spell-sketch-${grid}x${grid}.html`, Buffer.from(html)],
+  ['spell-sketch.html', Buffer.from(html)], ['README.md', Buffer.from(readme)],
 ]);
 const metadata = {
-  format: 'spell-sketch-standalone', version: 2, integration: 'independent-prototype',
+  format: 'spell-sketch-standalone', version: 3, integration: 'independent-prototype',
   entry: './index.html', launch: `./${launch}`, offline: './spell-sketch.html', zip: './spell-sketch.zip',
   networkRequired: false, accountsRequired: false, localModes: ['pass-and-play', 'practice'],
-  shapes: ['circle', 'square', 'star'], grid,
+  shapes: ['circle', 'square', 'triangle'], grid,
+  shapeEditor: { grid, maxPatterns: 50, storageKey: 'spell-sketch.custom-shapes.v1', storage: 'local-browser' },
   defaults: { studySeconds: 3, startSeconds: 12, minSeconds: 4, decrement: 1, basePower: 30, hp: 100, inkPercent: 115, tolerance: 1 },
   files: Object.fromEntries([...files].map(([file, bytes]) => [file, { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }])),
 };

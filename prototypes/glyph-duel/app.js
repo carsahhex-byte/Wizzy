@@ -1,7 +1,8 @@
-/* Standalone local experiment. No Wizzy imports, accounts, storage or requests. */
+/* Standalone local experiment. Custom patterns live in their own local library. */
 (() => {
   'use strict';
   const R = window.GlyphDuelRules;
+  const library = window.GlyphShapeLibrary;
   const $ = id => document.getElementById(id);
   const SIZE = 16, START_HP = 100;
   const board = $('board'), ctx = board.getContext('2d');
@@ -9,6 +10,11 @@
     correct: '#85d5b0', missing: '#df7d8b', extra: '#f3bd68', counter: '#a6dbea' };
   let state = null, clock = null, raf = 0, alarm = 0, generation = 0;
   let stroke = null, undo = [], tool = 'draw', cursor = null;
+  let preferredShape = 'circle';
+  const builtins = ['circle', 'square', 'triangle'];
+  const findPattern = id => builtins.includes(id) ? R.getPattern(id, SIZE) : library.get(id);
+  const selectedPattern = () => findPattern(state?.selected || preferredShape) || R.getPattern('circle', SIZE);
+  const inkBudget = (pattern, percentage) => Math.min(SIZE * SIZE, Math.ceil(pattern.cells.length * percentage / 100));
 
   const setText = (id, value) => { $(id).textContent = value; };
   const show = (id, visible) => { $(id).hidden = !visible; };
@@ -49,7 +55,7 @@
   function startMatch(config) {
     stopAttempt();
     state = { config: { ...config }, mode: config.mode, round: 1, caster: 0, role: 'attacker', phase: 'choose',
-      hp: [START_HP, START_HP], selected: 'circle', turn: null, ink: new Set(), history: [], best: 0, last: null };
+      hp: [START_HP, START_HP], selected: selectedPattern().id, turn: null, ink: new Set(), history: [], best: 0, last: null };
     undo = []; tool = 'draw';
     show('setup', false); show('game', true);
     announce(config.mode === 'practice' ? 'Solo practice started. Choose a symbol.' : 'Local duel started. Player 1 chooses a spell.');
@@ -109,7 +115,7 @@
   }
 
   function updateInk() {
-    const budget = state?.turn?.budget || (state ? Math.ceil(R.getPattern(state.selected, SIZE).cells.length * state.config.inkPercent / 100) : 0);
+    const budget = state?.turn?.budget || (state ? inkBudget(selectedPattern(), state.config.inkPercent) : 0);
     const count = ['result', 'finished'].includes(state?.phase) ? state.turn[state.role]?.cells.length || 0 : state?.ink.size || 0;
     setText('budget-text', `${count} / ${budget} blocks`);
     $('budget-fill').style.width = `${budget ? count / budget * 100 : 0}%`;
@@ -124,6 +130,10 @@
   function render() {
     if (!state) return;
     const phase = state.phase, drawing = phase === 'draw', studying = phase === 'study';
+    if (phase === 'choose') {
+      if (!findPattern(state.selected)) state.selected = 'circle';
+      renderShapeOptions();
+    }
     Object.assign($('game').dataset, { phase, mode: state.mode, role: state.role, round: String(state.round), caster: String(state.caster) });
     setText('round-label', `Round ${state.round}`);
     setText('turn-label', state.mode === 'practice' ? 'Solo practice' : `${playerName(state.caster)} attacks`);
@@ -136,8 +146,9 @@
     const labels = { choose: 'Choose your spell', study: 'Memorize the outline', draw: state.role === 'defender' ? 'Draw to counter' : 'Draw to cast',
       handoff: 'Pass the screen', result: 'Spell resolved', finished: 'Duel complete' };
     setText('phase-label', labels[phase]);
-    const pattern = state.turn?.pattern || R.getPattern(state.selected, SIZE);
+    const pattern = state.turn?.pattern || selectedPattern();
     setText('shape-label', pattern.name);
+    show('edit-selected-shape', phase === 'choose' && Boolean(pattern.custom));
     show('spell-picker', phase === 'choose'); show('board-shell', drawing || studying);
     show('drawing-tools', drawing); show('submit-drawing', drawing);
     show('handoff', phase === 'handoff'); show('result', phase === 'result' || phase === 'finished');
@@ -148,7 +159,7 @@
       button.classList.toggle('is-active', button.dataset.shape === state.selected);
       button.setAttribute('aria-pressed', String(button.dataset.shape === state.selected));
     }
-    setText('begin-cast', `Study ${R.getPattern(state.selected, SIZE).name.toLowerCase()}`);
+    setText('begin-cast', `Study ${selectedPattern().name.toLowerCase()}`);
     const hints = {
       choose: `Both attempts get ${roundSeconds()} seconds. ${state.config.tolerance ? 'One-block position grace is on.' : 'Exact positions count.'}`,
       study: `${state.mode === 'practice' ? 'Your' : playerName(attemptPlayer()) + '’s'} reference. It disappears when the study timer ends.`,
@@ -347,14 +358,20 @@
       if ($('setup-error')) { $('setup-error').hidden = false; $('setup-error').textContent = error.message; }
     }
   });
-  for (const button of document.querySelectorAll('[data-shape]')) button.addEventListener('click', () => {
-    if (state?.phase !== 'choose') return; state.selected = button.dataset.shape; render();
+  $('shape-options').addEventListener('click', event => {
+    const button = event.target.closest?.('[data-shape]');
+    if (state?.phase !== 'choose' || !button || !findPattern(button.dataset.shape)) return;
+    state.selected = button.dataset.shape; preferredShape = state.selected; render();
   });
   $('begin-cast').addEventListener('click', () => {
     if (state?.phase !== 'choose') return;
-    const pattern = R.getPattern(state.selected, SIZE);
-    state.turn = { pattern, budget: Math.ceil(pattern.cells.length * state.config.inkPercent / 100), windowSeconds: roundSeconds() };
+    const pattern = selectedPattern();
+    // Frozen pattern snapshot keeps this cast stable if another tab edits its library.
+    state.turn = { pattern, budget: inkBudget(pattern, state.config.inkPercent), windowSeconds: roundSeconds() };
     beginStudy('attacker');
+  });
+  $('edit-selected-shape').addEventListener('click', () => {
+    if (state?.phase === 'choose' && selectedPattern().custom) library.open(state.selected);
   });
   $('ready').addEventListener('click', () => { if (state?.phase === 'handoff') beginStudy('defender'); });
   $('submit-drawing').addEventListener('click', () => { if (canDraw()) finishDrawing('submitted'); });
@@ -395,18 +412,47 @@
     if (state && ['study', 'draw'].includes(state.phase)) renderBoard();
   });
 
-  // The picker uses schematic icons rather than the exact, memorized block map.
-  for (const canvas of document.querySelectorAll('[data-shape-preview]')) {
+  // Built-ins use schematic icons; custom cards preview the user's saved pixels.
+  function paintPickerIcon(canvas, pattern) {
     const c = canvas.getContext('2d'), width = canvas.width, center = width / 2, radius = width * .3;
+    if (pattern.custom) {
+      c.fillStyle = colors.target;
+      const cell = width / SIZE;
+      for (const id of pattern.cells) c.fillRect(id % SIZE * cell + .5, Math.floor(id / SIZE) * cell + .5, cell - 1, cell - 1);
+      return;
+    }
     c.strokeStyle = colors.target; c.lineWidth = 3; c.lineJoin = 'miter'; c.beginPath();
-    const shape = canvas.dataset.shapePreview;
+    const shape = pattern.id;
     if (shape === 'circle') c.arc(center, center, radius, 0, Math.PI * 2);
     else if (shape === 'square') c.rect(center - radius, center - radius, radius * 2, radius * 2);
     else {
-      for (let i = 0; i < 10; i++) { const angle = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? radius * .45 : radius;
-        const x = center + Math.cos(angle) * r, y = center + Math.sin(angle) * r; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.moveTo(center, center - radius); c.lineTo(center + radius, center + radius); c.lineTo(center - radius, center + radius);
       c.closePath();
     }
     c.stroke();
   }
+  function renderShapeOptions() {
+    const patterns = [...builtins.map(id => R.getPattern(id, SIZE)), ...library.list()];
+    const fragment = document.createDocumentFragment();
+    for (const pattern of patterns) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'shape-option';
+      button.dataset.shape = pattern.id; button.setAttribute('aria-label', `Choose ${pattern.name}`);
+      button.setAttribute('aria-pressed', String(state?.selected === pattern.id));
+      const canvas = document.createElement('canvas'); canvas.width = 96; canvas.height = 96;
+      canvas.dataset.shapePreview = pattern.id; canvas.setAttribute('aria-hidden', 'true');
+      const name = document.createElement('strong'); name.textContent = pattern.name;
+      button.append(canvas, name); paintPickerIcon(canvas, pattern); fragment.append(button);
+    }
+    $('shape-options').replaceChildren(fragment);
+  }
+  library.subscribe(event => {
+    if (event?.type === 'save' && findPattern(event.id)) {
+      preferredShape = event.id;
+      if (state?.phase === 'choose') state.selected = event.id;
+    }
+    if (!findPattern(preferredShape)) preferredShape = 'circle';
+    if (state?.phase === 'choose') render();
+    else if (!state) renderShapeOptions();
+  });
+  renderShapeOptions();
 })();

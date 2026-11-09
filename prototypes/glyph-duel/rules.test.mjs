@@ -5,8 +5,8 @@ import vm from 'node:vm';
 
 const context = {};
 vm.runInNewContext(readFileSync(new URL('./rules.js', import.meta.url), 'utf8'), context);
-const { getPattern, scoreDrawing, resolveAttack, getDrawSeconds } = context.GlyphDuelRules;
-const shapes = ['circle', 'square', 'star'];
+const { getPattern, createPattern, scoreDrawing, resolveAttack, getDrawSeconds } = context.GlyphDuelRules;
+const shapes = ['circle', 'square', 'triangle'];
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-10, `${actual} ≈ ${expected}`);
 const ownArray = array => Array.from(array);
 
@@ -21,7 +21,7 @@ function neighbors(cell, size, diagonal = true) {
 }
 
 test('classic script exposes its pure API on browser window or node globalThis', () => {
-  assert.deepEqual(Object.keys(context.GlyphDuelRules).sort(), ['getDrawSeconds', 'getPattern', 'resolveAttack', 'scoreDrawing']);
+  assert.deepEqual(Object.keys(context.GlyphDuelRules).sort(), ['createPattern', 'getDrawSeconds', 'getPattern', 'resolveAttack', 'scoreDrawing']);
   const browser = { window: {} };
   vm.runInNewContext(readFileSync(new URL('./rules.js', import.meta.url), 'utf8'), browser);
   assert.equal(typeof browser.window.GlyphDuelRules.scoreDrawing, 'function');
@@ -167,7 +167,7 @@ test('draw time decays per round to its floor and accepts valid custom settings'
 });
 
 test('invalid grid, cell, tolerance, attack and timer settings are rejected rather than coerced', () => {
-  for (const shape of ['triangle', '', '__proto__', null]) assert.throws(() => getPattern(shape));
+  for (const shape of ['star', '', '__proto__', null]) assert.throws(() => getPattern(shape));
   for (const size of [0, 11, 129, 16.5, '16', NaN]) assert.throws(() => getPattern('circle', size));
   for (const cells of [[-1], [256], [1.5], ['1'], [NaN], [Infinity], '123', {}]) assert.throws(() => scoreDrawing(cells, [1]));
   for (const tolerance of [-1, 2, .5, '1', NaN]) assert.throws(() => scoreDrawing([], [1], { tolerance }));
@@ -178,4 +178,64 @@ test('invalid grid, cell, tolerance, attack and timer settings are rejected rath
   for (const defenderHp of [-1, NaN, Infinity, '100']) assert.throws(() => resolveAttack({ attackerAccuracy: 50, defenderAccuracy: 50, defenderHp }));
   for (const round of [0, -1, 1.5, NaN, '1']) assert.throws(() => getDrawSeconds(round));
   for (const settings of [{ startSeconds: 0 }, { minSeconds: 0 }, { minSeconds: 13 }, { decrement: -1 }, { startSeconds: NaN }, { decrement: Infinity }, { minSeconds: '4' }, null]) assert.throws(() => getDrawSeconds(1, settings));
+});
+
+test('custom patterns trim names, sort and deduplicate ink, and freeze a copy without mutating inputs', () => {
+  const cells = [255, 17, 0, 17], definition = { id: 'custom-Figure_1-2', name: '  My sigil  ', cells };
+  const pattern = createPattern(definition);
+  assert.equal(pattern.id, 'custom-Figure_1-2'); assert.equal(pattern.name, 'My sigil'); assert.equal(pattern.size, 16);
+  assert.equal(pattern.custom, true); assert.equal(pattern.budget, 4);
+  assert.deepEqual(ownArray(pattern.cells), [0, 17, 255]);
+  assert.ok(Object.isFrozen(pattern) && Object.isFrozen(pattern.cells));
+  assert.deepEqual(cells, [255, 17, 0, 17]); assert.equal(definition.name, '  My sigil  ');
+  cells.push(42); definition.name = 'Changed';
+  assert.deepEqual(ownArray(pattern.cells), [0, 17, 255]); assert.equal(pattern.name, 'My sigil');
+  assert.throws(() => pattern.cells.push(42)); assert.throws(() => { pattern.name = 'Changed'; });
+});
+
+test('disconnected, singleton and arbitrary custom ink are valid targets that score perfectly against themselves', () => {
+  for (const cells of [new Set([0, 255]), [88], new Uint16Array([1, 2, 19, 67, 248])]) {
+    const pattern = createPattern({ id: 'custom-test', name: 'Test pattern', cells });
+    const score = scoreDrawing(pattern.cells, pattern, { tolerance: 0 });
+    assert.equal(score.size, 16); assert.equal(score.accuracy, 100);
+    assert.equal(score.hits, pattern.cells.length); assert.equal(score.missing, 0); assert.equal(score.extra, 0);
+  }
+  const duplicates = createPattern({ id: 'custom-duplicates', name: 'Single pixel', cells: Array(1000).fill(3) });
+  assert.equal(duplicates.cells.length, 1); assert.equal(duplicates.budget, 2, 'duplicate IDs cannot inflate the ink budget');
+  function* ink() { yield 23; yield 0; yield 23; }
+  assert.deepEqual(ownArray(createPattern({ id: 'custom-iterable', name: 'Iterable', cells: ink() }).cells), [0, 23]);
+});
+
+test('a filled custom board is intentionally allowed and its ink budget is capped to board area', () => {
+  for (const size of [12, 16, 24, 32]) {
+    const cells = Array.from({ length: size * size }, (_, cell) => cell);
+    const pattern = createPattern({ id: 'custom-filled-' + size, name: 'Filled board', cells }, size);
+    assert.equal(pattern.cells.length, size * size); assert.equal(pattern.budget, size * size);
+    assert.equal(scoreDrawing(cells, pattern).accuracy, 100, 'filled ink is correct only when it is the actual custom target');
+  }
+});
+
+test('custom pattern identifiers and single-line names are validated without unsafe coercion', () => {
+  for (const id of ['circle', 'custom-', 'custom-with space', 'custom-a/b', 'custom-😀', null, undefined, 4]) {
+    assert.throws(() => createPattern({ id, name: 'Valid name', cells: [0] }));
+  }
+  for (const name of ['', '   ', 'x'.repeat(41), 'line\nbreak', '\nValid', 'line\rbreak', '\tValid', 'bad\u0000name',
+    'bad\u0085name', 'bad\u2028name', 'bad\u2029name', null, undefined, 1]) {
+    assert.throws(() => createPattern({ id: 'custom-valid', name, cells: [0] }));
+  }
+  assert.equal(createPattern({ id: 'custom-valid', name: '  ' + 'x'.repeat(40) + '  ', cells: [0] }).name.length, 40);
+  for (const definition of [null, undefined, [], 'pattern']) assert.throws(() => createPattern(definition));
+});
+
+test('custom empty or out-of-range ink and incompatible grid sizes are rejected', () => {
+  for (const cells of [[], new Set(), null, undefined, {}, '1,2', [-1], [256], [1.5], ['2'], [NaN], [Infinity]]) {
+    assert.throws(() => createPattern({ id: 'custom-valid', name: 'Valid', cells }));
+  }
+  assert.throws(() => createPattern({ id: 'custom-small', name: 'Too large', cells: [144] }, 12));
+  for (const size of [0, 11, 129, 16.5, '16', null]) {
+    assert.throws(() => createPattern({ id: 'custom-invalid-size', name: 'Test', cells: [0] }, size));
+  }
+  const pattern = createPattern({ id: 'custom-32', name: 'Large test', cells: [1023] }, 32);
+  assert.equal(scoreDrawing([1023], pattern).size, 32);
+  assert.throws(() => scoreDrawing([1023], pattern, { size: 16 }));
 });

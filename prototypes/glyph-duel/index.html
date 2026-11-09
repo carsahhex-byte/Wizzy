@@ -7,13 +7,14 @@
   <title>Spell Sketch · Combat Lab</title>
   <link rel="stylesheet" href="style.css">
   <script defer src="rules.js"></script>
+  <script defer src="shape-editor.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
   <main class="app-shell">
     <header class="brand-header">
       <div><p class="kicker">COMBAT LAB · 16 × 16</p><h1>Spell Sketch</h1><p class="tagline">remember. draw. counter.</p></div>
-      <div class="brand-glyphs" aria-hidden="true"><i class="glyph-circle"></i><i class="glyph-square"></i><i class="glyph-star">✦</i></div>
+      <div class="brand-glyphs" aria-hidden="true"><i class="glyph-circle"></i><i class="glyph-square"></i><i class="glyph-triangle"></i></div>
     </header>
 
     <section id="setup" class="panel setup-panel" aria-labelledby="setup-title">
@@ -47,6 +48,7 @@
         <p>Both players get the same drawing window. After each has taken one attacking turn, the round ends and the window gets shorter, down to your chosen minimum.</p>
         <p>Results appear after both drawings. Erase or undo to return blocks to your pixel budget.</p>
       </div>
+      <section class="custom-shapes-panel" aria-labelledby="custom-shapes-title"><div class="custom-shapes-heading"><h3 id="custom-shapes-title">Your shapes</h3><button type="button" id="open-shape-editor" class="button button-quiet">Create shape</button></div><p class="field-note">Save your own 16 × 16 patterns to use in duels and practice.</p><div id="custom-shape-list" class="custom-shape-list"></div><p id="custom-shape-status" class="custom-shape-status" role="status"></p></section>
     </section>
 
     <section id="game" class="game-panel" aria-label="Spell Sketch match" hidden>
@@ -68,11 +70,12 @@
         <p id="hint" class="hint">Pick a shape. You’ll get a moment to memorize it before the drawing timer begins.</p>
 
         <div id="spell-picker" class="spell-picker">
-          <div class="shape-options" role="group" aria-label="Choose a spell shape">
+          <div id="shape-options" class="shape-options" role="group" aria-label="Choose a spell shape">
             <button type="button" class="shape-option" data-shape="circle" aria-pressed="true" aria-label="Choose Circle"><canvas width="96" height="96" data-shape-preview="circle" aria-hidden="true"></canvas><strong>Circle</strong></button>
             <button type="button" class="shape-option" data-shape="square" aria-pressed="false" aria-label="Choose Square"><canvas width="96" height="96" data-shape-preview="square" aria-hidden="true"></canvas><strong>Square</strong></button>
-            <button type="button" class="shape-option" data-shape="star" aria-pressed="false" aria-label="Choose Star"><canvas width="96" height="96" data-shape-preview="star" aria-hidden="true"></canvas><strong>Star</strong></button>
+            <button type="button" class="shape-option" data-shape="triangle" aria-pressed="false" aria-label="Choose Triangle"><canvas width="96" height="96" data-shape-preview="triangle" aria-hidden="true"></canvas><strong>Triangle</strong></button>
           </div>
+          <div class="shape-library-actions"><button type="button" id="edit-shapes-ingame" class="button button-quiet">Create shape</button><button type="button" id="edit-selected-shape" class="button button-quiet" hidden>Edit selected shape</button></div>
           <button type="button" id="begin-cast" class="button button-primary">Memorize & draw <span aria-hidden="true">→</span></button>
         </div>
 
@@ -98,10 +101,12 @@
       </div>
       <nav class="match-actions" aria-label="Match options"><button type="button" id="exit-to-setup" class="button button-quiet">Back to setup</button><button type="button" id="restart-match" class="button button-quiet">Restart match</button></nav>
     </section>
+    <p id="shape-library-status" class="shape-library-status" role="status" aria-live="polite" hidden></p>
     <p id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
     <footer>LOCAL PROTOTYPE <span aria-hidden="true">·</span> NO ACCOUNTS. JUST A LITTLE MAGIC.</footer>
   </main>
 
+  <dialog id="shape-editor-dialog" class="shape-editor-dialog" aria-labelledby="shape-editor-title" aria-describedby="shape-editor-help"><section id="shape-editor" hidden><form id="shape-editor-form"><header class="shape-editor-heading"><div><p class="eyebrow">YOUR OWN MAGIC</p><h2 id="shape-editor-title">Create a shape</h2></div><button type="button" id="close-shape-editor" class="editor-close" aria-label="Cancel shape editing">×</button></header><p id="shape-editor-help" class="field-note">Draw any pattern on the 16 × 16 grid. There’s no timer or pixel limit here. Arrow keys move; Space applies your tool.</p><label class="shape-name-label" for="shape-name">Shape name<input id="shape-name" type="text" maxlength="40" autocomplete="off" value="Custom 1" required></label><div class="shape-editor-board-wrap"><canvas id="shape-editor-board" width="512" height="512" tabindex="0" aria-label="16 by 16 custom shape editor"></canvas></div><div class="drawing-tools editor-tools" role="toolbar" aria-label="Shape editor tools"><button type="button" class="button tool-button" data-editor-tool="draw" aria-pressed="true">Draw</button><button type="button" class="button tool-button" data-editor-tool="erase" aria-pressed="false">Erase</button><button type="button" id="shape-editor-undo" class="button button-quiet">Undo</button><button type="button" id="shape-editor-clear" class="button button-quiet">Clear</button></div><p id="shape-editor-count" class="shape-editor-count">0 / 256 blocks</p><p id="shape-editor-status" class="shape-editor-status" role="status" aria-live="polite"></p><div class="shape-editor-actions"><button type="button" id="cancel-shape-editor" class="button button-quiet">Cancel</button><button type="submit" id="save-shape" class="button button-primary">Create shape</button></div></form></section></dialog>
   <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message"><form method="dialog"><p class="eyebrow">ONE MOMENT</p><h2 id="confirm-title">Start fresh?</h2><p id="confirm-message">This will restart the current match.</p><div class="dialog-actions"><button class="button button-quiet" value="cancel">Cancel</button><button id="confirm-yes" class="button button-primary" value="confirm">Confirm</button></div></form></dialog>
 </body>
 </html>
