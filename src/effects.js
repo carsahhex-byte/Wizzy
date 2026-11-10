@@ -5,6 +5,7 @@ export const MAX_MANA = 10;
 export const MAX_SHIELD = 30;
 export const MAX_FLOW = 5;
 export const MAX_EMBERS = 5;
+export const EMBER_DAMAGE_PER_POINT = 5;
 
 const rule = (emberSpend = 'none', maxEmbers) => Object.freeze({
   requiresRoll: true, emberSpend,
@@ -41,16 +42,17 @@ export function applyDamageToPlayer(player, amount, { selfDamage = false } = {})
   return { amount, absorbed, hpDamage, selfDamage };
 }
 
-/** Add Enhancement and Aura to completed damage, rounding halves upward before Shield. */
-export function calculateEnhancedDamage(baseDamage, enhancement = 0, aura = 0) {
+/** Add damage bonuses once, rounding halves upward before Shield. */
+export function calculateEnhancedDamage(baseDamage, enhancement = 0, aura = 0, emberBonus = 0) {
   if (!Number.isSafeInteger(baseDamage) || baseDamage < 0) throw new Error('Base damage must be a nonnegative whole number.');
   if (![0, 10, 20, 30].includes(enhancement)) throw new Error('Enhancement must be 0, 10, 20, or 30 percent.');
   if (![0, 10].includes(aura)) throw new Error('Aura must be 0 or 10 percent.');
-  const combinedPercent = enhancement + aura;
+  if (![0, 5, 10, 15, 20, 25].includes(emberBonus)) throw new Error('Ember bonus must be 0–25 percent in steps of 5.');
+  const combinedPercent = enhancement + aura + emberBonus;
   const scaled = baseDamage * (100 + combinedPercent) + 50;
   if (!Number.isSafeInteger(scaled)) throw new Error('Damage is too large to calculate safely.');
   const totalDamage = Math.floor(scaled / 100);
-  return { baseDamage, enhancement, aura, combinedPercent, bonusDamage: totalDamage - baseDamage, totalDamage };
+  return { baseDamage, enhancement, aura, ...(emberBonus > 0 ? { emberBonus } : {}), combinedPercent, bonusDamage: totalDamage - baseDamage, totalDamage };
 }
 
 /** Resolve a paid spell using the final Modified Roll; the engine owns Fate timing. */
@@ -74,6 +76,8 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   const waterSpell = definition.element === 'Water';
   const flow = waterSpell ? Math.min(MAX_FLOW, caster.element) : 0;
   caster.element = Math.min(waterSpell ? MAX_FLOW : MAX_EMBERS, caster.element);
+  // Costs were paid at commitment. New Ember rewards strengthen later attacks.
+  const emberBonus = definition.element === 'Fire' ? caster.element * EMBER_DAMAGE_PER_POINT : 0;
   let flowGain = 1;
   let dealtOutgoingDamage = false;
   const events = [];
@@ -81,10 +85,10 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   const record = (type, player, message, detail = {}) => events.push({ type, playerId: player.id, spellId, message, ...detail });
   const damage = (player, amount) => {
     const selfDamage = player === caster;
-    const calculation = calculateEnhancedDamage(amount, selfDamage ? 0 : enhancement, selfDamage ? 0 : aura);
+    const calculation = calculateEnhancedDamage(amount, selfDamage ? 0 : enhancement, selfDamage ? 0 : aura, selfDamage ? 0 : emberBonus);
     const detail = applyDamageToPlayer(player, calculation.totalDamage, { selfDamage });
     if (!selfDamage && amount > 0) dealtOutgoingDamage = true;
-    const formula = `Base ${calculation.baseDamage} + ${calculation.enhancement}% Enhancement + ${calculation.aura}% Aura = ${calculation.totalDamage} damage`;
+    const formula = `Base ${calculation.baseDamage} + ${calculation.enhancement}% Enhancement + ${calculation.aura}% Aura${calculation.emberBonus ? ` + ${calculation.emberBonus}% Embers` : ''} = ${calculation.totalDamage} damage`;
     record('damage', player, `${formula}. ${name(player)} takes ${detail.amount} damage${detail.absorbed ? ` (${detail.absorbed} absorbed by Shield)` : ''}; ${detail.hpDamage} HP damage.`, { ...calculation, ...detail });
   };
   const gainShield = amount => {

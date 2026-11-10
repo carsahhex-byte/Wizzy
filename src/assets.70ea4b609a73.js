@@ -1,8 +1,8 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { resolveAssetUrl } from './asset-url.cb70b3c3a449.js';
+import { resolveAssetUrl } from './asset-url.985595488d12.js';
 import { SPELL_CATALOG } from './spells.f8fbae4371e1.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.452f65c210f7.js';
-import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.6683d76908aa.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.857170bc7073.js';
+import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.7d7f5b760588.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -60,6 +60,7 @@ export const ASSET_FILES = Object.freeze({
   mapUIConcept: 'Wizzy Rough Map UI Concept.png',
   mapControls: 'Wizzy Rough Map Controls.png',
   mapTitle: 'Wizzy Map Title Banner.png',
+  charredBladeSword: 'Wizzy Charred Blade Sword.png',
 });
 
 /** Original overworld wizards: fixed logical cells, source PNG left intact. */
@@ -338,7 +339,8 @@ const slab = (asset, width, height, crop, label) => Object.freeze({
 export const SPELL_SLABS = Object.freeze(Object.fromEntries([
   ['Fire-0', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-0')],
   ['Fire-15', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-15')],
-  ...fireSlabCrops.map((crop,index) => [`Fire-${index+1}`, slab('fireSlabSheet',2037,772,crop,`Fire-${index+1}`)]),
+  // Xineoph inherits Charred Blade's original phoenix; source sheet stays intact.
+  ...fireSlabCrops.map((crop,index) => [`Fire-${index+1}`, slab('fireSlabSheet',2037,772,index === 10 ? fireSlabCrops[5] : crop,`Fire-${index+1}`)]),
   ['Water-0', slab('waterSlabSheet',2037,772,waterSlabCrops[9],'Water-0')],
   ...waterSlabCrops.map((crop,index) => [`Water-${index+1}`, slab('waterSlabSheet',2037,772,crop,`Water-${index+1}`)]),
   ['FAT-001', slab('fateSlabSheet',2172,724,[153,17,517,687],'Fortune')],
@@ -356,11 +358,15 @@ export function spellSlabMarkup(spellId, className = '') {
   const lines = COMPACT_SPELL_TEXT[spellId] || [];
   const length = lines.reduce((total,line)=>total+line.text.length+(line.threshold?line.threshold.length+1:0),0);
   const density = length>60?'long':length<35&&lines.length<3?'short':'normal';
-  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" data-copy-density="${density}" data-copy-type="${definition.type}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:#030308">${cropImage(crop)}<span class="slab-live-paper"><strong class="slab-live-title">${definition.name}</strong><span class="slab-live-rules" data-slab-rules="${spellId}">${slabRulesMarkup(spellId)}</span></span></span>`;
+  const illustration = spellId === 'Fire-6'
+    ? `<span data-card-illustration="charredBladeSword" style="position:absolute;left:${13/crop.w*100}%;top:${17/crop.h*100}%;width:${(crop.w-26)/crop.w*100}%;height:${164/crop.h*100}%;display:block;overflow:hidden;background:#180000"><img alt="" draggable="false" src="${ASSETS.charredBladeSword}" style="display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated" /></span>`
+    : '';
+  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" data-copy-density="${density}" data-copy-type="${definition.type}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:#030308">${cropImage(crop)}${illustration}<span class="slab-live-paper"><strong class="slab-live-title">${definition.name}</strong><span class="slab-live-rules" data-slab-rules="${spellId}">${slabRulesMarkup(spellId)}</span></span></span>`;
 }
 
 /** Art-only viewports are available where a smaller illustration is needed. */
 export const SPELL_ART = Object.freeze(Object.fromEntries(Object.entries(SPELL_SLABS).map(([id,crop]) => {
+  if (id === 'Fire-6') return [id,Object.freeze({ asset: 'charredBladeSword', width:1536, height:1024, x:0, y:0, w:1536, h:1024, label: 'Charred Blade' })];
   const fate = id.startsWith('FAT-');
   // The standalone resource slab is larger than the original sheet tiles.
   const scale = crop.asset === 'fireZeroSlab' ? crop.w / 282 : 1;

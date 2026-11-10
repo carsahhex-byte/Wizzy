@@ -1,14 +1,14 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.f8fbae4371e1.js';
 import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.e3c667abc473.js';
 import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.7d88afb55ce3.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.9ae9d8643ed2.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.16ef7823f6d8.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'named-spellbook-v1';
+export const COMBAT_RULES_VERSION = 'ember-damage-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;

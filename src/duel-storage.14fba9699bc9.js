@@ -1,4 +1,4 @@
-import { createGame, migrateSavedGame, getGameSpellbook, SAVE_VERSION, validateSavedGame } from './game.81adca8561a4.js';
+import { createGame, migrateSavedGame, getGameSpellbook, SAVE_VERSION, validateSavedGame } from './game.fc61b4cccab7.js';
 import { createStarterDeck } from './decks.e3c667abc473.js';
 import { SPELLBOOK_1, SPELLBOOK_2, isSpellbookId } from './spellbooks.7d88afb55ce3.js';
 

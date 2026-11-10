@@ -274,5 +274,10 @@ export const OPTIMIZED_ART = {
     "file": "mapTitle-46fc9eab154b.webp",
     "sourceSha256": "e479de45de587601de951010fb0fec911e32ff4089730e182303321310bffa5a",
     "optimizedSha256": "46fc9eab154b395936cb4741c385c5d6102000a9ea8ddd3fbf838691368e1e42"
+  },
+  "charredBladeSword": {
+    "file": "charredBladeSword-e55012931554.webp",
+    "sourceSha256": "b0a00276aeb9d1ccafcc608a95e8d003832514295c27c336460f0f599bd0c95a",
+    "optimizedSha256": "e55012931554ca9c0c16cb8e2d42283973e976ba611bae759a0eecd0ea67d800"
   }
 };

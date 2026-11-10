@@ -1,22 +1,22 @@
-import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.81adca8561a4.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.2a207f30db55.js';
+import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.fc61b4cccab7.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.70ea4b609a73.js';
 import { SPELL_CATALOG } from './spells.f8fbae4371e1.js';
 import { validateDeck, getDeckValidation } from './decks.e3c667abc473.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.9ae9d8643ed2.js';
-import { createHub } from './hub.34c4657248cb.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.16ef7823f6d8.js';
+import { createHub } from './hub.51c94be613e3.js';
 import { parseStorybookRoute } from './districts.41d180c8958a.js';
-import { createMultiplayer } from './multiplayer.b6ee3b427787.js';
+import { createMultiplayer } from './multiplayer.38a40ba8b2b5.js';
 import { createAccounts } from './accounts.a7e8e883d936.js';
-import { fitSlabText } from './slab-text.452f65c210f7.js';
-import { createBattleScene } from './battle-scene.bc3be7055bc7.js';
-import { createSpellAnimator } from './spell-animation.93891977da44.js';
-import { createAuraAnimator } from './aura-animation.6eb45e2d5abf.js';
-import { getResolvedBattleVisuals } from './spell-visuals.28d239b2045b.js';
+import { fitSlabText } from './slab-text.857170bc7073.js';
+import { createBattleScene } from './battle-scene.930c5042736d.js';
+import { createSpellAnimator } from './spell-animation.41198caeb474.js';
+import { createAuraAnimator } from './aura-animation.50e94a5647a1.js';
+import { getResolvedBattleVisuals } from './spell-visuals.4ba92451500a.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
-import { pixelIconMarkup } from './pixel-icons.6683d76908aa.js';
+import { pixelIconMarkup } from './pixel-icons.7d7f5b760588.js';
 import { ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook } from './spellbooks.7d88afb55ce3.js';
-import { getGameSpellbook } from './game.81adca8561a4.js';
-import { createDuelStorage } from './duel-storage.60ab7326ea5f.js';
+import { getGameSpellbook } from './game.fc61b4cccab7.js';
+import { createDuelStorage } from './duel-storage.14fba9699bc9.js';
 
 let duelDeviceStorage = null;
 try { duelDeviceStorage = globalThis.localStorage; } catch {}
@@ -101,7 +101,7 @@ function playerPanel(player, index) {
     ${art(player.id === 'fire' ? 'fireFrame' : 'waterFrame','stat-frame')}
     <div class="stat-heading"><span class="element-symbol" aria-hidden="true">${pixelIconMarkup(player.id==='fire'?'fire':'water')}</span><h2>${player.name}</h2><span class="player-label">${state.startingPlayer===null?'':state.startingPlayer===index?'1ST':'2ND'}</span>${state.phase!=='initiative'&&state.activePlayer === index ? '<span class="active-dot" aria-label="Active wizard"></span>' : ''}</div>
     <div class="stat-body"><div class="health-row"><span class="health-label">${pixelIconMarkup('heart')}<span>HP</span></span><strong data-stat="${player.id}-hp">${player.hp}<small> / ${player.maxHp}</small></strong></div><div data-health-bar-slot="${index}"></div>
-    <div class="resource-grid"><div class="resource mana">${pixelIconMarkup('mana')}<span>Mana</span><strong data-stat="${player.id}-mana" data-current="${player.mana}" data-cap="${MAX_MANA}" aria-label="${player.mana} Mana, maximum ${MAX_MANA}">${player.mana}<small class="stat-limit"> / ${MAX_MANA}</small></strong></div><div class="resource shield">${pixelIconMarkup('shield')}<span>Shield</span><strong data-stat="${player.id}-shield" data-current="${player.shield}" data-cap="${MAX_SHIELD}" aria-label="${player.shield} Shield, maximum ${MAX_SHIELD}">${player.shield}<small class="stat-limit"> / ${MAX_SHIELD}</small></strong></div><div class="resource element">${pixelIconMarkup(player.id==='fire'?'fire':'water')}<span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${player.id==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${player.id==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div><div class="resource loaded">${pixelIconMarkup('die')}<span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
+    <div class="resource-grid"><div class="resource mana">${pixelIconMarkup('mana')}<span>Mana</span><strong data-stat="${player.id}-mana" data-current="${player.mana}" data-cap="${MAX_MANA}" aria-label="${player.mana} Mana, maximum ${MAX_MANA}">${player.mana}<small class="stat-limit"> / ${MAX_MANA}</small></strong></div><div class="resource shield">${pixelIconMarkup('shield')}<span>Shield</span><strong data-stat="${player.id}-shield" data-current="${player.shield}" data-cap="${MAX_SHIELD}" aria-label="${player.shield} Shield, maximum ${MAX_SHIELD}">${player.shield}<small class="stat-limit"> / ${MAX_SHIELD}</small></strong></div><div class="resource element" title="${player.id==='fire'?`Each held Ember adds 5% Fire damage. Current bonus: ${player.element*5}%. New gains apply to later attacks; Sunsetter spends its Embers before damage.`:'Flow strengthens Water effects and increases after resolution.'}">${pixelIconMarkup(player.id==='fire'?'fire':'water')}<span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${player.id==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${player.id==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div><div class="resource loaded">${pixelIconMarkup('die')}<span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
   </section>`;
 }
 const enhancementTiersText = `${ENHANCEMENT_THRESHOLD}+: +${getEnhancementBonus(ENHANCEMENT_THRESHOLD)}% · 9+: +${getEnhancementBonus(9)}% · 12+: +${getEnhancementBonus(12)}%`;
