@@ -1,7 +1,7 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.f4cfd6ee3b22.js';
-import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook, getSpellbookSpells, isSpellbookId, isSpellInBook } from './spellbooks.e694f836ce8d.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.f8fbae4371e1.js';
+import { SPELLBOOK_1, SPELLBOOK_2, ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbookSpells, isSpellbookId, isSpellInBook } from './spellbooks.7d88afb55ce3.js';
 
-export { getDeckSpellbook } from './spellbooks.e694f836ce8d.js';
+export { getDeckSpellbook } from './spellbooks.7d88afb55ce3.js';
 
 export const MAX_DECK_FILE_BYTES = 65536;
 
@@ -105,6 +105,10 @@ export function serializeDeck(deck) {
 }
 
 export function parseDeckList(text) {
+  return normalizeDeck(parseDeckFile(text));
+}
+
+function parseDeckFile(text) {
   if (typeof text !== 'string' || text.length > MAX_DECK_FILE_BYTES
     || new TextEncoder().encode(text).length > MAX_DECK_FILE_BYTES) {
     throw new TypeError('Choose a Wizzy deck JSON file smaller than 64 KB.');
@@ -117,7 +121,35 @@ export function parseDeckList(text) {
   if (data.spellbook !== SPELLBOOK_VERSION) {
     throw new TypeError('This deck belongs to a different spellbook. Rebuild it with the current slabs.');
   }
-  return normalizeDeck(data);
+  return data;
+}
+
+/** Return a reviewable current-book candidate; never silently accept retired cards. */
+export function migrateToActiveDeck(deck, { replaceFireFive = true } = {}) {
+  if (!isDeckRecord(deck) || !isSpellbookId(getDeckSpellbook(deck))) throw new TypeError('Choose a deck from a recognized Wizzy spellbook.');
+  // The archived full catalog can validate a former test deck containing Fire-5.
+  const original = normalizeDeckSlot({ element: deck.element, entries: deck.entries });
+  const counts = new Map(), removed = [], replacements = [];
+  for (const entry of original.entries) {
+    const replacement = replaceFireFive && entry.spellId === 'Fire-5' ? 'Fire-6' : entry.spellId;
+    if (!isSpellInBook(replacement, ACTIVE_SPELLBOOK_ID)) {
+      removed.push({ ...entry });
+      continue;
+    }
+    if (replacement !== entry.spellId) replacements.push({ from: entry.spellId, to: replacement, quantity: entry.quantity });
+    counts.set(replacement, (counts.get(replacement) || 0) + entry.quantity);
+  }
+  const next = normalizeDeckSlot({ element: original.element, spellbookId: ACTIVE_SPELLBOOK_ID,
+    entries: [...counts].map(([spellId, quantity]) => ({ spellId, quantity })) });
+  return { deck: next, removed, replacements, reviewRequired: removed.length > 0 || replacements.length > 0,
+    changed: getDeckSpellbook(deck) !== ACTIVE_SPELLBOOK_ID || removed.length > 0 || replacements.length > 0 };
+}
+
+/** Imports with retired spells expose their review report instead of discarding silently. */
+export function parseDeckListForActive(text) {
+  const data = parseDeckFile(text);
+  if (!Array.isArray(data.entries) || data.entries.length === 0) throw new TypeError('Choose a playable deck with 1–30 slabs.');
+  return migrateToActiveDeck(data);
 }
 
 export function getDeckCount(deck, spellId) {

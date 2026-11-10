@@ -1,6 +1,6 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
 import { resolveAssetUrl } from './asset-url.cb70b3c3a449.js';
-import { SPELL_CATALOG } from './spells.f4cfd6ee3b22.js';
+import { SPELL_CATALOG } from './spells.f8fbae4371e1.js';
 import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.452f65c210f7.js';
 import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.6683d76908aa.js';
 

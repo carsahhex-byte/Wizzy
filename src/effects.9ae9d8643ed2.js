@@ -1,4 +1,4 @@
-import { SPELL_CATALOG } from './spells.f4cfd6ee3b22.js';
+import { SPELL_CATALOG } from './spells.f8fbae4371e1.js';
 
 export const MAX_HP = 100;
 export const MAX_MANA = 10;

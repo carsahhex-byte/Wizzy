@@ -1,4 +1,4 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.js';
 import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.js';
 import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
@@ -8,7 +8,7 @@ export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange }
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'spellbook-selection-v1';
+export const COMBAT_RULES_VERSION = 'named-spellbook-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -853,6 +853,14 @@ function refreshCurrentSpellCards(state) {
         && card.effectText === SPELL_CATALOG[card.spellId].effectText
         && card.description === card.effectText) {
         card.manaCost = card.cost = SPELL_CATALOG[card.spellId].manaCost;
+        changed = true;
+      }
+      // Names are presentation metadata. Preserve the action history, paid
+      // costs and resolution state while upgrading only exact old names.
+      if (Object.hasOwn(LEGACY_SPELL_NAMES, card?.spellId)
+        && card.name === LEGACY_SPELL_NAMES[card.spellId]
+        && card.name !== SPELL_CATALOG[card.spellId].name) {
+        card.name = SPELL_CATALOG[card.spellId].name;
         changed = true;
       }
     }

@@ -1,5 +1,5 @@
-import { SPELL_CATALOG } from './spells.f4cfd6ee3b22.js';
-import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.4ea1cebbc524.js';
+import { SPELL_CATALOG, LEGACY_SPELL_NAMES } from './spells.f8fbae4371e1.js';
+import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.81adca8561a4.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
 const DAMAGING_SPELLS = new Set([
@@ -9,8 +9,9 @@ const DAMAGING_SPELLS = new Set([
 const SHIELD_SPELLS = new Set(['Fire-3', 'Fire-10', 'Water-3', 'Water-10']);
 const POWER_UP_SPELLS = new Set(['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15', 'Water-0']);
 const PRIMARY_SPELLS = Object.values(SPELL_CATALOG).filter(spell => spell.category === 'Elemental');
-const SPELL_NAMES = new Map(PRIMARY_SPELLS.map(spell => [spell.name, spell.spellId]));
-const COMPLETIONS = new Map(PRIMARY_SPELLS.map(spell => [`${spell.name} resolves and moves to discard.`, spell.spellId]));
+const namesFor = spell => [...new Set([spell.name, LEGACY_SPELL_NAMES[spell.spellId]].filter(Boolean))];
+const SPELL_NAMES = new Map(PRIMARY_SPELLS.flatMap(spell => namesFor(spell).map(name => [name, spell.spellId])));
+const COMPLETIONS = new Map(PRIMARY_SPELLS.flatMap(spell => namesFor(spell).map(name => [`${name} resolves and moves to discard.`, spell.spellId])));
 
 /** Presentation only: Fate and unknown IDs deliberately have no animation. */
 export function getSpellVisual(spellId) {

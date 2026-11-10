@@ -1,22 +1,22 @@
-import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.4ea1cebbc524.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.dcd944651cbe.js';
-import { SPELL_CATALOG } from './spells.f4cfd6ee3b22.js';
-import { validateDeck, getDeckValidation } from './decks.c22fa3aa73a8.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.28b4a3e6d631.js';
-import { createHub } from './hub.d2a58695a72d.js';
+import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.81adca8561a4.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.2a207f30db55.js';
+import { SPELL_CATALOG } from './spells.f8fbae4371e1.js';
+import { validateDeck, getDeckValidation } from './decks.e3c667abc473.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.9ae9d8643ed2.js';
+import { createHub } from './hub.34c4657248cb.js';
 import { parseStorybookRoute } from './districts.41d180c8958a.js';
-import { createMultiplayer } from './multiplayer.02c85f20634b.js';
-import { createAccounts } from './accounts.ec4b94272535.js';
+import { createMultiplayer } from './multiplayer.cc4bb170cbda.js';
+import { createAccounts } from './accounts.eb407a316585.js';
 import { fitSlabText } from './slab-text.452f65c210f7.js';
-import { createBattleScene } from './battle-scene.6a49480e3f62.js';
-import { createSpellAnimator } from './spell-animation.c8fe056d2407.js';
-import { createAuraAnimator } from './aura-animation.1839190dd1fb.js';
-import { getResolvedBattleVisuals } from './spell-visuals.7147c5b455e7.js';
+import { createBattleScene } from './battle-scene.bc3be7055bc7.js';
+import { createSpellAnimator } from './spell-animation.93891977da44.js';
+import { createAuraAnimator } from './aura-animation.6eb45e2d5abf.js';
+import { getResolvedBattleVisuals } from './spell-visuals.28d239b2045b.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
 import { pixelIconMarkup } from './pixel-icons.6683d76908aa.js';
-import { SPELLBOOK_1, getDeckSpellbook, getSpellbook } from './spellbooks.e694f836ce8d.js';
-import { getGameSpellbook } from './game.4ea1cebbc524.js';
-import { createDuelStorage } from './duel-storage.ce4dd14fe6b3.js';
+import { ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook } from './spellbooks.7d88afb55ce3.js';
+import { getGameSpellbook } from './game.81adca8561a4.js';
+import { createDuelStorage } from './duel-storage.60ab7326ea5f.js';
 
 let duelDeviceStorage = null;
 try { duelDeviceStorage = globalThis.localStorage; } catch {}
@@ -79,7 +79,7 @@ function arenaEntranceKey() {
 const deckCount = player => player.deckCount ?? player.deck.length;
 const handCount = player => player.handCount ?? player.hand.length;
 
-function loadGame(bookId = SPELLBOOK_1) { return duelStorage.load(bookId); }
+function loadGame(bookId = ACTIVE_SPELLBOOK_ID) { return duelStorage.load(bookId); }
 function saveGame() {
   if(isOnlineBattle())return;
   localState=state;
@@ -518,7 +518,7 @@ function showSlab(spellId) {
   if(!spell)return;
   const dialog=document.querySelector('#slab-inspector');
   document.querySelector('#slab-heading').textContent=spell.name;
-  document.querySelector('#slab-definition').textContent=`${spell.spellId} · ${spell.category}${spell.category==='Elemental'?` · ${spell.element}`:''}`;
+  document.querySelector('#slab-definition').textContent=`${spell.category}${spell.category==='Elemental'?` · ${spell.element}`:''}`;
   document.querySelector('#slab-face').innerHTML=slabFace(spell);
   document.querySelector('#slab-face').dataset.slabType=spell.type;
   const timing=spell.category==='Fate'?'Play one Fate slab in your post-roll response. Players alternate until two consecutive passes. Twist may add 2 or subtract 2.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds first, then players alternate one Fate slab at a time until two consecutive passes. Your Enhancement increases outgoing damage before Shield.':'Resolves immediately, without a dice roll or Fate window.';
@@ -534,7 +534,7 @@ function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
     const quantity=entries.reduce((sum,entry)=>sum+entry.quantity,0);
     return `<section class="deck-group"><h3>${category}<span>${quantity} slabs</span></h3>${entries.map(entry=>{
       const spell=SPELL_CATALOG[entry.spellId];
-      return `<button class="deck-row slab-${spell.type.toLowerCase()}" data-inspect-spell="${spell.spellId}" aria-label="Read ${escape(spell.name)}, ${entry.quantity} copies, ${spell.manaCost} Mana"><span class="deck-thumbnail">${spellSlabMarkup(spell.spellId)||art(spell.art)}</span><span class="deck-spell-name">${escape(spell.name)}<small>${spell.spellId} · ${spell.type}</small></span><span class="deck-mana">${spell.manaCost}<small>Mana</small></span><strong class="deck-quantity" data-spell-id="${spell.spellId}">×${entry.quantity}</strong></button>`;
+      return `<button class="deck-row slab-${spell.type.toLowerCase()}" data-inspect-spell="${spell.spellId}" aria-label="Read ${escape(spell.name)}, ${entry.quantity} copies, ${spell.manaCost} Mana"><span class="deck-thumbnail">${spellSlabMarkup(spell.spellId)||art(spell.art)}</span><span class="deck-spell-name">${escape(spell.name)}<small>${spell.type}</small></span><span class="deck-mana">${spell.manaCost}<small>Mana</small></span><strong class="deck-quantity" data-spell-id="${spell.spellId}">×${entry.quantity}</strong></button>`;
     }).join('')}</section>`;
   }).join('');
   document.querySelector('#deck-heading').textContent=`${getSpellbook(getDeckSpellbook(player.deckDefinition)).label} · ${player.name} deck · ${getDeckValidation(player.deckDefinition).total} spell ${getDeckValidation(player.deckDefinition).total === 1 ? 'slab' : 'slabs'}`;
@@ -726,6 +726,7 @@ const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspect
   document.querySelector('#resume-online').hidden=!multiplayer?.isActive();
   document.querySelector('#battle-mode').showModal();
 }});
+if(duelStorage.getNotice())hub.setDeckNotice(duelStorage.getNotice());
 multiplayer=createMultiplayer({
   root:document.querySelector('#online-view'),getSavedDecks:bookId=>hub.getSavedDecks(bookId),getSelectedSpellbookId:()=>hub.getSelectedSpellbookId(),getProfile:()=>hub.getProfile(),
   getAccountSession:()=>accounts?.getSession(),
@@ -791,7 +792,8 @@ function openAccountScreen(){
   if(location.hash!=='#account')history.pushState(null,'','#account');
   accounts.show();
 }
-function restoreLocalBattle(bookId){
+function restoreLocalBattle(bookId = ACTIVE_SPELLBOOK_ID){
+  bookId = ACTIVE_SPELLBOOK_ID;
   if(isOnlineBattle()){clearCombatTimers();state=localState;}
   battleMode='local';onlineBusy=false;onlineActionInFlight=null;
   if(bookId && getGameSpellbook(localState)!==bookId){

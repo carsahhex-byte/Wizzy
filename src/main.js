@@ -14,7 +14,7 @@ import { createAuraAnimator } from './aura-animation.js';
 import { getResolvedBattleVisuals } from './spell-visuals.js';
 import { createHealthBars } from './health-bars.js';
 import { pixelIconMarkup } from './pixel-icons.js';
-import { SPELLBOOK_1, getDeckSpellbook, getSpellbook } from './spellbooks.js';
+import { ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook } from './spellbooks.js';
 import { getGameSpellbook } from './game.js';
 import { createDuelStorage } from './duel-storage.js';
 
@@ -79,7 +79,7 @@ function arenaEntranceKey() {
 const deckCount = player => player.deckCount ?? player.deck.length;
 const handCount = player => player.handCount ?? player.hand.length;
 
-function loadGame(bookId = SPELLBOOK_1) { return duelStorage.load(bookId); }
+function loadGame(bookId = ACTIVE_SPELLBOOK_ID) { return duelStorage.load(bookId); }
 function saveGame() {
   if(isOnlineBattle())return;
   localState=state;
@@ -518,7 +518,7 @@ function showSlab(spellId) {
   if(!spell)return;
   const dialog=document.querySelector('#slab-inspector');
   document.querySelector('#slab-heading').textContent=spell.name;
-  document.querySelector('#slab-definition').textContent=`${spell.spellId} · ${spell.category}${spell.category==='Elemental'?` · ${spell.element}`:''}`;
+  document.querySelector('#slab-definition').textContent=`${spell.category}${spell.category==='Elemental'?` · ${spell.element}`:''}`;
   document.querySelector('#slab-face').innerHTML=slabFace(spell);
   document.querySelector('#slab-face').dataset.slabType=spell.type;
   const timing=spell.category==='Fate'?'Play one Fate slab in your post-roll response. Players alternate until two consecutive passes. Twist may add 2 or subtract 2.':SPELL_RULES[spellId].requiresRoll?'Pay Mana and roll two dice. The defender responds first, then players alternate one Fate slab at a time until two consecutive passes. Your Enhancement increases outgoing damage before Shield.':'Resolves immediately, without a dice roll or Fate window.';
@@ -534,7 +534,7 @@ function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
     const quantity=entries.reduce((sum,entry)=>sum+entry.quantity,0);
     return `<section class="deck-group"><h3>${category}<span>${quantity} slabs</span></h3>${entries.map(entry=>{
       const spell=SPELL_CATALOG[entry.spellId];
-      return `<button class="deck-row slab-${spell.type.toLowerCase()}" data-inspect-spell="${spell.spellId}" aria-label="Read ${escape(spell.name)}, ${entry.quantity} copies, ${spell.manaCost} Mana"><span class="deck-thumbnail">${spellSlabMarkup(spell.spellId)||art(spell.art)}</span><span class="deck-spell-name">${escape(spell.name)}<small>${spell.spellId} · ${spell.type}</small></span><span class="deck-mana">${spell.manaCost}<small>Mana</small></span><strong class="deck-quantity" data-spell-id="${spell.spellId}">×${entry.quantity}</strong></button>`;
+      return `<button class="deck-row slab-${spell.type.toLowerCase()}" data-inspect-spell="${spell.spellId}" aria-label="Read ${escape(spell.name)}, ${entry.quantity} copies, ${spell.manaCost} Mana"><span class="deck-thumbnail">${spellSlabMarkup(spell.spellId)||art(spell.art)}</span><span class="deck-spell-name">${escape(spell.name)}<small>${spell.type}</small></span><span class="deck-mana">${spell.manaCost}<small>Mana</small></span><strong class="deck-quantity" data-spell-id="${spell.spellId}">×${entry.quantity}</strong></button>`;
     }).join('')}</section>`;
   }).join('');
   document.querySelector('#deck-heading').textContent=`${getSpellbook(getDeckSpellbook(player.deckDefinition)).label} · ${player.name} deck · ${getDeckValidation(player.deckDefinition).total} spell ${getDeckValidation(player.deckDefinition).total === 1 ? 'slab' : 'slabs'}`;
@@ -726,6 +726,7 @@ const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspect
   document.querySelector('#resume-online').hidden=!multiplayer?.isActive();
   document.querySelector('#battle-mode').showModal();
 }});
+if(duelStorage.getNotice())hub.setDeckNotice(duelStorage.getNotice());
 multiplayer=createMultiplayer({
   root:document.querySelector('#online-view'),getSavedDecks:bookId=>hub.getSavedDecks(bookId),getSelectedSpellbookId:()=>hub.getSelectedSpellbookId(),getProfile:()=>hub.getProfile(),
   getAccountSession:()=>accounts?.getSession(),
@@ -791,7 +792,8 @@ function openAccountScreen(){
   if(location.hash!=='#account')history.pushState(null,'','#account');
   accounts.show();
 }
-function restoreLocalBattle(bookId){
+function restoreLocalBattle(bookId = ACTIVE_SPELLBOOK_ID){
+  bookId = ACTIVE_SPELLBOOK_ID;
   if(isOnlineBattle()){clearCombatTimers();state=localState;}
   battleMode='local';onlineBusy=false;onlineActionInFlight=null;
   if(bookId && getGameSpellbook(localState)!==bookId){
