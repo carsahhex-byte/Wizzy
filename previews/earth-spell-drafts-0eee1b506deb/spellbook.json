@@ -1,0 +1,136 @@
+{
+  "format": "wizzy-earth-spell-drafts",
+  "version": 1,
+  "status": "draft-review-only",
+  "title": "Earth · First Five Spells",
+  "rules": {
+    "transformAtShield": 20,
+    "revertAtOwnEndTurnShieldAtMost": 19,
+    "previousSpellDamageBonusRemoved": true,
+    "spellDamageBonus": 0,
+    "automaticOwnEndTurnDamage": 15,
+    "endTurnOrder": [
+      "Expire Earth-4 protection if this is the end of the next Earth turn after it was cast.",
+      "If protection is inactive, check Shield: 19 or lower reverts Golem to Earth Wizard.",
+      "If Golem form remains active, deal 15 damage to the opponent."
+    ],
+    "earth4": {
+      "protectsAlreadyActiveGolemOnly": true,
+      "protectionBeginsOnCast": true,
+      "protectsThroughNextOwnTurn": true,
+      "expiresBeforeShieldCheckAtNextOwnEndTurn": true
+    }
+  },
+  "cards": [
+    {
+      "id": "Earth-1",
+      "manaCost": 0,
+      "effectText": "Deal 5 damage and gain 5 Shield. On a 7+, gain 5 additional Shield.",
+      "lines": [
+        {
+          "text": "Deal 5 damage and gain 5 Shield."
+        },
+        {
+          "threshold": "7+",
+          "text": "Gain 5 additional Shield."
+        }
+      ],
+      "clarification": "A 7+ gives 10 Shield total.",
+      "art": "art/earth-1.png",
+      "artConcept": "A small mossy stone attack accompanied by a modest protective stone Shield.",
+      "artMetadata": {
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1217699,
+        "sha256": "72b496e7dc42415cbf6a4174d77dfe261774dd1c60de965d61edf5c4ea9b15a9"
+      }
+    },
+    {
+      "id": "Earth-2",
+      "manaCost": 2,
+      "effectText": "Gain 10 Shield. On a 6+, gain 1 Mana.",
+      "lines": [
+        {
+          "text": "Gain 10 Shield."
+        },
+        {
+          "threshold": "6+",
+          "text": "Gain 1 Mana."
+        }
+      ],
+      "art": "art/earth-2.png",
+      "artConcept": "A substantial moss-covered stone Shield with a small violet Mana crystal and muted gold energy.",
+      "artMetadata": {
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1262437,
+        "sha256": "0716435baf8ca55d6a0a3f47c47f9532cc64794fae25dce2289062372f97d5b4"
+      }
+    },
+    {
+      "id": "Earth-3",
+      "manaCost": 3,
+      "effectText": "Deal 5 damage. On a 9+, gain 20 Shield.",
+      "lines": [
+        {
+          "text": "Deal 5 damage."
+        },
+        {
+          "threshold": "9+",
+          "text": "Gain 20 Shield."
+        }
+      ],
+      "art": "art/earth-3.png",
+      "artConcept": "A modest forward stone shockwave with a large protective rampart rising behind the Earth wizard.",
+      "artMetadata": {
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1277755,
+        "sha256": "838b21da49735596d6513c4ea0c3a493da094a6e0b8fdb7aeb668e09d97030b1"
+      }
+    },
+    {
+      "id": "Earth-4",
+      "manaCost": 5,
+      "effectText": "Gain 2 Mana. Keep an already-active Golem through your next turn, even below 20 Shield. At the end of that next Earth turn, check Shield normally.",
+      "lines": [
+        {
+          "text": "Gain 2 Mana."
+        },
+        {
+          "text": "Keep an already-active Golem through your next turn, even below 20 Shield."
+        },
+        {
+          "text": "At that next Earth turn’s end, check Shield normally."
+        }
+      ],
+      "clarification": "Extends an active Golem; it does not activate Golem form by itself.",
+      "art": "art/earth-4.png",
+      "artConcept": "The mossy Golem sustained inside a protective earthen ward, with a restrained time motif and returning Mana energy.",
+      "artMetadata": {
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1467397,
+        "sha256": "0bfc237b0b6b6e754c5b915a44d971123df5dd574757de4abcc16a305d8b67c6"
+      }
+    },
+    {
+      "id": "Earth-5",
+      "manaCost": 5,
+      "effectText": "If your Golem is active, deal 15 damage.",
+      "lines": [
+        {
+          "text": "If your Golem is active, deal 15 damage."
+        }
+      ],
+      "art": "art/earth-5.png",
+      "artConcept": "The active Golem delivering a powerful stone-fist strike with angular rock fragments.",
+      "artMetadata": {
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1544303,
+        "sha256": "ff8083a2c0e13b444e6378ec421baab7d09b35471ab4a275fa762f4a44a40092"
+      }
+    }
+  ]
+}
