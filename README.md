@@ -49,6 +49,12 @@ The server stores accounts, legal decks, salted password hashes, and hashed 30-d
 
 For hosted accounts, choose persistent storage and back it up. An ephemeral free instance can lose account data on a redeploy even though the login code works. The Docker image uses `/data/wizzy.sqlite`; mount a named volume at `/data`. The [setup guide](docs/multiplayer.md) includes account setup, persistent-disk settings, and backup instructions.
 
+## Hosting on Netlify
+
+Import `carsahhex-byte/Wizzy` in Netlify and choose production branch **`codex/wizzy-hosting`**. The committed `netlify.toml` selects `npm run build:web`, publish directory `dist`, and Node 24. Open the generated site at `/#title`. Future pushes can deploy automatically without GitHub Pages. Follow the [step-by-step Netlify setup and deck-transfer guide](docs/netlify.md).
+
+Netlify serves the static game; accounts and two-screen play still need the separate HTTPS game server. Add the final Netlify origin to that server’s `ALLOWED_ORIGINS` and enter its address in the app. Fresh Netlify installs do not mistake the static host for the account/room API. Guest decks must be exported/imported when moving to a different website origin.
+
 ## Hosting on GitHub Pages
 
 The connected repository is `carsahhex-byte/Wizzy`. Run `npm run deploy:pages` to test, build the hosted release, and upload only `dist/` to its `gh-pages` branch. The deployment script uses a temporary Git index and preserves the current source branch and working tree. It never force-pushes. To prepare a deployment commit without uploading it, build with `npm run build:web` and run `node scripts/deploy-pages.js`.
@@ -63,7 +69,7 @@ GitHub displays the live site address on that page. The anticipated project URL 
 
 Later `npm run deploy:pages` uploads update the same site. Shared-screen play needs no extra hosting account, image service, custom domain, or application API key. Two-screen play also requires a running room server; its separate deployment is described in [docs/multiplayer.md](docs/multiplayer.md). GitHub account/plan eligibility for Pages is determined by GitHub's settings page.
 
-Hosted CSS and every JavaScript module use filenames hashed from their final content, including rewritten dependency imports. `build-info.json`, the `wizzy-build` HTML metadata, and the build number in game Settings identify the release. Each hosted build also provides `wizzy-<build-id>.html` and records that fresh launch address in `build-info.json`; it opens the same game and shares the same saved decks and duels. A hosted entry checks for a newer release without using a cached manifest. It redirects before interaction, or offers an update button after interaction so a running game is not unexpectedly reloaded. Deployment retains older launch addresses as aliases to the latest release.
+Hosted CSS and every JavaScript module use filenames hashed from their final content, including rewritten dependency imports. `build-info.json`, the `wizzy-build` HTML metadata, and the build number in game Settings identify the release. Each hosted build also provides `wizzy-<build-id>.html` and records that fresh launch address in `build-info.json`; it opens the same game and shares the same saved decks and duels. A hosted entry checks for a newer release without using a cached manifest. It redirects before interaction, or offers an update button after interaction so a running game is not unexpectedly reloaded. The GitHub Pages deployment script retains older launch addresses as aliases to the latest release. On Netlify, share and bookmark the stable base address followed by `/#title`.
 
 For a no-install version, build the project and open **`dist/wizzy.html`** directly in a browser. This single-file version includes all scripts, styles, and the supplied artwork. Hosted saves are shared across game paths on the same origin, including the fresh launch file for each update. Different domains or browser profiles have separate saves; file-based storage support depends on the browser.
 
