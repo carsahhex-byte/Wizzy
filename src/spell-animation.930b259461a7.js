@@ -1,7 +1,7 @@
-import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS, XINEOPH_ANIMATION_SHEETS } from './assets.71c11ad3a2ae.js';
+import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS, CREATURE_ANIMATION_SHEETS } from './assets.7128efb1e1d3.js';
 import { getSpellVisual } from './spell-visuals.80813a9292ad.js';
-import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.bed91ffea623.js';
-import { XINEOPH_TIMING, getXineophMoment } from './xineoph-animation.9179a99f6a2a.js';
+import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.cbea742883ed.js';
+import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from './creature-animation.3c4d156c7b44.js';
 
 const FRAME_MS = 125;
 const ACTOR_END = 2000;
@@ -153,40 +153,43 @@ export function createSpellAnimator({ root, scene } = {}) {
       : getSpellVisual(spellId);
     const job = { key, spellId, casterIndex, kind: visual?.kind || 'none', onImpact, onComplete,
       done: false, impacted: false, casterHidden: false, flash: false };
-    const customXineoph = spellId === 'Fire-11' && kind !== 'enhancement';
+    const creature = kind === 'enhancement' ? null : getCreatureAnimation(spellId);
+    const customCreature = creature !== null;
+    const creatureSheets = customCreature ? CREATURE_ANIMATION_SHEETS[creature.key] : null;
     job.promise = new Promise(resolve => { job.resolve = resolve; });
     current = job;
     hideAfterimages();
     Object.assign(element.dataset, { animationKey: key, spellAnimation: job.kind, kind: job.kind,
       spellId: String(spellId ?? ''), casterIndex: String(casterIndex ?? ''), phase: 'loading', stage: 'loading',
-      customAnimation: customXineoph ? 'xineoph' : '', wingPose: '', lightBlades: 'false',
+      customAnimation: creature?.key || '', creaturePose: '', wingPose: '', tailPose: '', formationPose: '', effectArcs: 'false', lightBlades: 'false',
       chargeFrame: '', chargeSequenceFrame: '' });
     if (!visual || ![0, 1].includes(casterIndex) || reducedMotion()) {
       finish(job, { skipped: true });
       return job.promise;
     }
     const type = visual.element.toLowerCase(), targetType = casterIndex === 0 ? 'water' : 'fire';
-    const sheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.actor : COMBAT_ANIMATION_SHEETS[actorSheets[job.kind]];
+    const sheet = customCreature ? creatureSheets?.actor : COMBAT_ANIMATION_SHEETS[actorSheets[job.kind]];
     const frames = sheet?.animations[type];
-    const chargeSheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.charge : null;
+    const chargeSheet = customCreature ? creatureSheets?.charge : null;
     const chargeFrames = chargeSheet?.animations[type];
-    const projectileSheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.projectile
+    const projectileSheet = customCreature ? creatureSheets?.projectile
       : COMBAT_ANIMATION_SHEETS[job.kind === 'large-cast' ? 'largeProjectiles' : 'basicProjectiles'];
     const projectileFrames = projectileSheet?.animations[type];
-    const hitSheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.impact : SPELL_ANIMATION_SHEETS.basicAttack;
+    const hitSheet = customCreature ? creatureSheets?.impact : SPELL_ANIMATION_SHEETS.basicAttack;
     const hitFrames = hitSheet?.animations.impact;
-    if (frames?.length !== (customXineoph ? 7 : 16)
-      || visual.damaging && (projectileFrames?.length !== (customXineoph ? 3 : 16) || hitFrames?.length !== 4)
-      || customXineoph && chargeFrames?.length !== 8
-      || customXineoph && !['x', 'y'].every(axis => Number.isFinite(sheet?.releaseOffset?.[axis]))) {
+    if (frames?.length !== (customCreature ? 7 : 16)
+      || visual.damaging && (projectileFrames?.length !== (customCreature ? 5 : 16) || hitFrames?.length !== 4)
+      || customCreature && chargeFrames?.length !== 8
+      || customCreature && !['x', 'y'].every(axis => Number.isFinite(sheet?.releaseOffset?.[axis]))) {
       finish(job, { skipped: true });
       return job.promise;
     }
-    const duration = customXineoph ? XINEOPH_TIMING.duration : visual.damaging ? HIT_END : ACTOR_END;
-    const impactAt = customXineoph ? XINEOPH_TIMING.impactAt : visual.damaging ? ARRIVAL : 500;
-    const mirror = (type === 'fire') !== (casterIndex === 0);
+    const duration = customCreature ? CREATURE_TIMING.duration : visual.damaging ? HIT_END : ACTOR_END;
+    const impactAt = customCreature ? CREATURE_TIMING.impactAt : visual.damaging ? ARRIVAL : 500;
+    const mirror = customCreature ? creature.nativeFacing !== (casterIndex === 0 ? 'right' : 'left')
+      : (type === 'fire') !== (casterIndex === 0);
     const point = FEET[casterIndex], targetPoint = { x: FEET[1 - casterIndex].x, y: 370 };
-    const offset = customXineoph ? sheet.releaseOffset : releaseOffsets[job.kind]?.[type] || { x: 0, y: 0 };
+    const offset = customCreature ? sheet.releaseOffset : releaseOffsets[job.kind]?.[type] || { x: 0, y: 0 };
     const launch = job.kind === 'large-cast'
       ? type === 'fire' ? { x: casterIndex === 0 ? 160 : 864, y: -150 } : { x: casterIndex === 1 ? 1150 : -126, y: 360 }
       : { x: point.x + (mirror ? -offset.x : offset.x), y: point.y + offset.y };
@@ -196,9 +199,9 @@ export function createSpellAnimator({ root, scene } = {}) {
     job.targetSprite = job.target?.querySelector('.wizard-sprite');
     Object.assign(element.dataset, { targetIndex: String(1 - casterIndex), element: type, targetElement: targetType,
       frame: String(frames[0]), duration: String(duration), impactAt: String(impactAt), releaseAt: String(RELEASE), lingerMs: '1000',
-      flightAt: String(customXineoph ? XINEOPH_TIMING.flightAt : RELEASE) });
+      flightAt: String(customCreature ? CREATURE_TIMING.flightAt : RELEASE) });
     root.dataset.spellAnimating = 'true';
-    const needed = customXineoph ? [sheet, chargeSheet, projectileSheet, hitSheet]
+    const needed = customCreature ? [sheet, chargeSheet, projectileSheet, hitSheet]
       : visual.damaging ? [sheet, projectileSheet, hitSheet] : [sheet];
     const requestGeneration = generation;
     Promise.all(needed.map(preloadAnimationSheet)).then(loaded => {
@@ -217,10 +220,12 @@ export function createSpellAnimator({ root, scene } = {}) {
         element.dataset.elapsed = String(Math.round(elapsed));
         if (elapsed >= duration) { finish(job); return; }
 
-        if (customXineoph) {
-          const moment = getXineophMoment(elapsed);
+        if (customCreature) {
+          const moment = getCreatureMoment(elapsed, { pose: creature.pose });
           Object.assign(element.dataset, { phase: moment.phase, stage: moment.stage,
-            wingPose: moment.wingPose ? String(moment.wingPose) : '', lightBlades: String(moment.lightBlades),
+            creaturePose: moment.creaturePose ? String(moment.creaturePose) : '',
+            wingPose: moment.wingPose ? String(moment.wingPose) : '', tailPose: moment.tailPose ? String(moment.tailPose) : '',
+            formationPose: moment.formationPose ? String(moment.formationPose) : '', effectArcs: String(moment.effectArcs), lightBlades: String(moment.lightBlades),
             chargeFrame: moment.chargeFrame === undefined ? '' : String(moment.chargeFrame),
             chargeSequenceFrame: moment.chargeSequenceFrame === undefined ? '' : String(moment.chargeSequenceFrame) });
           if (moment.actorFrame !== null) {
@@ -244,8 +249,8 @@ export function createSpellAnimator({ root, scene } = {}) {
               Object.assign(projectile.dataset, { element: type, sequenceFrame: String(moment.sequenceFrame), phase: 'flight',
                 contactPlane: 'leading-edge', contactX: String(position.x), contactY: String(position.y) });
               for (const { node, lagMs, opacity } of afterimages) {
-                const sourceElapsed = Math.max(XINEOPH_TIMING.flightAt, elapsed - lagMs);
-                const past = getXineophMoment(sourceElapsed);
+                const sourceElapsed = Math.max(CREATURE_TIMING.flightAt, elapsed - lagMs);
+                const past = getCreatureMoment(sourceElapsed, { pose: creature.pose });
                 const pastPoint = curve(launch, control, targetPoint, past.progress);
                 const pastFrame = projectileFrames[past.sequenceFrame % projectileFrames.length];
                 paintAnimationFrame(node, projectileSheet, pastFrame, pastPoint, { mirror });

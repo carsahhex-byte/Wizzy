@@ -1,6 +1,6 @@
 {
-  "id": "4ffc5c2ac2ff",
-  "launch": "./wizzy-4ffc5c2ac2ff.html",
+  "id": "46476fffc068",
+  "launch": "./wizzy-46476fffc068.html",
   "distribution": "game-only",
   "layout": "portrait-1024x1536",
   "screens": [
@@ -14,10 +14,10 @@
     "account",
     "battle"
   ],
-  "entry": "./src/main.8880e1502c52.js",
-  "stylesheet": "./src/style.67de775606a3.css",
+  "entry": "./src/main.417557fb9f0a.js",
+  "stylesheet": "./src/style.cf4778a09a7e.css",
   "stylesheets": [
-    "./src/style.67de775606a3.css",
+    "./src/style.cf4778a09a7e.css",
     "./src/hub.4ca4ce5ba2a0.css",
     "./src/multiplayer.d9e93cc388fa.css",
     "./src/accounts.5e8dfb99140d.css"

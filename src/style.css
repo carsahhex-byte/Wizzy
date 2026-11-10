@@ -57,7 +57,7 @@ button, summary { -webkit-user-select: none; user-select: none; }
 
 /* The wizards' feet share the forest's grassy standing line at y450. */
 .battle-scene { position: absolute; inset: 0 0 auto; height: 470px; overflow: hidden; pointer-events: none; }
-.game-title { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); text-align: center; z-index: 3; white-space: nowrap; filter: drop-shadow(0 4px #15201d); }
+.game-title { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); text-align: center; z-index: 5; white-space: nowrap; filter: drop-shadow(0 4px #15201d); }
 .title-stars { font-size: 22px; color: #b4f1ff; letter-spacing: 18px; margin-left: 18px; text-shadow: 2px 2px #2b2740; }
 .game-title h1 { font: 900 108px/.98 Georgia, serif; margin: 0; color: #ffda64; -webkit-text-stroke: 1px #4d1f0c; text-shadow: 1px -2px #fff1a2, 3px 4px #be5a11, 5px 7px #182220; letter-spacing: -5px; }
 .game-title p { font: 900 34px 'Trebuchet MS', sans-serif; margin: 10px 0 0; color: #fff0b7; text-shadow: 3px 3px #151629, -2px -2px #151629; letter-spacing: 1px; }

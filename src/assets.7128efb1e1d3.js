@@ -1,8 +1,8 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { resolveAssetUrl } from './asset-url.266ebe6cb2ea.js';
+import { resolveAssetUrl } from './asset-url.aaaab2f6f0de.js';
 import { SPELL_CATALOG } from './spells.9366a66158f4.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.ca3ed969ce73.js';
-import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.c13896e8b342.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.71b3c7dc2eb6.js';
+import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.2204d37f3d5a.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -64,6 +64,8 @@ export const ASSET_FILES = Object.freeze({
   xineophCardArt: 'Wizzy Xineoph Phoenix Card.png',
   xineophAnimation: 'Wizzy Xineoph Phoenix Animation.png',
   xineophCharge: 'Wizzy Xineoph Charge Pulse.png',
+  phoenixFireAnimation: 'Wizzy Phoenix Fire Animation.png',
+  pacificDolphinAnimation: 'Wizzy Pacific Dolphin Animation.png',
 });
 
 /** Original overworld wizards: fixed logical cells, source PNG left intact. */
@@ -342,7 +344,7 @@ function xineophSheet({ animations, regions, anchors, clips = {}, asset = 'xineo
   });
 }
 
-export const XINEOPH_ANIMATION_SHEETS = Object.freeze({
+export const LEGACY_XINEOPH_ANIMATION_SHEETS = Object.freeze({
   // Measured charging feet stay fixed while eight distinct orb/spark poses pulse.
   // The 178px hat-to-sole body maps to the same 144px battle wizard as the actor.
   charge: xineophSheet({
@@ -380,6 +382,79 @@ export const XINEOPH_ANIMATION_SHEETS = Object.freeze({
     anchors: { default: [236,173] },
   }),
 });
+
+/** Native-facing creature layers: the first fifteen cells contain one caster;
+ * the five flight and four impact cells contain effects only. The previous
+ * Xineoph sheets remain available above, with every original bitmap unchanged.
+ */
+function creatureAnimation({ asset, element, nativeFacing, sourceBodyHeight,
+  feet, lastNose, flightRects, flightNoses, impactCore }) {
+  const displayScale = 144 / sourceBodyHeight;
+  const common = { asset, sourceWidth: 1024, sourceHeight: 1536, columns: 4, rows: 6, nativeFacing };
+  const actorRegions = { default: [0,0,256,256] };
+  const actorAnchors = { default: feet[0] };
+  feet.forEach((point, frame) => { actorAnchors[frame] = point; });
+  const firstRect = flightRects[15];
+  const flightAnchors = { default: [nativeFacing === 'right' ? firstRect[0]+firstRect[2] : firstRect[0], flightNoses[15][1]] };
+  for (const frame of [15,16,17,18,19]) {
+    const [x, , w] = flightRects[frame];
+    flightAnchors[frame] = [nativeFacing === 'right' ? x+w : x, flightNoses[frame][1]];
+  }
+  const firstContact = flightAnchors[15][0];
+  // Align the same leading plane on the final pose and first flight frame.
+  // The mouth/nose therefore stays continuous even when the FX canvas changes.
+  const releaseOffset = Object.freeze({
+    x: (lastNose[0] + firstContact - flightNoses[15][0] - feet[14][0]) * displayScale,
+    y: (lastNose[1] - feet[14][1]) * displayScale,
+  });
+  return Object.freeze({
+    nativeFacing, element,
+    actor: xineophSheet({ ...common, sourceBodyHeight, targetBodyHeight: 144, displayScale,
+      animations: { [element]: [0,1,10,11,12,13,14] },
+      regions: actorRegions, anchors: actorAnchors, releaseOffset }),
+    charge: xineophSheet({ ...common, sourceBodyHeight, targetBodyHeight: 144, displayScale,
+      animations: { [element]: [2,3,4,5,6,7,8,9] },
+      regions: actorRegions, anchors: actorAnchors }),
+    projectile: xineophSheet({ ...common, displayScale, contactPlane: 'leading-edge',
+      animations: { [element]: [15,16,17,18,19] },
+      regions: { default: flightRects[15], ...flightRects }, anchors: flightAnchors }),
+    // Both burst/splash layers fit around the defender rather than inheriting
+    // the larger caster scale; the final source cell is intentionally empty.
+    impact: xineophSheet({ ...common, displayScale: .8,
+      animations: { impact: [20,21,22,23] },
+      regions: { default: [0,0,256,256] }, anchors: { default: impactCore } }),
+  });
+}
+
+export const CREATURE_ANIMATION_SHEETS = Object.freeze({
+  xineoph: creatureAnimation({
+    asset: 'phoenixFireAnimation', element: 'fire', nativeFacing: 'right', sourceBodyHeight: 104,
+    feet: [[52,236],[51.5,236],[51.5,236],[51.5,236],[52,236],
+      [51.5,236],[51.5,236],[51.5,236],[52,236],[51.5,236],
+      [51.5,236],[51.5,236],[52,236],[51.5,236],[51.5,236]],
+    lastNose: [161,89.5],
+    flightRects: { 15: [28,38,210,143], 16: [21,32,213,147],
+      17: [23,36,206,141], 18: [27,46,203,130], 19: [34,44,189,137] },
+    flightNoses: { 15: [167,114.5], 16: [165,111.6], 17: [165,113],
+      18: [161,116.33], 19: [151,121] },
+    impactCore: [163.21,163.68],
+  }),
+  pacific: creatureAnimation({
+    asset: 'pacificDolphinAnimation', element: 'water', nativeFacing: 'left', sourceBodyHeight: 105,
+    feet: [[200,237],[199.5,237],[199.5,237],[199.5,237],[199.5,237],
+      [199.5,237],[199.5,237],[200,237],[200,237],[199.5,237],
+      [200,237],[199.5,237],[199.5,237],[199.5,237],[199.5,237]],
+    lastNose: [52,120.5],
+    flightRects: { 15: [37,36,199,148], 16: [24,28,209,153],
+      17: [17,32,219,153], 18: [22,45,214,131], 19: [25,43,208,142] },
+    flightNoses: { 15: [50,130], 16: [43,123.69], 17: [44,130.38],
+      18: [50,131.78], 19: [49,132.78] },
+    impactCore: [71.94,151.65],
+  }),
+});
+
+export const XINEOPH_ANIMATION_SHEETS = CREATURE_ANIMATION_SHEETS.xineoph;
+export const PACIFIC_ANIMATION_SHEETS = CREATURE_ANIMATION_SHEETS.pacific;
 
 // Resolve from the document so both a domain root and a project subpath work.
 // Standalone builds provide these same originals once per asset.
