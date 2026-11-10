@@ -57,7 +57,7 @@ test('a copied Spellbook 2 Fire-11 keeps its live cost and effect through a save
   const browser = memory(), saves = createDuelStorage(browser);
   let state = rollInitiative(rollInitiative(createGame(11, decks(SPELLBOOK_2)), 0, () => .9), 1, () => 0);
   const card = state.players[0].hand[0];
-  assert.deepEqual([card.name, card.manaCost, card.effectText], ['Fire-11', 2, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.']);
+  assert.deepEqual([card.name, card.manaCost, card.effectText], ['Xineoph', 2, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.']);
   state = castSelected(selectCard(state, card.id));
   assert.equal(state.players[0].mana, 1);
   assert.equal(saves.save(state), true);

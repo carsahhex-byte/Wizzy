@@ -122,7 +122,7 @@ test('the current collection completely replaces old IDs and has no starter comp
   assert.deepEqual([MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS], [100, 10, 30, 5, 5]);
   assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Fire').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,2,4,6,8,0]);
   assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Water').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,3,6,8]);
-  assert.equal(SOURCE_INFO.playableSpellCount, 34);
+  assert.equal(SOURCE_INFO.playableSpellCount, 13);
   assert.deepEqual(SOURCE_INFO.additionalSpells, ['Fire-0', 'Fire-15', 'Water-0']);
   assert.deepEqual([SOURCE_INFO.spellbook.librarySpellCount, SOURCE_INFO.spellbook.importedSpellCount], [31, 31]);
 });
@@ -416,7 +416,7 @@ test('Fire-0 has exact printed text and adds only one capped Ember without dice 
 test('Fire-15 always grants one capped Ember and grants capped Mana only on a final seven or higher', () => {
   assert.deepEqual(SPELL_RULES['Fire-15'], { requiresRoll: true, emberSpend: 'none' });
   assert.deepEqual([SPELL_CATALOG['Fire-15'].name, SPELL_CATALOG['Fire-15'].manaCost, SPELL_CATALOG['Fire-15'].effectText],
-    ['Fire-15', 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.']);
+    ['Blaze', 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.']);
   for (const rollTotal of [-2, 6, 7, 12]) for (const element of [0, 4, 5]) for (const mana of [0, 9, 10]) {
     const state = { players: [player('fire', { element, mana, hp: 60, shield: 12, loaded: 4, loadedPending: 2, enhancement: 30, auraTurns: 2 }), player('water', { shield: 12 })] };
     const before = structuredClone(state), events = applySpellEffect(state, { casterIndex: 0, spellId: 'Fire-15', rollTotal });
@@ -437,7 +437,7 @@ test('Fire-15 always grants one capped Ember and grants capped Mana only on a fi
 test('Water-0 resolution adds ordinary plus conditional Flow, capped at five, without repeating on-cast Mana', () => {
   const spell = SPELL_CATALOG['Water-0'];
   assert.deepEqual([spell.name, spell.element, spell.category, spell.manaCost, spell.effectText, spell.art, spell.purpose],
-    ['Water-0', 'Water', 'Elemental', 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.', 'waterCard', 'Resource preparation']);
+    ['Swell', 'Water', 'Elemental', 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.', 'waterCard', 'Resource preparation']);
   assert.deepEqual(SPELL_RULES['Water-0'], { requiresRoll: true, emberSpend: 'none' });
   for (const rollTotal of [-2, 6, 7, 12]) for (const mana of [0, 1, 9, 10]) for (const element of [0, 3, 4, 5]) {
     const state = { players: [player('fire', { mana: 5, shield: 12 }),

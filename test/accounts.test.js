@@ -19,7 +19,7 @@ const registration = (username = 'seattle_wizzy') => ({ username, password: 'Wiz
 
 async function service(t, options = {}) {
   const errors = [];
-  const server = createMultiplayerServer({ rateLimit: false, onError: error => errors.push(error.message), ...options });
+  const server = createMultiplayerServer({ allowArchivedSpellbook: true, rateLimit: false, onError: error => errors.push(error.message), ...options });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   const stop = async () => { if (server.listening) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); } };
   t.after(async () => { await stop(); assert.deepEqual(errors, [], 'no unexpected server failures'); });
@@ -310,14 +310,14 @@ test('both spellbooks save independently across legacy updates, logins and SQLit
   assert.deepEqual(created.account.decks, { fire: normalizeDeck(input.decks.fire), water: normalizeDeck(input.decks.water) });
   assert.deepEqual(created.account.spellbook2Decks, { fire: normalizeDeck(input.spellbook2Decks.fire), water: normalizeDeck(input.spellbook2Decks.water) });
   const second = testingDecks(); second.fire.entries = [{ spellId: 'Fire-15', quantity: 8 }];
-  const saved = await first.request('/api/accounts/me', { method: 'PUT', token: created.token, body: { profile, decks: input.decks, spellbook2Decks: second, revision: 0 } });
+  const saved = await first.request('/api/accounts/me', { method: 'PUT', token: created.token, body: { activeCatalogVersion: 'named-spellbook-v1', profile, decks: input.decks, spellbook2Decks: second, revision: 0 } });
   assert.equal(saved.status, 200, saved.data.error);
   const legacySave = await first.request('/api/accounts/me', { method: 'PUT', token: created.token, body: { profile: { ...profile, name: 'Legacy Edit' }, decks: input.decks, revision: 1 } });
   assert.equal(legacySave.status, 200, legacySave.data.error);
   assert.deepEqual(legacySave.data.account.spellbook2Decks, { fire: normalizeDeck(second.fire), water: normalizeDeck(second.water) }, 'an older client omitting Spellbook 2 cannot erase it');
   assert.deepEqual((await first.login('two_books')).account, legacySave.data.account);
   const invalid = testingDecks(); invalid.fire.entries = [{ spellId: 'Fire-1', quantity: 1 }];
-  const rejected = await first.request('/api/accounts/me', { method: 'PUT', token: created.token, body: { profile, decks: input.decks, spellbook2Decks: invalid, revision: 2 } });
+  const rejected = await first.request('/api/accounts/me', { method: 'PUT', token: created.token, body: { activeCatalogVersion: 'named-spellbook-v1', profile, decks: input.decks, spellbook2Decks: invalid, revision: 2 } });
   assert.equal(rejected.status, 400);
   assert.deepEqual((await first.request('/api/accounts/me', { token: created.token })).data.account, legacySave.data.account);
   const misplaced = await first.request('/api/accounts/me', { method: 'PUT', token: created.token, body: { profile, decks: second, revision: 2 } });
@@ -363,4 +363,61 @@ test('authenticated Spellbook 2 battles use the selected account decks and rejec
   const own = await api.request(`/api/rooms/${created.data.code}`, { token: created.data.token });
   assert.deepEqual(own.data.state.players[0].deckDefinition, normalizeDeck(testingDecks().fire));
   assert.equal(own.data.state.players[1].deckDefinition, null, 'book metadata does not reveal the opponent deck');
+});
+
+
+test('eligible legacy decks promote safely and production account rooms default to the named book', async t => {
+  const api = await service(t, { allowArchivedSpellbook: false });
+  const input = registration('named_default');
+  input.decks = { fire: { element: 'fire', entries: [{ spellId: 'Fire-11', quantity: 3 }] }, water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 3 }] } };
+  const created = await api.register(input);
+  assert.deepEqual(created.account.decks, input.decks);
+  assert.equal(created.account.spellbook2Decks.fire.spellbookId, 'spellbook-2');
+  assert.deepEqual(created.account.spellbook2Decks.fire.entries, input.decks.fire.entries);
+  const room = await api.request('/api/rooms', { method: 'POST', token: created.token, body: { element: 'fire' } });
+  assert.equal(room.status, 201, room.data.error); assert.equal(room.data.spellbookId, 'spellbook-2');
+  const archived = await api.request('/api/rooms', { method: 'POST', token: created.token, body: { element: 'fire', spellbookId: 'spellbook-1' } });
+  assert.equal(archived.status, 400); assert.equal(archived.data.code, 'archived_spellbook');
+});
+
+test('old active Fire-5 account decks become Charred Blade with original data archived on save', async t => {
+  const folder = await mkdtemp(path.join(tmpdir(), 'wizzy-named-account-'));
+  t.after(() => rm(folder, { recursive: true, force: true }));
+  const dbPath = path.join(folder, 'accounts.sqlite');
+  const first = await service(t, { accountDbPath: dbPath });
+  const created = await first.register({ ...registration('named_migration'), spellbook2Decks: testingDecks() });
+  await first.stop();
+  const db = new DatabaseSync(dbPath), previous = testingDecks();
+  previous.fire.entries = [{ spellId: 'Fire-5', quantity: 3 }];
+  db.prepare('UPDATE accounts SET spellbook2_decks_json = ? WHERE id = ?').run(JSON.stringify(previous), created.account.id);
+  db.close();
+  const restarted = await service(t, { accountDbPath: dbPath });
+  const read = await restarted.request('/api/accounts/me', { token: created.token });
+  assert.equal(read.status, 200);
+  assert.deepEqual(read.data.account.spellbook2Decks.fire.entries, [{ spellId: 'Fire-6', quantity: 3 }]);
+  assert.match(read.data.account.activeMigrationNotice, /Charred Blade/);
+  assert.deepEqual(read.data.account.decks, created.account.decks);
+  const saved = await restarted.request('/api/accounts/me', { method: 'PUT', token: created.token, body: { activeCatalogVersion: 'named-spellbook-v1', profile, decks: created.account.decks, spellbook2Decks: read.data.account.spellbook2Decks, revision: read.data.account.revision } });
+  assert.equal(saved.status, 200, saved.data.error);
+  await restarted.stop();
+  const inspect = new DatabaseSync(dbPath);
+  const archive = inspect.prepare("SELECT decks_json FROM account_deck_archives WHERE account_id = ? AND spellbook_version = 'named-spellbook-v1:original'").get(created.account.id);
+  assert.deepEqual(JSON.parse(archive.decks_json).spellbook2Decks, previous);
+  inspect.close();
+});
+
+
+test('cached two-book clients cannot erase named cloud decks with an unmarked empty payload', async t => {
+  const api = await service(t);
+  const created = await api.register({ ...registration('named_cloud_guard'), spellbook2Decks: testingDecks() });
+  const empty = Object.fromEntries(['fire', 'water'].map(element => [element, { element, spellbookId: 'spellbook-2', entries: [] }]));
+  const body = { profile, decks: created.account.decks, spellbook2Decks: empty, revision: created.account.revision };
+  const stale = await api.request('/api/accounts/me', { method: 'PUT', token: created.token, body });
+  assert.equal(stale.status, 409); assert.equal(stale.data.code, 'catalog_update_required');
+  const kept = await api.request('/api/accounts/me', { token: created.token });
+  assert.deepEqual(kept.data.account.spellbook2Decks, created.account.spellbook2Decks);
+  assert.equal(kept.data.account.revision, created.account.revision);
+  const explicit = await api.request('/api/accounts/me', { method: 'PUT', token: created.token, body: { ...body, activeCatalogVersion: 'named-spellbook-v1' } });
+  assert.equal(explicit.status, 200, explicit.data.error);
+  assert.deepEqual(explicit.data.account.spellbook2Decks, empty);
 });

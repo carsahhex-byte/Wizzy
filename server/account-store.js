@@ -3,7 +3,7 @@ import { randomBytes, randomUUID, createHash, scrypt, scryptSync, timingSafeEqua
 import { mkdirSync, chmodSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { normalizeDeckSlot } from '../src/decks.js';
+import { normalizeDeckSlot, migrateToActiveDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
 import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook } from '../src/spellbooks.js';
 
@@ -131,10 +131,25 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
     const archived = db.prepare('SELECT 1 FROM account_deck_archives WHERE account_id = ? LIMIT 1').get(row.id);
     const decks = JSON.parse(row.decks_json);
     const second = JSON.parse(row.spellbook2_decks_json || '{}');
-    const spellbook2Decks = Object.keys(second).length ? savedDeckPair(second, SPELLBOOK_2) : emptySpellbookTwoDecks();
+    const hasSecond = Object.keys(second).length > 0;
+    const messages = new Set();
+    const spellbook2Decks = Object.fromEntries(['fire', 'water'].map(element => {
+      const source = hasSecond ? second[element] : decks[element];
+      try {
+        const result = migrateToActiveDeck(source);
+        if (result.removed.length) {
+          messages.add('Your original decks remain backed up. Build and save current decks; retired cards have not been silently removed from a saved deck.');
+          return [element, emptySpellbookTwoDecks()[element]];
+        }
+        if (result.replacements.length) messages.add('Fire-5 was replaced with Charred Blade; its quantity was kept. Review its 5-Mana cost before battling.');
+        return [element, result.deck];
+      } catch { return [element, emptySpellbookTwoDecks()[element]]; }
+    }));
+    const activeMigrationNotice = [...messages].join(' ');
     return { id: row.id, username: row.username, profile: { name: row.name, element: row.element }, decks, spellbook2Decks, revision: row.revision,
-      spellbookVersion: SPELLBOOK_VERSION,
-      ...(archived && Object.values(decks).some(deck => deck.entries.length === 0) ? { migrationMessage: 'The spellbook has changed. Previous decks were archived; build and save new decks of 1–30 slabs.' } : {}) };
+      spellbookVersion: SPELLBOOK_VERSION, activeCatalogVersion: 'named-spellbook-v1',
+      ...(activeMigrationNotice ? { activeMigrationNotice, migrationMessage: activeMigrationNotice }
+        : archived && Object.values(decks).some(deck => deck.entries.length === 0) ? { migrationMessage: 'The spellbook has changed. Previous decks were archived; build and save new decks of 1–30 slabs.' } : {}) };
   }
   function rowForToken(token) {
     if (typeof token !== 'string' || !TOKEN.test(token)) fail(401, 'account_unauthorized', 'Log in to your Wizzy account again.');
@@ -160,7 +175,10 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
       const id = randomUUID();
       try {
         db.prepare('INSERT INTO accounts (id, username, password_salt, password_hash, name, element, decks_json, spellbook_version, spellbook2_decks_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .run(id, loginName, salt, hash.toString('hex'), data.profile.name, data.profile.element, JSON.stringify(data.decks), SPELLBOOK_VERSION, JSON.stringify(data.spellbook2Decks || emptySpellbookTwoDecks()), now());
+          .run(id, loginName, salt, hash.toString('hex'), data.profile.name, data.profile.element, JSON.stringify(data.decks), SPELLBOOK_VERSION, JSON.stringify(data.spellbook2Decks || Object.fromEntries(['fire', 'water'].map(element => {
+            const promoted = migrateToActiveDeck(data.decks[element]);
+            return [element, promoted.removed.length ? emptySpellbookTwoDecks()[element] : promoted.deck];
+          }))), now());
       } catch (error) {
         if (db.prepare('SELECT id FROM accounts WHERE username = ?').get(loginName)) fail(409, 'username_taken', 'That username is already taken.');
         throw error;
@@ -180,6 +198,19 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
     update(token, input) {
       const row = rowForToken(token), data = savedData(input);
       if (!Number.isSafeInteger(input?.revision) || input.revision !== row.revision) fail(409, 'account_changed', 'Your saved decks changed on another screen. Load the latest account before saving.', publicAccount(row));
+      if (data.spellbook2Decks && input.activeCatalogVersion !== 'named-spellbook-v1') {
+        const current = publicAccount(row);
+        if (Object.values(current.spellbook2Decks).some(deck => deck.entries.length)
+          && JSON.stringify(data.spellbook2Decks) !== JSON.stringify(current.spellbook2Decks)) {
+          fail(409, 'catalog_update_required', 'Update Wizzy before replacing current spellbook decks. Your named decks have been preserved.', current);
+        }
+      }
+      if (data.spellbook2Decks && row.spellbook2_decks_json !== JSON.stringify(data.spellbook2Decks)) {
+        const prior = JSON.parse(row.spellbook2_decks_json || '{}');
+        if (Object.values(prior).some(deck => deck?.entries?.some(entry => entry.spellId === 'Fire-5'))) {
+          db.prepare('INSERT INTO account_deck_archives (account_id, spellbook_version, decks_json, archived_at) VALUES (?, ?, ?, ?)').run(row.id, 'named-spellbook-v1:original', JSON.stringify({ decks: JSON.parse(row.decks_json), spellbook2Decks: prior }), now());
+        }
+      }
       const result = db.prepare('UPDATE accounts SET name = ?, element = ?, decks_json = ?, spellbook2_decks_json = ?, revision = revision + 1 WHERE id = ? AND revision = ?')
         .run(data.profile.name, data.profile.element, JSON.stringify(data.decks), data.spellbook2Decks ? JSON.stringify(data.spellbook2Decks) : row.spellbook2_decks_json, row.id, input.revision);
       if (result.changes !== 1) fail(409, 'account_changed', 'Your account changed. Load the latest save before trying again.', publicAccount(db.prepare('SELECT * FROM accounts WHERE id = ?').get(row.id)));

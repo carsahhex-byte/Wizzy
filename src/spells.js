@@ -4,9 +4,24 @@ export const MIN_DECK_SIZE = 1;
 // Additive cards retain this compatibility family so existing decks stay playable.
 export const SPELLBOOK_VERSION = 'nov4-v2.1';
 
+/** Stable IDs retain deck and artwork identity while the active book gets names. */
+export const SPELL_DISPLAY_NAMES = Object.freeze({
+  'Fire-2': 'Heatbox',
+  'Fire-15': 'Blaze',
+  'Fire-6': 'Charred Blade',
+  'Fire-11': 'Xineoph',
+  'Fire-14': 'Sunsetter',
+  'Water-2': 'Sea bolt',
+  'Water-0': 'Swell',
+  'Water-12': 'Coral Crash',
+  'Water-9': 'Pacific',
+  'Water-14': "Poseidon's Rift",
+});
+export const LEGACY_SPELL_NAMES = Object.freeze(Object.fromEntries(Object.keys(SPELL_DISPLAY_NAMES).map(id => [id, id])));
+
 const artwork = Object.freeze({ Fire: 'fireCard', Water: 'waterCard', Fate: 'fateCard' });
 const spell = (id, element, manaCost, effectText, purpose) => Object.freeze({
-  id, spellId: id, name: id, element, category: 'Elemental', type: element,
+  id, spellId: id, name: SPELL_DISPLAY_NAMES[id] || id, element, category: 'Elemental', type: element,
   slabType: element, manaCost, effectText, art: artwork[element], purpose,
 });
 const fire = [
@@ -63,7 +78,8 @@ export const SPELL_CATALOG = Object.freeze(Object.fromEntries([
 export const DECK_LISTS = Object.freeze({ fire: Object.freeze([]), water: Object.freeze([]) });
 export const SOURCE_INFO = Object.freeze({
   additionalSpells: Object.freeze(['Fire-0', 'Fire-15', 'Water-0']),
-  playableSpellCount: 34,
+  playableSpellCount: 13,
+  legacyCatalogSpellCount: 34,
   spellbook: Object.freeze({
     file: 'Wizzy Master Spellbook Nov4.pdf', title: 'Wizzy / Master Spellbook V2.1',
     version: SPELLBOOK_VERSION, revised: '2026-11-04', librarySpellCount: 31,

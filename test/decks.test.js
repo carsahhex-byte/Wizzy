@@ -1,20 +1,86 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SPELL_CATALOG, SPELLBOOK_VERSION, DECK_SIZE, MIN_DECK_SIZE } from '../src/spells.js';
+import { SPELL_CATALOG, SPELLBOOK_VERSION, DECK_SIZE, MIN_DECK_SIZE, SPELL_DISPLAY_NAMES, LEGACY_SPELL_NAMES } from '../src/spells.js';
 import {
   SPELLBOOK_1, SPELLBOOK_2, SPELLBOOKS, SPELLBOOK_ROLE_PAIRS,
-  getDeckSpellbook, getSpellbookSpells, isSpellbookId,
+  getDeckSpellbook, getSpellbookSpells, isSpellbookId, ACTIVE_SPELLBOOK_ID, ACTIVE_SPELL_IDS, getActiveSpells,
 } from '../src/spellbooks.js';
 import {
   MAX_DECK_FILE_BYTES, createStarterDeck, getEligibleSpells, getDeckValidation,
   validateDeck, normalizeDeck, getDeckCount, setDeckQuantity, validateDeckSlot,
-  normalizeDeckSlot, serializeDeck, parseDeckList,
+  normalizeDeckSlot, serializeDeck, parseDeckList, migrateToActiveDeck, parseDeckListForActive,
 } from '../src/decks.js';
 
 const legal = element => ({ element, entries: getEligibleSpells(element).slice(0, 10).map(card => ({ spellId: card.spellId, quantity: 3 })) });
 
+test('the sole active book has the requested names, stable IDs and original costs, effects and art', () => {
+  const expected = {
+    'Fire-2': ['Heatbox', 1, 'Gain 1 Ember. On a 7+, gain 2 Embers instead. On a 10+, gain 3 instead.'],
+    'Fire-15': ['Blaze', 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
+    'Fire-6': ['Charred Blade', 5, 'Deal 22 damage. On a 7+, deal 28 instead. On a 10+, deal 36 instead.'],
+    'Fire-11': ['Xineoph', 2, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.'],
+    'Fire-14': ['Sunsetter', 8, 'Spend all Embers. Deal 20 damage plus 7 per Ember spent. On an 8+, deal 9 per Ember instead.'],
+    'Water-2': ['Sea bolt', 1, 'Deal 4 + 2 × Flow damage. On an 8+, gain 1 additional Flow after resolution.'],
+    'Water-0': ['Swell', 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.'],
+    'Water-12': ['Coral Crash', 3, 'Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.'],
+    'Water-9': ['Pacific', 2, 'Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On a 10+, deal 5 additional damage.'],
+    'Water-14': ["Poseidon's Rift", 8, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
+  };
+  assert.equal(ACTIVE_SPELLBOOK_ID, SPELLBOOK_2);
+  assert.equal(getActiveSpells().length, 13);
+  assert.deepEqual(ACTIVE_SPELL_IDS.filter(id => !id.startsWith('FAT-')), Object.keys(expected));
+  assert.equal(ACTIVE_SPELL_IDS.includes('Fire-5'), false);
+  assert.equal(getActiveSpells().filter(card => card.category === 'Fate').length, 3);
+  for (const [id, values] of Object.entries(expected)) {
+    const card = SPELL_CATALOG[id];
+    assert.deepEqual([card.name, card.manaCost, card.effectText], values);
+    assert.equal(SPELL_DISPLAY_NAMES[id], values[0]); assert.equal(LEGACY_SPELL_NAMES[id], id);
+    assert.equal(card.id, id); assert.equal(card.spellId, id);
+    assert.equal(card.art, id.startsWith('Fire-') ? 'fireCard' : 'waterCard');
+  }
+  assert.deepEqual(getActiveSpells().filter(card => card.category === 'Fate').map(card => card.name), ['Fortune', 'Misfortune', 'Twist']);
+});
+
+test('active-book migration merges Charred Blade replacement quantities and exposes retired cards for review', () => {
+  const old = { element: 'fire', spellbookId: SPELLBOOK_2, entries: [
+    { spellId: 'Fire-5', quantity: 2 }, { spellId: 'Fire-6', quantity: 3 }, { spellId: 'FAT-001', quantity: 1 },
+  ] }, before = structuredClone(old);
+  const moved = migrateToActiveDeck(old);
+  assert.equal(moved.deck.spellbookId, SPELLBOOK_2);
+  assert.equal(getDeckCount(moved.deck, 'Fire-6'), 5); assert.equal(getDeckValidation(moved.deck).total, 6);
+  assert.deepEqual(moved.replacements, [{ from: 'Fire-5', to: 'Fire-6', quantity: 2 }]);
+  assert.deepEqual(moved.removed, []); assert.equal(moved.reviewRequired, true); assert.deepEqual(old, before);
+  const current = migrateToActiveDeck(moved.deck);
+  assert.deepEqual(current.deck, moved.deck); assert.equal(current.changed, false); assert.equal(current.reviewRequired, false);
+  const original = { element: 'fire', entries: [{ spellId: 'Fire-1', quantity: 4 }, { spellId: 'Fire-2', quantity: 2 }] };
+  const review = migrateToActiveDeck(original);
+  assert.deepEqual(review.removed, [{ spellId: 'Fire-1', quantity: 4 }]);
+  assert.deepEqual(review.deck.entries, [{ spellId: 'Fire-2', quantity: 2 }]); assert.equal(review.reviewRequired, true);
+  assert.equal(original.entries.length, 2, 'original archive data is never modified');
+  const allRetired = migrateToActiveDeck({ element: 'fire', entries: [{ spellId: 'Fire-0', quantity: 2 }] });
+  assert.equal(validateDeck(allRetired.deck), false); assert.equal(validateDeckSlot(allRetired.deck), true); assert.equal(allRetired.removed.length, 1);
+  assert.throws(() => migrateToActiveDeck({ ...old, spellbookId: 'unknown' }));
+  assert.throws(() => migrateToActiveDeck({ element: 'fire', entries: [{ spellId: 'Water-0', quantity: 1 }] }));
+});
+
+test('active imports review old test files and keep names outside portable deck identities', () => {
+  const old = { format: 'wizzy-deck', version: 1, spellbook: SPELLBOOK_VERSION, spellbookId: SPELLBOOK_2,
+    element: 'fire', entries: [{ spellId: 'Fire-5', quantity: 3 }] };
+  assert.throws(() => parseDeckList(JSON.stringify(old)), /not available/);
+  const report = parseDeckListForActive(JSON.stringify(old));
+  assert.equal(report.reviewRequired, true); assert.deepEqual(report.deck.entries, [{ spellId: 'Fire-6', quantity: 3 }]);
+  const encoded = serializeDeck(report.deck);
+  assert.doesNotMatch(encoded, /Charred Blade/); assert.deepEqual(parseDeckListForActive(encoded).deck, report.deck);
+  assert.equal(parseDeckListForActive(encoded).reviewRequired, false);
+  const oldOne = { ...old, spellbookId: SPELLBOOK_1, element: 'water', entries: [{ spellId: 'Water-0', quantity: 4 }] };
+  const promoted = parseDeckListForActive(JSON.stringify(oldOne));
+  assert.equal(promoted.changed, true); assert.equal(promoted.reviewRequired, false); assert.equal(getDeckCount(promoted.deck, 'Water-0'), 4);
+  assert.throws(() => parseDeckListForActive(JSON.stringify({ ...old, entries: [] })), /playable/);
+  assert.throws(() => parseDeckListForActive(JSON.stringify({ ...old, entries: [{ spellId: 'Fire-5', quantity: 31 }] })), /1–30/);
+});
+
 test('Spellbook 2 contains exactly the paired test spells and Fate with unchanged definitions', () => {
-  const expected = ['Fire-2', 'Fire-15', 'Fire-5', 'Fire-11', 'Fire-14',
+  const expected = ['Fire-2', 'Fire-15', 'Fire-6', 'Fire-11', 'Fire-14',
     'Water-2', 'Water-0', 'Water-12', 'Water-9', 'Water-14', 'FAT-001', 'FAT-002', 'FAT-003'];
   assert.deepEqual(SPELLBOOKS[SPELLBOOK_2].spellIds, expected);
   assert.equal(SPELLBOOK_ROLE_PAIRS.length, 5);

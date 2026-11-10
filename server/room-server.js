@@ -35,8 +35,9 @@ function playerName(value) {
   return name;
 }
 
-function requestedSpellbook(body, account) {
-  const id = body.spellbookId ?? (account ? SPELLBOOK_1 : getDeckSpellbook(body.deck));
+function requestedSpellbook(body, account, allowArchivedSpellbook = false) {
+  const id = body.spellbookId ?? (account ? (allowArchivedSpellbook ? SPELLBOOK_1 : SPELLBOOK_2) : getDeckSpellbook(body.deck));
+  if (!allowArchivedSpellbook && id !== SPELLBOOK_2) fail(400, 'archived_spellbook', 'This collection is archived. Update Wizzy and save a deck from the current spellbook.');
   if (!isSpellbookId(id)) fail(400, 'invalid_spellbook', 'Choose Spellbook 1 or Spellbook 2.');
   return id;
 }
@@ -119,6 +120,8 @@ async function jsonBody(request) {
  * deployments/restarts end matches. Production persistence can be added later.
  */
 export function createMultiplayerServer(options = {}) {
+  // Constructor-only compatibility for archived regression fixtures; never request-controlled.
+  const allowArchivedSpellbook = options.allowArchivedSpellbook === true;
   const staticRoot = path.resolve(options.staticRoot ?? DEFAULT_ROOT);
   const allowedOrigins = new Set(options.allowedOrigins ?? DEFAULT_ORIGINS);
   const now = options.now ?? Date.now;
@@ -326,7 +329,7 @@ export function createMultiplayerServer(options = {}) {
         if (!['fire', 'water'].includes(body.element)) fail(400, 'invalid_element', 'Choose Fire or Water.');
         const account = optionalAccount(request);
         const name = account ? account.profile.name : playerName(body.name);
-        const spellbookId = requestedSpellbook(body, account);
+        const spellbookId = requestedSpellbook(body, account, allowArchivedSpellbook);
         const deck = playableDeck(account ? accountDeck(account, body.element, spellbookId) : body.deck, body.element, spellbookId);
         if (rooms.size >= maxRooms) fail(503, 'rooms_full', 'The battle server is full. Please try again later.');
         const playerIndex = body.element === 'fire' ? 0 : 1;
@@ -349,7 +352,7 @@ export function createMultiplayerServer(options = {}) {
           const playerIndex = room.players[0] ? 1 : 0;
           const account = optionalAccount(request);
           const element = playerIndex === 0 ? 'fire' : 'water';
-          const spellbookId = requestedSpellbook(body, account);
+          const spellbookId = requestedSpellbook(body, account, allowArchivedSpellbook);
           if (spellbookId !== (room.spellbookId || SPELLBOOK_1)) fail(409, 'spellbook_mismatch', 'This room uses a different spellbook. Select its spellbook in Deck before joining.');
           const player = newPlayer(account ? account.profile.name : playerName(body.name), playableDeck(account ? accountDeck(account, element, spellbookId) : body.deck, element, spellbookId), account?.id);
           const nextPlayers = room.players.slice(); nextPlayers[playerIndex] = player.record;

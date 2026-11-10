@@ -2,12 +2,13 @@ import { SPELL_CATALOG } from './spells.js';
 
 export const SPELLBOOK_1 = 'spellbook-1';
 export const SPELLBOOK_2 = 'spellbook-2';
+export const ACTIVE_SPELLBOOK_ID = SPELLBOOK_2;
 
 /** Paired jobs are editorial labels; they do not change spell effects or timing. */
 export const SPELLBOOK_ROLE_PAIRS = Object.freeze([
   Object.freeze({ role: 'Elemental development', fire: 'Fire-2', water: 'Water-2' }),
   Object.freeze({ role: 'Mana and elemental setup', fire: 'Fire-15', water: 'Water-0' }),
-  Object.freeze({ role: 'Midrange attack', fire: 'Fire-5', water: 'Water-12' }),
+  Object.freeze({ role: 'Heavy attack', fire: 'Fire-6', water: 'Water-12' }),
   Object.freeze({ role: 'Attack while building', fire: 'Fire-11', water: 'Water-9' }),
   Object.freeze({ role: 'Finisher', fire: 'Fire-14', water: 'Water-14' }),
 ]);
@@ -22,15 +23,18 @@ const selectedIds = [
 export const SPELLBOOKS = Object.freeze({
   [SPELLBOOK_1]: Object.freeze({
     id: SPELLBOOK_1, label: 'Spellbook 1',
-    description: 'The full current spell collection and your original decks.',
+    description: 'Archived original collection, retained only for saved-deck compatibility.',
     spellIds: Object.freeze(Object.keys(SPELL_CATALOG)),
   }),
   [SPELLBOOK_2]: Object.freeze({
-    id: SPELLBOOK_2, label: 'Spellbook 2',
-    description: 'A separate testing collection: five Fire spells, five Water spells, and Fate.',
+    id: SPELLBOOK_2, label: 'Spellbook',
+    description: 'Five Fire spells, five Water spells, and Fate.',
     spellIds: Object.freeze(selectedIds),
   }),
 });
+
+export const ACTIVE_SPELL_IDS = SPELLBOOKS[ACTIVE_SPELLBOOK_ID].spellIds;
+export const getActiveSpells = () => getSpellbookSpells(ACTIVE_SPELLBOOK_ID);
 
 export const isSpellbookId = id => typeof id === 'string' && Object.hasOwn(SPELLBOOKS, id);
 

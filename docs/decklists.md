@@ -1,52 +1,48 @@
-# Master Spellbook and custom decks
+# Current spellbook and custom decks
 
-The current catalog contains **34 unique spells: 16 Fire, 15 Water, and 3 Fate**, including **31 primaries**. The 31 original spells come from **Wizzy Master Spellbook Nov4.pdf**, *Wizzy / Master Spellbook V2.1*, dated November 4, 2026. The user-defined additions are **Fire-0: 0 Mana, gain 1 Ember; Fire-15: 0 Mana, gain 1 Ember and gain 1 Mana on 7+; Water-0: 0 Mana, gain 1 Mana on cast and gain 1 additional Flow after resolution on 7+.** Water-0 also receives the normal Water passive: 1 Flow total below 7, or 2 total on 7+, capped at 5. Its Mana is guaranteed before the dice roll, capped at 10. The previous Fire, Water, and Neutral catalog and its prescribed decklists are no longer playable. Earth and Air are outside this update.
+The game exposes one active spellbook containing **13 unique slabs: five Fire, five Water and three Fate**. The former Spellbook 1 selector is removed. The former testing collection is now the current collection, with Fire-6 replacing Fire-5. Stable internal IDs retain saved-file and artwork references; the following names appear on live cards, deck lists, inspections and new combat logs.
 
-Printed Fire/Water costs and effect text come from that PDF, with the user-approved Fire-9, Fire-11, Fire-14 and Water-12 balance changes below. The user's combat instructions take precedence over the PDF's older pre-roll Fate paragraph and its note about retaining the earlier approved spellbook. This update replaces that earlier spellbook and applies Fate **after** rolling.
+Mana costs, printed effects and artwork are unchanged. **The proposed persistent 5%-per-Ember bonus is not implemented.** Existing Ember spending, Water Flow, Fate timing, Enhancement and Aura continue to follow the current battle rules.
 
-**Fire-9** keeps its **2 Mana** cost and gains **2 Embers**, or **3 on 7+**. It then checks the capped Ember counter: **4 or more grants 1 Mana instead of 8 Shield**. **Fire-11** costs **2 Mana** and reads: “Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.” The Mana replaces both former Loaded thresholds; no new Loaded is awarded, and existing queued Loaded is preserved. Gains resolve once after Fate and respect the 10-Mana cap. Compatible old saves retain paid costs and completed results, including old Shield/Loaded awards; pending casts keep their originally paid costs without refund or additional charge. **Water-12** costs **3 Mana** with unchanged damage and healing effects.
+## Active cards
 
-**Fire-14** still costs **8 Mana**, spends all available Embers, and has **20 base damage** with an **8+ Modified Roll threshold**. Its per-Ember damage is **7**, increasing to **9 on 8+**: `20 + 7 × spent` or `20 + 9 × spent`. Five Embers therefore deal **55 / 65** before bonuses; 30% Enhancement plus 10% Aura increases those totals to **77 / 91 before Shield**. Other spell effects, unlimited copies including Fate, the catalog family and save version 14 stay unchanged. Exact earlier spell definitions are upgraded without resetting decks or replaying committed actions/results.
+| Internal ID | Name | Mana | Effect |
+| --- | --- | ---: | --- |
+| Fire-2 | Heatbox | 1 | Gain 1 Ember. On 7+, gain 2 instead. On 10+, gain 3 instead. |
+| Fire-15 | Blaze | 0 | Gain 1 Ember. On 7+, gain 1 Mana. |
+| Fire-6 | Charred Blade | 5 | Deal 22 damage. On 7+, deal 28 instead. On 10+, deal 36 instead. |
+| Fire-11 | Xineoph | 2 | Deal 10 damage and gain 2 Embers. On 7+, gain 1 Mana. |
+| Fire-14 | Sunsetter | 8 | Spend all Embers. Deal 20 + 7 per Ember spent. On 8+, use 9 per Ember instead. |
+| Water-2 | Sea bolt | 1 | Deal 4 + 2 × Flow damage. On 8+, gain 1 additional Flow after resolution. |
+| Water-0 | Swell | 0 | Gain 1 Mana on cast. On 7+, gain 1 additional Flow after resolution. |
+| Water-12 | Coral Crash | 3 | Deal 12 + 2 × Flow damage. On 7+, heal 2 HP per Flow. |
+| Water-9 | Pacific | 2 | Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On 10+, deal 5 additional damage. |
+| Water-14 | Poseidon's Rift | 8 | Deal 15 + 5 × Flow damage. On 8+, deal 12 additional damage. |
+| FAT-001 | Fortune | 0 | +4 to the Modified Roll when attacking. |
+| FAT-002 | Misfortune | 0 | −4 to the Modified Roll when defending. |
+| FAT-003 | Twist | 0 | Choose +2 or −2 to the Modified Roll. |
 
-## Spellbook 1 and Spellbook 2
+The spellbook's original source is **Wizzy Master Spellbook Nov4.pdf**, Master Spellbook V2.1. User-approved cost, effect and name changes take precedence over that source. Historical definitions remain internally available for validating archived data; they are not an additional playable collection.
 
-The Deck workshop has two spellbook buttons. **Spellbook 1** keeps the full existing catalog and saved decks. **Spellbook 2** is an independent testing collection with 13 unique slabs: five Fire, five Water and the three shared Fate slabs. Names, costs, effects and artwork remain identical to their Spellbook 1 counterparts. No persistent Ember percentage bonus or proposed Fire rework is enabled.
+## Deck roles
 
-| Deck role | Fire slab | Water slab | Shared purpose |
-| --- | --- | --- | --- |
-| Elemental development | Fire-2 | Water-2 | Develop elemental power; Water-2 also attacks. |
-| Mana and elemental setup | Fire-15 | Water-0 | Develop resources for later turns. Water-0 grants Mana on cast; Fire-15 needs 7+ for Mana. |
-| Midrange attack | Fire-5 | Water-12 | Deal damage with a secondary benefit: Ember spending/Shield removal for Fire, healing for Water. |
-| Attack while building | Fire-11 | Water-9 | Deal damage while generating elemental resources. |
-| Finisher | Fire-14 | Water-14 | Use established elemental power for a large attack. Fire spends Embers; Water keeps Flow. |
+| Role | Fire | Water |
+| --- | --- | --- |
+| Elemental development | Heatbox builds Embers. | Sea bolt attacks and helps build Flow. |
+| Mana and elemental setup | Blaze builds an Ember and can gain Mana on 7+. | Swell gains Mana on cast and builds Flow. |
+| Heavy / specialized attack | Charred Blade provides heavy damage without spending Embers. | Coral Crash combines damage with conditional healing. |
+| Attack while building | Xineoph attacks, gains Embers and can recover Mana. | Pacific attacks and gains two total Flow, subject to the cap. |
+| Finisher | Sunsetter spends all Embers for a large attack. | Poseidon's Rift uses established Flow and keeps it afterward. |
 
-Fortune, Misfortune and Twist remain available to both elements in both books. Each book has its own Fire and Water saved decks and drafts, with the same 1–30 total and unlimited-copy rules. Spellbook 2 starts with empty deck slots. Saving, clearing, uploading or editing one book does not replace the other book’s deck. Account saves include both books; drafts stay on the device.
+## Build, save and transfer a deck
 
-Existing deck JSON files without `spellbookId` belong to Spellbook 1. Spellbook 2 deck files add `"spellbookId": "spellbook-2"` while retaining the compatibility family `nov4-v2.1`. Importing a file opens its matching spellbook and element as a draft for review. Out-of-pool cards, unknown book IDs and mixed-element decks are rejected. Shared-screen battles use the selected book’s saved pair; two-screen rooms require the same book at both seats.
+Open **Deck**, choose Fire or Water, and add slabs from the current collection. The selected list occupies the upper panel; the lower collection keeps four cards per row. Filters cover All, Fire, Water, Fate and **In Deck**.
 
-## Build and save a deck
+A playable deck has **1–30 total slabs**, with **unlimited copies per spell**, using one main element plus Fate. Fire and Water cannot be mixed. There are no Neutral spells or mandatory category quotas. Empty drafts remain editable but are not playable.
 
-Each element starts with an empty deck slot. No starter composition is generated. Open **Deck**, choose Fire or Water, and select spells from the collection. The selected list and quantities occupy the upper half; the collection shows four slabs per row below it. Filters cover All, Fire, Water, Fate, and **In Deck**.
+**Save deck** stores the legal composition; **Save & battle** saves it before starting a battle. Shared-screen play requires saved Fire and Water decks. Each two-screen player needs the saved deck for their own role. Account saves sync through the game server; drafts remain on the device. Saving a composition never changes an ongoing duel.
 
-A playable saved deck must contain:
-
-- **1–30 slabs**; an empty draft is not playable.
-- **No per-spell copy limit** within the 30-slab maximum.
-- One main element, **Fire or Water**, plus any Fate spells.
-
-Fire and Water spells cannot be mixed. There are no Neutral spells or mandatory category quotas in this spellbook. Printed copy counts do not constrain custom decks; players may choose any number of eligible elemental or Fate slabs within the 1–30-slab range.
-
-Checking a slab adds its first copy; quantity controls add or remove copies, and unchecking removes all copies. Empty drafts remain editable and are retained on this device, but are not playable. **Save deck** stores a legal deck of 1–30 slabs for battle. Existing 30-slab decks remain valid. Saving a deck does not alter an ongoing duel; start a new duel to use the saved composition.
-
-An account is optional for device saves. Saved decks and drafts survive closing regular tabs and loading a new hosted game version in the same browser on the same origin. The game maintains backup copies and restores compatible prior device saves; signed-in account decks remain separate from guest decks. The additions of Fire-0, Fire-15 and Water-0 retain the current deck compatibility version, so existing November 4 decks and exported files stay valid. Use **Download deck** to move a deck to another browser or device.
-
-Shared-screen play needs both saved element decks. For a two-screen room, each player needs the legal saved deck for their chosen role. Accounts can hold an empty slot while the other element's saved deck is ready; incomplete editor drafts remain local.
-
-## Upload and download decklists
-
-Use **Download deck** to export a legal nonempty deck and **Upload deck** to import one. Uploading loads a compatible decklist into the matching element's editor **as a draft for review**; press **Save deck** to make it playable. **Save & battle** saves the valid draft and opens battle choices.
-
-The JSON format is:
+**Download deck** exports a legal nonempty deck. **Upload deck** loads a draft for review; press Save deck to use it. The file limit is 64 KB. Files keep stable IDs, rather than depending on display names:
 
 ```json
 {
@@ -54,85 +50,31 @@ The JSON format is:
   "version": 1,
   "spellbook": "nov4-v2.1",
   "element": "fire",
+  "spellbookId": "spellbook-2",
   "entries": [
-    { "spellId": "Fire-1", "quantity": 30 }
+    { "spellId": "Fire-11", "quantity": 3 }
   ]
 }
 ```
 
-The example is a playable deck of 30 Fire-1 slabs; a playable file may list **1–30 slabs in total**. Files are limited to **64 KB**. Imports validate the format, spellbook version, element, known spell IDs, and 1–30-slab total. Empty or over-30 files are rejected. A malformed, oversized, outdated, or illegal file shows an error instead of replacing the current draft. Old-catalog IDs are rejected rather than being interpreted as new spells. A decklist contains spell quantities, not an account login, private room token, or shuffled draw order.
+This example contains three Xineoph slabs. The compatibility family remains `nov4-v2.1`, and the current active collection retains its existing `spellbook-2` storage identity.
 
-## Current catalog
+## Earlier decks and saves
 
-| Spell ID | Mana | Spell ID | Mana |
-| --- | ---: | --- | ---: |
-| Fire-0 | 0 | Water-0 | 0 |
-| Fire-1 | 1 | Water-1 | 1 |
-| Fire-2 | 1 | Water-2 | 1 |
-| Fire-3 | 2 | Water-3 | 2 |
-| Fire-4 | 2 | Water-4 | 2 |
-| Fire-5 | 3 | Water-5 | 3 |
-| Fire-6 | 5 | Water-6 | 5 |
-| Fire-7 | 7 | Water-7 | 7 |
-| Fire-8 | 2 | Water-8 | 2 |
-| Fire-9 | 2 | Water-9 | 2 |
-| Fire-10 | 3 | Water-10 | 3 |
-| Fire-11 | 2 | Water-11 | 3 |
-| Fire-12 | 4 | Water-12 | 3 |
-| Fire-13 | 6 | Water-13 | 6 |
-| Fire-14 | 8 | Water-14 | 8 |
-| Fire-15 | 0 | — | — |
+Existing current-collection decks are preferred. Fire-5 quantities in earlier testing decks are replaced with Fire-6 quantities for Charred Blade, with the change presented for review. A legacy original-collection deck can be reviewed against the current pool. Retired cards are identified, and the original data is preserved; they are not silently reinterpreted as unrelated new spells. Review and save the resulting draft before battle. Malformed files, unknown IDs, mixed elements and invalid quantities are rejected.
 
-| Fate ID | Name | Effect | Playable role |
-| --- | --- | --- | --- |
-| FAT-001 | Fortune | +4 to the Modified Roll | Caster |
-| FAT-002 | Misfortune | −4 to the Modified Roll | Defender |
-| FAT-003 | Twist | Choose +2 or −2 to the Modified Roll | Either |
+Old guest and account deck data remains backed up. The old collection is not exposed as an editable or playable second spellbook. Device storage remains scoped to the browser and website origin; moving to another origin requires a deck export/import or account sync.
 
-The PDF leaves Fate Mana unspecified. This implementation retains the previous **0 Mana** cost pending a different ruling; that cost is an implementation assumption, not a printed PDF value. Play one eligible Fate slab per response; each Twist has its own explicit sign choice. Any number of responses may be played as the chain alternates, while cards remain available.
+Compatible saved duels refresh exact old card names without refunding paid Mana, repeating effects, or rewriting completed historical results. Old log entries can retain their historical names; animation lookup recognizes both the former ID names and current names. A former testing duel containing Fire-5 is archived rather than turning an already-committed Fire-5 into Charred Blade. Start a new duel with the reviewed deck in that case.
 
-All 34 slabs use the same proportional rules font, **17 px at a 170 px card width**, without reducing it for longer descriptions. Titles stay at the parchment's top and the rules are centered in the remaining space, with **bold roll thresholds on tinted blocks**. Original black outer corners, dark outlines, interior artwork and standard hover/selection styling are retained. The upper-left yellow number is the Mana cost; its accessible label still says “N Mana.” **Read Slab** shows the complete spellbook wording, and supplied artwork remains unchanged.
+## Combat and presentation
 
-Compact rules use swords for outgoing damage, hearts for healing, and matching
-Shield, Mana and die icons. Flames mean Ember/Embers; drops mean Flow. A drop in
-a formula uses the current Flow counter, while `+1` drop adds Flow. Short
-formulas retain base damage and per-Ember scaling; optional spending,
-“extra”/“instead,” and after-spell Flow timing remain explicit. Fate modifiers
-beside the die still affect the Modified Roll. Accessible text and Read Slab
-retain full words, and these display changes alter no spell effects.
+A duel starts with **100 HP, 3 Mana, 0 Shield, 0 elemental resources and +0 Loaded**. Mana caps at 10, Shield at 30, and Embers/Flow at 5. Both players start with up to five slabs; the second player draws one more at the beginning of their first turn if available. Later draws and hand refreshes fill to six while the tower has slabs. Later owner turns gain two Mana.
 
-## Combat rules
+Each turn permits one main action: a primary slab, Enhancement or Aura. Threshold spells roll before defender-first Fate responses; responders alternate one Fate at a time until two consecutive or automatic passes. Only the final Modified Roll determines the spell result. Self-damage bypasses the caster's Shield. Elemental gains occur during resolution; Water receives its normal one-Flow passive after each Water spell, plus any explicitly additional Flow.
 
-- Each wizard begins with **100 HP**, **3 Mana**, zero Shield, zero Embers/Flow, zero Loaded, **0% Enhancement**, and no active Aura. Maximums are **100 HP, 10 Mana, 30 Shield, 5 Embers/Flow, and 30% Enhancement**. Active Aura adds a separate fixed **10%**.
-- Shuffle each saved 1–30-slab deck and draw **up to five opening slabs**, limited by available cards. Each wizard rolls one opening d6; higher starts and ties reroll both. Fate and Loaded do not affect initiative. The second player draws one extra slab when their first own turn begins **if a tower card is available**, up to the six-slab hand limit. Small decks can begin with fewer cards and an empty tower.
-- On each own turn after the opening turn, gain **2 Mana** up to the cap and draw up to six slabs. Unspent Mana carries over. One round contains one turn from each wizard, starting with the initiative winner.
-- Each wizard may use **one main action per own turn**: commit a primary spell, attempt Enhancement, or activate Aura. Fire and Water slabs are primary spells; Fate does not consume this allowance. Printed Mana and any optional Ember spending are paid on spell commitment. Fire-7 and Fire-14 automatically spend all available Embers.
-- **Fire-0** is the only roll-free primary: **0 Mana, gain 1 Ember**, capped at 5, without dice, Fate or Loaded consumption. The other **30 primaries roll 2d6**, including **Fire-15** and **Water-0**. Both cost **0 Mana**, use the primary slot, apply normal eligible Loaded, and open the ordinary post-roll Fate chain. Fire-15 gains **1 Ember**, plus **1 Mana on a final Modified Roll of 7+**. **Water-0 gains 1 Mana on cast before dice**, guaranteed up to the cap of 10. After resolution it gains its normal Water passive **1 Flow**, plus **1 additional Flow on a final Modified Roll of 7+**: 1 total below 7, 2 total on 7+, capped at 5. Fate can change the extra Flow result, not the already-earned Mana. The roll and eligible Loaded are displayed before Fate. Higher thresholds replace lower outcomes of the same effect unless the text specifies an additional effect.
-- For both spell and Enhancement rolls, the **defender** gets the first Fate response. Players then alternate, casting **one eligible Fate slab** or passing each time. A cast resets the consecutive-pass count; **two consecutive passes** end the chain and resolve the pending action. A player with no eligible Fate passes automatically, and a player who passed may respond again after another Fate is cast. There is no fixed response-window limit.
-- Fortune is available only to the caster of the pending spell or Enhancement, and Misfortune only to their opponent; these roles do not swap when a player responds. Either player may choose **+2 or −2** for each Twist. Fate updates the Modified Roll without rerolling the original dice. Negative modified totals are permitted.
-- Each player starts at **0% Enhancement**. The active player may attempt it **once instead of a primary spell or Aura**, for **0 Mana**. Roll **2d6 once**, then complete the ordinary defender-first Fate chain. The **final Modified Roll** sets the highest qualifying award: **6–8 adds 10 percentage points**, **9–11 adds 20**, and **12+ adds 30**. Award it **once after the chain closes**, adding to stored Enhancement up to **30% total**; below 6 gains nothing. Failure still uses the action. Enhancement remains banked until an outgoing damaging primary spell resolves, then returns to **0%**, even when Shield absorbs the entire hit. Non-damaging spells, Fate and self-damage preserve it; a new duel resets it. Enhancement uses no primary slab; Fate played for it is discarded normally. It grants no Embers/Flow, and **Loaded neither modifies its roll nor is consumed**; normal end-of-turn Loaded expiry still applies.
-- **Aura** costs **1 Mana** and uses the main action instead of a primary spell or Enhancement. It immediately grants a fixed **10% damage bonus** for **three subsequent owner turns, excluding its activation turn**. It cannot stack or be recast while active, but may be activated again after expiry. The counter stays at three when activation ends, then decreases only when the owner actually passes each of their next three turns, including a confirmed hand refresh. Opening End Turn or selecting refresh cards does not decrement it; opponent turns do not count. Aura rolls no dice, opens no Fate window, grants no Embers/Flow and leaves Loaded unused.
-- Enhancement and Aura add together, for a maximum of **40%**, and increase **total outgoing spell damage** after threshold/Flow/Ember calculation and before Shield absorption. Round once to the nearest integer, halves up. Example: 15 damage at 10% becomes 17; 20 damage with 30% Enhancement plus 10% Aura becomes 28. Healing, resource gains, Shield gains/removal and self-damage are unaffected. Damaging resolution consumes Enhancement while Aura lasts until its countdown expires. The combat log shows both bonuses and the full damage calculation.
-- Incoming opponent damage consumes Shield before HP. **Self-damage bypasses the caster's Shield.** Shield-removal effects happen before their spell's damage. Healing cannot exceed 100 HP; reaching zero HP ends the duel.
-- Fire gains only printed Embers. Gains stop at five; spending happens before spell resolution. Optional spending uses a compact popup above the selected slab when Embers are available.
-- Water damage and healing use **Flow before the spell resolves**. After the effects, each Water spell grants **1 Flow**. A printed **additional Flow** gain adds to that default, capped at five. For example, Water-2 at 8+ gains two Flow total; Water-9 always gains two Flow total. Fate grants no automatic Flow.
-- New Loaded bonuses queue for the caster's **next own turn**, stack, and apply once to that turn's first spell roll. Unused bonuses expire only when that turn actually passes. Opening End Turn or staging a refresh leaves them available. A bonus earned this turn does not modify this turn's roll.
-- After a spell, Enhancement attempt or Aura activation, all three main-action controls stay disabled until the next own turn. Active Aura prevents recasting it; 30% Enhancement prevents further attempts until consumed. End Turn reveals Hand Refresh and turns red; End Turn again passes without refreshing. Hand Refresh lets the player select any number of slabs, including zero. Confirming it discards the selections, draws up to six, and passes immediately. End Turn during selection passes without applying those discards.
-- When no dialog is open, clicking or tapping noninteractive battle background, including the outer gutters, cancels an unconfirmed End Turn drawer or Hand Refresh mode and clears its selections, returning to the main phase. It also clears an uncommitted primary/Fate selection; clearing Fate neither passes nor changes priority. Cards and controls keep their actions. Committed casts, Skip Fate, confirmed refreshes and passes are final. Cancellation preserves the spent main-action allowance, Loaded, Aura and card zones; unused Loaded expires and Aura counts down only on an actual pass.
-- The Spell Tower and discard counts follow card movement. Read Slab shows the complete rules; the tower view shows the saved composition without revealing draw order. If the tower is empty, draws stop; no reshuffle or fatigue rule is invented.
+Enhancement costs 0 Mana and uses the main action. After its Fate chain, 6–8 grants 10 percentage points, 9–11 grants 20, and 12+ grants 30, capped at 30% stored total. It is consumed by the next outgoing damaging primary spell. Loaded does not modify Enhancement rolls. Aura costs 1 Mana and uses the main action; it grants 10% damage for three subsequent owner turns, excluding the activation turn. Enhancement and Aura add together, round once before Shield with halves up, and do not amplify resources, healing, Shield or self-damage.
 
-## Battle presentation
+Current cards keep supplied artwork, centered compact rules, bold thresholds and the yellow upper-left Mana cost. Shared source PNG sheets and crop IDs retain their filenames because each sheet contains multiple slabs; display-name metadata organizes the new names without duplicating or altering artwork. Charred Blade is a 5-Mana simple cast; Xineoph, Sea bolt, Coral Crash and Pacific use the basic attack; Sunsetter and Poseidon's Rift use large casts. Heatbox, Blaze and Swell use power-ups. Fate has no animation. Results appear at impact, and reloading never replays completed actions.
 
-The approved v2 caster and projectile sheets are live in battles. Primary animations start only after any Fate chain ends; Fate itself has no animation. Damaging spells retain their Mana-based basic/simple/large tiers. Their caster charges for one second, releases at 1.5 seconds, and sends a one-second projectile flight to impact at 2.5 seconds. The defender stays in its standing pose with the original quick 210 ms red flash and four 85 ms legacy impact frames. This 340 ms hit window ends the damaging animation at 2.84 seconds. Shield and power-up spells, including Water-0's Water power-up, last two seconds and show their results at 500 ms.
-
-After its Fate chain ends, successful Enhancement plays a two-second jump with the award shown at 500 ms; a final Modified Roll below 6 displays **MISS** without animation. Aura forms for 500 ms and holds its particle loop for one second before controls unlock, then keeps a green ring underfoot until its third subsequent owner turn ends. Activation does not count, and expiry plays a 500 ms fizzle. An active ring is restored on resume without replaying formation. Reduced motion settles actions immediately and keeps Aura static.
-
-These visuals never apply combat effects twice or change spell metadata, damage tiers, deck rules or save compatibility. Costs are paid normally; results are held on screen until impact, HP bars ease over 800 ms, and battle actions and victory wait for the presentation to finish. Victory also waits until the losing HP bar reaches zero, even when the quick hit has finished. Reloading does not replay completed actions. The unchanged source PNGs, timing reference and ZIP remain in the separate animation gallery, including the longer v2 hit sheet retained as a reference.
-
-## Save compatibility
-
-Combat saves use **version 14** and the `nov4-v2.1` catalog. New pending actions distinguish spells from Enhancement, and new Enhancement rolls use the `fate-tiered-v1` rule: the award stays pending until the chain resolves. Current-catalog versions **10–13** migrate without rebuilding decks. Version 13 retains hands, resources, banks, Aura and counters; already-resolved Enhancement rolls keep their recorded flat or tiered awards without rerolling or awarding again. A version 13 Enhancement saved before its dice roll now follows the new post-roll Fate chain. Version 12 retains Enhancement with no active Aura, while versions 10/11 start at 0% Enhancement and no Aura and have their older Fate history upgraded.
-
-Guest deck storage, the JSON decklist format and spellbook compatibility stay unchanged; existing 30-slab decks remain legal alongside the new 1–30 range. Empty slots and drafts remain non-playable. Old-catalog duels remain retired, and old deck IDs are not converted into unrelated new cards. Prior browser data is kept separate, and account migration retains credentials while archiving replaced old deck data.
-
-`src/spells.js` contains the canonical metadata, `src/effects.js` implements spell effects, `src/game.js` owns combat timing, and `src/decks.js` validates saved and uploaded compositions.
+The canonical metadata is in `src/spells.js`; active-pool membership is in `src/spellbooks.js`; `src/effects.js` implements effects; `src/game.js` owns combat timing; and `src/decks.js` validates and reviews compositions.

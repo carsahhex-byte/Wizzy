@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createMultiplayerServer } from '../server/room-server.js';
 import { createGame, rollInitiative, ENHANCEMENT_ROLL_RULE, COMBAT_RULES_VERSION } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
-import { SPELLBOOK_VERSION } from '../src/spells.js';
+import { SPELLBOOK_VERSION, SPELL_CATALOG } from '../src/spells.js';
 
 const legalDeck = element => ({ element, entries: [
   ...Array.from({ length: 7 }, (_, i) => ({ spellId: `${element === 'fire' ? 'Fire' : 'Water'}-${i + 1}`, quantity: 3 })),
@@ -72,13 +72,13 @@ function assertResourceResolution(state, { index, spellId, primaryId, expectedMa
   assert.deepEqual(state.players.map(player => [player.hp, player.shield]), [[100, 0], [100, 0]]);
   assert.equal(state.pendingSpell, null); assert.equal(state.fatePlayer, null);
   assert.equal(player.discard.filter(card => card.id === primaryId).length, 1);
-  assert.equal(state.log.filter(entry => entry.message === `${spellId} resolves and moves to discard.`).length, 1);
+  assert.equal(state.log.filter(entry => entry.message === `${SPELL_CATALOG[spellId].name} resolves and moves to discard.`).length, 1);
   for (const wizard of state.players) assert.equal(wizard.handCount + wizard.deckCount + wizard.discard.length, 30);
 }
 
 async function service(t, options = {}) {
   const unexpected = [];
-  const server = createMultiplayerServer({ createMatch: fixtureMatch, rollRandom: () => .5, onError: error => unexpected.push(error.message), ...options });
+  const server = createMultiplayerServer({ allowArchivedSpellbook: true, createMatch: fixtureMatch, rollRandom: () => .5, onError: error => unexpected.push(error.message), ...options });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); assert.deepEqual(unexpected, [], 'unexpected server exceptions'); });
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -992,4 +992,20 @@ test('guest Spellbook 2 rooms retain book identity, restrict their pool and reje
   assert.equal(current.data.state.players[0].deckDefinition.spellbookId, 'spellbook-2');
   const badCreate = await api.request('/api/rooms', { method: 'POST', body: { name: 'Forged', element: 'fire', spellbookId: 'spellbook-2', deck: legalDeck('fire') } });
   assert.equal(badCreate.status, 400);
+});
+
+
+test('production rooms accept only the current named spellbook', async t => {
+  const api = await service(t, { allowArchivedSpellbook: false, createMatch: decks => createGame(90, decks) });
+  const old = await api.request('/api/rooms', { method: 'POST', body: { name: 'Old Fire', element: 'fire', deck: legalDeck('fire') } });
+  assert.equal(old.status, 400); assert.equal(old.data.code, 'archived_spellbook');
+  const deck = (element, spellId) => ({ element, spellbookId: 'spellbook-2', entries: [{ spellId, quantity: 6 }] });
+  const made = await api.request('/api/rooms', { method: 'POST', body: { name: 'Fire', element: 'fire', deck: deck('fire', 'Fire-6') } });
+  assert.equal(made.status, 201, made.data.error);
+  const retired = await api.request(`/api/rooms/${made.data.code}/join`, { method: 'POST', body: { name: 'Old Water', deck: legalDeck('water') } });
+  assert.equal(retired.status, 400);
+  const joined = await api.request(`/api/rooms/${made.data.code}/join`, { method: 'POST', body: { name: 'Water', deck: deck('water', 'Water-0') } });
+  assert.equal(joined.status, 200, joined.data.error);
+  assert.ok(joined.data.state.players[1].hand.every(card => card.name === 'Swell'));
+  assert.equal(joined.data.state.players[1].deckDefinition.spellbookId, 'spellbook-2');
 });
