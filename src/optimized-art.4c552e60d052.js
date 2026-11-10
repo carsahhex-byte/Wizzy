@@ -279,5 +279,15 @@ export const OPTIMIZED_ART = {
     "file": "charredBladeSword-e55012931554.webp",
     "sourceSha256": "b0a00276aeb9d1ccafcc608a95e8d003832514295c27c336460f0f599bd0c95a",
     "optimizedSha256": "e55012931554ca9c0c16cb8e2d42283973e976ba611bae759a0eecd0ea67d800"
+  },
+  "xineophCardArt": {
+    "file": "xineophCardArt-178f4f4991b0.webp",
+    "sourceSha256": "4bf34fb0270e11b2ddf29f405eed134449413946d62a3b629f88846259a6ca0a",
+    "optimizedSha256": "178f4f4991b0ac873ff1f9e3f5e496b0923bd39889f590b5027b47ca7f1ae2c3"
+  },
+  "xineophAnimation": {
+    "file": "xineophAnimation-f3122258e6f8.webp",
+    "sourceSha256": "a15cec18629cd3e628feb46b0090222778669048da1259e01c2e991a18758bc2",
+    "optimizedSha256": "f3122258e6f84feb1eb6a1142fbe3ab2cbcab4c7d9419c236554afc6eabecc76"
   }
 };

@@ -1,6 +1,7 @@
-import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS } from './assets.c9cbb8981548.js';
+import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS, XINEOPH_ANIMATION_SHEETS } from './assets.f7970772a36e.js';
 import { getSpellVisual } from './spell-visuals.80813a9292ad.js';
-import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.14c9d693ff10.js';
+import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.6ac4466c4280.js';
+import { XINEOPH_TIMING, getXineophMoment } from './xineoph-animation.a69d46ebf935.js';
 
 const FRAME_MS = 125;
 const ACTOR_END = 2000;
@@ -135,30 +136,35 @@ export function createSpellAnimator({ root, scene } = {}) {
       : getSpellVisual(spellId);
     const job = { key, spellId, casterIndex, kind: visual?.kind || 'none', onImpact, onComplete,
       done: false, impacted: false, casterHidden: false, flash: false };
+    const customXineoph = spellId === 'Fire-11' && kind !== 'enhancement';
     job.promise = new Promise(resolve => { job.resolve = resolve; });
     current = job;
     Object.assign(element.dataset, { animationKey: key, spellAnimation: job.kind, kind: job.kind,
-      spellId: String(spellId ?? ''), casterIndex: String(casterIndex ?? ''), phase: 'loading', stage: 'loading' });
+      spellId: String(spellId ?? ''), casterIndex: String(casterIndex ?? ''), phase: 'loading', stage: 'loading',
+      customAnimation: customXineoph ? 'xineoph' : '', wingPose: '', lightBlades: 'false' });
     if (!visual || ![0, 1].includes(casterIndex) || reducedMotion()) {
       finish(job, { skipped: true });
       return job.promise;
     }
     const type = visual.element.toLowerCase(), targetType = casterIndex === 0 ? 'water' : 'fire';
-    const sheet = COMBAT_ANIMATION_SHEETS[actorSheets[job.kind]];
+    const sheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.actor : COMBAT_ANIMATION_SHEETS[actorSheets[job.kind]];
     const frames = sheet?.animations[type];
-    const projectileSheet = COMBAT_ANIMATION_SHEETS[job.kind === 'large-cast' ? 'largeProjectiles' : 'basicProjectiles'];
+    const projectileSheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.projectile
+      : COMBAT_ANIMATION_SHEETS[job.kind === 'large-cast' ? 'largeProjectiles' : 'basicProjectiles'];
     const projectileFrames = projectileSheet?.animations[type];
-    const hitSheet = SPELL_ANIMATION_SHEETS.basicAttack;
+    const hitSheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.impact : SPELL_ANIMATION_SHEETS.basicAttack;
     const hitFrames = hitSheet?.animations.impact;
-    if (frames?.length !== 16 || visual.damaging && (projectileFrames?.length !== 16 || hitFrames?.length !== 4)) {
+    if (frames?.length !== (customXineoph ? 7 : 16)
+      || visual.damaging && (projectileFrames?.length !== (customXineoph ? 3 : 16) || hitFrames?.length !== 4)
+      || customXineoph && !['x', 'y'].every(axis => Number.isFinite(sheet?.releaseOffset?.[axis]))) {
       finish(job, { skipped: true });
       return job.promise;
     }
-    const duration = visual.damaging ? HIT_END : ACTOR_END;
-    const impactAt = visual.damaging ? ARRIVAL : 500;
+    const duration = customXineoph ? XINEOPH_TIMING.duration : visual.damaging ? HIT_END : ACTOR_END;
+    const impactAt = customXineoph ? XINEOPH_TIMING.impactAt : visual.damaging ? ARRIVAL : 500;
     const mirror = (type === 'fire') !== (casterIndex === 0);
     const point = FEET[casterIndex], targetPoint = { x: FEET[1 - casterIndex].x, y: 370 };
-    const offset = releaseOffsets[job.kind]?.[type] || { x: 0, y: 0 };
+    const offset = customXineoph ? sheet.releaseOffset : releaseOffsets[job.kind]?.[type] || { x: 0, y: 0 };
     const launch = job.kind === 'large-cast'
       ? type === 'fire' ? { x: casterIndex === 0 ? 160 : 864, y: -150 } : { x: casterIndex === 1 ? 1150 : -126, y: 360 }
       : { x: point.x + (mirror ? -offset.x : offset.x), y: point.y + offset.y };
@@ -167,7 +173,8 @@ export function createSpellAnimator({ root, scene } = {}) {
     job.casterSprite = job.caster?.querySelector('.wizard-sprite');
     job.targetSprite = job.target?.querySelector('.wizard-sprite');
     Object.assign(element.dataset, { targetIndex: String(1 - casterIndex), element: type, targetElement: targetType,
-      frame: String(frames[0]), duration: String(duration), impactAt: String(impactAt), releaseAt: String(RELEASE), lingerMs: '1000' });
+      frame: String(frames[0]), duration: String(duration), impactAt: String(impactAt), releaseAt: String(RELEASE), lingerMs: '1000',
+      flightAt: String(customXineoph ? XINEOPH_TIMING.flightAt : RELEASE) });
     root.dataset.spellAnimating = 'true';
     const needed = visual.damaging ? [sheet, projectileSheet, hitSheet] : [sheet];
     const requestGeneration = generation;
@@ -187,48 +194,81 @@ export function createSpellAnimator({ root, scene } = {}) {
         element.dataset.elapsed = String(Math.round(elapsed));
         if (elapsed >= duration) { finish(job); return; }
 
-        if (elapsed < ACTOR_END) {
-          const localFrame = Math.min(15, Math.floor(elapsed / FRAME_MS));
-          paintAnimationFrame(actor, sheet, frames[localFrame], point, { mirror });
-          Object.assign(actor.dataset, { element: type, sequenceFrame: String(localFrame),
-            phase: localFrame < 4 ? 'windup' : localFrame < 12 ? 'linger' : 'recover' });
-          element.dataset.frame = String(frames[localFrame]);
+        if (customXineoph) {
+          const moment = getXineophMoment(elapsed);
+          Object.assign(element.dataset, { phase: moment.phase, stage: moment.stage,
+            wingPose: moment.wingPose ? String(moment.wingPose) : '', lightBlades: String(moment.lightBlades) });
+          if (moment.actorFrame !== null) {
+            paintAnimationFrame(actor, sheet, frames[moment.actorFrame], point, { mirror });
+            Object.assign(actor.dataset, { element: type, sequenceFrame: String(moment.actorFrame), phase: moment.stage });
+            element.dataset.frame = String(frames[moment.actorFrame]);
+            hideAnimationSprite(projectile);
+            hideAnimationSprite(impact);
+          } else {
+            hideAnimationSprite(actor);
+            restoreStanding(job);
+            if (moment.phase === 'projectile') {
+              const control = { x: lerp(launch.x, targetPoint.x, .65), y: targetPoint.y + 50 };
+              const position = curve(launch, control, targetPoint, moment.progress);
+              const frame = projectileFrames[moment.sequenceFrame % projectileFrames.length];
+              paintAnimationFrame(projectile, projectileSheet, frame, position, { mirror });
+              Object.assign(projectile.dataset, { element: type, sequenceFrame: String(moment.sequenceFrame), phase: 'flight',
+                contactPlane: 'leading-edge', contactX: String(position.x), contactY: String(position.y) });
+              element.dataset.frame = String(frame);
+              hideAnimationSprite(impact);
+            } else {
+              hideAnimationSprite(projectile);
+              hitFlash(job, moment.hitTime < HIT_FLASH_MS);
+              paintAnimationFrame(impact, hitSheet, hitFrames[moment.hitIndex], targetPoint, { mirror });
+              impact.style.filter = '';
+              Object.assign(impact.dataset, { element: type, sequenceFrame: String(moment.hitIndex), phase: 'fade' });
+              element.dataset.hitFrame = String(hitFrames[moment.hitIndex]);
+            }
+          }
         } else {
-          hideAnimationSprite(actor);
-          restoreStanding(job);
-        }
+          if (elapsed < ACTOR_END) {
+            const localFrame = Math.min(15, Math.floor(elapsed / FRAME_MS));
+            paintAnimationFrame(actor, sheet, frames[localFrame], point, { mirror });
+            Object.assign(actor.dataset, { element: type, sequenceFrame: String(localFrame),
+              phase: localFrame < 4 ? 'windup' : localFrame < 12 ? 'linger' : 'recover' });
+            element.dataset.frame = String(frames[localFrame]);
+          } else {
+            hideAnimationSprite(actor);
+            restoreStanding(job);
+          }
 
-        if (!visual.damaging) {
-          element.dataset.phase = 'casting';
-          element.dataset.stage = elapsed < 500 ? 'windup' : elapsed < RELEASE ? 'linger' : 'recover';
-        } else {
-          element.dataset.phase = elapsed < RELEASE ? 'casting' : elapsed < ARRIVAL ? 'projectile' : 'impact';
-          element.dataset.stage = elapsed < 500 ? 'windup' : elapsed < RELEASE ? 'linger' : elapsed < ARRIVAL ? 'flight'
-            : elapsed < ARRIVAL + HIT_FLASH_MS ? 'quick-hit' : 'impact-fade';
-          // The actor already carries its charged orb. Only large offscreen
-          // effects form separately; smaller shots appear on release itself.
-          const projectileVisibleAt = job.kind === 'large-cast' ? 1000 : RELEASE;
-          if (elapsed >= projectileVisibleAt && elapsed < ARRIVAL) {
-            const localFrame = elapsed < RELEASE ? Math.floor((elapsed - 1000) / FRAME_MS)
-              : 4 + Math.floor((elapsed - RELEASE) / FRAME_MS);
-            const progress = Math.max(0, Math.min(1, (elapsed - RELEASE) / 1000));
-            const position = job.kind === 'large-cast' && type === 'fire'
-              ? curve(launch, { x: casterIndex === 0 ? 200 : 824, y: 500 }, targetPoint, progress)
-              : { x: lerp(launch.x, targetPoint.x, progress), y: lerp(launch.y, targetPoint.y, progress) };
-            paintAnimationFrame(projectile, projectileSheet, projectileFrames[localFrame], position,
-              { mirror, size: job.kind === 'simple-cast' ? 1.15 : 1 });
-            Object.assign(projectile.dataset, { element: type, sequenceFrame: String(localFrame), phase: elapsed < RELEASE ? 'forming' : 'flight' });
-          } else hideAnimationSprite(projectile);
+          if (!visual.damaging) {
+            element.dataset.phase = 'casting';
+            element.dataset.stage = elapsed < 500 ? 'windup' : elapsed < RELEASE ? 'linger' : 'recover';
+          } else {
+            element.dataset.phase = elapsed < RELEASE ? 'casting' : elapsed < ARRIVAL ? 'projectile' : 'impact';
+            element.dataset.stage = elapsed < 500 ? 'windup' : elapsed < RELEASE ? 'linger' : elapsed < ARRIVAL ? 'flight'
+              : elapsed < ARRIVAL + HIT_FLASH_MS ? 'quick-hit' : 'impact-fade';
+            // The actor already carries its charged orb. Only large offscreen
+            // effects form separately; smaller shots appear on release itself.
+            const projectileVisibleAt = job.kind === 'large-cast' ? 1000 : RELEASE;
+            if (elapsed >= projectileVisibleAt && elapsed < ARRIVAL) {
+              const localFrame = elapsed < RELEASE ? Math.floor((elapsed - 1000) / FRAME_MS)
+                : 4 + Math.floor((elapsed - RELEASE) / FRAME_MS);
+              const progress = Math.max(0, Math.min(1, (elapsed - RELEASE) / 1000));
+              const position = job.kind === 'large-cast' && type === 'fire'
+                ? curve(launch, { x: casterIndex === 0 ? 200 : 824, y: 500 }, targetPoint, progress)
+                : { x: lerp(launch.x, targetPoint.x, progress), y: lerp(launch.y, targetPoint.y, progress) };
+              paintAnimationFrame(projectile, projectileSheet, projectileFrames[localFrame], position,
+                { mirror, size: job.kind === 'simple-cast' ? 1.15 : 1 });
+              Object.assign(projectile.dataset, { element: type, sequenceFrame: String(localFrame), phase: elapsed < RELEASE ? 'forming' : 'flight' });
+            } else hideAnimationSprite(projectile);
 
-          if (elapsed >= ARRIVAL) {
-            const hitTime = elapsed - ARRIVAL;
-            const index = Math.min(3, Math.floor(hitTime / HIT_FRAME_MS));
-            hitFlash(job, hitTime < HIT_FLASH_MS);
-            paintAnimationFrame(impact, hitSheet, hitFrames[index], targetPoint,
-              { size: job.kind === 'large-cast' ? 1.7 : 1 });
-            impact.style.filter = type === 'water' ? 'hue-rotate(155deg) saturate(1.25)' : '';
-            Object.assign(impact.dataset, { element: type, sequenceFrame: String(index), phase: 'fade' });
-            element.dataset.hitFrame = String(hitFrames[index]);
+            if (elapsed >= ARRIVAL) {
+              const hitTime = elapsed - ARRIVAL;
+              const index = Math.min(3, Math.floor(hitTime / HIT_FRAME_MS));
+              hitFlash(job, hitTime < HIT_FLASH_MS);
+              paintAnimationFrame(impact, hitSheet, hitFrames[index], targetPoint,
+                { size: job.kind === 'large-cast' ? 1.7 : 1 });
+              impact.style.filter = type === 'water' ? 'hue-rotate(155deg) saturate(1.25)' : '';
+              Object.assign(impact.dataset, { element: type, sequenceFrame: String(index), phase: 'fade' });
+              element.dataset.hitFrame = String(hitFrames[index]);
+            }
           }
         }
         if (elapsed >= impactAt) deliverImpact(job);

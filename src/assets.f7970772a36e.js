@@ -1,8 +1,8 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { resolveAssetUrl } from './asset-url.985595488d12.js';
+import { resolveAssetUrl } from './asset-url.06d3b5af16d8.js';
 import { SPELL_CATALOG } from './spells.9366a66158f4.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.cd1c37c4438a.js';
-import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.7d7f5b760588.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.3576148bdad3.js';
+import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.6bca2ba00dcc.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -61,6 +61,8 @@ export const ASSET_FILES = Object.freeze({
   mapControls: 'Wizzy Rough Map Controls.png',
   mapTitle: 'Wizzy Map Title Banner.png',
   charredBladeSword: 'Wizzy Charred Blade Sword.png',
+  xineophCardArt: 'Wizzy Xineoph Phoenix Card.png',
+  xineophAnimation: 'Wizzy Xineoph Phoenix Animation.png',
 });
 
 /** Original overworld wizards: fixed logical cells, source PNG left intact. */
@@ -310,6 +312,64 @@ export const COMBAT_ANIMATION_SHEETS = Object.freeze({
   ]),
 });
 
+/** Isolated viewports into the approved Xineoph storyboard, without repainting
+ * its source pixels. Frame clips remove the neighboring standing characters;
+ * anchors are local to each cropped viewport rather than the whole atlas cell.
+ */
+const xineophScale = 144 / 112;
+function xineophSheet({ animations, regions, anchors, clips = {}, ...metadata }) {
+  const frameRects = Array.from({ length: 16 }, (_, frame) => {
+    const [x, y, w, h] = regions[frame] || regions.default;
+    return Object.freeze({ x: frame % 4 * 384 + x, y: Math.floor(frame / 4) * 256 + y, w, h });
+  });
+  const frameAnchors = frameRects.map((rect, frame) => {
+    const [x, y] = anchors[frame] || anchors.default;
+    const localX = rect.x - frame % 4 * 384, localY = rect.y - Math.floor(frame / 4) * 256;
+    return Object.freeze({ x: (x - localX) / rect.w, y: (y - localY) / rect.h });
+  });
+  const frameClips = frameRects.map((rect, frame) => {
+    if (!clips[frame]) return null;
+    const localX = rect.x - frame % 4 * 384, localY = rect.y - Math.floor(frame / 4) * 256;
+    return `polygon(${clips[frame].map(([x, y]) => `${(x-localX)/rect.w*100}% ${(y-localY)/rect.h*100}%`).join(', ')})`;
+  });
+  return Object.freeze({
+    asset: 'xineophAnimation', sourceWidth: 1536, sourceHeight: 1024, columns: 4, rows: 4,
+    displayScale: xineophScale, ...metadata,
+    animations: Object.freeze(Object.fromEntries(Object.entries(animations).map(([key, frames]) => [key, Object.freeze(frames)]))),
+    frameRects: Object.freeze(frameRects), frameAnchors: Object.freeze(frameAnchors), frameClips: Object.freeze(frameClips),
+  });
+}
+
+export const XINEOPH_ANIMATION_SHEETS = Object.freeze({
+  actor: xineophSheet({
+    sourceBodyHeight: 112, targetBodyHeight: 144,
+    animations: { fire: [0,1,2,3,4,5,6] },
+    regions: { default: [0,0,256,256] },
+    anchors: { default: [87.5,238], 3: [88,238], 4: [87,238] },
+    // The first flight crop's right edge leads its beak by 58 source px.
+    // Use that same contact plane here so the bird does not jump at takeoff.
+    releaseOffset: Object.freeze({ x: (255-87.5)*xineophScale, y: (84-238)*xineophScale }),
+  }),
+  projectile: xineophSheet({
+    animations: { fire: [7,8,9] },
+    regions: { default: [40,20,236,135], 8: [45,25,233,130], 9: [55,25,239,133] },
+    // The right edge is the leading contact plane, conservatively ahead of
+    // both light tips; neither blade crosses the target before impact.
+    contactPlane: 'leading-edge',
+    anchors: { default: [276,114], 8: [278,100], 9: [294,121] },
+    clips: {
+      7: [[40,20],[276,20],[276,142],[273,150],[260,155],[128,155],[128,118],[40,118]],
+      8: [[45,25],[278,25],[278,138],[274,145],[260,155],[128,155],[128,118],[45,118]],
+      9: [[55,25],[294,25],[294,130],[288,135],[282,140],[277,145],[271,150],[252,158],[128,158],[128,118],[55,118]],
+    },
+  }),
+  impact: xineophSheet({
+    animations: { impact: [13,14,14,15] },
+    regions: { default: [145,75,110,132] },
+    anchors: { default: [236,173] },
+  }),
+});
+
 // Resolve from the document so both a domain root and a project subpath work.
 // Standalone builds provide these same originals once per asset.
 export const ASSETS = Object.freeze(Object.fromEntries(
@@ -358,8 +418,9 @@ export function spellSlabMarkup(spellId, className = '') {
   const lines = COMPACT_SPELL_TEXT[spellId] || [];
   const length = lines.reduce((total,line)=>total+line.text.length+(line.threshold?line.threshold.length+1:0),0);
   const density = length>60?'long':length<35&&lines.length<3?'short':'normal';
-  const illustration = spellId === 'Fire-6'
-    ? `<span data-card-illustration="charredBladeSword" style="position:absolute;left:${13/crop.w*100}%;top:${17/crop.h*100}%;width:${(crop.w-26)/crop.w*100}%;height:${164/crop.h*100}%;display:block;overflow:hidden;background:#180000"><img alt="" draggable="false" src="${ASSETS.charredBladeSword}" style="display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated" /></span>`
+  const illustrationAsset = spellId === 'Fire-6' ? 'charredBladeSword' : spellId === 'Fire-11' ? 'xineophCardArt' : null;
+  const illustration = illustrationAsset
+    ? `<span data-card-illustration="${illustrationAsset}" style="position:absolute;left:${13/crop.w*100}%;top:${17/crop.h*100}%;width:${(crop.w-26)/crop.w*100}%;height:${164/crop.h*100}%;display:block;overflow:hidden;background:#180000"><img alt="" draggable="false" src="${ASSETS[illustrationAsset]}" style="display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated" /></span>`
     : '';
   return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" data-copy-density="${density}" data-copy-type="${definition.type}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:#030308">${cropImage(crop)}${illustration}<span class="slab-live-paper"><strong class="slab-live-title">${definition.name}</strong><span class="slab-live-rules" data-slab-rules="${spellId}">${slabRulesMarkup(spellId)}</span></span></span>`;
 }
@@ -367,6 +428,7 @@ export function spellSlabMarkup(spellId, className = '') {
 /** Art-only viewports are available where a smaller illustration is needed. */
 export const SPELL_ART = Object.freeze(Object.fromEntries(Object.entries(SPELL_SLABS).map(([id,crop]) => {
   if (id === 'Fire-6') return [id,Object.freeze({ asset: 'charredBladeSword', width:1536, height:1024, x:0, y:0, w:1536, h:1024, label: 'Charred Blade' })];
+  if (id === 'Fire-11') return [id,Object.freeze({ asset: 'xineophCardArt', width:1536, height:1024, x:0, y:0, w:1536, h:1024, label: 'Xineoph' })];
   const fate = id.startsWith('FAT-');
   // The standalone resource slab is larger than the original sheet tiles.
   const scale = crop.asset === 'fireZeroSlab' ? crop.w / 282 : 1;

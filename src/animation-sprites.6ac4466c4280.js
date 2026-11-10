@@ -1,4 +1,4 @@
-import { ASSETS } from './assets.c9cbb8981548.js';
+import { ASSETS } from './assets.f7970772a36e.js';
 
 const imageLoads = new Map();
 
@@ -51,21 +51,36 @@ export function paintAnimationFrame(node, sheet, frame, point, { mirror = false,
     hideAnimationSprite(node);
     return false;
   }
-  const width = sheet.sourceWidth / sheet.columns * sheet.displayScale * size;
-  const height = sheet.sourceHeight / sheet.rows * sheet.displayScale * size;
-  const anchor = sheet.frameAnchors?.[frame] || { x: .5, y: .5 };
   const column = frame % sheet.columns, row = Math.floor(frame / sheet.columns);
+  const rect = sheet.frameRects ? sheet.frameRects[frame] : {
+    x: column * sheet.sourceWidth / sheet.columns, y: row * sheet.sourceHeight / sheet.rows,
+    w: sheet.sourceWidth / sheet.columns, h: sheet.sourceHeight / sheet.rows,
+  };
+  // Explicit regions keep full-scene draft atlases from drawing extra actors.
+  // Missing or invalid regions must never fall back to a whole source cell.
+  if (!rect || !['x', 'y', 'w', 'h'].every(key => Number.isFinite(rect[key]))
+    || rect.x < 0 || rect.y < 0 || rect.w <= 0 || rect.h <= 0
+    || rect.x + rect.w > sheet.sourceWidth || rect.y + rect.h > sheet.sourceHeight) {
+    hideAnimationSprite(node);
+    return false;
+  }
+  const scale = sheet.displayScale * size;
+  const width = rect.w * scale;
+  const height = rect.h * scale;
+  const anchor = sheet.frameAnchors?.[frame] || { x: .5, y: .5 };
   Object.assign(node.style, {
     display: 'block', width: `${width}px`, height: `${height}px`,
     backgroundImage: `url("${ASSETS[sheet.asset]}")`,
-    backgroundSize: `${width * sheet.columns}px ${height * sheet.rows}px`,
-    backgroundPosition: `${-column * width}px ${-row * height}px`,
+    backgroundSize: `${sheet.sourceWidth * scale}px ${sheet.sourceHeight * scale}px`,
+    backgroundPosition: `${-rect.x * scale}px ${-rect.y * scale}px`,
+    clipPath: sheet.frameClips?.[frame] || '',
     transformOrigin: `${anchor.x * width}px ${anchor.y * height}px`,
     transform: `translate(${Math.round(point.x - anchor.x * width)}px, ${Math.round(point.y - anchor.y * height)}px)${mirror ? ' scaleX(-1)' : ''}`,
   });
   node.hidden = false;
   Object.assign(node.dataset, { visible: 'true', frame: String(frame), asset: sheet.asset,
-    logicalX: String(Math.round(point.x)), logicalY: String(Math.round(point.y)) });
+    logicalX: String(Math.round(point.x)), logicalY: String(Math.round(point.y)),
+    sourceRect: `${rect.x},${rect.y},${rect.w},${rect.h}` });
   return true;
 }
 
