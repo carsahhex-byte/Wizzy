@@ -1,0 +1,37 @@
+[
+  {
+    "file": "fire/phoenix-clean-effects.png",
+    "sha256": "484165abca6b69afca6336e4b993905238990b54b290f70e2985e489729d0eca",
+    "bytes": 1850318
+  },
+  {
+    "file": "archive/fire-xineoph-first-draft.png",
+    "sha256": "3c3ab7fa81f46e4921d70f64f483d75e2d40408086e61704379a32082f95c701",
+    "bytes": 2113166
+  },
+  {
+    "file": "archive/fire-xineoph-energy-draft.png",
+    "sha256": "a15cec18629cd3e628feb46b0090222778669048da1259e01c2e991a18758bc2",
+    "bytes": 2091132
+  },
+  {
+    "file": "archive/fire-xineoph-pulsing-charge-draft.png",
+    "sha256": "a15cec18629cd3e628feb46b0090222778669048da1259e01c2e991a18758bc2",
+    "bytes": 2091132
+  },
+  {
+    "file": "archive/fire-phoenix-dolphin-style-draft.png",
+    "sha256": "437af8eb9c591a976ebf0bbb4dc41d20b5dba45c55dddff3654ef3a78215add5",
+    "bytes": 2190089
+  },
+  {
+    "file": "archive/fire-phoenix-bold-outline-draft.png",
+    "sha256": "fb700b6405797d630fe29d3c9ec31d65038ecab4d76429404b8f54da4a1065fa",
+    "bytes": 2288846
+  },
+  {
+    "file": "archive/water-dolphin-wave-draft.png",
+    "sha256": "fc5a3ef39f9401b7e353792ac03039e66ef52f84e585a59367ec2f1995778c8d",
+    "bytes": 2235511
+  }
+]
