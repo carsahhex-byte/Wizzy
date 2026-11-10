@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Wizzy · Earth spell drafts</title>
+  <style>
+    :root{color-scheme:dark;font-family:Arial,sans-serif;color:#e8e3cc;background:#131c17}*{box-sizing:border-box}body{margin:0}main{max-width:1190px;margin:auto;padding:30px 22px 45px}.eyebrow,.tag{font:700 10px/1.5 'Courier New',monospace;letter-spacing:1px;color:#b9c99a}h1{margin:10px 0 15px;color:#e0cc8a;font-size:clamp(32px,6vw,58px);line-height:1.05}header{max-width:850px}p{line-height:1.6}.intro{color:#bfccb9;font-size:15px}nav{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0 26px}a{color:#ead291}.button{padding:11px 14px;border:2px solid #9cab75;background:#34452c;color:#fff1c3;text-decoration:none;font:700 12px 'Courier New',monospace;min-height:42px}.button:hover{background:#4c633a}.rules{padding:18px 20px;background:#223126;border:2px solid #6d8252;box-shadow:4px 4px #080f0a;margin-bottom:30px}.rules h2{font-size:20px;margin:0 0 12px;color:#e1d39a}.rules ul{padding-left:22px;line-height:1.65;margin:0}.rules li+li{margin-top:7px}.rules strong{color:#f4dd94}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.card{position:relative;min-width:0;border:4px solid #79934b;box-shadow:5px 5px #060e08;background:#d8c28d;color:#352c1c}.art-link{display:block;background:#16251b;border-bottom:4px solid #79934b}.card img{display:block;width:100%;aspect-ratio:3/2;object-fit:contain;image-rendering:pixelated}.mana{position:absolute;top:10px;left:10px;min-width:43px;padding:5px 9px;text-align:center;background:#1a2519e6;border:2px solid #deba56;color:#ffe184;font:bold 29px/1 Arial,sans-serif;text-shadow:2px 2px #000}.copy{padding:15px 16px 18px}.copy h2{margin:0 0 12px;font-size:23px;font-weight:800;color:#33291b}.effect{font-size:17px;font-weight:600;line-height:1.45;margin:0 0 9px}.threshold{font-weight:900;padding-right:5px}.clarification{font-size:12px;color:#655638;margin:12px 0 0}.concept{font-size:12px;color:#635437;margin:14px 0 0;padding-top:10px;border-top:1px solid #9b885b}.card a.download{display:inline-block;margin-top:14px;color:#4b501d;font:700 12px 'Courier New',monospace}.table-wrap{overflow:auto;border:2px solid #657b4b;margin:30px 0 0}table{width:100%;border-collapse:collapse;font-size:14px;background:#1e2d21}th,td{padding:13px;text-align:left;border-bottom:1px solid #52673b;vertical-align:top}th{color:#e9dba8;background:#30422b}td:first-child{white-space:nowrap;font-weight:700;color:#e8d49d}footer{font:11px/1.6 'Courier New',monospace;color:#aebe9d;margin-top:25px}a:focus-visible{outline:3px solid #e9d69a;outline-offset:4px}@media(max-width:850px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){main{padding:22px 13px 35px}.cards{grid-template-columns:1fr;gap:19px}.rules{padding:16px}.copy{padding:15px}.effect{font-size:18px}th,td{padding:10px;font-size:13px}.mana{font-size:31px}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">WIZZY · EARTH SPELLBOOK · ART AND RULES DRAFT</p>
+    <h1>Earth · First Five Spells</h1>
+    <p class="intro">Five proposed spells and their illustration drafts. Review the wording and artwork before the Earth cards are created in the game.</p>
+    <nav><a class="button" id="download-all" href="Earth-Spell-Drafts.zip" download>Download artwork & card list ↓</a><a class="button" href="spellbook.json" download>Spellbook JSON ↓</a></nav>
+  </header>
+  <section class="rules" aria-labelledby="rules-heading">
+    <h2 id="rules-heading">Updated Golem rule</h2>
+    <ul>
+      <li><strong>20+ Shield transforms Earth.</strong> Shield loss during a turn leaves the Golem active until Earth’s own end-turn check.</li>
+      <li>At Earth’s end turn, <strong>check Shield first</strong>. Without protection, 19 or lower reverts the Golem and prevents its automatic damage.</li>
+      <li>If Golem form remains active, it deals <strong>15 damage to the opponent</strong>. This replaces the previous +10 spell-damage bonus.</li>
+      <li><strong>Earth-4</strong> protects an already-active Golem through the next Earth turn. Protection expires for the normal Shield check at that turn’s end.</li>
+    </ul>
+  </section>
+  <section id="cards" class="cards" aria-label="Earth spell artwork and card descriptions"></section>
+  <div class="table-wrap"><table><thead><tr><th>Card</th><th>Mana</th><th>Proposed effect</th></tr></thead><tbody id="list"></tbody></table></div>
+  <footer>Draft review only. Original illustration PNGs are preserved unchanged. Card effects and Golem rules have not been added to the battle engine.</footer>
+</main>
+<script id="spellbook-data" type="application/json">__EARTH_SPELLBOOK__</script>
+<script>
+(() => {
+  const data=JSON.parse(document.getElementById('spellbook-data').textContent);
+  const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  document.getElementById('cards').innerHTML=data.cards.map(card=>`<article class="card" data-card="${escape(card.id)}"><a class="art-link" href="${escape(card.art)}" target="_blank" rel="noopener"><img src="${escape(card.art)}" alt="${escape(card.id+' illustration: '+card.artConcept)}"></a><span class="mana" aria-label="${card.manaCost} Mana">${card.manaCost}</span><div class="copy"><h2>${escape(card.id)}</h2>${card.lines.map(line=>`<p class="effect">${line.threshold?`<strong class="threshold">${escape(line.threshold)}</strong>`:''}${escape(line.text)}</p>`).join('')}${card.clarification?`<p class="clarification">${escape(card.clarification)}</p>`:''}<p class="concept"><strong>Art:</strong> ${escape(card.artConcept)}</p><a class="download" href="${escape(card.art)}" download>Original artwork PNG ↓</a></div></article>`).join('');
+  document.getElementById('list').innerHTML=data.cards.map(card=>`<tr data-list-card="${escape(card.id)}"><td>${escape(card.id)}</td><td>${card.manaCost}</td><td>${escape(card.effectText)}</td></tr>`).join('');
+  if(location.protocol==='file:')document.getElementById('download-all').hidden=true;
+  Promise.all(data.cards.map(card=>new Promise(resolve=>{const image=new Image();image.onload=()=>resolve(true);image.onerror=()=>resolve(false);image.src=card.art;}))).then(loaded=>document.body.dataset.ready=String(loaded.every(Boolean)));
+  window.WIZZY_EARTH_SPELL_DRAFT=data;
+})();
+</script>
+</body>
+</html>

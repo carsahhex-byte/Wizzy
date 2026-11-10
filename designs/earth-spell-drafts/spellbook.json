@@ -1,0 +1,83 @@
+{
+  "format": "wizzy-earth-spell-drafts",
+  "version": 1,
+  "status": "draft-review-only",
+  "title": "Earth · First Five Spells",
+  "rules": {
+    "transformAtShield": 20,
+    "revertAtOwnEndTurnShieldAtMost": 19,
+    "previousSpellDamageBonusRemoved": true,
+    "spellDamageBonus": 0,
+    "automaticOwnEndTurnDamage": 15,
+    "endTurnOrder": [
+      "Expire Earth-4 protection if this is the end of the next Earth turn after it was cast.",
+      "If protection is inactive, check Shield: 19 or lower reverts Golem to Earth Wizard.",
+      "If Golem form remains active, deal 15 damage to the opponent."
+    ],
+    "earth4": {
+      "protectsAlreadyActiveGolemOnly": true,
+      "protectionBeginsOnCast": true,
+      "protectsThroughNextOwnTurn": true,
+      "expiresBeforeShieldCheckAtNextOwnEndTurn": true
+    }
+  },
+  "cards": [
+    {
+      "id": "Earth-1",
+      "manaCost": 0,
+      "effectText": "Deal 5 damage and gain 5 Shield. On a 7+, gain 5 additional Shield.",
+      "lines": [
+        { "text": "Deal 5 damage and gain 5 Shield." },
+        { "threshold": "7+", "text": "Gain 5 additional Shield." }
+      ],
+      "clarification": "A 7+ gives 10 Shield total.",
+      "art": "art/earth-1.png",
+      "artConcept": "A small mossy stone attack accompanied by a modest protective stone Shield."
+    },
+    {
+      "id": "Earth-2",
+      "manaCost": 2,
+      "effectText": "Gain 10 Shield. On a 6+, gain 1 Mana.",
+      "lines": [
+        { "text": "Gain 10 Shield." },
+        { "threshold": "6+", "text": "Gain 1 Mana." }
+      ],
+      "art": "art/earth-2.png",
+      "artConcept": "A substantial moss-covered stone Shield with a small violet Mana crystal and muted gold energy."
+    },
+    {
+      "id": "Earth-3",
+      "manaCost": 3,
+      "effectText": "Deal 5 damage. On a 9+, gain 20 Shield.",
+      "lines": [
+        { "text": "Deal 5 damage." },
+        { "threshold": "9+", "text": "Gain 20 Shield." }
+      ],
+      "art": "art/earth-3.png",
+      "artConcept": "A modest forward stone shockwave with a large protective rampart rising behind the Earth wizard."
+    },
+    {
+      "id": "Earth-4",
+      "manaCost": 5,
+      "effectText": "Gain 2 Mana. Keep an already-active Golem through your next turn, even below 20 Shield. At the end of that next Earth turn, check Shield normally.",
+      "lines": [
+        { "text": "Gain 2 Mana." },
+        { "text": "Keep an already-active Golem through your next turn, even below 20 Shield." },
+        { "text": "At that next Earth turn’s end, check Shield normally." }
+      ],
+      "clarification": "Extends an active Golem; it does not activate Golem form by itself.",
+      "art": "art/earth-4.png",
+      "artConcept": "The mossy Golem sustained inside a protective earthen ward, with a restrained time motif and returning Mana energy."
+    },
+    {
+      "id": "Earth-5",
+      "manaCost": 5,
+      "effectText": "If your Golem is active, deal 15 damage.",
+      "lines": [
+        { "text": "If your Golem is active, deal 15 damage." }
+      ],
+      "art": "art/earth-5.png",
+      "artConcept": "The active Golem delivering a powerful stone-fist strike with angular rock fragments."
+    }
+  ]
+}
