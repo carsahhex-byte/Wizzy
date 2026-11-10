@@ -1,14 +1,14 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.f8fbae4371e1.js';
-import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.e3c667abc473.js';
-import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.7d88afb55ce3.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.16ef7823f6d8.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.9366a66158f4.js';
+import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.cd043dc81002.js';
+import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.52b377af3d56.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.4f464f9db7bd.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'ember-damage-v1';
+export const COMBAT_RULES_VERSION = 'ember-consumption-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -826,15 +826,20 @@ export function validateSavedGame(value) {
 // an already-committed legacy Water-0 receives its new on-cast Mana once.
 function refreshCurrentSpellCards(state) {
   const previousText = {
+    'Fire-6': ['Deal 22 damage. On a 7+, deal 28 instead. On a 10+, deal 36 instead.'],
     'Fire-9': ['Gain 2 Embers. On a 7+, gain 3 instead. If you have 4 or more Embers after resolution, gain 8 Shield.'],
     'Fire-11': ['Deal 8 damage and gain 2 Embers. On a 7+, gain +2 to your next roll. On a 10+, gain +4 instead.'],
-    'Fire-14': ['Spend all Embers. Deal 20 damage plus 9 per Ember spent. On an 8+, deal 12 per Ember instead.'],
-    'Fire-15': ['Gain 1 Ember and 1 Mana.'],
+    'Fire-14': [
+      'Spend all Embers. Deal 20 damage plus 9 per Ember spent. On an 8+, deal 12 per Ember instead.',
+      'Spend all Embers. Deal 20 damage plus 7 per Ember spent. On an 8+, deal 9 per Ember instead.',
+    ],
+    'Fire-15': ['Gain 1 Ember and 1 Mana.', 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
   };
   const previousCosts = { 'Fire-11': 3, 'Water-12': 4 };
   let changed = false;
   const upgradedWaterCards = new Set();
+  const upgradedSunsetterCards = new Set();
   for (const player of state.players) for (const zone of ['hand', 'deck', 'discard']) {
     for (const card of player[zone]) {
       if (Object.hasOwn(previousText, card?.spellId)
@@ -842,6 +847,7 @@ function refreshCurrentSpellCards(state) {
         && card.description === card.effectText
         && (card.spellId !== 'Fire-11' || card.manaCost === 3 && card.cost === 3)) {
         if (card.spellId === 'Water-0') upgradedWaterCards.add(card.id);
+        if (card.spellId === 'Fire-14') upgradedSunsetterCards.add(card.id);
         if (card.spellId === 'Fire-11') card.manaCost = card.cost = SPELL_CATALOG['Fire-11'].manaCost;
         card.effectText = SPELL_CATALOG[card.spellId].effectText;
         card.description = card.effectText;
@@ -864,6 +870,21 @@ function refreshCurrentSpellCards(state) {
         changed = true;
       }
     }
+  }
+  if (['rolling', 'fate', 'resolving'].includes(state.phase)
+    && state.pendingSpell?.spellId === 'Fire-14'
+    && upgradedSunsetterCards.has(state.pendingSpell.cardId)) {
+    const pending = state.pendingSpell;
+    const caster = state.players[pending.casterIndex];
+    // Prior Sunsetter casts paid all held Embers before rolling. Restore only
+    // that exact reservation so the new damage rule can consume the bank once.
+    // Completed outcomes and their historical paid Mana/logs stay untouched.
+    if (pending.casterIndex !== 0 || pending.cardId !== state.pendingCardId
+      || !caster.hand.some(card => card.id === pending.cardId)
+      || caster.element !== 0 || !Number.isSafeInteger(pending.emberSpent)
+      || pending.emberSpent < 0 || pending.emberSpent > MAX_EMBERS) throw new Error('Invalid prior Sunsetter reservation');
+    caster.element = pending.emberSpent;
+    pending.emberSpent = 0;
   }
   if (PENDING_PHASES.includes(state.phase) && state.pendingSpell?.spellId === 'Water-0'
     && upgradedWaterCards.has(state.pendingSpell.cardId)

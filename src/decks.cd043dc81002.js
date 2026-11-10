@@ -1,7 +1,7 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.f8fbae4371e1.js';
-import { SPELLBOOK_1, SPELLBOOK_2, ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbookSpells, isSpellbookId, isSpellInBook } from './spellbooks.7d88afb55ce3.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.9366a66158f4.js';
+import { SPELLBOOK_1, SPELLBOOK_2, ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbookSpells, isSpellbookId, isSpellInBook } from './spellbooks.52b377af3d56.js';
 
-export { getDeckSpellbook } from './spellbooks.7d88afb55ce3.js';
+export { getDeckSpellbook } from './spellbooks.52b377af3d56.js';
 
 export const MAX_DECK_FILE_BYTES = 65536;
 

@@ -1,4 +1,4 @@
-import { SPELL_CATALOG } from './spells.f8fbae4371e1.js';
+import { SPELL_CATALOG } from './spells.9366a66158f4.js';
 
 export const MAX_HP = 100;
 export const MAX_MANA = 10;
@@ -18,7 +18,7 @@ export const SPELL_RULES = Object.freeze(Object.fromEntries(
     card.spellId === 'Fire-0' ? Object.freeze({ requiresRoll: false, emberSpend: 'none' })
       : card.spellId === 'Fire-5' ? rule('optional', 1)
       : card.spellId === 'Fire-12' ? rule('optional', 2)
-        : ['Fire-7', 'Fire-14'].includes(card.spellId) ? rule('all') : rule(),
+        : card.spellId === 'Fire-7' ? rule('all') : rule(),
   ]),
 ));
 
@@ -76,10 +76,12 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   const waterSpell = definition.element === 'Water';
   const flow = waterSpell ? Math.min(MAX_FLOW, caster.element) : 0;
   caster.element = Math.min(waterSpell ? MAX_FLOW : MAX_EMBERS, caster.element);
-  // Costs were paid at commitment. New Ember rewards strengthen later attacks.
-  const emberBonus = definition.element === 'Fire' ? caster.element * EMBER_DAMAGE_PER_POINT : 0;
+  // Costs were paid at commitment. Snapshot the bank before this spell's rewards.
+  const heldEmbers = definition.element === 'Fire' ? caster.element : 0;
+  const emberBonus = heldEmbers * EMBER_DAMAGE_PER_POINT;
   let flowGain = 1;
   let dealtOutgoingDamage = false;
+  let usedEmbers = false;
   const events = [];
   const name = player => player.name ?? player.id ?? 'Wizard';
   const record = (type, player, message, detail = {}) => events.push({ type, playerId: player.id, spellId, message, ...detail });
@@ -90,6 +92,12 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
     if (!selfDamage && amount > 0) dealtOutgoingDamage = true;
     const formula = `Base ${calculation.baseDamage} + ${calculation.enhancement}% Enhancement + ${calculation.aura}% Aura${calculation.emberBonus ? ` + ${calculation.emberBonus}% Embers` : ''} = ${calculation.totalDamage} damage`;
     record('damage', player, `${formula}. ${name(player)} takes ${detail.amount} damage${detail.absorbed ? ` (${detail.absorbed} absorbed by Shield)` : ''}; ${detail.hpDamage} HP damage.`, { ...calculation, ...detail });
+    if (!selfDamage && amount > 0 && heldEmbers > 0 && !usedEmbers) {
+      usedEmbers = true;
+      caster.element = 0;
+      record('resource', caster, `${name(caster)} uses ${heldEmbers} Ember${heldEmbers === 1 ? '' : 's'} on this spell; Embers return to 0.`,
+        { amount: -heldEmbers, resource: 'element' });
+    }
   };
   const gainShield = amount => {
     const gained = Math.min(amount, Math.max(0, MAX_SHIELD - caster.shield));
@@ -147,7 +155,8 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       damage(opponent, 10 + 8 * emberSpent);
       break;
     case 'Fire-6':
-      damage(opponent, rollTotal >= 10 ? 36 : rollTotal >= 7 ? 28 : 22);
+      damage(opponent, rollTotal >= 7 ? 30 : 20);
+      if (rollTotal >= 7) gainElement(2);
       break;
     case 'Fire-7':
       damage(opponent, 15 + (rollTotal >= 9 ? 10 : 7) * emberSpent);
@@ -177,11 +186,11 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       damage(opponent, rollTotal >= 10 ? 45 : rollTotal >= 7 ? 38 : 30);
       break;
     case 'Fire-14':
-      damage(opponent, 20 + (rollTotal >= 8 ? 9 : 7) * emberSpent);
+      damage(opponent, rollTotal >= 8 ? 65 : 55);
       break;
     case 'Fire-15':
       gainElement(1);
-      if (rollTotal >= 7) gainMana(1);
+      if (rollTotal >= 6) gainMana(1);
       break;
     case 'Water-0':
       if (rollTotal >= 7) flowGain += 1;
