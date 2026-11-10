@@ -8,6 +8,22 @@ Printed Fire/Water costs and effect text come from that PDF, with the user-appro
 
 **Fire-14** still costs **8 Mana**, spends all available Embers, and has **20 base damage** with an **8+ Modified Roll threshold**. Its per-Ember damage is **7**, increasing to **9 on 8+**: `20 + 7 × spent` or `20 + 9 × spent`. Five Embers therefore deal **55 / 65** before bonuses; 30% Enhancement plus 10% Aura increases those totals to **77 / 91 before Shield**. Other spell effects, unlimited copies including Fate, the catalog family and save version 14 stay unchanged. Exact earlier spell definitions are upgraded without resetting decks or replaying committed actions/results.
 
+## Spellbook 1 and Spellbook 2
+
+The Deck workshop has two spellbook buttons. **Spellbook 1** keeps the full existing catalog and saved decks. **Spellbook 2** is an independent testing collection with 13 unique slabs: five Fire, five Water and the three shared Fate slabs. Names, costs, effects and artwork remain identical to their Spellbook 1 counterparts. No persistent Ember percentage bonus or proposed Fire rework is enabled.
+
+| Deck role | Fire slab | Water slab | Shared purpose |
+| --- | --- | --- | --- |
+| Elemental development | Fire-2 | Water-2 | Develop elemental power; Water-2 also attacks. |
+| Mana and elemental setup | Fire-15 | Water-0 | Develop resources for later turns. Water-0 grants Mana on cast; Fire-15 needs 7+ for Mana. |
+| Midrange attack | Fire-5 | Water-12 | Deal damage with a secondary benefit: Ember spending/Shield removal for Fire, healing for Water. |
+| Attack while building | Fire-11 | Water-9 | Deal damage while generating elemental resources. |
+| Finisher | Fire-14 | Water-14 | Use established elemental power for a large attack. Fire spends Embers; Water keeps Flow. |
+
+Fortune, Misfortune and Twist remain available to both elements in both books. Each book has its own Fire and Water saved decks and drafts, with the same 1–30 total and unlimited-copy rules. Spellbook 2 starts with empty deck slots. Saving, clearing, uploading or editing one book does not replace the other book’s deck. Account saves include both books; drafts stay on the device.
+
+Existing deck JSON files without `spellbookId` belong to Spellbook 1. Spellbook 2 deck files add `"spellbookId": "spellbook-2"` while retaining the compatibility family `nov4-v2.1`. Importing a file opens its matching spellbook and element as a draft for review. Out-of-pool cards, unknown book IDs and mixed-element decks are rejected. Shared-screen battles use the selected book’s saved pair; two-screen rooms require the same book at both seats.
+
 ## Build and save a deck
 
 Each element starts with an empty deck slot. No starter composition is generated. Open **Deck**, choose Fire or Water, and select spells from the collection. The selected list and quantities occupy the upper half; the collection shows four slabs per row below it. Filters cover All, Fire, Water, Fate, and **In Deck**.

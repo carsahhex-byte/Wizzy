@@ -10,6 +10,7 @@ import {
 } from '../src/game.js';
 import { normalizeDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
+import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook, isSpellbookId } from '../src/spellbooks.js';
 import { createAccountStore, AccountError } from './account-store.js';
 
 const DEFAULT_ROOT = path.resolve(import.meta.dirname, '../dist');
@@ -34,9 +35,18 @@ function playerName(value) {
   return name;
 }
 
-function playableDeck(value, element) {
+function requestedSpellbook(body, account) {
+  const id = body.spellbookId ?? (account ? SPELLBOOK_1 : getDeckSpellbook(body.deck));
+  if (!isSpellbookId(id)) fail(400, 'invalid_spellbook', 'Choose Spellbook 1 or Spellbook 2.');
+  return id;
+}
+function accountDeck(account, element, spellbookId) {
+  return spellbookId === SPELLBOOK_2 ? account.spellbook2Decks?.[element] : account.decks[element];
+}
+function playableDeck(value, element, spellbookId = getDeckSpellbook(value)) {
   try {
     const deck = normalizeDeck(value);
+    if (getDeckSpellbook(deck) !== spellbookId) throw new Error('Choose a deck from the selected spellbook.');
     if (deck.element !== element) throw new Error(`This seat needs a ${element === 'fire' ? 'Fire' : 'Water'} deck.`);
     return deck;
   } catch (error) { fail(400, 'invalid_deck', error.message || 'Choose a legal deck of 1–30 slabs.'); }
@@ -77,6 +87,7 @@ function roomView(room, playerIndex) {
   }
   return {
     spellbookVersion: SPELLBOOK_VERSION,
+    spellbookId: room.spellbookId || SPELLBOOK_1,
     combatRulesVersion: COMBAT_RULES_VERSION,
     code: room.code, playerIndex, element: playerIndex === 0 ? 'fire' : 'water',
     revision: room.revision,
@@ -315,11 +326,12 @@ export function createMultiplayerServer(options = {}) {
         if (!['fire', 'water'].includes(body.element)) fail(400, 'invalid_element', 'Choose Fire or Water.');
         const account = optionalAccount(request);
         const name = account ? account.profile.name : playerName(body.name);
-        const deck = playableDeck(account ? account.decks[body.element] : body.deck, body.element);
+        const spellbookId = requestedSpellbook(body, account);
+        const deck = playableDeck(account ? accountDeck(account, body.element, spellbookId) : body.deck, body.element, spellbookId);
         if (rooms.size >= maxRooms) fail(503, 'rooms_full', 'The battle server is full. Please try again later.');
         const playerIndex = body.element === 'fire' ? 0 : 1;
         const player = newPlayer(name, deck, account?.id);
-        const room = { code: newCode(), hostIndex: playerIndex, revision: 0, players: [null, null], state: null, touchedAt: now() };
+        const room = { code: newCode(), spellbookId, hostIndex: playerIndex, revision: 0, players: [null, null], state: null, touchedAt: now() };
         room.players[playerIndex] = player.record; rooms.set(room.code, room);
         result = { ...roomView(room, playerIndex), token: player.token }; status = 201;
       } else {
@@ -329,7 +341,7 @@ export function createMultiplayerServer(options = {}) {
         const operation = match[2];
         if (operation === 'info' && request.method === 'GET') {
           limit(`info:${ip}`, 120);
-          result = { code: room.code, status: room.state ? room.state.status : 'waiting', joiningElement: room.hostIndex === 0 ? 'water' : 'fire' };
+          result = { code: room.code, spellbookId: room.spellbookId || SPELLBOOK_1, status: room.state ? room.state.status : 'waiting', joiningElement: room.hostIndex === 0 ? 'water' : 'fire' };
         } else if (operation === 'join' && request.method === 'POST') {
           limit(`join:${ip}`, 30);
           if (room.state || room.players.every(Boolean)) fail(409, 'room_full', 'Both seats in this battle are already taken.');
@@ -337,7 +349,9 @@ export function createMultiplayerServer(options = {}) {
           const playerIndex = room.players[0] ? 1 : 0;
           const account = optionalAccount(request);
           const element = playerIndex === 0 ? 'fire' : 'water';
-          const player = newPlayer(account ? account.profile.name : playerName(body.name), playableDeck(account ? account.decks[element] : body.deck, element), account?.id);
+          const spellbookId = requestedSpellbook(body, account);
+          if (spellbookId !== (room.spellbookId || SPELLBOOK_1)) fail(409, 'spellbook_mismatch', 'This room uses a different spellbook. Select its spellbook in Deck before joining.');
+          const player = newPlayer(account ? account.profile.name : playerName(body.name), playableDeck(account ? accountDeck(account, element, spellbookId) : body.deck, element, spellbookId), account?.id);
           const nextPlayers = room.players.slice(); nextPlayers[playerIndex] = player.record;
           const state = makeMatch({ fire: nextPlayers[0].deck, water: nextPlayers[1].deck });
           assertGame(state);

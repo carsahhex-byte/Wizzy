@@ -116,7 +116,7 @@ test('room creation, opposite-element joins and private player views support two
   assert.match(host.code, /^[A-Z2-9]{8}$/); assert.match(host.token, /^[A-Za-z0-9_-]{43}$/);
   assert.deepEqual([host.revision, host.status, host.state, host.playerIndex], [0, 'waiting', null, 0]);
   const info = await api.request(`/api/rooms/${host.code}/info`);
-  assert.deepEqual(info.data, { code: host.code, status: 'waiting', joiningElement: 'water' });
+  assert.deepEqual(info.data, { code: host.code, spellbookId: 'spellbook-1', status: 'waiting', joiningElement: 'water' });
   assert.equal((await api.request(`/api/rooms/${host.code}`)).status, 401);
   assert.equal((await api.request(`/api/rooms/${host.code}?token=${host.token}`)).status, 401, 'query strings do not authenticate');
   const guest = await api.join(host);
@@ -830,7 +830,7 @@ test('custom deck legality and opposite seats are checked before creating a matc
   const bad = legalDeck('fire'); bad.entries[0].quantity = 4;
   assert.equal((await api.request('/api/rooms', { method: 'POST', body: { name: 'Bad', element: 'fire', deck: bad } })).status, 400);
   const waterHost = await api.create('water');
-  assert.deepEqual((await api.request(`/api/rooms/${waterHost.code}/info`)).data, { code: waterHost.code, status: 'waiting', joiningElement: 'fire' });
+  assert.deepEqual((await api.request(`/api/rooms/${waterHost.code}/info`)).data, { code: waterHost.code, spellbookId: 'spellbook-1', status: 'waiting', joiningElement: 'fire' });
   assert.equal((await api.request(`/api/rooms/${waterHost.code}/join`, { method: 'POST', body: { name: 'Wrong', deck: legalDeck('water') } })).status, 400);
   const fireGuest = await api.join(waterHost);
   assert.deepEqual([fireGuest.playerIndex, fireGuest.element, fireGuest.state.activePlayer], [0, 'fire', 0]);
@@ -969,4 +969,27 @@ test('Water-0 fills Mana at commitment during a private pending Fate chain, caps
     assert.deepEqual(manaEvents(settled.state), manaEvents(pending), 'resolution emits Flow only, not another Mana reward');
     assert.deepEqual((await send()).data, settled); assert.equal(samples, 2);
   });
+});
+
+test('guest Spellbook 2 rooms retain book identity, restrict their pool and reject mixed-book joins', async t => {
+  const api = await service(t, { createMatch: decks => createGame(90, decks) });
+  const smallDeck = (element, spellId) => ({ element, spellbookId: 'spellbook-2', entries: [{ spellId, quantity: 2 }, { spellId: 'FAT-003', quantity: 3 }] });
+  const made = await api.request('/api/rooms', { method: 'POST', body: { name: 'New Fire', element: 'fire', spellbookId: 'spellbook-2', deck: smallDeck('fire', 'Fire-11') } });
+  assert.equal(made.status, 201, made.data.error); assert.equal(made.data.spellbookId, 'spellbook-2');
+  const info = await api.request(`/api/rooms/${made.data.code}/info`);
+  assert.equal(info.data.spellbookId, 'spellbook-2');
+  const wrongBook = await api.request(`/api/rooms/${made.data.code}/join`, { method: 'POST', body: { name: 'Old Water', deck: legalDeck('water') } });
+  assert.equal(wrongBook.status, 409); assert.equal(wrongBook.data.code, 'spellbook_mismatch');
+  const invalidPool = await api.request(`/api/rooms/${made.data.code}/join`, { method: 'POST', body: { name: 'Wrong Pool', deck: smallDeck('water', 'Water-1') } });
+  assert.equal(invalidPool.status, 400); assert.equal(invalidPool.data.code, 'invalid_deck');
+  const joined = await api.request(`/api/rooms/${made.data.code}/join`, { method: 'POST', body: { name: 'New Water', deck: smallDeck('water', 'Water-9') } });
+  assert.equal(joined.status, 200, joined.data.error); assert.equal(joined.data.spellbookId, 'spellbook-2');
+  assert.equal(joined.data.state.players[1].deckDefinition.spellbookId, 'spellbook-2');
+  assert.ok(joined.data.state.players[1].hand.every(card => ['Water-9', 'FAT-003'].includes(card.spellId)));
+  assert.equal(joined.data.state.players[0].deckDefinition, null);
+  const current = await api.request(`/api/rooms/${made.data.code}`, { token: made.data.token });
+  assert.equal(current.data.spellbookId, 'spellbook-2');
+  assert.equal(current.data.state.players[0].deckDefinition.spellbookId, 'spellbook-2');
+  const badCreate = await api.request('/api/rooms', { method: 'POST', body: { name: 'Forged', element: 'fire', spellbookId: 'spellbook-2', deck: legalDeck('fire') } });
+  assert.equal(badCreate.status, 400);
 });

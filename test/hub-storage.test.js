@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { SPELLBOOK_1, SPELLBOOK_2 } from '../src/spellbooks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
 import { createStarterDeck, getEligibleSpells, normalizeDeckSlot, setDeckQuantity, validateDeck } from '../src/decks.js';
-import { createHubStorage, HUB_SAVE_KEY, GUEST_SAVE_KEY, restoreHubDraft } from '../src/hub-storage.js';
+import { createHubStorage, HUB_SAVE_KEY, GUEST_SAVE_KEY, GUEST_BOOK2_SAVE_KEY, restoreHubDraft } from '../src/hub-storage.js';
 
 class BrowserStorage {
   constructor(entries = []) { this.items = new Map(entries); this.blocked = new Set(); this.blockReads = false; }
@@ -345,4 +346,110 @@ test('existing Fire-15 and Water-0 guest and account caches survive compatible r
   assert.deepEqual(reloaded.readAccount(account.accountId).cloudDecks, account.cloudDecks);
   assert.deepEqual(reloaded.readGuest().savedDecks, guest.savedDecks);
   assert.deepEqual(reloaded.readGuest().drafts, guest.drafts);
+});
+
+
+const testingBook = (quantity = 3) => {
+  const savedDecks = {
+    fire: setDeckQuantity(createStarterDeck('fire', SPELLBOOK_2), 'Fire-11', quantity),
+    water: setDeckQuantity(createStarterDeck('water', SPELLBOOK_2), 'Water-9', quantity),
+  };
+  return { savedDecks, drafts: structuredClone(savedDecks), cloudDecks: null };
+};
+
+test('two spellbooks keep separate saved decks, unfinished drafts and selection through reload and backup recovery', () => {
+  const disk = new BrowserStorage(), store = createHubStorage(disk);
+  const guest = snapshot('Two books');
+  const original = structuredClone(guest.savedDecks);
+  guest.selectedSpellbookId = SPELLBOOK_2;
+  guest.spellbook2 = testingBook(5);
+  guest.spellbook2.drafts.fire = setDeckQuantity(guest.spellbook2.drafts.fire, 'Fire-15', 2);
+  assert.equal(store.save(guest), true);
+  for (const removePrimary of [false, true]) {
+    if (removePrimary) disk.removeItem(HUB_SAVE_KEY);
+    const loaded = createHubStorage(disk).load().state;
+    assert.deepEqual(loaded.savedDecks, original);
+    assert.deepEqual(loaded.drafts, guest.drafts);
+    assert.deepEqual(loaded.spellbook2, guest.spellbook2);
+    assert.equal(loaded.selectedSpellbookId, SPELLBOOK_2);
+    assert.deepEqual(restoreHubDraft(loaded.spellbook2.drafts.fire, 'fire', null, SPELLBOOK_2), guest.spellbook2.drafts.fire);
+  }
+});
+
+test('guest and different account owners retain independent spellbook-two decks and cloud baselines', () => {
+  const disk = new BrowserStorage(), store = createHubStorage(disk);
+  const guest = { ...snapshot('Guest books'), selectedSpellbookId: SPELLBOOK_2, spellbook2: testingBook(2) };
+  const alice = { ...snapshot('Alice books', 'alice-books'), selectedSpellbookId: SPELLBOOK_1, spellbook2: testingBook(4) };
+  alice.spellbook2.cloudDecks = testingBook(3).savedDecks;
+  alice.spellbook2.drafts.water = setDeckQuantity(alice.spellbook2.drafts.water, 'Water-0', 1);
+  const bob = { ...snapshot('Bob books', 'bob-books'), selectedSpellbookId: SPELLBOOK_2, spellbook2: testingBook(7) };
+  bob.spellbook2.cloudDecks = structuredClone(bob.spellbook2.savedDecks);
+  store.save(guest); store.save(alice); store.save(bob);
+  assert.deepEqual(store.readGuest().spellbook2, guest.spellbook2);
+  assert.deepEqual(store.readAccount(alice.accountId).spellbook2, alice.spellbook2);
+  assert.deepEqual(store.readAccount(bob.accountId).spellbook2, bob.spellbook2);
+  assert.equal(store.readAccount('other-account'), null);
+  assert.equal(store.load().state.accountId, bob.accountId);
+  store.save(store.readGuest());
+  const signedOut = createHubStorage(disk).load().state;
+  assert.equal(signedOut.accountId, null);
+  assert.deepEqual(signedOut.savedDecks, guest.savedDecks);
+  assert.deepEqual(signedOut.spellbook2, guest.spellbook2);
+  assert.equal(signedOut.selectedSpellbookId, SPELLBOOK_2);
+});
+
+test('legacy saves stay in Spellbook 1 and invalid testing cards cannot overwrite a valid two-book save', () => {
+  const disk = new BrowserStorage(), store = createHubStorage(disk);
+  const legacy = snapshot('Original collection');
+  store.save(legacy);
+  const restored = store.load().state;
+  assert.deepEqual(restored.savedDecks, legacy.savedDecks);
+  assert.equal(restored.spellbook2, undefined);
+  assert.equal(restored.selectedSpellbookId, undefined);
+  const both = { ...legacy, selectedSpellbookId: SPELLBOOK_2, spellbook2: testingBook() };
+  assert.equal(store.save(both), true);
+  const before = disk.getItem(HUB_SAVE_KEY);
+  for (const change of [
+    state => { state.spellbook2.savedDecks.fire.entries = [{ spellId: 'Fire-1', quantity: 1 }]; },
+    state => { delete state.spellbook2.savedDecks.fire.spellbookId; },
+    state => { state.savedDecks.fire = structuredClone(state.spellbook2.savedDecks.fire); },
+  ]) {
+    const invalid = structuredClone(both); change(invalid);
+    assert.equal(store.save(invalid), false);
+    assert.equal(disk.getItem(HUB_SAVE_KEY), before);
+  }
+});
+
+
+test('testing-only backups survive cached legacy rewrites without replacing newer original decks or another owner', () => {
+  const disk = new BrowserStorage(), store = createHubStorage(disk, { now: () => 100 });
+  const guest = { ...snapshot('Both books'), selectedSpellbookId: SPELLBOOK_2, spellbook2: testingBook(6) };
+  guest.spellbook2.drafts.water = setDeckQuantity(guest.spellbook2.drafts.water, 'Water-0', 3);
+  assert.equal(store.save(guest), true);
+  const archive = JSON.parse(disk.getItem(GUEST_BOOK2_SAVE_KEY));
+  assert.equal(archive.savedDecks, undefined, 'the supplementary record never carries an old original-book deck');
+  assert.equal(archive.profile, undefined);
+  const legacyRewrite = { version: 2, savedAt: 900, ...snapshot('Later guest edits') };
+  legacyRewrite.savedDecks.fire = alternate('fire'); legacyRewrite.drafts.fire = structuredClone(legacyRewrite.savedDecks.fire);
+  disk.setItem(HUB_SAVE_KEY, json(legacyRewrite)); disk.setItem(GUEST_SAVE_KEY, json(legacyRewrite));
+  const recovered = createHubStorage(disk).load().state;
+  assert.deepEqual(recovered.savedDecks, legacyRewrite.savedDecks);
+  assert.deepEqual(recovered.drafts, legacyRewrite.drafts);
+  assert.equal(recovered.profile.name, legacyRewrite.profile.name);
+  assert.deepEqual(recovered.spellbook2, guest.spellbook2);
+  assert.equal(recovered.selectedSpellbookId, SPELLBOOK_2);
+  const alice = { ...snapshot('Alice', 'alice-archive'), selectedSpellbookId: SPELLBOOK_2, spellbook2: testingBook(9) };
+  alice.spellbook2.cloudDecks = testingBook(7).savedDecks;
+  assert.equal(store.save(alice), true);
+  const oldAccount = { version: 2, savedAt: 1000, ...snapshot('Alice legacy edit', alice.accountId) };
+  oldAccount.savedDecks.water = alternate('water'); oldAccount.drafts.water = structuredClone(oldAccount.savedDecks.water);
+  disk.setItem(HUB_SAVE_KEY, json(oldAccount)); disk.setItem(`wizzy.hub.account.v2.${alice.accountId}`, json(oldAccount));
+  const account = createHubStorage(disk).load().state;
+  assert.equal(account.accountId, alice.accountId);
+  assert.deepEqual(account.savedDecks, oldAccount.savedDecks);
+  assert.deepEqual(account.spellbook2, alice.spellbook2);
+  assert.deepEqual(store.readGuest().spellbook2, guest.spellbook2);
+  assert.equal(store.readAccount('different-owner'), null);
+  store.save(store.readGuest());
+  assert.equal(createHubStorage(disk).load().state.accountId, null, 'a newer account-only backup never chooses the active owner');
 });

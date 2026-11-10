@@ -1,5 +1,6 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE } from './spells.js';
-import { normalizeDeck, validateDeck } from './decks.js';
+import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.js';
+import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
@@ -7,7 +8,7 @@ export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange }
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 14;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'fire-two-water-three-mana-v1';
+export const COMBAT_RULES_VERSION = 'spellbook-selection-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -25,6 +26,11 @@ export const CARD_CATALOG = Object.freeze({
   fire: Object.freeze(Object.values(SPELL_CATALOG).filter(card => card.element === 'Fire' || card.category === 'Fate')),
   water: Object.freeze(Object.values(SPELL_CATALOG).filter(card => card.element === 'Water' || card.category === 'Fate')),
 });
+
+/** Private online views expose only the viewer's deck definition. */
+export function getGameSpellbook(state) {
+  return getDeckSpellbook(state?.players?.find(player => player?.deckDefinition)?.deckDefinition);
+}
 
 function randomGenerator(seed) {
   let value = Number(seed) >>> 0;
@@ -84,11 +90,19 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
     || Object.keys(deckConfigs).some((key) => !['fire', 'water'].includes(key))) {
     throw new Error('Deck configurations must be keyed by fire or water.');
   }
+  const spellbookId = getDeckSpellbook(deckConfigs.fire || deckConfigs.water);
+  if (!isSpellbookId(spellbookId)) throw new Error('Choose Spellbook 1 or Spellbook 2.');
   const definitions = Object.fromEntries(['fire', 'water'].map(id => {
     const input = deckConfigs[id];
     if (validateDeck(input) && input.element !== id) throw new Error(`The ${id} wizard requires a ${id} deck.`);
-    return [id, validateDeck(input) ? normalizeDeck(input) : { element: id, entries: [] }];
+    if (input && !isSpellbookId(getDeckSpellbook(input))) throw new Error('Choose Spellbook 1 or Spellbook 2.');
+    return [id, validateDeck(input) ? normalizeDeck(input)
+      : validateDeckSlot(input) && input.element === id ? normalizeDeckSlot(input)
+        : { element: id, entries: [], ...(spellbookId === SPELLBOOK_1 ? {} : { spellbookId }) }];
   }));
+  if (getDeckSpellbook(definitions.fire) !== getDeckSpellbook(definitions.water)) {
+    throw new Error('Both wizards must use the same spellbook.');
+  }
   const ready = ['fire', 'water'].every(id => validateDeck(definitions[id]));
   const random = randomGenerator(seed);
   const players = ['fire', 'water'].map((id) => {
@@ -643,6 +657,8 @@ export function assertGame(state) {
   requireValue(state.primaryUsed ? ['spell', 'enhancement', 'aura'].includes(state.primaryAction)
     : state.primaryAction === null, 'primary action');
   requireValue(Array.isArray(state.players) && state.players.length === 2, 'players');
+  requireValue(isSpellbookId(getGameSpellbook(state))
+    && state.players.every(player => getDeckSpellbook(player?.deckDefinition) === getGameSpellbook(state)), 'battle spellbook');
   const setup = state.phase === 'setup';
   const allIds = new Set();
   state.players.forEach((player, index) => {
@@ -662,8 +678,7 @@ export function assertGame(state) {
     const cards = [...player.hand, ...player.deck, ...player.discard];
     requireValue(player.deckDefinition?.element === id, 'deck element');
     if (setup) {
-      requireValue(cards.length === 0 && (validateDeck(player.deckDefinition)
-        || Array.isArray(player.deckDefinition.entries) && player.deckDefinition.entries.length === 0), 'deck setup');
+      requireValue(cards.length === 0 && validateDeckSlot(player.deckDefinition), 'deck setup');
     } else {
       const deckDefinition = normalizeDeck(player.deckDefinition);
       requireValue(cards.length === deckDefinition.entries.reduce((total, entry) => total + entry.quantity, 0), 'card conservation');

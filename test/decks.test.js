@@ -2,12 +2,81 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SPELL_CATALOG, SPELLBOOK_VERSION, DECK_SIZE, MIN_DECK_SIZE } from '../src/spells.js';
 import {
+  SPELLBOOK_1, SPELLBOOK_2, SPELLBOOKS, SPELLBOOK_ROLE_PAIRS,
+  getDeckSpellbook, getSpellbookSpells, isSpellbookId,
+} from '../src/spellbooks.js';
+import {
   MAX_DECK_FILE_BYTES, createStarterDeck, getEligibleSpells, getDeckValidation,
   validateDeck, normalizeDeck, getDeckCount, setDeckQuantity, validateDeckSlot,
   normalizeDeckSlot, serializeDeck, parseDeckList,
 } from '../src/decks.js';
 
 const legal = element => ({ element, entries: getEligibleSpells(element).slice(0, 10).map(card => ({ spellId: card.spellId, quantity: 3 })) });
+
+test('Spellbook 2 contains exactly the paired test spells and Fate with unchanged definitions', () => {
+  const expected = ['Fire-2', 'Fire-15', 'Fire-5', 'Fire-11', 'Fire-14',
+    'Water-2', 'Water-0', 'Water-12', 'Water-9', 'Water-14', 'FAT-001', 'FAT-002', 'FAT-003'];
+  assert.deepEqual(SPELLBOOKS[SPELLBOOK_2].spellIds, expected);
+  assert.equal(SPELLBOOK_ROLE_PAIRS.length, 5);
+  assert.equal(getSpellbookSpells(SPELLBOOK_1).length, 34);
+  assert.equal(getSpellbookSpells(SPELLBOOK_2).length, 13);
+  for (const spell of getSpellbookSpells(SPELLBOOK_2)) assert.equal(spell, SPELL_CATALOG[spell.spellId], 'book copies retain identical cost, effect, name and artwork');
+  for (const element of ['fire', 'water']) {
+    const eligible = getEligibleSpells(element, SPELLBOOK_2);
+    assert.equal(eligible.length, 8); assert.equal(eligible.filter(card => card.category === 'Fate').length, 3);
+    assert.ok(eligible.every(card => card.category === 'Fate' || card.element.toLowerCase() === element));
+  }
+  for (const value of [null, '', 'unknown', '__proto__', 'constructor', 2]) {
+    assert.equal(isSpellbookId(value), false);
+    assert.throws(() => getSpellbookSpells(value));
+    assert.throws(() => getEligibleSpells('fire', value));
+    assert.throws(() => createStarterDeck('fire', value));
+  }
+});
+
+test('separate Spellbook 2 drafts retain their identity through editing, save slots and file transfer', () => {
+  for (const element of ['fire', 'water']) {
+    const oldEmpty = createStarterDeck(element), empty = createStarterDeck(element, SPELLBOOK_2);
+    assert.deepEqual(oldEmpty, { element, entries: [] });
+    assert.deepEqual(empty, { element, entries: [], spellbookId: SPELLBOOK_2 });
+    assert.equal(getDeckSpellbook(oldEmpty), SPELLBOOK_1); assert.equal(getDeckSpellbook(empty), SPELLBOOK_2);
+    assert.equal(validateDeck(empty), false); assert.equal(validateDeckSlot(empty), true);
+    assert.deepEqual(normalizeDeckSlot(empty), empty);
+    const spellId = element === 'fire' ? 'Fire-11' : 'Water-12';
+    const filled = setDeckQuantity(setDeckQuantity(empty, spellId, 25), 'FAT-003', 5);
+    assert.equal(validateDeck(filled), true); assert.equal(getDeckValidation(filled).total, 30);
+    assert.equal(getDeckCount(filled, spellId), 25, 'copies remain unrestricted');
+    assert.equal(normalizeDeck(filled).spellbookId, SPELLBOOK_2);
+    const file = JSON.parse(serializeDeck(filled));
+    assert.equal(file.spellbook, SPELLBOOK_VERSION); assert.equal(file.spellbookId, SPELLBOOK_2);
+    assert.deepEqual(parseDeckList(JSON.stringify(file)), filled);
+    const cleared = setDeckQuantity(setDeckQuantity(filled, spellId, 0), 'FAT-003', 0);
+    assert.deepEqual(cleared, empty); assert.deepEqual(oldEmpty.entries, []);
+    assert.equal(Object.hasOwn(JSON.parse(serializeDeck({ element, entries: [{ spellId, quantity: 1 }] })), 'spellbookId'), false, 'legacy book files stay unchanged');
+    assert.throws(() => setDeckQuantity(filled, spellId, 26), /more than 30/);
+  }
+});
+
+test('book restrictions reject excluded spells, cross-element cards and unknown metadata without silently changing books', () => {
+  for (const [element, excluded, opposite] of [['fire', 'Fire-1', 'Water-2'], ['water', 'Water-1', 'Fire-2']]) {
+    const empty = createStarterDeck(element, SPELLBOOK_2);
+    assert.throws(() => setDeckQuantity(empty, excluded, 1), /not available in Spellbook 2/);
+    assert.throws(() => setDeckQuantity(empty, opposite, 1), /other main element/);
+    for (const spellId of [excluded, opposite]) {
+      const invalid = { ...empty, entries: [{ spellId, quantity: 1 }] };
+      assert.equal(validateDeck(invalid), false); assert.equal(validateDeckSlot(invalid), false);
+      assert.throws(() => normalizeDeck(invalid)); assert.throws(() => serializeDeck(invalid));
+      assert.throws(() => parseDeckList(JSON.stringify({ format: 'wizzy-deck', version: 1, spellbook: SPELLBOOK_VERSION, ...invalid })));
+    }
+    assert.equal(validateDeck({ element, entries: [{ spellId: excluded, quantity: 1 }] }), true, 'excluded test spells remain available in Spellbook 1');
+    for (const spellbookId of [null, '', 'other', '__proto__', {}, []]) {
+      const invalid = { element, entries: [], spellbookId };
+      assert.equal(validateDeckSlot(invalid), false); assert.equal(validateDeck(invalid), false);
+      assert.throws(() => normalizeDeckSlot(invalid));
+      assert.throws(() => setDeckQuantity(invalid, element === 'fire' ? 'Fire-2' : 'Water-2', 1));
+    }
+  }
+});
 
 test('new spellbook starts with empty independent deck slots and no old cards', () => {
   assert.equal(Object.keys(SPELL_CATALOG).length, 34);
