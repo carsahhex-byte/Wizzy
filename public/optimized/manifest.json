@@ -588,5 +588,25 @@
     "sourceBytes": 1793025,
     "width": 1536,
     "height": 1024
+  },
+  "phoenixFireAnimation": {
+    "file": "phoenixFireAnimation-681863dcf00a.webp",
+    "source": "Wizzy Phoenix Fire Animation.png",
+    "sourceSha256": "484165abca6b69afca6336e4b993905238990b54b290f70e2985e489729d0eca",
+    "optimizedSha256": "681863dcf00a22f570251320ff37bfcbc167e7556f37ab7c6204edbee9d93855",
+    "bytes": 1334932,
+    "sourceBytes": 1850318,
+    "width": 1024,
+    "height": 1536
+  },
+  "pacificDolphinAnimation": {
+    "file": "pacificDolphinAnimation-ab0c236a41be.webp",
+    "source": "Wizzy Pacific Dolphin Animation.png",
+    "sourceSha256": "728538b595b71ca44846a952aff8c4dd3dd5f91032c12e377279aa54c0f297ff",
+    "optimizedSha256": "ab0c236a41be47e93a933f0dda4b1324b62ec83c67e9c413ae3c415cb47759b0",
+    "bytes": 1341956,
+    "sourceBytes": 1843638,
+    "width": 1024,
+    "height": 1536
   }
 }

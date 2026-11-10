@@ -294,5 +294,15 @@ export const OPTIMIZED_ART = {
     "file": "xineophCharge-e31d5ce80a5b.webp",
     "sourceSha256": "2cac0ec9c4862e3c5ccdf812fa2b71a6ce7176b7f3b6c8b601aaffbcbe403a03",
     "optimizedSha256": "e31d5ce80a5b231c04cabc60c80ad3164826ebeef07b4019bf5082ae656a00a3"
+  },
+  "phoenixFireAnimation": {
+    "file": "phoenixFireAnimation-681863dcf00a.webp",
+    "sourceSha256": "484165abca6b69afca6336e4b993905238990b54b290f70e2985e489729d0eca",
+    "optimizedSha256": "681863dcf00a22f570251320ff37bfcbc167e7556f37ab7c6204edbee9d93855"
+  },
+  "pacificDolphinAnimation": {
+    "file": "pacificDolphinAnimation-ab0c236a41be.webp",
+    "sourceSha256": "728538b595b71ca44846a952aff8c4dd3dd5f91032c12e377279aa54c0f297ff",
+    "optimizedSha256": "ab0c236a41be47e93a933f0dda4b1324b62ec83c67e9c413ae3c415cb47759b0"
   }
 };

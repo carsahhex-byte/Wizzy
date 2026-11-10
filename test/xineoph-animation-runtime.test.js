@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { createSpellAnimator } from '../src/spell-animation.js';
 import { paintAnimationFrame, createAnimationSprite } from '../src/animation-sprites.js';
 import { XINEOPH_TIMING, getXineophMoment } from '../src/xineoph-animation.js';
-import { XINEOPH_ANIMATION_SHEETS } from '../src/assets.js';
+import { CREATURE_ANIMATION_SHEETS } from '../src/assets.js';
+import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from '../src/creature-animation.js';
 
 class Style {
   getPropertyValue(key) { return this[key] || ''; }
@@ -76,34 +77,58 @@ function images(t, { fail = false } = {}) {
 }
 const ready = () => new Promise(resolve => setImmediate(resolve));
 
-test('Xineoph timing keeps a full charge, exactly three wing poses and one quick impact', () => {
-  assert.deepEqual(XINEOPH_TIMING, { windupEnd: 500, releaseAt: 1500, formationEnd: 1700,
-    wingFrameMs: 125, chargeFrameMs: 62.5, flightFrameMs: 1000 / 12,
+const creatures = [
+  { key: 'xineoph', spellId: 'Fire-11', element: 'fire', nativeFacing: 'right', pose: 'wing', nativeCaster: 0 },
+  { key: 'pacific', spellId: 'Water-9', element: 'water', nativeFacing: 'left', pose: 'tail', nativeCaster: 1 },
+];
+const sheetsFor = creature => CREATURE_ANIMATION_SHEETS[creature.key];
+
+test('both creature routes share the approved charge, two formation poses, and one quick impact', () => {
+  assert.deepEqual(CREATURE_TIMING, { windupEnd: 500, releaseAt: 1500, formationEnd: 1700,
+    formationFrameMs: 100, wingFrameMs: 125, chargeFrameMs: 62.5, flightFrameMs: 1000 / 12,
     flightAt: 2075, impactAt: 2975, duration: 3315 });
-  for (const [time, stage, actorFrame, wingPose, lightBlades] of [
-    [0, 'windup', 0, 0, false], [249, 'windup', 0, 0, false], [250, 'windup', 1, 0, false],
-    [500, 'linger', 2, 0, false], [1499, 'linger', 2, 0, false], [1500, 'forming', 3, 0, false],
-    [1700, 'wing-up', 4, 1, false], [1825, 'wing-middle', 5, 2, false],
-    [1950, 'wing-down', 6, 3, true], [2074, 'wing-down', 6, 3, true],
-  ]) {
-    const moment = getXineophMoment(time);
-    assert.deepEqual([moment.stage, moment.actorFrame, moment.wingPose, moment.lightBlades],
-      [stage, actorFrame, wingPose, lightBlades], `at ${time}ms`);
+  assert.deepEqual(XINEOPH_TIMING, CREATURE_TIMING, 'the earlier timing API remains compatible');
+  for (const creature of creatures) {
+    assert.deepEqual(getCreatureAnimation(creature.spellId), {
+      key: creature.key, nativeFacing: creature.nativeFacing, pose: creature.pose,
+    });
+    for (const [time, stage, actorFrame, creaturePose, formationPose] of [
+      [0, 'windup', 0, 0, 0], [249, 'windup', 0, 0, 0], [250, 'windup', 1, 0, 0],
+      [500, 'linger', 2, 0, 0], [1499, 'linger', 2, 0, 0],
+      [1500, 'forming', 2, 0, 1], [1599, 'forming', 2, 0, 1],
+      [1600, 'forming', 3, 0, 2], [1699, 'forming', 3, 0, 2],
+      [1700, `${creature.pose}-up`, 4, 1, 0], [1825, `${creature.pose}-middle`, 5, 2, 0],
+      [1950, `${creature.pose}-down`, 6, 3, 0], [2074, `${creature.pose}-down`, 6, 3, 0],
+    ]) {
+      const moment = getCreatureMoment(time, { pose: creature.pose });
+      assert.deepEqual([moment.stage, moment.actorFrame, moment.creaturePose, moment.formationPose],
+        [stage, actorFrame, creaturePose, formationPose], `${creature.key} at ${time}ms`);
+      assert.equal(moment.wingPose ?? 0, creature.pose === 'wing' ? creaturePose : 0);
+      assert.equal(moment.tailPose ?? 0, creature.pose === 'tail' ? creaturePose : 0);
+      assert.equal(moment.lightBlades, creature.pose === 'wing' && creaturePose === 3);
+      assert.equal(moment.effectArcs, creaturePose === 3);
+    }
+    for (let sequence = 0; sequence < 16; sequence += 1) {
+      const moment = getCreatureMoment(500 + sequence * 62.5, { pose: creature.pose });
+      assert.deepEqual([moment.actorFrame, moment.chargeFrame, moment.chargeSequenceFrame], [2, sequence % 8, sequence]);
+      assert.equal(getCreatureMoment(500 + (sequence + 1) * 62.5 - .001, { pose: creature.pose }).chargeFrame, sequence % 8);
+    }
+    assert.equal(getCreatureMoment(1500, { pose: creature.pose }).chargeFrame ?? null, null);
   }
-  assert.equal(getXineophMoment(2075).progress, 0);
-  assert.deepEqual([getXineophMoment(2159).sequenceFrame, getXineophMoment(2242).sequenceFrame,
-    getXineophMoment(2242).projectileFrame], [1, 2, 9], 'flight texture advances at twelve frames per second');
-  assert.equal(getXineophMoment(2974).stage, 'flight');
-  assert.equal(getXineophMoment(2975).hitTime, 0);
-  assert.equal(getXineophMoment(3184).stage, 'quick-hit');
-  assert.equal(getXineophMoment(3185).stage, 'impact-fade');
-  assert.equal(getXineophMoment(3315).stage, 'complete');
-  for (let sequence = 0; sequence < 16; sequence += 1) {
-    const moment = getXineophMoment(500 + sequence * 62.5);
-    assert.deepEqual([moment.actorFrame, moment.chargeFrame, moment.chargeSequenceFrame], [2, sequence % 8, sequence]);
-    assert.equal(getXineophMoment(500 + (sequence + 1) * 62.5 - .001).chargeFrame, sequence % 8);
+  for (const [time, frame] of [[2075, 15], [2159, 16], [2242, 17], [2326, 18], [2410, 19], [2493, 15]]) {
+    assert.equal(getCreatureMoment(time).projectileFrame, frame, 'five flight textures advance at twelve frames per second');
   }
-  assert.equal(getXineophMoment(1500).chargeFrame ?? null, null, 'the charge stops before formation');
+  assert.equal(getCreatureMoment(2075).progress, 0);
+  assert.equal(getCreatureMoment(2974).stage, 'flight');
+  assert.equal(getCreatureMoment(2974, { pose: 'tail' }).effectArcs, true);
+  assert.equal(getCreatureMoment(2975).hitTime, 0);
+  assert.equal(getCreatureMoment(2975).effectArcs, false);
+  assert.equal(getCreatureMoment(3184).stage, 'quick-hit');
+  assert.equal(getCreatureMoment(3185).stage, 'impact-fade');
+  assert.equal(getCreatureMoment(3315).stage, 'complete');
+  assert.equal(getCreatureMoment(3315).effectArcs, false);
+  assert.deepEqual(getXineophMoment(1950), getCreatureMoment(1950), 'the earlier moment API remains compatible');
+  for (const id of ['Fire-6', 'Water-2', 'FAT-001', 'unknown', null]) assert.equal(getCreatureAnimation(id), null);
 });
 
 test('frame regions preserve source alignment, reject missing crops and reset clips for ordinary atlases', () => {
@@ -129,193 +154,192 @@ test('frame regions preserve source alignment, reject missing crops and reset cl
   assert.equal(paintAnimationFrame(node, { ...uniform, frameRects: [{ x: 390, y: 0, w: 20, h: 20 }] }, 0, { x: 0, y: 0 }), false);
 });
 
-test('a failed Xineoph atlas settles once, releases the lock, and can be loaded by a later playback', async t => {
+test('failed creature atlases settle once and release presentation locks before later retries', async t => {
   images(t, { fail: true });
-  const state = scene(), impacts = [], completes = [];
-  const result = await state.animator.play({ key: 'failed-atlas', spellId: 'Fire-11', casterIndex: 0,
-    onImpact: detail => impacts.push(detail), onComplete: detail => completes.push(detail) });
-  assert.equal(result.skipped, true); assert.equal(impacts.length, 1); assert.equal(completes.length, 1);
-  assert.equal(state.animator.isPlaying(), false); assert.equal(state.pending.size, 0);
-  assert.equal(state.wizards[0].sprite.style.visibility, 'visible');
-  assert.equal(state.root.dataset.spellAnimating, undefined);
-  noAfterimages(state);
-  await ready();
-});
-
-test('actual Xineoph playback holds fixed caster feet, releases one projectile and hits once in either direction', async t => {
-  const loaded = images(t);
-  assert.deepEqual(XINEOPH_ANIMATION_SHEETS.projectile.animations.fire.map(frame =>
-    XINEOPH_ANIMATION_SHEETS.projectile.frameAnchors[frame].x), [1, 1, 1],
-  'the contact plane is ahead of both light tips in every flight pose');
-  for (const casterIndex of [0, 1]) {
+  for (const creature of creatures) {
     const state = scene(), impacts = [], completes = [];
-    const completion = state.animator.play({ key: `xineoph-${casterIndex}`, spellId: 'Fire-11', casterIndex,
+    const result = await state.animator.play({ key: `failed-${creature.key}`, spellId: creature.spellId, casterIndex: creature.nativeCaster,
       onImpact: detail => impacts.push(detail), onComplete: detail => completes.push(detail) });
-    assert.equal(state.animator.play({ key: `xineoph-${casterIndex}`, spellId: 'Fire-11', casterIndex }), completion,
-      'duplicate in-flight requests share playback rather than scheduling another impact');
-    await ready(); state.tick(0);
-    const actor = state.node('spell-animation-actor'), projectile = state.node('spell-projectile');
-    const layer = state.animator.element, target = state.wizards[1 - casterIndex].sprite;
-    assert.equal(layer.dataset.customAnimation, 'xineoph');
-    assert.equal(layer.dataset.kind, 'basic-attack');
-    assert.deepEqual([layer.dataset.releaseAt, layer.dataset.flightAt, layer.dataset.impactAt, layer.dataset.duration],
-      ['1500', '2075', '2975', '3315']);
-    for (const [time, stage] of [[250, 'windup'], [500, 'linger'], [1499, 'linger'], [1500, 'forming'],
-      [1700, 'wing-up'], [1825, 'wing-middle'], [1950, 'wing-down']]) {
-      state.tick(time); assert.equal(layer.dataset.stage, stage);
-      assert.equal(actor.dataset.logicalX, casterIndex === 0 ? '236' : '788');
-      assert.equal(actor.dataset.logicalY, '450');
-      assert.equal(projectile.hidden, true); assert.equal(impacts.length, 0);
-    }
-    assert.equal(layer.dataset.wingPose, '3'); assert.equal(layer.dataset.lightBlades, 'true');
-    state.tick(2075);
-    assert.equal(actor.hidden, true); assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
-    assert.equal(projectile.hidden, false); assert.equal(projectile.dataset.asset, 'xineophAnimation');
-    assert.equal(projectile.style.transform.includes('scaleX(-1)'), casterIndex === 1);
-    assert.equal(projectile.dataset.contactPlane, 'leading-edge');
-    const offset = XINEOPH_ANIMATION_SHEETS.actor.releaseOffset;
-    const releaseX = (casterIndex === 0 ? 236 : 788) + (casterIndex === 0 ? offset.x : -offset.x);
-    assert.ok(Math.abs(Number(projectile.dataset.contactX) - releaseX) < 1e-9,
-      'the first flight contact plane begins at the actor release plane');
-    assert.ok(Math.abs(Number(projectile.dataset.contactY) - (450 + offset.y)) < 1e-9);
-    const startX = Number(projectile.dataset.logicalX);
-    state.tick(2435);
-    const ninetyMsBehind = [Number(projectile.dataset.contactX), Number(projectile.dataset.contactY)];
-    state.tick(2480);
-    const fortyFiveMsBehind = [Number(projectile.dataset.contactX), Number(projectile.dataset.contactY)];
-    state.tick(2525);
-    assert.ok(casterIndex === 0 ? Number(projectile.dataset.logicalX) > startX : Number(projectile.dataset.logicalX) < startX);
-    assert.equal(layer.dataset.afterimages, '2');
-    const ghosts = state.nodes('spell-projectile-afterimage').sort((left, right) =>
-      Number(left.dataset.lagMs) - Number(right.dataset.lagMs));
-    assert.equal(ghosts.length, 2);
-    for (const [index, ghost] of ghosts.entries()) {
-      const lag = [45, 90][index], recordedPoint = index === 0 ? fortyFiveMsBehind : ninetyMsBehind;
-      assert.equal(ghost.hidden, false); assert.equal(Number(ghost.style.opacity), [.22, .1][index]);
-      assert.equal(ghost.style.filter || '', '');
-      assert.equal(Number(ghost.dataset.lagMs), lag);
-      assert.equal(Number(ghost.dataset.sourceElapsed), 2525 - lag);
-      assert.ok(Math.abs(Number(ghost.dataset.contactX) - recordedPoint[0]) < 1e-9);
-      assert.ok(Math.abs(Number(ghost.dataset.contactY) - recordedPoint[1]) < 1e-9);
-      assert.ok(casterIndex === 0 ? Number(ghost.dataset.contactX) < Number(projectile.dataset.contactX)
-        : Number(ghost.dataset.contactX) > Number(projectile.dataset.contactX), 'the ghost trails, never overtakes');
-      assert.equal(ghost.dataset.frame, String(getXineophMoment(2525 - lag).projectileFrame));
-    }
-    state.tick(2974); assert.equal(impacts.length, 0);
-    const contactX = Number(projectile.dataset.contactX);
-    assert.ok(casterIndex === 0 ? contactX < 788 : contactX > 236,
-      'neither the bird nor either leading light tip can cross the target before impact');
-    for (const ghost of ghosts) assert.ok(casterIndex === 0 ? Number(ghost.dataset.contactX) < 788 : Number(ghost.dataset.contactX) > 236);
-    state.tick(2975);
-    assert.equal(impacts.length, 1); assert.equal(projectile.hidden, true); assert.match(target.style.filter, /brightness/);
-    noAfterimages(state);
-    assert.equal(state.node('spell-impact').dataset.logicalX, casterIndex === 0 ? '788' : '236');
-    state.tick(3184); assert.match(target.style.filter, /brightness/);
-    state.tick(3185); assert.equal(target.style.filter, 'contrast(1.05)');
-    state.tick(3315); await completion;
-    assert.equal(impacts.length, 1); assert.equal(completes.length, 1);
-    assert.equal(state.animator.isPlaying(), false); assert.equal(layer.hidden, true);
-    assert.equal(state.root.dataset.spellAnimating, undefined);
-    assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
-    noAfterimages(state);
-    const duplicate = await state.animator.play({ key: `xineoph-${casterIndex}`, spellId: 'Fire-11', casterIndex,
-      onImpact: () => assert.fail('completed animation replayed') });
-    assert.equal(duplicate.duplicate, true); assert.equal(state.pending.size, 0);
+    assert.equal(result.skipped, true); assert.equal(impacts.length, 1); assert.equal(completes.length, 1);
+    assert.equal(state.animator.isPlaying(), false); assert.equal(state.pending.size, 0);
+    assert.equal(state.wizards[creature.nativeCaster].sprite.style.visibility, 'visible');
+    assert.equal(state.root.dataset.spellAnimating, undefined); noAfterimages(state);
+    await ready();
   }
-  assert.equal(loaded.length, 2, 'both directions share one story atlas and one pulse atlas');
 });
 
-test('the charged hold plays all eight pulse frames twice with unchanged wizard feet and body scale', async t => {
-  images(t);
-  const state = scene(), impacts = [], charge = XINEOPH_ANIMATION_SHEETS.charge;
-  assert.equal(charge.animations.fire.length, 8);
-  assert.equal(charge.targetBodyHeight, 144);
-  assert.ok(Math.abs(charge.sourceBodyHeight * charge.displayScale - 144) < 1e-9);
-  const completion = state.animator.play({ key: 'pulsing-charge', spellId: 'Fire-11', casterIndex: 0,
-    onImpact: detail => impacts.push(detail) });
-  await ready(); state.tick(0); state.tick(499);
-  const actor = state.node('spell-animation-actor');
-  assert.equal(actor.dataset.asset, 'xineophAnimation');
-  for (let sequence = 0; sequence < 16; sequence += 1) {
-    state.tick(500 + sequence * 62.5);
-    assert.equal(actor.dataset.asset, 'xineophCharge');
-    assert.equal(actor.dataset.frame, String(sequence % 8));
-    assert.deepEqual([actor.dataset.logicalX, actor.dataset.logicalY], ['236', '450']);
-    assert.equal(state.animator.element.dataset.chargeFrame, String(sequence % 8));
-    assert.equal(state.animator.element.dataset.chargeSequenceFrame, String(sequence));
-    assert.equal(state.animator.element.dataset.stage, 'linger');
-    assert.equal(impacts.length, 0); noAfterimages(state);
+test('phoenix and dolphin playback keep feet fixed, converge their trails and hit once in either direction', async t => {
+  const loaded = images(t);
+  for (const creature of creatures) {
+    const sheets = sheetsFor(creature), frames = sheet => sheet.animations[creature.element];
+    assert.deepEqual(frames(sheets.actor), [0, 1, 10, 11, 12, 13, 14]);
+    assert.deepEqual(frames(sheets.charge), [2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.deepEqual(frames(sheets.projectile), [15, 16, 17, 18, 19]);
+    assert.deepEqual(sheets.impact.animations.impact, [20, 21, 22, 23]);
+    assert.deepEqual(frames(sheets.projectile).map(frame => sheets.projectile.frameAnchors[frame].x),
+      Array(5).fill(creature.nativeFacing === 'right' ? 1 : 0), 'each native leading plane is ahead of every flight pose');
+    assert.equal(new Set(['actor', 'charge', 'projectile', 'impact'].map(role => sheets[role].asset)).size, 1, 'one clean atlas serves all four roles');
+    for (const casterIndex of [0, 1]) {
+      const state = scene(), impacts = [], completes = [], key = `${creature.key}-${casterIndex}`;
+      const completion = state.animator.play({ key, spellId: creature.spellId, casterIndex,
+        onImpact: detail => impacts.push(detail), onComplete: detail => completes.push(detail) });
+      assert.equal(state.animator.play({ key, spellId: creature.spellId, casterIndex }), completion);
+      await ready(); state.tick(0);
+      const actor = state.node('spell-animation-actor'), projectile = state.node('spell-projectile');
+      const layer = state.animator.element, target = state.wizards[1 - casterIndex].sprite;
+      assert.equal(layer.dataset.customAnimation, creature.key); assert.equal(layer.dataset.kind, 'basic-attack');
+      assert.deepEqual([layer.dataset.releaseAt, layer.dataset.flightAt, layer.dataset.impactAt, layer.dataset.duration],
+        ['1500', '2075', '2975', '3315']);
+      for (const [time, stage, sourceFrame, formationPose] of [
+        [250, 'windup', 1, ''], [500, 'linger', 2, ''], [1499, 'linger', 9, ''],
+        [1500, 'forming', 10, '1'], [1600, 'forming', 11, '2'],
+        [1700, `${creature.pose}-up`, 12, ''], [1825, `${creature.pose}-middle`, 13, ''],
+        [1950, `${creature.pose}-down`, 14, ''],
+      ]) {
+        state.tick(time); assert.equal(layer.dataset.stage, stage);
+        assert.equal(actor.dataset.frame, String(sourceFrame));
+        assert.equal(layer.dataset.formationPose, formationPose);
+        assert.equal(actor.dataset.logicalX, casterIndex === 0 ? '236' : '788');
+        assert.equal(actor.dataset.logicalY, '450');
+        assert.equal(projectile.hidden, true); assert.equal(impacts.length, 0);
+      }
+      assert.equal(layer.dataset.creaturePose, '3');
+      assert.equal(layer.dataset.wingPose, creature.pose === 'wing' ? '3' : '');
+      assert.equal(layer.dataset.tailPose, creature.pose === 'tail' ? '3' : '');
+      assert.equal(layer.dataset.lightBlades, String(creature.pose === 'wing'));
+      assert.equal(layer.dataset.effectArcs, 'true');
+      state.tick(2075);
+      assert.equal(actor.hidden, true); assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
+      assert.equal(projectile.hidden, false); assert.equal(projectile.dataset.asset, sheets.projectile.asset);
+      const mirror = (creature.nativeFacing === 'right') !== (casterIndex === 0);
+      assert.equal(projectile.style.transform.includes('scaleX(-1)'), mirror);
+      assert.equal(projectile.dataset.contactPlane, 'leading-edge');
+      const offset = sheets.actor.releaseOffset;
+      const releaseX = (casterIndex === 0 ? 236 : 788) + (mirror ? -offset.x : offset.x);
+      assert.ok(Math.abs(Number(projectile.dataset.contactX) - releaseX) < 1e-9);
+      assert.ok(Math.abs(Number(projectile.dataset.contactY) - (450 + offset.y)) < 1e-9);
+      const startX = Number(projectile.dataset.logicalX);
+      state.tick(2435);
+      const ninetyMsBehind = [Number(projectile.dataset.contactX), Number(projectile.dataset.contactY)];
+      state.tick(2480);
+      const fortyFiveMsBehind = [Number(projectile.dataset.contactX), Number(projectile.dataset.contactY)];
+      state.tick(2525);
+      assert.ok(casterIndex === 0 ? Number(projectile.dataset.logicalX) > startX : Number(projectile.dataset.logicalX) < startX);
+      assert.equal(layer.dataset.afterimages, '2');
+      const ghosts = state.nodes('spell-projectile-afterimage').sort((left, right) => Number(left.dataset.lagMs) - Number(right.dataset.lagMs));
+      assert.equal(ghosts.length, 2);
+      for (const [index, ghost] of ghosts.entries()) {
+        const lag = [45, 90][index], recordedPoint = index === 0 ? fortyFiveMsBehind : ninetyMsBehind;
+        assert.equal(ghost.hidden, false); assert.equal(Number(ghost.style.opacity), [.22, .1][index]);
+        assert.equal(ghost.style.filter || '', ''); assert.equal(Number(ghost.dataset.lagMs), lag);
+        assert.equal(Number(ghost.dataset.sourceElapsed), 2525 - lag);
+        assert.ok(Math.abs(Number(ghost.dataset.contactX) - recordedPoint[0]) < 1e-9);
+        assert.ok(Math.abs(Number(ghost.dataset.contactY) - recordedPoint[1]) < 1e-9);
+        assert.ok(casterIndex === 0 ? Number(ghost.dataset.contactX) < Number(projectile.dataset.contactX)
+          : Number(ghost.dataset.contactX) > Number(projectile.dataset.contactX));
+        assert.equal(ghost.dataset.frame, String(getCreatureMoment(2525 - lag, { pose: creature.pose }).projectileFrame));
+      }
+      state.tick(2974); assert.equal(impacts.length, 0);
+      for (const node of [projectile, ...ghosts]) assert.ok(casterIndex === 0 ? Number(node.dataset.contactX) < 788 : Number(node.dataset.contactX) > 236);
+      state.tick(2975);
+      assert.equal(impacts.length, 1); assert.equal(projectile.hidden, true); assert.match(target.style.filter, /brightness/); noAfterimages(state);
+      assert.equal(state.node('spell-impact').dataset.logicalX, casterIndex === 0 ? '788' : '236');
+      assert.equal(state.node('spell-impact').style.filter, '');
+      state.tick(3184); assert.match(target.style.filter, /brightness/);
+      state.tick(3185); assert.equal(target.style.filter, 'contrast(1.05)');
+      state.tick(3315); await completion;
+      assert.equal(impacts.length, 1); assert.equal(completes.length, 1); noAfterimages(state);
+      assert.equal(state.animator.isPlaying(), false); assert.equal(layer.hidden, true);
+      assert.equal(state.root.dataset.spellAnimating, undefined);
+      assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
+      const duplicate = await state.animator.play({ key, spellId: creature.spellId, casterIndex,
+        onImpact: () => assert.fail('completed animation replayed') });
+      assert.equal(duplicate.duplicate, true); assert.equal(state.pending.size, 0);
+    }
   }
-  state.tick(1500);
-  assert.equal(actor.dataset.asset, 'xineophAnimation'); assert.equal(actor.dataset.frame, '3');
-  assert.equal(state.animator.element.dataset.chargeFrame, '');
-  state.tick(3315); await completion; assert.equal(impacts.length, 1); noAfterimages(state);
+  assert.equal(loaded.length, 2, 'four plays share one clean phoenix atlas and one clean dolphin atlas');
 });
 
-test('cancel, replacement, and reduced motion preserve callback ownership and restore standing sprites', async t => {
+test('both charged holds play eight pulse frames twice with unchanged wizard feet and body scale', async t => {
   images(t);
-  const state = scene(), events = [];
-  const first = state.animator.play({ key: 'old', spellId: 'Fire-11', casterIndex: 0,
-    onImpact: () => events.push('old-impact'), onComplete: () => events.push('old-complete') });
-  // Replacement before the cached preload continuation must not release a new lock.
-  const second = state.animator.play({ key: 'new', spellId: 'Fire-11', casterIndex: 0,
-    onImpact: () => events.push('new-impact'), onComplete: () => events.push('new-complete') });
-  assert.equal((await first).cancelled, true);
-  await ready(); state.tick(0); state.tick(1825);
-  assert.deepEqual(events, []); assert.equal(state.wizards[0].sprite.style.visibility, 'hidden');
-  state.animator.cancel(); state.animator.cancel(); await second;
-  assert.deepEqual(events, ['new-impact', 'new-complete']);
-  assert.equal(state.wizards[0].sprite.style.visibility, 'visible'); assert.equal(state.pending.size, 0);
-  noAfterimages(state);
-  const silent = state.animator.play({ key: 'silent-cancel', spellId: 'Fire-11', casterIndex: 0,
-    onImpact: () => assert.fail('silent cancel delivered'), onComplete: () => assert.fail('silent cancel completed') });
-  state.animator.cancel({ settle: false }); await silent; await ready();
-  assert.equal(state.pending.size, 0);
-  noAfterimages(state);
-  const flightCancel = state.animator.play({ key: 'cancel-in-flight', spellId: 'Fire-11', casterIndex: 0 });
-  await ready(); state.tick(0); state.tick(2500);
-  assert.equal(state.animator.element.dataset.afterimages, '2');
-  state.animator.cancel(); await flightCancel; noAfterimages(state);
-  const afterHit = state.animator.play({ key: 'cancel-after-impact', spellId: 'Fire-11', casterIndex: 0,
-    onImpact: () => events.push('hit-impact'), onComplete: () => events.push('hit-complete') });
-  await ready(); state.tick(0); state.tick(2975);
-  assert.match(state.wizards[1].sprite.style.filter, /brightness/);
-  state.animator.cancel(); await afterHit;
-  assert.deepEqual(events.slice(2), ['hit-impact', 'hit-complete']);
-  assert.equal(state.wizards[1].sprite.style.filter, 'contrast(1.05)');
-  noAfterimages(state);
-  const reduced = scene({ reduced: true }), calls = [];
-  const skipped = await reduced.animator.play({ key: 'reduced', spellId: 'Fire-11', casterIndex: 0,
-    onImpact: () => calls.push('impact'), onComplete: () => calls.push('complete') });
-  assert.equal(skipped.skipped, true); assert.deepEqual(calls, ['impact', 'complete']);
-  assert.equal(reduced.pending.size, 0); assert.equal(reduced.wizards[0].sprite.style.visibility, 'visible');
-  noAfterimages(reduced);
+  for (const creature of creatures) {
+    const state = scene(), impacts = [], charge = sheetsFor(creature).charge;
+    assert.equal(charge.animations[creature.element].length, 8); assert.equal(charge.targetBodyHeight, 144);
+    assert.ok(Math.abs(charge.sourceBodyHeight * charge.displayScale - 144) < 1e-9);
+    const completion = state.animator.play({ key: `pulsing-${creature.key}`, spellId: creature.spellId, casterIndex: creature.nativeCaster,
+      onImpact: detail => impacts.push(detail) });
+    await ready(); state.tick(0); state.tick(499);
+    const actor = state.node('spell-animation-actor');
+    for (let sequence = 0; sequence < 16; sequence += 1) {
+      state.tick(500 + sequence * 62.5);
+      assert.equal(actor.dataset.asset, charge.asset); assert.equal(actor.dataset.frame, String(2 + sequence % 8));
+      assert.deepEqual([actor.dataset.logicalX, actor.dataset.logicalY], [creature.nativeCaster === 0 ? '236' : '788', '450']);
+      assert.equal(state.animator.element.dataset.chargeFrame, String(sequence % 8));
+      assert.equal(state.animator.element.dataset.chargeSequenceFrame, String(sequence));
+      assert.equal(state.animator.element.dataset.stage, 'linger'); assert.equal(impacts.length, 0); noAfterimages(state);
+    }
+    state.tick(1500);
+    assert.equal(actor.dataset.frame, '10'); assert.equal(state.animator.element.dataset.chargeFrame, '');
+    state.tick(1600); assert.equal(actor.dataset.frame, '11');
+    state.tick(3315); await completion; assert.equal(impacts.length, 1); noAfterimages(state);
+  }
 });
 
-test('Water, Xineoph and ordinary Fire reuse the animator without stale hues or custom state', async t => {
+test('cancel, replacement, and reduced motion preserve ownership and clean both creatures', async t => {
+  images(t);
+  for (const creature of creatures) {
+    const state = scene(), events = [], casterIndex = creature.nativeCaster;
+    const first = state.animator.play({ key: 'old', spellId: creature.spellId, casterIndex,
+      onImpact: () => events.push('old-impact'), onComplete: () => events.push('old-complete') });
+    const second = state.animator.play({ key: 'new', spellId: creature.spellId, casterIndex,
+      onImpact: () => events.push('new-impact'), onComplete: () => events.push('new-complete') });
+    assert.equal((await first).cancelled, true);
+    await ready(); state.tick(0); state.tick(1825);
+    assert.deepEqual(events, []); assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'hidden');
+    state.animator.cancel(); state.animator.cancel(); await second;
+    assert.deepEqual(events, ['new-impact', 'new-complete']); assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
+    assert.equal(state.pending.size, 0); noAfterimages(state);
+    const silent = state.animator.play({ key: 'silent-cancel', spellId: creature.spellId, casterIndex,
+      onImpact: () => assert.fail('silent cancel delivered'), onComplete: () => assert.fail('silent cancel completed') });
+    state.animator.cancel({ settle: false }); await silent; await ready(); assert.equal(state.pending.size, 0); noAfterimages(state);
+    const flightCancel = state.animator.play({ key: 'cancel-in-flight', spellId: creature.spellId, casterIndex });
+    await ready(); state.tick(0); state.tick(2500); assert.equal(state.animator.element.dataset.afterimages, '2');
+    state.animator.cancel(); await flightCancel; noAfterimages(state);
+    const afterHit = state.animator.play({ key: 'cancel-after-impact', spellId: creature.spellId, casterIndex,
+      onImpact: () => events.push('hit-impact'), onComplete: () => events.push('hit-complete') });
+    await ready(); state.tick(0); state.tick(2975); assert.match(state.wizards[1 - casterIndex].sprite.style.filter, /brightness/);
+    state.animator.cancel(); await afterHit;
+    assert.deepEqual(events.slice(2), ['hit-impact', 'hit-complete']);
+    assert.equal(state.wizards[1 - casterIndex].sprite.style.filter, 'contrast(1.05)'); noAfterimages(state);
+    const reduced = scene({ reduced: true }), calls = [];
+    const skipped = await reduced.animator.play({ key: 'reduced', spellId: creature.spellId, casterIndex,
+      onImpact: () => calls.push('impact'), onComplete: () => calls.push('complete') });
+    assert.equal(skipped.skipped, true); assert.deepEqual(calls, ['impact', 'complete']);
+    assert.equal(reduced.pending.size, 0); assert.equal(reduced.wizards[casterIndex].sprite.style.visibility, 'visible'); noAfterimages(reduced);
+  }
+});
+
+test('generic Water, both creatures and ordinary Fire reuse an animator without stale hues or custom state', async t => {
   images(t);
   const state = scene(), impacts = [];
   const water = state.animator.play({ key: 'prior-water', spellId: 'Water-2', casterIndex: 1 });
-  await ready(); state.tick(0); state.tick(2500);
-  assert.match(state.node('spell-impact').style.filter, /hue-rotate\(155deg\)/);
+  await ready(); state.tick(0); state.tick(2500); assert.match(state.node('spell-impact').style.filter, /hue-rotate\(155deg\)/);
   state.tick(2840); await water;
-  const custom = state.animator.play({ key: 'after-water-xineoph', spellId: 'Fire-11', casterIndex: 0 });
-  await ready(); state.tick(0); state.tick(1950);
-  assert.equal(state.animator.element.dataset.lightBlades, 'true');
-  state.tick(2975); assert.equal(state.node('spell-impact').style.filter, '');
-  state.tick(3315); await custom;
+  for (const creature of creatures) {
+    const custom = state.animator.play({ key: `after-water-${creature.key}`, spellId: creature.spellId, casterIndex: creature.nativeCaster });
+    await ready(); state.tick(0); state.tick(1950); assert.equal(state.animator.element.dataset.creaturePose, '3');
+    state.tick(2975); assert.equal(state.node('spell-impact').style.filter, ''); state.tick(3315); await custom;
+  }
   const completion = state.animator.play({ key: 'ordinary-fire', spellId: 'Fire-6', casterIndex: 0,
     onImpact: detail => impacts.push(detail) });
   await ready(); state.tick(0); state.tick(1500);
-  assert.equal(state.animator.element.dataset.customAnimation, '');
-  assert.equal(state.animator.element.dataset.wingPose, '');
-  assert.equal(state.animator.element.dataset.lightBlades, 'false');
-  assert.equal(state.animator.element.dataset.chargeFrame, '');
-  noAfterimages(state);
-  assert.equal(state.animator.element.dataset.duration, '2840');
-  assert.equal(state.animator.element.dataset.impactAt, '2500');
+  for (const key of ['customAnimation', 'creaturePose', 'wingPose', 'tailPose', 'formationPose', 'chargeFrame', 'chargeSequenceFrame']) {
+    assert.equal(state.animator.element.dataset[key], '', `${key} resets for a generic spell`);
+  }
+  assert.equal(state.animator.element.dataset.lightBlades, 'false'); noAfterimages(state);
+  assert.equal(state.animator.element.dataset.effectArcs, 'false');
+  assert.equal(state.animator.element.dataset.duration, '2840'); assert.equal(state.animator.element.dataset.impactAt, '2500');
   assert.equal(state.node('spell-projectile').hidden, false);
-  state.tick(2499); assert.equal(impacts.length, 0);
-  state.tick(2500); assert.equal(impacts.length, 1);
+  state.tick(2499); assert.equal(impacts.length, 0); state.tick(2500); assert.equal(impacts.length, 1);
   state.tick(2840); await completion; assert.equal(impacts.length, 1);
 });
