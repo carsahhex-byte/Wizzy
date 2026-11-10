@@ -31,7 +31,7 @@ const fire = [
   [3, 2, 'Gain 12 Shield. On a 7+, gain 1 Ember. On a 10+, gain 2 instead.'],
   [4, 2, 'Deal 5 damage and gain 1 Ember. On an 8+, gain +2 to your next roll. On an 11+, gain +4 instead.'],
   [5, 3, 'Deal 10 damage. You may spend 1 Ember to deal 8 additional damage. On a 9+, remove up to 8 Shield before dealing damage.'],
-  [6, 5, 'Deal 22 damage. On a 7+, deal 28 instead. On a 10+, deal 36 instead.'],
+  [6, 5, 'Deal 20 damage. On a 7+, deal 30 instead and gain 2 Embers.'],
   [7, 7, 'Spend all Embers. Deal 15 damage plus 7 per Ember spent. On a 9+, deal 10 per Ember instead.'],
   [8, 2, 'Deal 10 damage and gain 1 Ember. On an 8+, deal 4 additional damage.'],
   [9, 2, 'Gain 2 Embers. On a 7+, gain 3 instead. If you have 4 or more Embers after resolution, gain 1 Mana.'],
@@ -39,8 +39,8 @@ const fire = [
   [11, 2, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.'],
   [12, 4, 'Deal 14 damage. You may spend up to 2 Embers to deal 8 additional damage per Ember. On a 7+, remove up to 10 Shield before dealing damage.'],
   [13, 6, 'Deal 30 damage. On a 7+, deal 38 instead. On a 10+, deal 45 instead.'],
-  [14, 8, 'Spend all Embers. Deal 20 damage plus 7 per Ember spent. On an 8+, deal 9 per Ember instead.'],
-  [15, 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
+  [14, 8, 'Deal 55 damage. On an 8+, deal 65 instead.'],
+  [15, 0, 'Gain 1 Ember. On a 6+, gain 1 Mana.'],
 ];
 const water = [
   [0, 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.'],

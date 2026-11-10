@@ -386,12 +386,12 @@ test('Fire-0 resolves online at zero Mana without dice or Fate, preserves Loaded
 
 test('server rolls and Loaded decide Fire-15 Mana or Water-0 extra Flow with independent caps', async t => {
   const cases = [
-    ['Fire-15', 0, 4, 0, [3, 3], 0, 5],
+    ['Fire-15', 0, 4, 0, [3, 3], 1, 5],
     ['Fire-15', 0, 0, 0, [3, 4], 1, 1],
     ['Fire-15', 9, 4, 0, [3, 4], 10, 5],
     ['Fire-15', 10, 4, 0, [3, 4], 10, 5],
-    ['Fire-15', 9, 5, 0, [3, 3], 9, 5],
-    ['Fire-15', 0, 0, 4, [1, 1], 0, 1],
+    ['Fire-15', 9, 5, 0, [3, 3], 10, 5],
+    ['Fire-15', 0, 0, 4, [1, 1], 1, 1],
     ['Fire-15', 0, 0, 4, [1, 2], 1, 1],
     ['Water-0', 0, 0, 0, [3, 3], 1, 1],
     ['Water-0', 0, 0, 0, [3, 4], 1, 2],
@@ -415,7 +415,7 @@ test('server rolls and Loaded decide Fire-15 Mana or Water-0 extra Flow with ind
       const initial = (await api.get(host)).state, defending = (await api.get(guest)).state;
       const [primary, second] = initial.players[index].hand.filter(card => card.spellId === spellId);
       assert.equal(primary.manaCost, 0);
-      assert.equal(primary.effectText, spellId === 'Fire-15' ? 'Gain 1 Ember. On a 7+, gain 1 Mana.' : 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.');
+      assert.equal(primary.effectText, spellId === 'Fire-15' ? 'Gain 1 Ember. On a 6+, gain 1 Mana.' : 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.');
       assert.equal((await api.action(guest, 'castSpell')).status, 403);
       await api.action(host, 'selectCard', { cardId: primary.id });
       const selected = await api.get(host);
@@ -1010,7 +1010,7 @@ test('production rooms accept only the current named spellbook', async t => {
   assert.equal(joined.data.state.players[1].deckDefinition.spellbookId, 'spellbook-2');
 });
 
-test('two production screens receive the same persistent Ember damage and reconnect without resolving again', async t => {
+test('two production screens receive the same consumed Ember damage and reconnect without resolving again', async t => {
   const api = await service(t, {
     allowArchivedSpellbook: false,
     createMatch: decks => {
@@ -1034,9 +1034,9 @@ test('two production screens receive the same persistent Ember damage and reconn
   // Base 10 + 30% Enhancement + 10% Aura + 15% Embers = 16; Shield absorbs 7.
   for (const view of [cast.data, await api.get(guest)]) {
     assert.deepEqual(view.state.players.map(player => [player.hp, player.shield]), [[100, 0], [91, 0]]);
-    assert.deepEqual([view.state.players[0].element, view.state.players[0].enhancement, view.state.players[0].mana], [5, 0, 2]);
+    assert.deepEqual([view.state.players[0].element, view.state.players[0].enhancement, view.state.players[0].mana], [2, 0, 2]);
     assert.match(view.state.log.findLast(entry => entry.type === 'damage').message, /15% Embers = 16 damage/);
-    assert.equal(view.combatRulesVersion, 'ember-damage-v1');
+    assert.equal(view.combatRulesVersion, 'ember-consumption-v1');
   }
   assert.deepEqual((await api.request(`/api/rooms/${host.code}/actions`, castRequest)).data, cast.data);
   assert.deepEqual(await api.get(host), cast.data, 'reconnecting preserves the paid cost and completed damage');

@@ -155,14 +155,14 @@ test('cast pays resources and consumes available Loaded once before any post-rol
   assert.equal(initial.players[0].mana, 6); assert.equal(initial.players[0].element, 4); assertGame(state);
 });
 
-test('optional Ember bounds reject bad spending before payment and all-spend is automatic', () => {
+test('optional Ember bounds reject bad spending and Sunsetter holds its bank until resolution', () => {
   let state = handOf(fresh({ fire: ['Fire-12', 'Fire-14'] }), 0, ['Fire-5', 'Fire-12', 'Fire-14']);
   state.players[0].element = 5; state.players[0].mana = 10;
   const card = state.players[0].hand.find(card => card.spellId === 'Fire-5');
   const selected = selectCard(state, card.id);
   for (const emberSpend of [-1, 2, .5, NaN, '1']) assert.equal(castSelected(selected, { emberSpend }), selected);
   state = cast(state, 'Fire-14');
-  assert.deepEqual([state.pendingSpell.emberSpent, state.players[0].element, state.players[0].mana], [5, 0, 2]); assertGame(state);
+  assert.deepEqual([state.pendingSpell.emberSpent, state.players[0].element, state.players[0].mana], [0, 5, 2]); assertGame(state);
 });
 
 test('dice are captured before Fate, only once, and invalid random values are rejected', () => {
@@ -1508,14 +1508,14 @@ test('Fire-15 Mana and Water-0 extra Flow use final Fate-modified totals, not th
   }
 });
 
-test('below seven Fire-15 misses Mana while Water-0 retains cast Mana and gains normal passive Flow', () => {
+test('a six grants Fire-15 Mana while Water-0 retains cast Mana and gains only normal passive Flow', () => {
   for (const spellId of ['Fire-15', 'Water-0']) {
     const index = spellId.startsWith('Water') ? 1 : 0;
     const initial = fresh({ first: index, fire: ['Fire-15'], water: ['Water-0'] });
     handOf(initial, index, [spellId, index === 0 ? 'Fire-1' : 'Water-1']);
     Object.assign(initial.players[index], { mana: 0, element: 0, enhancement: 20, auraTurns: 2 });
     const state = complete(cast(initial, spellId), [3, 3]);
-    assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.total, state.players[index].mana, state.players[index].element], [6, 6, index === 1 ? 1 : 0, 1]);
+    assert.deepEqual([state.lastRoll.rawTotal, state.lastRoll.total, state.players[index].mana, state.players[index].element], [6, 6, 1, 1]);
     assert.equal(state.primaryUsed, true); assert.equal(canEnhance(state), false); assert.equal(canActivateAura(state), false);
     const selected = selectCard(state, state.players[index].hand[0].id); assert.equal(canCastSelected(selected), false);
     assert.deepEqual([state.players[index].enhancement, state.players[index].auraTurns], [20, 2]);
@@ -1545,8 +1545,8 @@ test('on-cast Water Mana and conditional Fire Mana or extra Flow respect indepen
       const index = spellId.startsWith('Water') ? 1 : 0;
       const initial = fresh({ first: index, fire: ['Fire-15'], water: ['Water-0'] }); handOf(initial, index, [spellId]);
       Object.assign(initial.players[index], { mana, element, loadedPending: 2, enhancement: 30, auraTurns: 2 });
-      const state = complete(cast(initial, spellId), dice), gain = dice[1] === 4 ? 1 : 0;
-      assert.deepEqual([state.players[index].mana, state.players[index].element], [Math.min(10, mana + (index === 1 ? 1 : gain)), Math.min(5, element + 1 + (index === 1 ? gain : 0))]);
+      const state = complete(cast(initial, spellId), dice), flowGain = dice[1] === 4 ? 1 : 0;
+      assert.deepEqual([state.players[index].mana, state.players[index].element], [Math.min(10, mana + 1), Math.min(5, element + 1 + (index === 1 ? flowGain : 0))]);
       assert.deepEqual([state.players[index].loadedPending, state.players[index].enhancement, state.players[index].auraTurns], [2, 30, 2]);
       assert.equal(state.players[index].discard.length, 1); assert.equal(allCards(state.players[index]).length, 30);
       assert.equal(state.primaryUsed, true); assertGame(state);
@@ -1628,21 +1628,21 @@ function emberBookGame(first = 0) {
   return state;
 }
 
-test('Xineoph uses stored Embers before its gain, and the persistent bank strengthens a later Fire attack', () => {
+test('Xineoph consumes stored Embers before its gain, which strengthens a later Fire attack', () => {
   let state = emberBookGame(); state.players[0].element = 3;
   state = cast(state, 'Fire-11');
   assert.equal(state.players[0].element, 3, 'casting a normal attack does not spend Embers');
   const saved = structuredClone(state);
   state = complete(migrateSavedGame(saved), [3, 4]);
-  assert.deepEqual([state.players[1].hp, state.players[0].element, state.players[0].mana], [88, 5, 2]);
+  assert.deepEqual([state.players[1].hp, state.players[0].element, state.players[0].mana], [88, 2, 2]);
   assert.match(state.log.findLast(entry => entry.type === 'damage').message, /15% Embers = 12 damage/);
   assert.equal(resolveSpell(state), state);
   state = pass(pass(state));
-  assert.equal(state.players[0].element, 5, 'the bank survives both players passing');
+  assert.equal(state.players[0].element, 2, 'the new bank survives both players passing');
   state.players[0].mana = 10;
   state = complete(cast(state, 'Fire-6'), [4, 4]);
-  assert.deepEqual([state.players[1].hp, state.players[0].element, state.players[0].mana], [53, 5, 5]);
-  assert.match(state.log.findLast(entry => entry.type === 'damage').message, /25% Embers = 35 damage/);
+  assert.deepEqual([state.players[1].hp, state.players[0].element, state.players[0].mana], [55, 2, 5]);
+  assert.match(state.log.findLast(entry => entry.type === 'damage').message, /10% Embers = 33 damage/);
   assertGame(state);
 });
 
@@ -1653,21 +1653,43 @@ test('Embers add to Enhancement and Aura once before Shield without amplifying r
   const result = complete(cast(initial, 'Fire-11'), [3, 4]);
   // 10 * (1 + .15 + .30 + .10) = 15.5, rounded once to 16; Shield absorbs 7.
   assert.deepEqual([result.players[1].hp, result.players[1].shield], [91, 0]);
-  assert.deepEqual([result.players[0].element, result.players[0].mana, result.players[0].enhancement, result.players[0].auraTurns], [5, 2, 0, 2]);
+  assert.deepEqual([result.players[0].element, result.players[0].mana, result.players[0].enhancement, result.players[0].auraTurns], [2, 2, 0, 2]);
   assert.match(result.log.findLast(entry => entry.type === 'damage').message, /30% Enhancement \+ 10% Aura \+ 15% Embers = 16 damage/);
   assert.equal(resolveSpell(result), result); assertGame(result);
 });
 
-test('Sunsetter spends its Ember bank before the roll and never counts the spent bank as percentage power', () => {
-  for (const [dice, expectedDamage] of [[[3, 4], 77], [[4, 4], 91]]) {
+test('Charred Blade uses its two damage tiers, consumes even Shield-absorbed Embers, then earns only the printed reward', () => {
+  for (const [dice, damage, newEmbers] of [[[3, 3], 25, 0], [[3, 4], 38, 2], [[5, 5], 38, 2]]) {
     const initial = emberBookGame();
-    Object.assign(initial.players[0], { mana: 10, element: 5, enhancement: 30, auraTurns: 2 });
+    Object.assign(initial.players[0], { mana: 10, element: 5 });
+    initial.players[1].shield = 30;
+    const pending = cast(initial, 'Fire-6');
+    assert.deepEqual([pending.players[0].mana, pending.players[0].element], [5, 5]);
+    const result = complete(pending, dice);
+    assert.deepEqual([result.players[1].hp, result.players[1].shield, result.players[0].element],
+      [100 - Math.max(0, damage - 30), Math.max(0, 30 - damage), newEmbers]);
+    const messages = result.log.slice(pending.log.length);
+    assert.equal(messages.filter(entry => entry.message.includes('Embers return to 0')).length, 1);
+    const hit = messages.findIndex(entry => entry.type === 'damage');
+    const consumed = messages.findIndex(entry => entry.message.includes('Embers return to 0'));
+    assert.ok(hit >= 0 && consumed > hit);
+    if (newEmbers) assert.ok(messages.findIndex(entry => entry.message.includes('gains 2 Embers')) > consumed);
+    assert.equal(resolveSpell(result), result); assertGame(result);
+  }
+});
+
+test('Sunsetter uses flat damage plus held Ember power and consumes the bank only on resolution', () => {
+  for (const [dice, enhancement, auraTurns, expectedDamage] of [
+    [[3, 4], 0, 0, 69], [[4, 4], 0, 0, 81], [[3, 4], 30, 2, 91], [[4, 4], 30, 2, 107],
+  ]) {
+    const initial = emberBookGame();
+    Object.assign(initial.players[0], { mana: 10, element: 5, enhancement, auraTurns });
     const pending = cast(initial, 'Fire-14');
-    assert.deepEqual([pending.players[0].mana, pending.players[0].element, pending.pendingSpell.emberSpent], [2, 0, 5]);
+    assert.deepEqual([pending.players[0].mana, pending.players[0].element, pending.pendingSpell.emberSpent], [2, 5, 0]);
     const restored = migrateSavedGame(structuredClone(pending));
     const result = complete(restored, dice);
-    assert.deepEqual([result.players[1].hp, result.players[0].element, result.players[0].enhancement], [100 - expectedDamage, 0, 0]);
-    assert.doesNotMatch(result.log.findLast(entry => entry.type === 'damage').message, /% Embers/);
+    assert.deepEqual([result.players[1].hp, result.players[0].element, result.players[0].enhancement], [Math.max(0, 100 - expectedDamage), 0, 0]);
+    assert.match(result.log.findLast(entry => entry.type === 'damage').message, new RegExp(`25% Embers = ${expectedDamage} damage`));
     assert.equal(resolveSpell(result), result); assertGame(result);
   }
 });

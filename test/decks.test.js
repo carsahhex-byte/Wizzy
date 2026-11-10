@@ -13,13 +13,13 @@ import {
 
 const legal = element => ({ element, entries: getEligibleSpells(element).slice(0, 10).map(card => ({ spellId: card.spellId, quantity: 3 })) });
 
-test('the sole active book has the requested names, stable IDs and original costs, effects and art', () => {
+test('the sole active book has the requested names, stable IDs, current effects and original costs and art', () => {
   const expected = {
     'Fire-2': ['Heatbox', 1, 'Gain 1 Ember. On a 7+, gain 2 Embers instead. On a 10+, gain 3 instead.'],
-    'Fire-15': ['Blaze', 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
-    'Fire-6': ['Charred Blade', 5, 'Deal 22 damage. On a 7+, deal 28 instead. On a 10+, deal 36 instead.'],
+    'Fire-15': ['Blaze', 0, 'Gain 1 Ember. On a 6+, gain 1 Mana.'],
+    'Fire-6': ['Charred Blade', 5, 'Deal 20 damage. On a 7+, deal 30 instead and gain 2 Embers.'],
     'Fire-11': ['Xineoph', 2, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.'],
-    'Fire-14': ['Sunsetter', 8, 'Spend all Embers. Deal 20 damage plus 7 per Ember spent. On an 8+, deal 9 per Ember instead.'],
+    'Fire-14': ['Sunsetter', 8, 'Deal 55 damage. On an 8+, deal 65 instead.'],
     'Water-2': ['Sea bolt', 1, 'Deal 4 + 2 × Flow damage. On an 8+, gain 1 additional Flow after resolution.'],
     'Water-0': ['Swell', 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.'],
     'Water-12': ['Coral Crash', 3, 'Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.'],

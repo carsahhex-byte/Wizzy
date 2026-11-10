@@ -18,8 +18,8 @@ function resolve(spellId, { caster = {}, opponent = {}, roll = 2, spent = 0 } = 
 const cases = [
   ['Water-0 below seven resolves the ordinary Flow without awarding on-cast Mana again', 'Water-0', { roll: 6, caster: { mana: 1 } }, { mana: 1, element: 1 }, {}],
   ['Water-0 seven resolves two total Flow without another Mana award', 'Water-0', { roll: 7, caster: { mana: 1 } }, { mana: 1, element: 2 }, {}],
-  ['Fire-15 below seven gains one Ember but no Mana', 'Fire-15', { roll: 6, caster: { mana: 0 } }, { element: 1, mana: 0 }, {}],
-  ['Fire-15 seven gains one Ember and one Mana', 'Fire-15', { roll: 7, caster: { mana: 0 } }, { element: 1, mana: 1 }, {}],
+  ['Fire-15 below six gains one Ember but no Mana', 'Fire-15', { roll: 5, caster: { mana: 0 } }, { element: 1, mana: 0 }, {}],
+  ['Fire-15 six gains one Ember and one Mana', 'Fire-15', { roll: 6, caster: { mana: 0 } }, { element: 1, mana: 1 }, {}],
   ['Fire-0 gains one Ember without a roll', 'Fire-0', { roll: null }, { element: 1 }, {}],
   ['Fire-0 has no roll threshold or enhanced resource gain', 'Fire-0', { roll: 12, caster: { enhancement: 30 } }, { element: 1 }, {}],
   ['Fire-1 base attack has no automatic Ember', 'Fire-1', { roll: 6 }, { element: 0 }, { hp: 94 }],
@@ -37,9 +37,9 @@ const cases = [
   ['Fire-5 zero spend retains base damage', 'Fire-5', { roll: 8 }, {}, { hp: 90 }],
   ['Fire-5 optional one Ember adds eight damage', 'Fire-5', { roll: 8, spent: 1 }, {}, { hp: 82 }],
   ['Fire-5 nine strips Shield before attack', 'Fire-5', { roll: 9, opponent: { shield: 12 } }, {}, { hp: 94, shield: 0 }],
-  ['Fire-6 base heavy damage', 'Fire-6', { roll: 6 }, {}, { hp: 78 }],
-  ['Fire-6 seven replaces base damage', 'Fire-6', { roll: 7 }, {}, { hp: 72 }],
-  ['Fire-6 ten replaces seven damage', 'Fire-6', { roll: 10 }, {}, { hp: 64 }],
+  ['Fire-6 base heavy damage', 'Fire-6', { roll: 6 }, { element: 0 }, { hp: 80 }],
+  ['Fire-6 seven replaces damage and grants two Embers', 'Fire-6', { roll: 7 }, { element: 2 }, { hp: 70 }],
+  ['Fire-6 ten retains the seven threshold damage and two Embers', 'Fire-6', { roll: 10 }, { element: 2 }, { hp: 70 }],
   ['Fire-7 base scaling per paid Ember', 'Fire-7', { roll: 8, spent: 3 }, {}, { hp: 64 }],
   ['Fire-7 nine replaces multiplier and retains base fifteen', 'Fire-7', { roll: 9, spent: 3 }, {}, { hp: 55 }],
   ['Fire-7 zero paid Embers still deals fifteen', 'Fire-7', { roll: 12 }, {}, { hp: 85 }],
@@ -59,9 +59,9 @@ const cases = [
   ['Fire-13 base damage', 'Fire-13', { roll: 6 }, {}, { hp: 70 }],
   ['Fire-13 seven damage', 'Fire-13', { roll: 7 }, {}, { hp: 62 }],
   ['Fire-13 ten replaces seven damage', 'Fire-13', { roll: 10 }, {}, { hp: 55 }],
-  ['Fire-14 base seven-per-Ember scaling', 'Fire-14', { roll: 7, spent: 3 }, {}, { hp: 59 }],
-  ['Fire-14 eight replaces seven per Ember with nine and retains twenty base', 'Fire-14', { roll: 8, spent: 3 }, {}, { hp: 53 }],
-  ['Fire-14 zero paid Embers still deals twenty', 'Fire-14', { roll: 12 }, {}, { hp: 80 }],
+  ['Fire-14 base damage needs no Ember payment', 'Fire-14', { roll: 7 }, { element: 0 }, { hp: 45 }],
+  ['Fire-14 eight replaces damage with sixty five', 'Fire-14', { roll: 8 }, { element: 0 }, { hp: 35 }],
+  ['Fire-14 twelve retains its eight threshold', 'Fire-14', { roll: 12 }, { element: 0 }, { hp: 35 }],
   ['Water-1 base damage', 'Water-1', { roll: 6 }, { element: 1 }, { hp: 94 }],
   ['Water-1 seven adds three damage', 'Water-1', { roll: 7 }, { element: 1 }, { hp: 91 }],
   ['Water-2 damage uses old Flow', 'Water-2', { roll: 7, caster: { element: 3 } }, { element: 4 }, { hp: 90 }],
@@ -201,13 +201,14 @@ test('self damage bypasses Shield while opponent damage consumes Shield first', 
   assert.deepEqual([other.hp, other.shield], [97, 0]);
 });
 
-test('Ember choices are limited to the two optional spend cards and two all-spend cards', () => {
+test('Ember choices are limited to archived optional cards and Fire-7; Sunsetter pays no Embers', () => {
   assert.deepEqual(getEmberSpendRange('Fire-5', 5), { min: 0, max: 1, mandatory: false });
   assert.deepEqual(getEmberSpendRange('Fire-12', 5), { min: 0, max: 2, mandatory: false });
-  for (const id of ['Fire-7','Fire-14']) {
+  for (const id of ['Fire-7']) {
     assert.deepEqual(getEmberSpendRange(id, 5), { min: 5, max: 5, mandatory: true });
     assert.deepEqual(getEmberSpendRange(id, 0), { min: 0, max: 0, mandatory: true });
   }
+  assert.deepEqual(getEmberSpendRange('Fire-14', 5), { min: 0, max: 0, mandatory: false });
   assert.deepEqual(getEmberSpendRange('Fire-1', 5), { min: 0, max: 0, mandatory: false });
   for (const bad of [-1, 6, 1.5, NaN, '2']) assert.throws(() => getEmberSpendRange('Fire-5', bad));
   assert.throws(() => getEmberSpendRange('FAT-001', 2));
@@ -217,6 +218,7 @@ test('invalid spending, missing roll and old spell IDs cannot execute', () => {
   for (const amount of [-1, 2, 1.5]) assert.throws(() => resolve('Fire-5', { spent: amount }));
   assert.throws(() => resolve('Fire-12', { spent: 3 }));
   assert.throws(() => resolve('Fire-7', { spent: 6 }));
+  assert.throws(() => resolve('Fire-14', { spent: 1 }));
   assert.throws(() => resolve('Fire-1', { spent: 1 }));
   assert.throws(() => resolve('Water-1', { roll: null }));
   assert.throws(() => resolve('FIR-001'));
@@ -252,14 +254,14 @@ test('Enhancement calculation rejects fractional, negative, over-cap and unsafe 
 
 test('Enhancement multiplies threshold damage before Shield and logs base, bonus and actual HP damage', () => {
   const result = resolve('Fire-6', { roll: 7, caster: { enhancement: 30 }, opponent: { shield: 5 } });
-  assert.deepEqual([result.opponent.hp, result.opponent.shield], [69, 0]);
+  assert.deepEqual([result.opponent.hp, result.opponent.shield], [66, 0]);
   const event = result.events.find(entry => entry.type === 'damage');
   assert.deepEqual({ baseDamage: event.baseDamage, enhancement: event.enhancement, bonusDamage: event.bonusDamage,
     totalDamage: event.totalDamage, amount: event.amount, absorbed: event.absorbed, hpDamage: event.hpDamage },
-  { baseDamage: 28, enhancement: 30, bonusDamage: 8, totalDamage: 36, amount: 36, absorbed: 5, hpDamage: 31 });
-  assert.match(event.message, /Base 28 \+ 30% Enhancement \+ 0% Aura = 36 damage/);
+  { baseDamage: 30, enhancement: 30, bonusDamage: 9, totalDamage: 39, amount: 39, absorbed: 5, hpDamage: 34 });
+  assert.match(event.message, /Base 30 \+ 30% Enhancement \+ 0% Aura = 39 damage/);
   assert.match(event.message, /5 absorbed by Shield/);
-  assert.match(event.message, /31 HP damage/);
+  assert.match(event.message, /34 HP damage/);
   assert.equal(result.caster.enhancement, 0);
   assert.match(result.events.at(-1).message, /uses 30% Enhancement.*returns to 0%/);
 });
@@ -328,8 +330,8 @@ test('Aura and Enhancement add before a single rounding step, capped at a combin
     });
   }
   const result = resolve('Fire-6', { roll: 7, caster: { enhancement: 30, auraTurns: 3 } });
-  assert.deepEqual([result.opponent.hp, result.caster.enhancement, result.caster.auraTurns], [61, 0, 3]);
-  assert.match(result.events[0].message, /Base 28 \+ 30% Enhancement \+ 10% Aura = 39 damage/);
+  assert.deepEqual([result.opponent.hp, result.caster.enhancement, result.caster.auraTurns], [58, 0, 3]);
+  assert.match(result.events[0].message, /Base 30 \+ 30% Enhancement \+ 10% Aura = 42 damage/);
   assert.deepEqual([result.events[0].enhancement, result.events[0].aura, result.events[0].combinedPercent], [30, 10, 40]);
 });
 
@@ -337,7 +339,8 @@ test('an active Aura boosts later attacks after the first attack consumes Enhanc
   const state = { players: [player('fire', { enhancement: 30, auraTurns: 2 }), player('water')] };
   const first = applySpellEffect(state, { casterIndex: 0, spellId: 'Fire-6', rollTotal: 7 });
   const second = applySpellEffect(state, { casterIndex: 0, spellId: 'Fire-6', rollTotal: 7 });
-  assert.deepEqual([first[0].amount, second[0].amount], [39, 31]);
+  assert.deepEqual([first[0].amount, second[0].amount], [42, 36]);
+  assert.equal(second[0].emberBonus, 10, 'the first Charred Blade leaves two new Embers for the second attack');
   assert.deepEqual([state.players[0].enhancement, state.players[0].auraTurns], [0, 2]);
   assert.equal(first.filter(event => event.type === 'enhancement').length, 1);
   assert.equal(second.filter(event => event.type === 'enhancement').length, 0);
@@ -413,18 +416,18 @@ test('Fire-0 has exact printed text and adds only one capped Ember without dice 
   assert.throws(() => resolve('Fire-0', { roll: null, spent: 1 }), /Invalid Ember spending/);
 });
 
-test('Fire-15 always grants one capped Ember and grants capped Mana only on a final seven or higher', () => {
+test('Fire-15 always grants one capped Ember and grants capped Mana only on a final six or higher', () => {
   assert.deepEqual(SPELL_RULES['Fire-15'], { requiresRoll: true, emberSpend: 'none' });
   assert.deepEqual([SPELL_CATALOG['Fire-15'].name, SPELL_CATALOG['Fire-15'].manaCost, SPELL_CATALOG['Fire-15'].effectText],
-    ['Blaze', 0, 'Gain 1 Ember. On a 7+, gain 1 Mana.']);
-  for (const rollTotal of [-2, 6, 7, 12]) for (const element of [0, 4, 5]) for (const mana of [0, 9, 10]) {
+    ['Blaze', 0, 'Gain 1 Ember. On a 6+, gain 1 Mana.']);
+  for (const rollTotal of [-2, 5, 6, 7, 12]) for (const element of [0, 4, 5]) for (const mana of [0, 9, 10]) {
     const state = { players: [player('fire', { element, mana, hp: 60, shield: 12, loaded: 4, loadedPending: 2, enhancement: 30, auraTurns: 2 }), player('water', { shield: 12 })] };
     const before = structuredClone(state), events = applySpellEffect(state, { casterIndex: 0, spellId: 'Fire-15', rollTotal });
-    const gain = rollTotal >= 7 ? Math.min(1, 10 - mana) : 0;
+    const gain = rollTotal >= 6 ? Math.min(1, 10 - mana) : 0;
     assert.deepEqual(state.players[0], { ...before.players[0], element: Math.min(5, element + 1), mana: mana + gain });
     assert.deepEqual(state.players[1], before.players[1]);
     assert.deepEqual(events.map(event => [event.type, event.resource, event.amount]), [
-      ['resource', 'element', element < 5 ? 1 : 0], ...(rollTotal >= 7 ? [['resource', 'mana', gain]] : []),
+      ['resource', 'element', element < 5 ? 1 : 0], ...(rollTotal >= 6 ? [['resource', 'mana', gain]] : []),
     ]);
     assert.deepEqual(getEmberSpendRange('Fire-15', element), { min: 0, max: 0, mandatory: false });
   }
@@ -457,38 +460,41 @@ test('Water-0 resolution adds ordinary plus conditional Flow, capped at five, wi
   assert.throws(() => resolve('Water-0', { roll: 7, spent: 1 }), /Invalid Ember spending/);
 });
 
-test('Fire-14 seven/nine scaling matches golden damage values across all Ember banks, bonuses and Shield', () => {
+test('Fire-14 fixed damage scales with the held bank once, then consumes it across bonuses and Shield', () => {
   assert.equal(SPELL_CATALOG['Fire-14'].manaCost, 8);
   assert.equal(SPELL_CATALOG['Fire-14'].effectText,
-    'Spend all Embers. Deal 20 damage plus 7 per Ember spent. On an 8+, deal 9 per Ember instead.');
-  assert.deepEqual(SPELL_RULES['Fire-14'], { requiresRoll: true, emberSpend: 'all' });
+    'Deal 55 damage. On an 8+, deal 65 instead.');
+  assert.deepEqual(SPELL_RULES['Fire-14'], { requiresRoll: true, emberSpend: 'none' });
   // Independent golden values include fractions that round down and exact halves
   // that round up. The separate drawing prototype's ceiling rule does not apply.
   const golden = [
-    { roll: 7, amounts: {
-      '0:0': [20, 27, 34, 41, 48, 55], '0:10': [22, 30, 37, 45, 53, 61],
-      '30:0': [26, 35, 44, 53, 62, 72], '30:10': [28, 38, 48, 57, 67, 77],
+    { roll: 7, base: 55, amounts: {
+      '0:0': [55, 58, 61, 63, 66, 69], '0:10': [61, 63, 66, 69, 72, 74],
+      '30:0': [72, 74, 77, 80, 83, 85], '30:10': [77, 80, 83, 85, 88, 91],
     } },
-    { roll: 8, amounts: {
-      '0:0': [20, 29, 38, 47, 56, 65], '0:10': [22, 32, 42, 52, 62, 72],
-      '30:0': [26, 38, 49, 61, 73, 85], '30:10': [28, 41, 53, 66, 78, 91],
+    { roll: 8, base: 65, amounts: {
+      '0:0': [65, 68, 72, 75, 78, 81], '0:10': [72, 75, 78, 81, 85, 88],
+      '30:0': [85, 88, 91, 94, 98, 101], '30:10': [91, 94, 98, 101, 104, 107],
     } },
   ];
   for (const row of golden) for (const [key, amounts] of Object.entries(row.amounts)) {
     const [enhancement, aura] = key.split(':').map(Number);
-    for (let spent = 0; spent <= 5; spent++) for (const shield of [0, 30]) {
-      const result = resolve('Fire-14', { roll: row.roll, spent,
-        caster: { element: 0, enhancement, auraTurns: aura ? 2 : 0, loadedPending: 2 }, opponent: { shield } });
+    for (let element = 0; element <= 5; element++) for (const shield of [0, 30]) {
+      const result = resolve('Fire-14', { roll: row.roll,
+        caster: { element, enhancement, auraTurns: aura ? 2 : 0, loadedPending: 2 }, opponent: { shield } });
       const damage = result.events.find(event => event.type === 'damage');
-      const total = amounts[spent], absorbed = Math.min(shield, total), base = row.amounts['0:0'][spent];
+      const total = amounts[element], absorbed = Math.min(shield, total), hpDamage = Math.min(100, total - absorbed);
       assert.deepEqual([damage.baseDamage, damage.enhancement, damage.aura, damage.totalDamage, damage.absorbed, damage.hpDamage],
-        [base, enhancement, aura, total, absorbed, total - absorbed], `${row.roll}/${spent}/${key}/Shield${shield}`);
-      assert.deepEqual([result.opponent.shield, result.opponent.hp], [shield - absorbed, 100 - total + absorbed]);
+        [row.base, enhancement, aura, total, absorbed, hpDamage], `${row.roll}/${element}/${key}/Shield${shield}`);
+      assert.equal(damage.emberBonus ?? 0, element * 5);
+      assert.deepEqual([result.opponent.shield, result.opponent.hp], [shield - absorbed, 100 - hpDamage]);
       assert.deepEqual([result.caster.element, result.caster.enhancement, result.caster.auraTurns, result.caster.loadedPending], [0, 0, aura ? 2 : 0, 2]);
       assert.equal(result.events.filter(event => event.type === 'enhancement').length, enhancement ? 1 : 0,
         'a damaging cast consumes the stored bank once, even when Shield absorbs all damage');
       assert.equal(result.events.some(event => event.type === 'shield'), false, 'Fire-14 does not strip Shield');
-      assert.deepEqual(getEmberSpendRange('Fire-14', spent), { min: spent, max: spent, mandatory: true });
+      assert.deepEqual(getEmberSpendRange('Fire-14', element), { min: 0, max: 0, mandatory: false });
+      assert.deepEqual(result.events.filter(event => event.resource === 'element').map(event => event.amount), element ? [-element] : [],
+        'the held bank is consumed at resolution rather than prepaid');
     }
   }
   assert.throws(() => resolve('Fire-14', { spent: 6, roll: 8 }), /Invalid Ember spending/);
@@ -533,7 +539,7 @@ test('Fire-11 costs two Mana and resolves damage, capped Embers and one conditio
       const total = totals[element];
       const caster = { element, mana, hp: 72, shield: 12, loaded: 4, loadedPending: 2, enhancement, auraTurns };
       const result = resolve('Fire-11', { roll, caster, opponent: { shield } });
-      const afterEmbers = Math.min(5, element + 2), manaGain = roll >= 7 ? Math.min(1, 10 - mana) : 0;
+      const afterEmbers = 2, manaGain = roll >= 7 ? Math.min(1, 10 - mana) : 0;
       const absorbed = Math.min(shield, total);
       assert.deepEqual(result.caster, player('fire', { ...caster, element: afterEmbers, mana: mana + manaGain, enhancement: 0 }),
         `final roll ${roll}, Mana ${mana}, Embers ${element}, Enhancement ${enhancement}, Aura ${auraTurns}, Shield ${shield}`);
@@ -542,7 +548,8 @@ test('Fire-11 costs two Mana and resolves damage, capped Embers and one conditio
       assert.deepEqual([damage.type, damage.baseDamage, damage.amount, damage.absorbed, damage.hpDamage],
         ['damage', 10, total, absorbed, total - absorbed]);
       assert.deepEqual(result.events.slice(1).map(event => [event.type, event.resource, event.amount]), [
-        ['resource', 'element', afterEmbers - element],
+        ...(element ? [['resource', 'element', -element]] : []),
+        ['resource', 'element', afterEmbers],
         ...(roll >= 7 ? [['resource', 'mana', manaGain]] : []),
         ...(enhancement ? [['enhancement', undefined, -enhancement]] : []),
       ], 'a final ten has the same one-Mana reward as seven, and no threshold adds or clears Loaded');

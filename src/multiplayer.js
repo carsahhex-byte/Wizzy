@@ -126,7 +126,7 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
       && (view.status === 'waiting' || (view.state && Array.isArray(view.state.players) && view.state.players.length === 2));
   }
   function applyOnlineView(view, { first = false, deliver = true } = {}) {
-    if(view?.spellbookVersion!==SPELLBOOK_VERSION||view.combatRulesVersion!==COMBAT_RULES_VERSION||(view.state&&view.state.version!==SAVE_VERSION))throw new Error('Update and restart the game server for the persistent 5%-per-Ember damage rules before starting or joining a room.');
+    if(view?.spellbookVersion!==SPELLBOOK_VERSION||view.combatRulesVersion!==COMBAT_RULES_VERSION||(view.state&&view.state.version!==SAVE_VERSION))throw new Error('Update and restart the game server for the new Ember consumption and Fire spell rules before starting or joining a room.');
     if (!validView(view)) throw new Error('The server sent an incomplete battle response.');
     const spellbookId = view.spellbookId === undefined ? SPELLBOOK_1 : view.spellbookId;
     if (spellbookId !== ACTIVE_SPELLBOOK_ID) throw new Error('This room uses an archived collection. Start a new room with your current deck.');

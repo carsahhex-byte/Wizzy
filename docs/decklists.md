@@ -2,17 +2,17 @@
 
 The game exposes one active spellbook containing **13 unique slabs: five Fire, five Water and three Fate**. The former Spellbook 1 selector is removed. The former testing collection is now the current collection, with Fire-6 replacing Fire-5. Stable internal IDs retain saved-file and artwork references; the following names appear on live cards, deck lists, inspections and new combat logs.
 
-Mana costs and printed effects remain unchanged. **Each held Ember now grants +5% outgoing Fire damage, up to +25% at the five-Ember cap.** The phoenix artwork moves from Charred Blade to Xineoph; Charred Blade uses a new rough pixel-art flaming sword. Water Flow, Fate timing, Enhancement and Aura retain their current rules.
+Mana costs and stable IDs are retained. **Each held Ember grants +5% outgoing Fire damage, up to +25%, and the held bank is consumed by the next damaging Fire spell before that spell grants new Embers.** Embers have no turn or round expiry. Charred Blade, Sunsetter and Blaze use the revised effects below. Existing phoenix and flaming-sword artwork, Water Flow, Fate timing, Enhancement and Aura remain unchanged.
 
 ## Active cards
 
 | Internal ID | Name | Mana | Effect |
 | --- | --- | ---: | --- |
 | Fire-2 | Heatbox | 1 | Gain 1 Ember. On 7+, gain 2 instead. On 10+, gain 3 instead. |
-| Fire-15 | Blaze | 0 | Gain 1 Ember. On 7+, gain 1 Mana. |
-| Fire-6 | Charred Blade | 5 | Deal 22 damage. On 7+, deal 28 instead. On 10+, deal 36 instead. |
+| Fire-15 | Blaze | 0 | Gain 1 Ember. On 6+, gain 1 Mana. |
+| Fire-6 | Charred Blade | 5 | Deal 20 damage. On 7+, deal 30 instead and gain 2 Embers. |
 | Fire-11 | Xineoph | 2 | Deal 10 damage and gain 2 Embers. On 7+, gain 1 Mana. |
-| Fire-14 | Sunsetter | 8 | Spend all Embers. Deal 20 + 7 per Ember spent. On 8+, use 9 per Ember instead. |
+| Fire-14 | Sunsetter | 8 | Deal 55 damage. On 8+, deal 65 instead. |
 | Water-2 | Sea bolt | 1 | Deal 4 + 2 × Flow damage. On 8+, gain 1 additional Flow after resolution. |
 | Water-0 | Swell | 0 | Gain 1 Mana on cast. On 7+, gain 1 additional Flow after resolution. |
 | Water-12 | Coral Crash | 3 | Deal 12 + 2 × Flow damage. On 7+, heal 2 HP per Flow. |
@@ -29,10 +29,10 @@ The spellbook's original source is **Wizzy Master Spellbook Nov4.pdf**, Master S
 | Role | Fire | Water |
 | --- | --- | --- |
 | Elemental development | Heatbox builds Embers. | Sea bolt attacks and helps build Flow. |
-| Mana and elemental setup | Blaze builds an Ember and can gain Mana on 7+. | Swell gains Mana on cast and builds Flow. |
-| Heavy / specialized attack | Charred Blade provides heavy damage without spending Embers. | Coral Crash combines damage with conditional healing. |
+| Mana and elemental setup | Blaze builds an Ember and can gain Mana on 6+. | Swell gains Mana on cast and builds Flow. |
+| Heavy / specialized attack | Charred Blade attacks and rebuilds 2 Embers on 7+. | Coral Crash combines damage with conditional healing. |
 | Attack while building | Xineoph attacks, gains Embers and can recover Mana. | Pacific attacks and gains two total Flow, subject to the cap. |
-| Finisher | Sunsetter spends all Embers for a large attack. | Poseidon's Rift uses established Flow and keeps it afterward. |
+| Finisher | Sunsetter delivers a large base attack boosted by held Embers. | Poseidon's Rift uses established Flow and keeps it afterward. |
 
 ## Build, save and transfer a deck
 
@@ -75,12 +75,12 @@ Each turn permits one main action: a primary slab, Enhancement or Aura. Threshol
 
 Enhancement costs 0 Mana and uses the main action. After its Fate chain, 6–8 grants 10 percentage points, 9–11 grants 20, and 12+ grants 30, capped at 30% stored total. It is consumed by the next outgoing damaging primary spell. Loaded does not modify Enhancement rolls. Aura costs 1 Mana and uses the main action; it grants 10% damage for three subsequent owner turns, excluding the activation turn. Enhancement and Aura add together. Fire adds its held Ember percentage to those bonuses, reaching at most 65%; Water uses only Enhancement and Aura, at most 40%. Round once before Shield, halves up. These percentages do not amplify resources, healing, Shield or self-damage.
 
-**Ember timing:** ordinary attacks keep stored Embers; only printed gains increase the counter. New Embers arrive after the attack, strengthening later spells. Xineoph at 3 Embers deals 12 damage from its 10 base, then reaches 5 Embers. Charred Blade at 5 Embers deals 35 from its 28 base on 7+. A 20-damage Fire attack with 5 Embers, 30% Enhancement and 10% Aura deals 33.
+**Ember timing:** keep Embers until the next outgoing damaging Fire spell resolves; end of turn, non-damaging spells, Water damage and self-damage do not remove them. Damage snapshots the held bank, consumes it even if Shield absorbs the whole hit, then applies printed new Ember gains. Xineoph at 3 Embers deals 12 from its 10 base, then ends at 2 Embers. Charred Blade on 7+ with 5 Embers deals 38 from its 30 base (37.5 rounded up), then ends at 2 Embers. Below 7, it deals 20 base and grants no new Embers.
 
-**Sunsetter:** spend all Embers at cast, before rolling and Fate. Spent Embers determine its printed damage but do not also add a 5% bonus to that hit. At five spent Embers it still deals 55 / 65 base damage, or 77 / 91 with 30% Enhancement and 10% Aura. The counter is zero afterward.
+**Sunsetter:** no Ember-spending cost at cast. It deals 55 base damage, or 65 on 8+. Five held Embers boost the 8+ hit to 81; adding 30% Enhancement and 10% Aura reaches 107. Its held Embers are consumed on damage and it grants no new Embers.
 
-Old completed damage and paid outcomes remain historical; loading a save does not recompute or replay them. Pending casts resolve once under the current rule with already-paid costs and spending retained.
+Old completed damage and paid outcomes remain historical; loading a save does not recompute or replay them. Pending casts resolve once under the current rule with paid Mana retained. A pending old Sunsetter restores its previously reserved Embers exactly once before the revised damage consumes them; completed old results receive no refund or recalculation.
 
-Current cards keep their existing frames and most supplied artwork, centered compact rules, bold thresholds and the yellow upper-left Mana cost. The original shared source PNG sheets retain their filenames and pixels. Xineoph points to the old phoenix crop; the flaming sword is a separate Charred Blade asset. Display-name metadata and stable IDs organize the cards without changing their costs or effects. Charred Blade is a 5-Mana simple cast; Xineoph, Sea bolt, Coral Crash and Pacific use the basic attack; Sunsetter and Poseidon's Rift use large casts. Heatbox, Blaze and Swell use power-ups. Fate has no animation. Results appear at impact, and reloading never replays completed actions.
+Current cards keep their existing frames and most supplied artwork, centered compact rules, bold thresholds and the yellow upper-left Mana cost. The original shared source PNG sheets retain their filenames and pixels. Xineoph points to the old phoenix crop; the flaming sword is a separate Charred Blade asset. Display-name metadata and stable IDs organize the cards independently of their revised effects. Charred Blade is a 5-Mana simple cast; Xineoph, Sea bolt, Coral Crash and Pacific use the basic attack; Sunsetter and Poseidon's Rift use large casts. Heatbox, Blaze and Swell use power-ups. Fate has no animation. Results appear at impact, and reloading never replays completed actions.
 
 The canonical metadata is in `src/spells.js`; active-pool membership is in `src/spellbooks.js`; `src/effects.js` implements effects; `src/game.js` owns combat timing; and `src/decks.js` validates and reviews compositions.
