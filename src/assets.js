@@ -63,6 +63,7 @@ export const ASSET_FILES = Object.freeze({
   charredBladeSword: 'Wizzy Charred Blade Sword.png',
   xineophCardArt: 'Wizzy Xineoph Phoenix Card.png',
   xineophAnimation: 'Wizzy Xineoph Phoenix Animation.png',
+  xineophCharge: 'Wizzy Xineoph Charge Pulse.png',
 });
 
 /** Original overworld wizards: fixed logical cells, source PNG left intact. */
@@ -317,30 +318,40 @@ export const COMBAT_ANIMATION_SHEETS = Object.freeze({
  * anchors are local to each cropped viewport rather than the whole atlas cell.
  */
 const xineophScale = 144 / 112;
-function xineophSheet({ animations, regions, anchors, clips = {}, ...metadata }) {
-  const frameRects = Array.from({ length: 16 }, (_, frame) => {
+function xineophSheet({ animations, regions, anchors, clips = {}, asset = 'xineophAnimation',
+  sourceWidth = 1536, sourceHeight = 1024, columns = 4, rows = 4, displayScale = xineophScale, ...metadata }) {
+  const cellWidth = sourceWidth / columns, cellHeight = sourceHeight / rows;
+  const frameRects = Array.from({ length: columns * rows }, (_, frame) => {
     const [x, y, w, h] = regions[frame] || regions.default;
-    return Object.freeze({ x: frame % 4 * 384 + x, y: Math.floor(frame / 4) * 256 + y, w, h });
+    return Object.freeze({ x: frame % columns * cellWidth + x, y: Math.floor(frame / columns) * cellHeight + y, w, h });
   });
   const frameAnchors = frameRects.map((rect, frame) => {
     const [x, y] = anchors[frame] || anchors.default;
-    const localX = rect.x - frame % 4 * 384, localY = rect.y - Math.floor(frame / 4) * 256;
+    const localX = rect.x - frame % columns * cellWidth, localY = rect.y - Math.floor(frame / columns) * cellHeight;
     return Object.freeze({ x: (x - localX) / rect.w, y: (y - localY) / rect.h });
   });
   const frameClips = frameRects.map((rect, frame) => {
     if (!clips[frame]) return null;
-    const localX = rect.x - frame % 4 * 384, localY = rect.y - Math.floor(frame / 4) * 256;
+    const localX = rect.x - frame % columns * cellWidth, localY = rect.y - Math.floor(frame / columns) * cellHeight;
     return `polygon(${clips[frame].map(([x, y]) => `${(x-localX)/rect.w*100}% ${(y-localY)/rect.h*100}%`).join(', ')})`;
   });
   return Object.freeze({
-    asset: 'xineophAnimation', sourceWidth: 1536, sourceHeight: 1024, columns: 4, rows: 4,
-    displayScale: xineophScale, ...metadata,
+    asset, sourceWidth, sourceHeight, columns, rows, displayScale, ...metadata,
     animations: Object.freeze(Object.fromEntries(Object.entries(animations).map(([key, frames]) => [key, Object.freeze(frames)]))),
     frameRects: Object.freeze(frameRects), frameAnchors: Object.freeze(frameAnchors), frameClips: Object.freeze(frameClips),
   });
 }
 
 export const XINEOPH_ANIMATION_SHEETS = Object.freeze({
+  // Measured charging feet stay fixed while eight distinct orb/spark poses pulse.
+  // The 178px hat-to-sole body maps to the same 144px battle wizard as the actor.
+  charge: xineophSheet({
+    asset: 'xineophCharge', columns: 4, rows: 2,
+    sourceBodyHeight: 178, targetBodyHeight: 144, displayScale: 144 / 178,
+    animations: { fire: [0,1,2,3,4,5,6,7] },
+    regions: { default: [40,85,320,355] },
+    anchors: { default: [119.5,430], 4: [120,430], 5: [120,430], 6: [120,430], 7: [120,430] },
+  }),
   actor: xineophSheet({
     sourceBodyHeight: 112, targetBodyHeight: 144,
     animations: { fire: [0,1,2,3,4,5,6] },
