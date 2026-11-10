@@ -523,11 +523,14 @@ test('Fire-11 costs two Mana and resolves damage, capped Embers and one conditio
     'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.');
   assert.deepEqual(SPELL_RULES['Fire-11'], { requiresRoll: true, emberSpend: 'none' });
   const bonuses = [
-    { enhancement: 0, auraTurns: 0, total: 10 }, { enhancement: 30, auraTurns: 0, total: 13 },
-    { enhancement: 0, auraTurns: 2, total: 11 }, { enhancement: 30, auraTurns: 2, total: 14 },
+    { enhancement: 0, auraTurns: 0, totals: [10, 11, 11, 12, 12, 13] },
+    { enhancement: 30, auraTurns: 0, totals: [13, 14, 14, 15, 15, 16] },
+    { enhancement: 0, auraTurns: 2, totals: [11, 12, 12, 13, 13, 14] },
+    { enhancement: 30, auraTurns: 2, totals: [14, 15, 15, 16, 16, 17] },
   ];
   for (const roll of [6, 7, 10]) for (const mana of [0, 9, 10]) for (let element = 0; element <= 5; element++) {
-    for (const { enhancement, auraTurns, total } of bonuses) for (const shield of [0, 30]) {
+    for (const { enhancement, auraTurns, totals } of bonuses) for (const shield of [0, 30]) {
+      const total = totals[element];
       const caster = { element, mana, hp: 72, shield: 12, loaded: 4, loadedPending: 2, enhancement, auraTurns };
       const result = resolve('Fire-11', { roll, caster, opponent: { shield } });
       const afterEmbers = Math.min(5, element + 2), manaGain = roll >= 7 ? Math.min(1, 10 - mana) : 0;

@@ -2,7 +2,7 @@
 
 The game exposes one active spellbook containing **13 unique slabs: five Fire, five Water and three Fate**. The former Spellbook 1 selector is removed. The former testing collection is now the current collection, with Fire-6 replacing Fire-5. Stable internal IDs retain saved-file and artwork references; the following names appear on live cards, deck lists, inspections and new combat logs.
 
-Mana costs, printed effects and artwork are unchanged. **The proposed persistent 5%-per-Ember bonus is not implemented.** Existing Ember spending, Water Flow, Fate timing, Enhancement and Aura continue to follow the current battle rules.
+Mana costs and printed effects remain unchanged. **Each held Ember now grants +5% outgoing Fire damage, up to +25% at the five-Ember cap.** The phoenix artwork moves from Charred Blade to Xineoph; Charred Blade uses a new rough pixel-art flaming sword. Water Flow, Fate timing, Enhancement and Aura retain their current rules.
 
 ## Active cards
 
@@ -73,8 +73,14 @@ A duel starts with **100 HP, 3 Mana, 0 Shield, 0 elemental resources and +0 Load
 
 Each turn permits one main action: a primary slab, Enhancement or Aura. Threshold spells roll before defender-first Fate responses; responders alternate one Fate at a time until two consecutive or automatic passes. Only the final Modified Roll determines the spell result. Self-damage bypasses the caster's Shield. Elemental gains occur during resolution; Water receives its normal one-Flow passive after each Water spell, plus any explicitly additional Flow.
 
-Enhancement costs 0 Mana and uses the main action. After its Fate chain, 6–8 grants 10 percentage points, 9–11 grants 20, and 12+ grants 30, capped at 30% stored total. It is consumed by the next outgoing damaging primary spell. Loaded does not modify Enhancement rolls. Aura costs 1 Mana and uses the main action; it grants 10% damage for three subsequent owner turns, excluding the activation turn. Enhancement and Aura add together, round once before Shield with halves up, and do not amplify resources, healing, Shield or self-damage.
+Enhancement costs 0 Mana and uses the main action. After its Fate chain, 6–8 grants 10 percentage points, 9–11 grants 20, and 12+ grants 30, capped at 30% stored total. It is consumed by the next outgoing damaging primary spell. Loaded does not modify Enhancement rolls. Aura costs 1 Mana and uses the main action; it grants 10% damage for three subsequent owner turns, excluding the activation turn. Enhancement and Aura add together. Fire adds its held Ember percentage to those bonuses, reaching at most 65%; Water uses only Enhancement and Aura, at most 40%. Round once before Shield, halves up. These percentages do not amplify resources, healing, Shield or self-damage.
 
-Current cards keep supplied artwork, centered compact rules, bold thresholds and the yellow upper-left Mana cost. Shared source PNG sheets and crop IDs retain their filenames because each sheet contains multiple slabs; display-name metadata organizes the new names without duplicating or altering artwork. Charred Blade is a 5-Mana simple cast; Xineoph, Sea bolt, Coral Crash and Pacific use the basic attack; Sunsetter and Poseidon's Rift use large casts. Heatbox, Blaze and Swell use power-ups. Fate has no animation. Results appear at impact, and reloading never replays completed actions.
+**Ember timing:** ordinary attacks keep stored Embers; only printed gains increase the counter. New Embers arrive after the attack, strengthening later spells. Xineoph at 3 Embers deals 12 damage from its 10 base, then reaches 5 Embers. Charred Blade at 5 Embers deals 35 from its 28 base on 7+. A 20-damage Fire attack with 5 Embers, 30% Enhancement and 10% Aura deals 33.
+
+**Sunsetter:** spend all Embers at cast, before rolling and Fate. Spent Embers determine its printed damage but do not also add a 5% bonus to that hit. At five spent Embers it still deals 55 / 65 base damage, or 77 / 91 with 30% Enhancement and 10% Aura. The counter is zero afterward.
+
+Old completed damage and paid outcomes remain historical; loading a save does not recompute or replay them. Pending casts resolve once under the current rule with already-paid costs and spending retained.
+
+Current cards keep their existing frames and most supplied artwork, centered compact rules, bold thresholds and the yellow upper-left Mana cost. The original shared source PNG sheets retain their filenames and pixels. Xineoph points to the old phoenix crop; the flaming sword is a separate Charred Blade asset. Display-name metadata and stable IDs organize the cards without changing their costs or effects. Charred Blade is a 5-Mana simple cast; Xineoph, Sea bolt, Coral Crash and Pacific use the basic attack; Sunsetter and Poseidon's Rift use large casts. Heatbox, Blaze and Swell use power-ups. Fate has no animation. Results appear at impact, and reloading never replays completed actions.
 
 The canonical metadata is in `src/spells.js`; active-pool membership is in `src/spellbooks.js`; `src/effects.js` implements effects; `src/game.js` owns combat timing; and `src/decks.js` validates and reviews compositions.

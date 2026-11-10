@@ -359,7 +359,7 @@ test('migrated pending Fire-11 applies its new damage and conditional Mana once 
       const cardId = upgraded.pendingCardId;
       if (upgraded.phase === 'rolling') upgraded = rollPair(upgraded, dice);
       upgraded = resolveSpell(passFate(upgraded));
-      assert.deepEqual([upgraded.players[0].mana, upgraded.players[0].element, upgraded.players[1].hp, upgraded.players[0].loadedPending], [7 + Number(total >= 7), 4, 90, 2]);
+      assert.deepEqual([upgraded.players[0].mana, upgraded.players[0].element, upgraded.players[1].hp, upgraded.players[0].loadedPending], [7 + Number(total >= 7), 4, 89, 2]);
       assert.equal(upgraded.players[0].discard.filter(card => card.id === cardId).length, 1);
       assert.equal(upgraded.log.filter(entry => entry.type === 'cast').length, 1);
       assert.equal(upgraded.log.filter(entry => entry.type === 'damage').length, 1);

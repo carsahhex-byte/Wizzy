@@ -1009,3 +1009,35 @@ test('production rooms accept only the current named spellbook', async t => {
   assert.ok(joined.data.state.players[1].hand.every(card => card.name === 'Swell'));
   assert.equal(joined.data.state.players[1].deckDefinition.spellbookId, 'spellbook-2');
 });
+
+test('two production screens receive the same persistent Ember damage and reconnect without resolving again', async t => {
+  const api = await service(t, {
+    allowArchivedSpellbook: false,
+    createMatch: decks => {
+      let state = createGame(91, decks);
+      state = rollInitiative(rollInitiative(state, 0, () => .99), 1, () => 0);
+      Object.assign(state.players[0], { element: 3, enhancement: 30, auraTurns: 2 });
+      state.players[1].shield = 7;
+      return state;
+    },
+  });
+  const deck = (element, spellId) => ({ element, spellbookId: 'spellbook-2', entries: [{ spellId, quantity: 6 }] });
+  const host = await api.create('fire', deck('fire', 'Fire-11'));
+  const guest = await api.join(host, deck('water', 'Water-9'));
+  const primary = (await api.get(host)).state.players[0].hand[0];
+  assert.equal((await api.action(host, 'selectCard', { cardId: primary.id })).status, 200);
+  const selected = await api.get(host);
+  const castRequest = { method: 'POST', token: host.token,
+    body: { type: 'castSpell', revision: selected.revision, requestId: 'persistent-ember-cast' } };
+  const cast = await api.request(`/api/rooms/${host.code}/actions`, castRequest);
+  assert.equal(cast.status, 200, cast.data.error);
+  // Base 10 + 30% Enhancement + 10% Aura + 15% Embers = 16; Shield absorbs 7.
+  for (const view of [cast.data, await api.get(guest)]) {
+    assert.deepEqual(view.state.players.map(player => [player.hp, player.shield]), [[100, 0], [91, 0]]);
+    assert.deepEqual([view.state.players[0].element, view.state.players[0].enhancement, view.state.players[0].mana], [5, 0, 2]);
+    assert.match(view.state.log.findLast(entry => entry.type === 'damage').message, /15% Embers = 16 damage/);
+    assert.equal(view.combatRulesVersion, 'ember-damage-v1');
+  }
+  assert.deepEqual((await api.request(`/api/rooms/${host.code}/actions`, castRequest)).data, cast.data);
+  assert.deepEqual(await api.get(host), cast.data, 'reconnecting preserves the paid cost and completed damage');
+});

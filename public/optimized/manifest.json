@@ -548,5 +548,15 @@
     "sourceBytes": 1222570,
     "width": 2126,
     "height": 740
+  },
+  "charredBladeSword": {
+    "file": "charredBladeSword-e55012931554.webp",
+    "source": "Wizzy Charred Blade Sword.png",
+    "sourceSha256": "b0a00276aeb9d1ccafcc608a95e8d003832514295c27c336460f0f599bd0c95a",
+    "optimizedSha256": "e55012931554ca9c0c16cb8e2d42283973e976ba611bae759a0eecd0ea67d800",
+    "bytes": 993434,
+    "sourceBytes": 1318088,
+    "width": 1536,
+    "height": 1024
   }
 }
