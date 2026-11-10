@@ -558,5 +558,25 @@
     "sourceBytes": 1318088,
     "width": 1536,
     "height": 1024
+  },
+  "xineophCardArt": {
+    "file": "xineophCardArt-178f4f4991b0.webp",
+    "source": "Wizzy Xineoph Phoenix Card.png",
+    "sourceSha256": "4bf34fb0270e11b2ddf29f405eed134449413946d62a3b629f88846259a6ca0a",
+    "optimizedSha256": "178f4f4991b0ac873ff1f9e3f5e496b0923bd39889f590b5027b47ca7f1ae2c3",
+    "bytes": 1078868,
+    "sourceBytes": 1465611,
+    "width": 1536,
+    "height": 1024
+  },
+  "xineophAnimation": {
+    "file": "xineophAnimation-f3122258e6f8.webp",
+    "source": "Wizzy Xineoph Phoenix Animation.png",
+    "sourceSha256": "a15cec18629cd3e628feb46b0090222778669048da1259e01c2e991a18758bc2",
+    "optimizedSha256": "f3122258e6f84feb1eb6a1142fbe3ab2cbcab4c7d9419c236554afc6eabecc76",
+    "bytes": 1589230,
+    "sourceBytes": 2091132,
+    "width": 1536,
+    "height": 1024
   }
 }
