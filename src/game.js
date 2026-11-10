@@ -836,7 +836,7 @@ function refreshCurrentSpellCards(state) {
     'Fire-15': ['Gain 1 Ember and 1 Mana.', 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
   };
-  const previousCosts = { 'Fire-11': 3, 'Water-12': 4 };
+  const previousCosts = { 'Fire-11': 3, 'Water-12': 4, 'Water-14': 8 };
   let changed = false;
   const upgradedWaterCards = new Set();
   const upgradedSunsetterCards = new Set();

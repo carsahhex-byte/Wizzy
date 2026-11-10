@@ -57,7 +57,7 @@ const water = [
   [11, 3, 'Deal 8 + Flow damage and gain +2 to your next roll. On a 7+, gain 1 additional Flow after resolution.'],
   [12, 3, 'Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.'],
   [13, 6, 'Deal 20 + 3 × Flow damage. On a 7+, deal 10 additional damage.'],
-  [14, 8, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
+  [14, 6, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
 ];
 const purposes = ['Basic attack', 'Early identity', 'Defensive utility', 'Strategic preparation', 'Specialized damage', 'Heavy attack', 'Signature spell'];
 const fate = (id, name, role, effectText) => Object.freeze({

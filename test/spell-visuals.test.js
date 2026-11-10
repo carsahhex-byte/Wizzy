@@ -106,20 +106,20 @@ test('damage routing covers Mana boundaries while Shield and power-up override t
   }
 });
 
-test('resumed casts at prior Fire-11 and Water-12 prices animate once without changing paid costs', () => {
-  for (const [spellId, casterIndex, oldCost] of [['Fire-11', 0, 3], ['Water-12', 1, 4]]) {
-    let initial = fresh({ fire: ['Fire-11'], water: ['Water-12'] });
+test('resumed casts at prior prices animate once without changing paid costs', () => {
+  for (const [spellId, casterIndex, oldCost, currentCost, kind] of [['Fire-11', 0, 3, 2, 'basic-attack'], ['Water-12', 1, 4, 3, 'basic-attack'], ['Water-14', 1, 8, 6, 'large-cast']]) {
+    let initial = fresh({ fire: ['Fire-11'], water: ['Water-12', 'Water-14'] });
     if (casterIndex === 1) initial = pass(initial);
     initial.players[casterIndex].mana = 10;
     const pending = cast(initial, spellId);
-    assert.equal(SPELL_CATALOG[spellId].manaCost, spellId === 'Fire-11' ? 2 : 3);
+    assert.equal(SPELL_CATALOG[spellId].manaCost, currentCost);
     pending.players[casterIndex].mana = 10 - oldCost;
     const commitment = pending.log.findLast(entry => entry.type === 'cast');
     commitment.message = `${pending.players[casterIndex].name} casts ${spellId} for ${oldCost} mana.`;
     const snapshot = structuredClone(pending), after = complete(pending);
     const events = getResolvedSpellVisuals(pending, after);
     assert.equal(events.length, 1);
-    assert.equal(events[0].spellId, spellId); assert.equal(events[0].kind, 'basic-attack');
+    assert.equal(events[0].spellId, spellId); assert.equal(events[0].kind, kind);
     assert.equal(events[0].manaCost, SPELL_CATALOG[spellId].manaCost);
     assert.equal(after.log.findLast(entry => entry.type === 'cast').message, commitment.message);
     assert.deepEqual(pending, snapshot);

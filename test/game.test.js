@@ -153,6 +153,20 @@ test('cast pays resources and consumes available Loaded once before any post-rol
   assert.equal(state.players[0].hand.length, 1); assert.equal(state.players[0].discard.length, 0);
   assert.equal(skipFate(state), state); assert.equal(castFateSelected(state), state);
   assert.equal(initial.players[0].mana, 6); assert.equal(initial.players[0].element, 4); assertGame(state);
+
+  const water = handOf(fresh({ first: 1, water: ['Water-14'] }), 1, ['Water-14']);
+  Object.assign(water.players[1], { mana: 5, element: 3, loaded: 2 });
+  const selected = selectCard(water, water.players[1].hand[0].id), before = structuredClone(selected);
+  assert.equal(canCastSelected(selected), false, "Poseidon's Rift cannot be cast for five Mana");
+  assert.equal(castSelected(selected), selected); assert.deepEqual(selected, before);
+  selected.players[1].mana = 6;
+  assert.equal(canCastSelected(selected), true, 'exactly six Mana is sufficient');
+  const pending = castSelected(selected);
+  assert.deepEqual([pending.phase, pending.players[1].mana, pending.players[1].loaded, pending.players[1].element], ['rolling', 0, 0, 3]);
+  assert.equal(pending.pendingSpell.loadedBonus, 2);
+  const resolved = complete(pending, [3, 3]);
+  assert.deepEqual([resolved.players[0].hp, resolved.players[1].mana, resolved.players[1].element], [58, 0, 4]);
+  assert.equal(resolveSpell(resolved), resolved); assertGame(resolved);
 });
 
 test('optional Ember bounds reject bad spending and Sunsetter holds its bank until resolution', () => {

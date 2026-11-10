@@ -2,7 +2,7 @@
 
 The game exposes one active spellbook containing **13 unique slabs: five Fire, five Water and three Fate**. The former Spellbook 1 selector is removed. The former testing collection is now the current collection, with Fire-6 replacing Fire-5. Stable internal IDs retain saved-file and artwork references; the following names appear on live cards, deck lists, inspections and new combat logs.
 
-Mana costs and stable IDs are retained. **Each held Ember grants +5% outgoing Fire damage, up to +25%, and the held bank is consumed by the next damaging Fire spell before that spell grants new Embers.** Embers have no turn or round expiry. Charred Blade, Sunsetter and Blaze use the revised effects below. Xineoph and Pacific use dedicated phoenix and dolphin animations; their card artwork, the flaming sword, Water Flow, Fate timing, Enhancement and Aura remain unchanged.
+Stable IDs are retained; Poseidon's Rift now costs 6 Mana. **Each held Ember grants +5% outgoing Fire damage, up to +25%, and the held bank is consumed by the next damaging Fire spell before that spell grants new Embers.** Embers have no turn or round expiry. Charred Blade, Sunsetter and Blaze use the revised effects below. Xineoph and Pacific use dedicated phoenix and dolphin animations; their card artwork, the flaming sword, Water Flow, Fate timing, Enhancement and Aura remain unchanged.
 
 ## Active cards
 
@@ -17,7 +17,7 @@ Mana costs and stable IDs are retained. **Each held Ember grants +5% outgoing Fi
 | Water-0 | Swell | 0 | Gain 1 Mana on cast. On 7+, gain 1 additional Flow after resolution. |
 | Water-12 | Coral Crash | 3 | Deal 12 + 2 × Flow damage. On 7+, heal 2 HP per Flow. |
 | Water-9 | Pacific | 2 | Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On 10+, deal 5 additional damage. |
-| Water-14 | Poseidon's Rift | 8 | Deal 15 + 5 × Flow damage. On 8+, deal 12 additional damage. |
+| Water-14 | Poseidon's Rift | 6 | Deal 15 + 5 × Flow damage. On 8+, deal 12 additional damage. |
 | FAT-001 | Fortune | 0 | +4 to the Modified Roll when attacking. |
 | FAT-002 | Misfortune | 0 | −4 to the Modified Roll when defending. |
 | FAT-003 | Twist | 0 | Choose +2 or −2 to the Modified Roll. |

@@ -13,7 +13,7 @@ import {
 
 const legal = element => ({ element, entries: getEligibleSpells(element).slice(0, 10).map(card => ({ spellId: card.spellId, quantity: 3 })) });
 
-test('the sole active book has the requested names, stable IDs, current effects and original costs and art', () => {
+test('the sole active book has the requested names, stable IDs, current effects, costs and art', () => {
   const expected = {
     'Fire-2': ['Heatbox', 1, 'Gain 1 Ember. On a 7+, gain 2 Embers instead. On a 10+, gain 3 instead.'],
     'Fire-15': ['Blaze', 0, 'Gain 1 Ember. On a 6+, gain 1 Mana.'],
@@ -24,7 +24,7 @@ test('the sole active book has the requested names, stable IDs, current effects 
     'Water-0': ['Swell', 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.'],
     'Water-12': ['Coral Crash', 3, 'Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.'],
     'Water-9': ['Pacific', 2, 'Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On a 10+, deal 5 additional damage.'],
-    'Water-14': ["Poseidon's Rift", 8, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
+    'Water-14': ["Poseidon's Rift", 6, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
   };
   assert.equal(ACTIVE_SPELLBOOK_ID, SPELLBOOK_2);
   assert.equal(getActiveSpells().length, 13);

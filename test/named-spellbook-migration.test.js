@@ -87,7 +87,7 @@ test('pending and completed named spells preserve paid costs and old log text wh
 });
 
 test('legacy paid prices remain historical through rename migration and animation collection', () => {
-  for (const [spellId, playerIndex, oldCost] of [['Fire-11', 0, 3], ['Water-12', 1, 4]]) {
+  for (const [spellId, playerIndex, oldCost] of [['Fire-11', 0, 3], ['Water-12', 1, 4], ['Water-14', 1, 8]]) {
     const previous = oldNames(rolling(spellId));
     const paid = previous.players[playerIndex], card = paid.hand[0];
     paid.mana += card.manaCost - oldCost; card.manaCost = card.cost = oldCost;
