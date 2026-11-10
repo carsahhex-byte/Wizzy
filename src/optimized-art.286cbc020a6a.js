@@ -296,9 +296,9 @@ export const OPTIMIZED_ART = {
     "optimizedSha256": "e31d5ce80a5b231c04cabc60c80ad3164826ebeef07b4019bf5082ae656a00a3"
   },
   "phoenixFireAnimation": {
-    "file": "phoenixFireAnimation-681863dcf00a.webp",
-    "sourceSha256": "484165abca6b69afca6336e4b993905238990b54b290f70e2985e489729d0eca",
-    "optimizedSha256": "681863dcf00a22f570251320ff37bfcbc167e7556f37ab7c6204edbee9d93855"
+    "file": "phoenixFireAnimation-a5ecc11edabf.webp",
+    "sourceSha256": "d881fc9cf0aacc7dcde438d603f4c13d7bdeada72b3226319554bf65ca639e70",
+    "optimizedSha256": "a5ecc11edabffa28e26ad81ec6b10457722b81a889c5385c64b04a2ca59fa6f3"
   },
   "pacificDolphinAnimation": {
     "file": "pacificDolphinAnimation-ab0c236a41be.webp",

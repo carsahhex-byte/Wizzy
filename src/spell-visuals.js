@@ -72,7 +72,7 @@ function castSpellId(entry, player) {
   const visual = getSpellVisual(spellId);
   if (!visual || visual.element.toLowerCase() !== player.id) return null;
   // Resumed casts keep their historical payment while using current visuals.
-  const previousCost = spellId === 'Fire-11' ? 3 : spellId === 'Water-12' ? 4 : null;
+  const previousCost = spellId === 'Fire-11' ? 3 : spellId === 'Water-12' ? 4 : spellId === 'Water-14' ? 8 : null;
   const legacyCost = previousCost !== null && entry.message === `${prefix}${printedName} for ${previousCost} mana.`;
   return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyCost ? spellId : null;
 }

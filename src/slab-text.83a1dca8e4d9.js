@@ -1,4 +1,4 @@
-import { pixelIconMarkup } from './pixel-icons.2204d37f3d5a.js';
+import { pixelIconMarkup } from './pixel-icons.bc76cae02d44.js';
 
 // Display copy only. Canonical descriptions and combat remain in the spellbook.
 // "Instead" replaces the preceding tier; "extra" adds to the base effect.

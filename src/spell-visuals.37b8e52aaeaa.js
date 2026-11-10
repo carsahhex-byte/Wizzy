@@ -1,5 +1,5 @@
-import { SPELL_CATALOG, LEGACY_SPELL_NAMES } from './spells.9366a66158f4.js';
-import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.ac842720ffc0.js';
+import { SPELL_CATALOG, LEGACY_SPELL_NAMES } from './spells.3798c5f746c7.js';
+import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.278e4212bba4.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
 const DAMAGING_SPELLS = new Set([
@@ -72,7 +72,7 @@ function castSpellId(entry, player) {
   const visual = getSpellVisual(spellId);
   if (!visual || visual.element.toLowerCase() !== player.id) return null;
   // Resumed casts keep their historical payment while using current visuals.
-  const previousCost = spellId === 'Fire-11' ? 3 : spellId === 'Water-12' ? 4 : null;
+  const previousCost = spellId === 'Fire-11' ? 3 : spellId === 'Water-12' ? 4 : spellId === 'Water-14' ? 8 : null;
   const legacyCost = previousCost !== null && entry.message === `${prefix}${printedName} for ${previousCost} mana.`;
   return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyCost ? spellId : null;
 }

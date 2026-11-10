@@ -1,7 +1,7 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.9366a66158f4.js';
-import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.cd043dc81002.js';
-import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.52b377af3d56.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.4f464f9db7bd.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.3798c5f746c7.js';
+import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.07030483671f.js';
+import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.ecb2ff572f97.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.75f2ef5e4e40.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
@@ -836,7 +836,7 @@ function refreshCurrentSpellCards(state) {
     'Fire-15': ['Gain 1 Ember and 1 Mana.', 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
   };
-  const previousCosts = { 'Fire-11': 3, 'Water-12': 4 };
+  const previousCosts = { 'Fire-11': 3, 'Water-12': 4, 'Water-14': 8 };
   let changed = false;
   const upgradedWaterCards = new Set();
   const upgradedSunsetterCards = new Set();

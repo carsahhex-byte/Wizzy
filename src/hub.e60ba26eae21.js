@@ -1,10 +1,10 @@
-import { ASSETS, ASSET_CROPS, MAP_UI_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.7128efb1e1d3.js';
-import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.9366a66158f4.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.4f464f9db7bd.js';
-import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckListForActive, MAX_DECK_FILE_BYTES } from './decks.cd043dc81002.js';
-import { SPELLBOOK_1, SPELLBOOK_2, SPELLBOOKS, getDeckSpellbook, getSpellbookSpells, ACTIVE_SPELLBOOK_ID, getActiveSpells } from './spellbooks.52b377af3d56.js';
-import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.e90a1ded749e.js';
-import { fitSlabText } from './slab-text.71b3c7dc2eb6.js';
+import { ASSETS, ASSET_CROPS, MAP_UI_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.2a7156c325f0.js';
+import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.3798c5f746c7.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.75f2ef5e4e40.js';
+import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckListForActive, MAX_DECK_FILE_BYTES } from './decks.07030483671f.js';
+import { SPELLBOOK_1, SPELLBOOK_2, SPELLBOOKS, getDeckSpellbook, getSpellbookSpells, ACTIVE_SPELLBOOK_ID, getActiveSpells } from './spellbooks.ecb2ff572f97.js';
+import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.e0b9c5335651.js';
+import { fitSlabText } from './slab-text.83a1dca8e4d9.js';
 import { DISTRICTS, getDistrict, normalizeDistrictId, parseStorybookRoute } from './districts.41d180c8958a.js';
 
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck', 'storybook']);
