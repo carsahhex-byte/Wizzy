@@ -1,5 +1,5 @@
 import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS } from './assets.dcd944651cbe.js';
-import { getSpellVisual } from './spell-visuals.d84c5e11fe89.js';
+import { getSpellVisual } from './spell-visuals.7147c5b455e7.js';
 import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.532dde3db3e5.js';
 
 const FRAME_MS = 125;

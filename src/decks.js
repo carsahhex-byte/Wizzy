@@ -1,4 +1,7 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.js';
+import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook, getSpellbookSpells, isSpellbookId, isSpellInBook } from './spellbooks.js';
+
+export { getDeckSpellbook } from './spellbooks.js';
 
 export const MAX_DECK_FILE_BYTES = 65536;
 
@@ -11,6 +14,9 @@ const isSpellEligibleForDeck = (spell, element) => spell.category === 'Fate'
   || (spell.category === 'Elemental' && spell.element.toLowerCase() === element);
 const orderDeckEntries = entries => entries.map(({ spellId, quantity }) => ({ spellId, quantity }))
   .sort((left, right) => left.spellId < right.spellId ? -1 : left.spellId > right.spellId ? 1 : 0);
+const deckShape = (element, entries, bookId) => ({ element, entries,
+  ...(bookId === SPELLBOOK_2 ? { spellbookId: SPELLBOOK_2 } : {}),
+});
 
 function requireDeckElement(element) {
   if (!isDeckElement(element)) throw new TypeError('Choose Fire or Water as the deck’s main element.');
@@ -21,6 +27,8 @@ function inspectDeck(deck, requirePlayable) {
   const errors = [];
   let total = 0;
   if (!isDeckRecord(deck)) return { valid: false, total, errors: ['A deck must be an object.'] };
+  const bookId = getDeckSpellbook(deck);
+  if (!isSpellbookId(bookId)) errors.push('Choose Spellbook 1 or Spellbook 2.');
   if (!isDeckElement(deck.element)) errors.push('Choose Fire or Water as the deck’s main element.');
   if (!Array.isArray(deck.entries)) {
     return { valid: false, total, errors: [...errors, 'A deck must have a list of spell quantities.'] };
@@ -36,6 +44,9 @@ function inspectDeck(deck, requirePlayable) {
     else if (isDeckElement(deck.element) && !isSpellEligibleForDeck(SPELL_CATALOG[spellId], deck.element)) {
       errors.push(`${SPELL_CATALOG[spellId].name} does not match the deck’s main element.`);
     }
+    else if (isSpellbookId(bookId) && !isSpellInBook(spellId, bookId)) {
+      errors.push(`${SPELL_CATALOG[spellId].name} is not available in Spellbook 2.`);
+    }
     if (seen.has(spellId)) errors.push('List each spell once and use its quantity for copies.');
     seen.add(spellId);
     if (!Number.isSafeInteger(quantity) || quantity < 1) {
@@ -50,15 +61,16 @@ function inspectDeck(deck, requirePlayable) {
 }
 
 /** Main-element spells plus shared Fate spells, in catalog order. */
-export function getEligibleSpells(element) {
+export function getEligibleSpells(element, bookId = SPELLBOOK_1) {
   requireDeckElement(element);
-  return Object.values(SPELL_CATALOG).filter(spell => isSpellEligibleForDeck(spell, element));
+  return getSpellbookSpells(bookId).filter(spell => isSpellEligibleForDeck(spell, element));
 }
 
 /** New collections start empty; players choose up to 30 slabs in the editor. */
-export function createStarterDeck(element) {
+export function createStarterDeck(element, bookId = SPELLBOOK_1) {
   requireDeckElement(element);
-  return { element, entries: DECK_LISTS[element].map(({ spellId, quantity }) => ({ spellId, quantity })) };
+  if (!isSpellbookId(bookId)) throw new TypeError('Choose Spellbook 1 or Spellbook 2.');
+  return deckShape(element, (bookId === SPELLBOOK_1 ? DECK_LISTS[element] : []).map(({ spellId, quantity }) => ({ spellId, quantity })), bookId);
 }
 
 export function getDeckValidation(deck) {
@@ -73,18 +85,17 @@ export function validateDeck(deck) {
 export function normalizeDeck(deck) {
   const result = getDeckValidation(deck);
   if (!result.valid) throw new TypeError(result.errors.join(' '));
-  return { element: deck.element, entries: orderDeckEntries(deck.entries) };
+  return deckShape(deck.element, orderDeckEntries(deck.entries), getDeckSpellbook(deck));
 }
 
 /** Accounts may have an empty slot; battles require at least one slab. */
 export function validateDeckSlot(deck) {
-  return validateDeck(deck) || (isDeckRecord(deck) && isDeckElement(deck.element)
-    && Array.isArray(deck.entries) && deck.entries.length === 0);
+  return inspectDeck(deck, false).valid;
 }
 
 export function normalizeDeckSlot(deck) {
   if (!validateDeckSlot(deck)) throw new TypeError(`Save a legal deck with ${MIN_DECK_SIZE}–${DECK_SIZE} slabs, or leave its slot empty.`);
-  return { element: deck.element, entries: orderDeckEntries(deck.entries) };
+  return deckShape(deck.element, orderDeckEntries(deck.entries), getDeckSpellbook(deck));
 }
 
 /** Portable deck files carry the spellbook version so old cards cannot be reinterpreted. */
@@ -121,12 +132,13 @@ export function setDeckQuantity(deck, spellId, quantity) {
   if (!current.valid) throw new TypeError(current.errors.join(' '));
   if (!deckSpellExists(spellId)) throw new TypeError('Choose a spell from the slab collection.');
   if (!isSpellEligibleForDeck(SPELL_CATALOG[spellId], deck.element)) throw new TypeError('That spell belongs to the other main element.');
+  if (!isSpellInBook(spellId, getDeckSpellbook(deck))) throw new TypeError('That spell is not available in Spellbook 2.');
   if (!Number.isSafeInteger(quantity) || quantity < 0) {
     throw new RangeError('Choose a nonnegative whole-number quantity.');
   }
   const entries = deck.entries.filter(entry => entry.spellId !== spellId);
   if (quantity > 0) entries.push({ spellId, quantity });
-  const next = { element: deck.element, entries: orderDeckEntries(entries) };
+  const next = deckShape(deck.element, orderDeckEntries(entries), getDeckSpellbook(deck));
   const result = inspectDeck(next, false);
   if (!result.valid) throw new RangeError(result.errors.join(' '));
   return next;

@@ -1,4 +1,4 @@
-import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, validateSavedGame, migrateSavedGame, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, SAVE_VERSION, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.js';
+import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.js';
 import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.js';
 import { SPELL_CATALOG } from './spells.js';
 import { validateDeck, getDeckValidation } from './decks.js';
@@ -14,8 +14,13 @@ import { createAuraAnimator } from './aura-animation.js';
 import { getResolvedBattleVisuals } from './spell-visuals.js';
 import { createHealthBars } from './health-bars.js';
 import { pixelIconMarkup } from './pixel-icons.js';
+import { SPELLBOOK_1, getDeckSpellbook, getSpellbook } from './spellbooks.js';
+import { getGameSpellbook } from './game.js';
+import { createDuelStorage } from './duel-storage.js';
 
-const SAVE_KEY = `wizzy.duel.v${SAVE_VERSION}`;
+let duelDeviceStorage = null;
+try { duelDeviceStorage = globalThis.localStorage; } catch {}
+const duelStorage = createDuelStorage(duelDeviceStorage);
 const app = document.querySelector('#app');
 const battleView = document.querySelector('#battle-view');
 const handoff = document.querySelector('#handoff');
@@ -74,26 +79,11 @@ function arenaEntranceKey() {
 const deckCount = player => player.deckCount ?? player.deck.length;
 const handCount = player => player.handCount ?? player.hand.length;
 
-function loadGame() {
-  const readSave=key=>{
-    try { return JSON.parse(localStorage.getItem(key)); }
-    catch { return null; }
-  };
-  const saved=readSave(SAVE_KEY);
-  const current=migrateSavedGame(saved);
-  if(current)return current;
-  for(const key of ['wizzy.duel.v13','wizzy.duel.v12','wizzy.duel.v11','wizzy.duel.v10']){
-    const migrated=migrateSavedGame(readSave(key));
-    if(migrated)return migrated;
-  }
-  // Older catalogs remain retired; all previous saved keys stay intact.
-  return createGame();
-}
+function loadGame(bookId = SPELLBOOK_1) { return duelStorage.load(bookId); }
 function saveGame() {
   if(isOnlineBattle())return;
   localState=state;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(localState)); storageAvailable = true; }
-  catch { storageAvailable = false; }
+  storageAvailable = duelStorage.save(localState);
 }
 const escape = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
@@ -262,7 +252,8 @@ function render() {
   const castLabel=isFate?`${fateCount?'Cast Fate':'Skip Fate'}${pendingEnhancement()?' for Enhancement':''}`:resolving?`Resolving ${pendingActionName()}`:'Cast Spell';
   const castArt=isFate?(fateCount?'castFate':'skipFate'):'cast';
   const focusKey = document.activeElement?.dataset.focus;
-  document.querySelector('#battle-session-label').textContent=isOnlineBattle()?`ROOM ${onlineCode} · YOU ARE ${displayPlayer.name.toUpperCase()}`:'LOCAL DUEL · FIRE / WATER';
+  const bookLabel=getSpellbook(getGameSpellbook(state)).label;
+  document.querySelector('#battle-session-label').textContent=isOnlineBattle()?`${bookLabel} · ROOM ${onlineCode} · YOU ARE ${displayPlayer.name.toUpperCase()}`:`${bookLabel} · LOCAL DUEL · FIRE / WATER`;
   document.querySelector('#battle-connection').textContent=isOnlineBattle()?(onlineStatus||'Connected · private hand'):'';
   document.querySelector('#battle-connection').hidden=!isOnlineBattle();
   document.querySelector('#battle-new').hidden=isOnlineBattle();
@@ -546,7 +537,7 @@ function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
       return `<button class="deck-row slab-${spell.type.toLowerCase()}" data-inspect-spell="${spell.spellId}" aria-label="Read ${escape(spell.name)}, ${entry.quantity} copies, ${spell.manaCost} Mana"><span class="deck-thumbnail">${spellSlabMarkup(spell.spellId)||art(spell.art)}</span><span class="deck-spell-name">${escape(spell.name)}<small>${spell.spellId} · ${spell.type}</small></span><span class="deck-mana">${spell.manaCost}<small>Mana</small></span><strong class="deck-quantity" data-spell-id="${spell.spellId}">×${entry.quantity}</strong></button>`;
     }).join('')}</section>`;
   }).join('');
-  document.querySelector('#deck-heading').textContent=`${player.name} deck · ${getDeckValidation(player.deckDefinition).total} spell ${getDeckValidation(player.deckDefinition).total === 1 ? 'slab' : 'slabs'}`;
+  document.querySelector('#deck-heading').textContent=`${getSpellbook(getDeckSpellbook(player.deckDefinition)).label} · ${player.name} deck · ${getDeckValidation(player.deckDefinition).total} spell ${getDeckValidation(player.deckDefinition).total === 1 ? 'slab' : 'slabs'}`;
   document.querySelector('#deck-summary').textContent=`${deckCount(player)} in tower · ${handCount(player)} in hand · ${player.discard.length} discarded. Current battle deck · ${player.deckDefinition.entries.length} distinct spells.`;
   document.querySelector('#deck-entries').innerHTML=groups;
   document.querySelectorAll('[data-deck-player]').forEach(button=>{
@@ -684,7 +675,7 @@ function restartGame() {
   if(isOnlineBattle())return;
   clearCombatTimers();
   for(const id of ['victory','restart','ember-choice'])document.getElementById(id).close();
-  const decks=pendingBattleDecks||hub.getSavedDecks();
+  const decks=pendingBattleDecks||hub.getSavedDecks(getGameSpellbook(state));
   pendingBattleDecks=null;
   if(shouldEnterAfterRestart){shouldEnterAfterRestart=false;enterBattle();}
   openingAcknowledged.local=false;
@@ -726,15 +717,17 @@ const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspect
   hub.setAccountStatus({username,state:'syncing',message:'Saving to your account…'});
   accounts.save(data).catch(error=>hub.setAccountStatus({username,state:'offline',message:error?.message||'Saved on this device. Cloud sync will need a retry.'}));
 },onBattle:({decks,forceNew=false}={})=>{
-  if(forceNew){restoreLocalBattle();requestNewBattle(decks,true);return;}
   pendingModeDecks=decks||hub.getSavedDecks();
+  restoreLocalBattle(getDeckSpellbook(pendingModeDecks.fire));
+  if(forceNew){const chosenDecks=pendingModeDecks;pendingModeDecks=null;requestNewBattle(chosenDecks,true);return;}
   document.querySelector('#resume-local').hidden=localState.status!=='playing'||localState.phase==='setup';
-  document.querySelector('#resume-local-detail').textContent=`Round ${localState.round}. Keep the current hands and progress. Turn draws and refreshes draw up to ${HAND_LIMIT} while your tower has slabs.`;
+  document.querySelector('#battle-mode-title').textContent=`${getSpellbook(getGameSpellbook(localState)).label} · How will you battle?`;
+  document.querySelector('#resume-local-detail').textContent=`${getSpellbook(getGameSpellbook(localState)).label} · Round ${localState.round}. Keep the current hands and progress. Turn draws and refreshes draw up to ${HAND_LIMIT} while your tower has slabs.`;
   document.querySelector('#resume-online').hidden=!multiplayer?.isActive();
   document.querySelector('#battle-mode').showModal();
 }});
 multiplayer=createMultiplayer({
-  root:document.querySelector('#online-view'),getSavedDecks:()=>hub.getSavedDecks(),getProfile:()=>hub.getProfile(),
+  root:document.querySelector('#online-view'),getSavedDecks:bookId=>hub.getSavedDecks(bookId),getSelectedSpellbookId:()=>hub.getSelectedSpellbookId(),getProfile:()=>hub.getProfile(),
   getAccountSession:()=>accounts?.getSession(),
   prepareAccountBattle:async()=>{
     if(accounts?.hasSession()){
@@ -798,9 +791,16 @@ function openAccountScreen(){
   if(location.hash!=='#account')history.pushState(null,'','#account');
   accounts.show();
 }
-function restoreLocalBattle(){
+function restoreLocalBattle(bookId){
   if(isOnlineBattle()){clearCombatTimers();state=localState;}
   battleMode='local';onlineBusy=false;onlineActionInFlight=null;
+  if(bookId && getGameSpellbook(localState)!==bookId){
+    clearCombatTimers();cancelSpellPresentation();
+    duelStorage.save(localState);
+    state=localState=loadGame(bookId);
+    localEntranceKey=null;
+    openingAcknowledged.local=state.phase!=='initiative';
+  }
 }
 function receiveOnlineView(view,enter=false){
   if(!view?.state||![0,1].includes(view.playerIndex))return;
@@ -860,11 +860,11 @@ const localDecksReady=decks=>validateDeck(decks?.fire)&&validateDeck(decks?.wate
 function showDeckSetup(decks=hub.getSavedDecks()){
   const element=validateDeck(decks.fire)?'water':'fire';
   leaveBattle('deck');
-  hub.showDeckSetup('Save a Fire deck and a Water deck with 1–30 slabs each before starting a shared-screen battle.',element);
+  hub.showDeckSetup(`Save a Fire deck and a Water deck in ${getSpellbook(getDeckSpellbook(decks.fire)).label}, with 1–30 slabs each, before starting a shared-screen battle.`,element,getDeckSpellbook(decks.fire));
 }
 function enterBattle(){
   if(!isOnlineBattle()&&state.phase==='setup'){
-    const decks=hub.getSavedDecks();
+    const decks=hub.getSavedDecks(getGameSpellbook(state));
     if(!localDecksReady(decks)){showDeckSetup(decks);return;}
     openingAcknowledged.local=false;
     state=createLocalGame(decks);saveGame();
@@ -884,8 +884,9 @@ function leaveBattle(screen='home',options={}){
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
   restoreLocalBattle();multiplayer?.hide();accounts?.hide();battleView.hidden=true;hub.show(screen,options);
 }
-function requestNewBattle(decks=hub.getSavedDecks(),enterAfter=false){
+function requestNewBattle(decks=hub.getSavedDecks(getGameSpellbook(state)),enterAfter=false){
   if(isOnlineBattle())return;
+  restoreLocalBattle(getDeckSpellbook(decks.fire));
   if(!localDecksReady(decks)){showDeckSetup(decks);return;}
   if(state.phase==='setup'){
     openingAcknowledged.local=false;
@@ -937,7 +938,7 @@ function syncAppRoute(){
       const session=multiplayer.getSession();
       if(session?.state)receiveOnlineView(session,true);
       else openOnlineLobby();
-    }else{restoreLocalBattle();enterBattle();}
+    }else{restoreLocalBattle(hub.getSelectedSpellbookId());enterBattle();}
     return;
   }
   leaveBattle(['title','home','character','friends','deck'].includes(screen)?screen:'title');
@@ -945,5 +946,5 @@ function syncAppRoute(){
 window.addEventListener('hashchange',syncAppRoute);
 window.addEventListener('popstate',syncAppRoute);
 const touchIcon=document.createElement('link');touchIcon.rel='apple-touch-icon';touchIcon.href=ASSETS.appIcon;document.head.append(touchIcon);
-saveGame();render();syncAppRoute();
+restoreLocalBattle(hub.getSelectedSpellbookId());saveGame();render();syncAppRoute();
 accounts.resume().catch(()=>{});
