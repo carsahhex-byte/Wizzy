@@ -9,8 +9,9 @@
     "start": "node scripts/serve.js",
     "build": "node scripts/build.js",
     "build:web": "node scripts/build.js --web",
+    "build:production": "node scripts/build.js --web --game-only",
     "optimize:art": "python scripts/optimize-art.py",
-    "deploy:pages": "npm test && npm run build:web && node scripts/deploy-pages.js --publish",
+    "deploy:pages": "npm test && npm run build:production && node scripts/deploy-pages.js --publish",
     "preview": "node scripts/serve.js dist",
     "multiplayer": "node server/index.js",
     "test": "node --test --test-isolation=none test/*.test.js"

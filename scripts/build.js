@@ -5,6 +5,8 @@ import { ASSET_FILES } from '../src/assets.js';
 import { OPTIMIZED_ART } from '../src/optimized-art.js';
 
 const webOnly = process.argv.includes('--web');
+const gameOnly = process.argv.includes('--game-only');
+if (gameOnly && !webOnly) throw new Error('Use --web with --game-only for a production website release.');
 // Dependencies precede their importers in both the hosted and standalone builds.
 const moduleNames = ['optimized-art.js', 'spells.js', 'spellbooks.js', 'decks.js', 'effects.js', 'game.js', 'duel-storage.js', 'asset-url.js', 'pixel-icons.js', 'slab-text.js', 'assets.js', 'spell-visuals.js', 'battle-scene.js', 'animation-sprites.js', 'spell-animation.js', 'aura-animation.js', 'health-bars.js', 'hub-storage.js', 'districts.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
 const styleNames = ['style.css', 'hub.css', 'multiplayer.css', 'accounts.css'];
@@ -33,13 +35,14 @@ if (webOnly) {
 } else {
   await cp('public', 'dist/public', { recursive: true });
 }
-// Preserve the approved source-sheet gallery and ZIP alongside the live game.
-execFileSync(process.execPath,['scripts/package-animation-review.js','dist/previews/combat-linger-v2'],{stdio:'inherit'});
-// Idle sprites stay in a separate review gallery until they are approved for battle.
-execFileSync(process.execPath,['scripts/package-idle-review.js','dist/previews/idle-wizards'],{stdio:'inherit'});
-execFileSync(process.execPath,['scripts/package-earth-air-review.js','dist/previews/earth-air'],{stdio:'inherit'});
-// Distribute the independent drawing experiment without connecting game state.
-execFileSync(process.execPath,['scripts/package-glyph-duel.js','dist/prototypes/glyph-duel'],{stdio:'inherit'});
+// Review builds retain the separate galleries and experiment. Production ships
+// the complete game only; all source artwork and review generators stay intact.
+if (!gameOnly) {
+  execFileSync(process.execPath,['scripts/package-animation-review.js','dist/previews/combat-linger-v2'],{stdio:'inherit'});
+  execFileSync(process.execPath,['scripts/package-idle-review.js','dist/previews/idle-wizards'],{stdio:'inherit'});
+  execFileSync(process.execPath,['scripts/package-earth-air-review.js','dist/previews/earth-air'],{stdio:'inherit'});
+  execFileSync(process.execPath,['scripts/package-glyph-duel.js','dist/prototypes/glyph-duel'],{stdio:'inherit'});
+}
 await writeFile('dist/.nojekyll', '');
 
 if (webOnly) {
@@ -81,7 +84,7 @@ if (webOnly) {
   // A new pathname avoids reusing a previously cached index document. Both
   // entries live at the project root, so asset paths and hash navigation agree.
   await writeFile(`dist/${launch.slice(2)}`, html);
-  await writeFile('dist/build-info.json', JSON.stringify({ id, launch, layout: 'portrait-1024x1536', screens: ['title', 'home', 'storybook', 'character', 'friends', 'decks', 'online', 'account', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
+  await writeFile('dist/build-info.json', JSON.stringify({ id, launch, distribution: gameOnly ? 'game-only' : 'with-reviews', layout: 'portrait-1024x1536', screens: ['title', 'home', 'storybook', 'character', 'friends', 'decks', 'online', 'account', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
   console.log(`Built hosted game ${id} with content-hashed modules, styles, and artwork.`);
   process.exit(0);
 }

@@ -19,7 +19,11 @@ if (origin.hostname !== 'github.com' || origin.pathname.replace(/\.git$/, '').to
 await stat(path.join(output, 'index.html'));
 await stat(path.join(output, '.nojekyll'));
 const files = await readdir(output);
-if (files.includes('wizzy.html')) throw new Error('Use npm run build:web before deployment.');
+if (files.includes('wizzy.html')) throw new Error('Use npm run build:production before deployment.');
+const info = JSON.parse(await readFile(path.join(output, 'build-info.json'), 'utf8'));
+if (info.distribution !== 'game-only' || files.includes('previews') || files.includes('prototypes')) {
+  throw new Error('Use npm run build:production before deployment to upload the game without optional review galleries.');
+}
 
 const remoteLine = git(['ls-remote', '--heads', 'origin', 'refs/heads/gh-pages']);
 const parent = remoteLine ? remoteLine.split(/\s/)[0] : null;

@@ -12,7 +12,7 @@ The renamed 13-card spellbook is ready. GitHub keeps the source; Netlify builds 
 
    | Setting | Value |
    | --- | --- |
-   | Build command | `npm run build:web` |
+   | Build command | `npm run build:production` |
    | Publish directory | `dist` |
    | Node version | `24` |
 
@@ -28,7 +28,7 @@ Pushing to the configured production branch lets Netlify build and publish the u
 
 For reviewing future work first, use a pull-request Deploy Preview or enable a separate branch deploy in Netlify. Keep the stable site address for regular play. Preview addresses are different browser origins and have separate guest saves.
 
-The existing build checks artwork integrity and emits content-hashed assets and modules. `netlify.toml` revalidates HTML and `build-info.json` while allowing long caching of hashed artwork.
+The game-only production build excludes the optional `previews/` and `prototypes/` directories; it retains the entire playable game and runtime artwork. It checks artwork integrity and emits content-hashed assets and modules. `netlify.toml` revalidates HTML and `build-info.json` while allowing long caching of hashed artwork.
 
 ## Keep guest decks when changing addresses
 
@@ -59,6 +59,6 @@ A prepared game-only ZIP can be used if you prefer not to connect GitHub yet:
 3. Drop the extracted **wizzy-netlify** folder. Its root contains `index.html`, `build-info.json`, `src`, `public`, and `_headers`.
 4. Open the site address Netlify returns, followed by `/#title`.
 
-The manual package contains the complete game and its artwork. Optional sprite-review galleries and the separate drawing prototype are omitted to reduce the upload size. Connected repository builds retain those reference galleries.
+The manual package contains the complete game and its artwork. Optional sprite-review galleries and the separate drawing prototype are omitted to reduce the upload size. Connected repository production builds omit them as well. For a local review build with those unchanged galleries and the experiment, run `npm run build:web` and `npm run preview`. All originals remain in the repository.
 
 The upload ZIP is a snapshot. Later updates require another manual upload unless the project is connected to GitHub. A manual upload and a connected project may produce different site addresses; keep one stable site for regular play and its guest saves.

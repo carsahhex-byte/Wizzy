@@ -18,7 +18,8 @@ The server listens on port **5173**. Set `PORT` to use another port. `npm run de
 ```sh
 npm test          # game-engine, deck-building, and spell-effect tests
 npm run build    # syntax validation and a static release in dist/
-npm run build:web # smaller hosted release, with separate optimized artwork
+npm run build:web # hosted review build, including optional galleries and experiments
+npm run build:production # game-only hosted release, with optimized artwork
 npm run preview  # serve the built release on port 5173
 npm run multiplayer # serve the built app and room API on port 8787
 ```
@@ -51,13 +52,13 @@ For hosted accounts, choose persistent storage and back it up. An ephemeral free
 
 ## Hosting on Netlify
 
-Import `carsahhex-byte/Wizzy` in Netlify and choose production branch **`codex/wizzy-hosting`**. The committed `netlify.toml` selects `npm run build:web`, publish directory `dist`, and Node 24. Open the generated site at `/#title`. Future pushes can deploy automatically without GitHub Pages. Follow the [step-by-step Netlify setup and deck-transfer guide](docs/netlify.md).
+Import `carsahhex-byte/Wizzy` in Netlify and choose production branch **`codex/wizzy-hosting`**. The committed `netlify.toml` selects `npm run build:production`, publish directory `dist`, and Node 24. Open the generated site at `/#title`. Future pushes can deploy automatically without GitHub Pages. Follow the [step-by-step Netlify setup and deck-transfer guide](docs/netlify.md).
 
 Netlify serves the static game; accounts and two-screen play still need the separate HTTPS game server. Add the final Netlify origin to that server’s `ALLOWED_ORIGINS` and enter its address in the app. Fresh Netlify installs do not mistake the static host for the account/room API. Guest decks must be exported/imported when moving to a different website origin.
 
 ## Hosting on GitHub Pages
 
-The connected repository is `carsahhex-byte/Wizzy`. Run `npm run deploy:pages` to test, build the hosted release, and upload only `dist/` to its `gh-pages` branch. The deployment script uses a temporary Git index and preserves the current source branch and working tree. It never force-pushes. To prepare a deployment commit without uploading it, build with `npm run build:web` and run `node scripts/deploy-pages.js`.
+The connected repository is `carsahhex-byte/Wizzy`. Run `npm run deploy:pages` to test, build the hosted release, and upload only `dist/` to its `gh-pages` branch. The deployment script uses a temporary Git index and preserves the current source branch and working tree. It never force-pushes. To prepare a deployment commit without uploading it, build with `npm run build:production` and run `node scripts/deploy-pages.js`. The publisher requires the game-only distribution, which omits optional artwork-review galleries and the drawing experiment while preserving the complete game, all runtime art, and the original files in this repository.
 
 Enable hosting once in the repository's **Settings → Pages**:
 
@@ -98,9 +99,9 @@ The battle arena uses the forest's original **1024 × 1536 (2:3 portrait)** canv
 
 Battle wizards use the original tiny four-direction Fire and Water walk atlas. After **Continue** in a new duel's opening dialog, Fire walks in from offscreen left and Water from offscreen right, then they idle facing each other on the grass. No keyboard controls are added. Resuming a duel starts them idle; reduced motion places them there immediately. The source atlas PNG remains unmodified, with a lossless optimized copy. The larger mage portraits remain on Character and handoff screens.
 
-The new [idle wizard animations](designs/idle-previews/README.md) are **preview only and are not played in battle**. Their separate gallery and offline ZIP at `previews/idle-wizards/` show eight Fire frames and eight Water frames, with subtle breathing, blinking and elemental particles on a 1.28-second loop. Runtime artwork and idle behavior remain unchanged.
+The new [idle wizard animations](designs/idle-previews/README.md) are **preview only and are not played in battle**. In a review build (`npm run build:web`), their separate gallery and offline ZIP at `previews/idle-wizards/` show eight Fire frames and eight Water frames, with subtle breathing, blinking and elemental particles on a 1.28-second loop. Runtime artwork and idle behavior remain unchanged.
 
-The separate [Earth and Air preview pack](designs/earth-air-previews/README.md) at `previews/earth-air/` contains walking, idle, casting and effect artwork with an offline viewer and ZIP. **Earth and Air are not playable yet**, and these previews do not change live battle assets, deck eligibility or the current Fire/Water rules.
+The separate [Earth and Air preview pack](designs/earth-air-previews/README.md), emitted by a review build at `previews/earth-air/`, contains walking, idle, casting and effect artwork with an offline viewer and ZIP. **Earth and Air are not playable yet**, and these previews do not change live battle assets, deck eligibility or the current Fire/Water rules.
 
 Primary spell animations play after any Fate chain ends, using the approved v2 caster and projectile sheets. Damaging spells costing **0–3 Mana** use a basic attack; **4–5 Mana** use a simple cast; **6+ Mana** use a large cast. The caster has 500 ms of windup, a **one-second moving-particle charge**, and 500 ms of recovery. A one-second projectile flight starts at release (1.5 seconds) and hits at 2.5 seconds. The defender keeps its standing pose with the original quick **210 ms red flash** and **four 85 ms legacy impact frames**; this 340 ms hit window ends the damaging animation at **2.84 seconds**. Large Fire drops a meteor from above Fire toward Water; large Water sends a wave from behind Water toward Fire. Among the active cards, Heatbox, Blaze and Swell use power-ups; Charred Blade uses a simple cast; Xineoph, Sea bolt, Coral Crash and Pacific use basic attacks; Sunsetter and Poseidon's Rift use large casts. Archived shield sprites remain in the review artwork. These non-damaging sequences last two seconds, with results shown at 500 ms. **Fate has no animation.**
 
@@ -110,7 +111,7 @@ The engine resolves and saves each action once. Mana costs are paid normally; di
 
 The Seattle map keeps its existing square landmark bitmap, ocean, islands and geography. **Fit / 1×** fills the map panel; panning and zooming move the city and grey Storybook markers together. The approved rough Home atlas supplies the live frames, header, toolbar and navigation-button artwork through CSS crops. Its source PNG remains unchanged, and runtime copies use the lossless optimized-art pipeline. Controls retain their existing actions and stay outside the map. The page backdrop remains separate from the map panel. No district mini-map art, GPS system or quest engine is added; card, deck, combat and account functions are unchanged.
 
-The approved combat set is preserved in [designs/animation-previews/v2-one-second](designs/animation-previews/v2-one-second/README.md): ten unchanged PNG sheets for Enhancement, Aura, casts, attacks, shields, power-ups, projectiles and hit reactions, with lossless optimized copies. Each held-effect sequence has eight moving frames at 125 ms each for a full one-second linger. The separate gallery and ZIP at `previews/combat-linger-v2/` remain artwork references. Live targets use the original quick hit response; the longer v2 hit-reaction sheet remains available in that reference pack.
+The approved combat set is preserved in [designs/animation-previews/v2-one-second](designs/animation-previews/v2-one-second/README.md): ten unchanged PNG sheets for Enhancement, Aura, casts, attacks, shields, power-ups, projectiles and hit reactions, with lossless optimized copies. Each held-effect sequence has eight moving frames at 125 ms each for a full one-second linger. The separate gallery and ZIP at `previews/combat-linger-v2/` remain artwork references in review builds, and are omitted from game-only production uploads. Live targets use the original quick hit response; the longer v2 hit-reaction sheet remains available in that reference pack.
 
 Wizards stand on the grass around logical y450. Stat panels begin at y480, with the hand and turn controls on the stone-and-dirt area below. The hand has three slabs in the top row and up to three in the bottom row (with two centered for a five-slab hand), with the discard and tower signs at its sides. Both wizards' Enhancement percentages and Aura countdowns appear on the left of the hand frame. The right side shows one Fire-red or Water-blue Enhancement button for the active wizard, with a green Aura button below. The refresh drawer keeps its existing behavior, and the combat log opens over the board without changing the forest dimensions.
 
@@ -157,7 +158,7 @@ The in-game settings/handbook describes the active rules and local two-player fl
 
 ## Separate experiments
 
-[Spell Sketch](prototypes/glyph-duel/README.md) is a standalone drawing-duel experiment at [`prototypes/glyph-duel/`](https://carsahhex-byte.github.io/Wizzy/prototypes/glyph-duel/), with local two-player pass-and-play, solo practice and an offline download. Memorize a Circle, Square or Triangle, then draw and counter it on a timed block grid. It has no connection to Wizzy accounts, saved decks or live combat, and remote two-phone play is not implemented for this experiment.
+[Spell Sketch](prototypes/glyph-duel/README.md) is a standalone drawing-duel experiment emitted at `dist/prototypes/glyph-duel/` by `npm run build:web` (serve it locally with `npm run preview`), with local two-player pass-and-play, solo practice and an offline download. Memorize a Circle, Square or Triangle, then draw and counter it on a timed block grid. It has no connection to Wizzy accounts, saved decks or live combat, and remote two-phone play is not implemented for this experiment.
 
 ## Project structure
 
