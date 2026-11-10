@@ -50,7 +50,7 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
     try {
       if (getAccountSession()?.endpoint) return normalizeOnlineEndpoint(getAccountSession().endpoint);
       if (globalThis.WIZZY_MULTIPLAYER_URL) return normalizeOnlineEndpoint(globalThis.WIZZY_MULTIPLAYER_URL);
-      if (['http:', 'https:'].includes(location.protocol) && !location.hostname.endsWith('github.io')) return location.origin;
+      if (['http:', 'https:'].includes(location.protocol) && !location.hostname.endsWith('github.io') && !location.hostname.endsWith('.netlify.app')) return location.origin;
     } catch { /* The configuration field remains available for correction. */ }
     return '';
   };

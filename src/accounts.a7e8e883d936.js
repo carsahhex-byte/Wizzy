@@ -84,7 +84,7 @@ export function createAccounts({ root, getLocalData, onAccountData = () => {}, o
     else {
       const multiplayer = JSON.parse(localStorage.getItem('wizzy.multiplayer.v2') || localStorage.getItem('wizzy.multiplayer.v1') || 'null');
       if (multiplayer?.endpoint) endpoint = accountEndpoint(multiplayer.endpoint);
-      else if (['http:', 'https:'].includes(location.protocol) && !location.hostname.endsWith('github.io')) endpoint = location.origin;
+      else if (['http:', 'https:'].includes(location.protocol) && !location.hostname.endsWith('github.io') && !location.hostname.endsWith('.netlify.app')) endpoint = location.origin;
     }
     const stored = JSON.parse(localStorage.getItem(ACCOUNT_STORAGE_KEY) || 'null');
     if (stored?.version === 1) {
