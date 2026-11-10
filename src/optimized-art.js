@@ -289,5 +289,10 @@ export const OPTIMIZED_ART = {
     "file": "xineophAnimation-f3122258e6f8.webp",
     "sourceSha256": "a15cec18629cd3e628feb46b0090222778669048da1259e01c2e991a18758bc2",
     "optimizedSha256": "f3122258e6f84feb1eb6a1142fbe3ab2cbcab4c7d9419c236554afc6eabecc76"
+  },
+  "xineophCharge": {
+    "file": "xineophCharge-e31d5ce80a5b.webp",
+    "sourceSha256": "2cac0ec9c4862e3c5ccdf812fa2b71a6ce7176b7f3b6c8b601aaffbcbe403a03",
+    "optimizedSha256": "e31d5ce80a5b231c04cabc60c80ad3164826ebeef07b4019bf5082ae656a00a3"
   }
 };

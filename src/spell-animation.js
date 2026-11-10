@@ -47,7 +47,13 @@ export function createSpellAnimator({ root, scene } = {}) {
   const actor = createAnimationSprite(document, 'spell-animation-actor');
   const projectile = createAnimationSprite(document, 'spell-projectile');
   const impact = createAnimationSprite(document, 'spell-impact');
-  element.append(actor, projectile, impact);
+  const afterimages = [45, 90].map((lagMs, index) => {
+    const node = createAnimationSprite(document, `spell-projectile-afterimage spell-projectile-afterimage-${index + 1}`);
+    node.dataset.lagMs = String(lagMs);
+    node.style.opacity = '0';
+    return { node, lagMs, opacity: index === 0 ? .22 : .1 };
+  });
+  element.append(actor, afterimages[1].node, afterimages[0].node, projectile, impact);
   root.append(element);
   const seen = new Set();
   let current = null, generation = 0, frameRequest = 0;
@@ -61,6 +67,16 @@ export function createSpellAnimator({ root, scene } = {}) {
   function call(callback, value) {
     try { callback?.(value); }
     catch (error) { view.setTimeout(() => { throw error; }, 0); }
+  }
+  function hideAfterimages() {
+    for (const { node } of afterimages) {
+      hideAnimationSprite(node);
+      node.style.opacity = '0';
+      node.style.filter = '';
+      for (const key of ['element', 'frame', 'asset', 'logicalX', 'logicalY', 'sourceRect',
+        'contactPlane', 'contactX', 'contactY', 'sourceElapsed', 'phase']) delete node.dataset[key];
+    }
+    element.dataset.afterimages = '0';
   }
   function deliverImpact(job, extra = {}) {
     if (job.impacted || job.done) return;
@@ -108,6 +124,7 @@ export function createSpellAnimator({ root, scene } = {}) {
       frameRequest = 0;
       restoreStanding(job);
       hitFlash(job, false);
+      hideAfterimages();
       for (const node of [actor, projectile, impact]) hideAnimationSprite(node);
       element.dataset.phase = cancelled ? 'cancelled' : 'complete';
       element.dataset.stage = cancelled ? 'cancelled' : 'complete';
@@ -139,9 +156,11 @@ export function createSpellAnimator({ root, scene } = {}) {
     const customXineoph = spellId === 'Fire-11' && kind !== 'enhancement';
     job.promise = new Promise(resolve => { job.resolve = resolve; });
     current = job;
+    hideAfterimages();
     Object.assign(element.dataset, { animationKey: key, spellAnimation: job.kind, kind: job.kind,
       spellId: String(spellId ?? ''), casterIndex: String(casterIndex ?? ''), phase: 'loading', stage: 'loading',
-      customAnimation: customXineoph ? 'xineoph' : '', wingPose: '', lightBlades: 'false' });
+      customAnimation: customXineoph ? 'xineoph' : '', wingPose: '', lightBlades: 'false',
+      chargeFrame: '', chargeSequenceFrame: '' });
     if (!visual || ![0, 1].includes(casterIndex) || reducedMotion()) {
       finish(job, { skipped: true });
       return job.promise;
@@ -149,6 +168,8 @@ export function createSpellAnimator({ root, scene } = {}) {
     const type = visual.element.toLowerCase(), targetType = casterIndex === 0 ? 'water' : 'fire';
     const sheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.actor : COMBAT_ANIMATION_SHEETS[actorSheets[job.kind]];
     const frames = sheet?.animations[type];
+    const chargeSheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.charge : null;
+    const chargeFrames = chargeSheet?.animations[type];
     const projectileSheet = customXineoph ? XINEOPH_ANIMATION_SHEETS.projectile
       : COMBAT_ANIMATION_SHEETS[job.kind === 'large-cast' ? 'largeProjectiles' : 'basicProjectiles'];
     const projectileFrames = projectileSheet?.animations[type];
@@ -156,6 +177,7 @@ export function createSpellAnimator({ root, scene } = {}) {
     const hitFrames = hitSheet?.animations.impact;
     if (frames?.length !== (customXineoph ? 7 : 16)
       || visual.damaging && (projectileFrames?.length !== (customXineoph ? 3 : 16) || hitFrames?.length !== 4)
+      || customXineoph && chargeFrames?.length !== 8
       || customXineoph && !['x', 'y'].every(axis => Number.isFinite(sheet?.releaseOffset?.[axis]))) {
       finish(job, { skipped: true });
       return job.promise;
@@ -176,7 +198,8 @@ export function createSpellAnimator({ root, scene } = {}) {
       frame: String(frames[0]), duration: String(duration), impactAt: String(impactAt), releaseAt: String(RELEASE), lingerMs: '1000',
       flightAt: String(customXineoph ? XINEOPH_TIMING.flightAt : RELEASE) });
     root.dataset.spellAnimating = 'true';
-    const needed = visual.damaging ? [sheet, projectileSheet, hitSheet] : [sheet];
+    const needed = customXineoph ? [sheet, chargeSheet, projectileSheet, hitSheet]
+      : visual.damaging ? [sheet, projectileSheet, hitSheet] : [sheet];
     const requestGeneration = generation;
     Promise.all(needed.map(preloadAnimationSheet)).then(loaded => {
       if (current !== job || job.done || requestGeneration !== generation) return;
@@ -197,11 +220,17 @@ export function createSpellAnimator({ root, scene } = {}) {
         if (customXineoph) {
           const moment = getXineophMoment(elapsed);
           Object.assign(element.dataset, { phase: moment.phase, stage: moment.stage,
-            wingPose: moment.wingPose ? String(moment.wingPose) : '', lightBlades: String(moment.lightBlades) });
+            wingPose: moment.wingPose ? String(moment.wingPose) : '', lightBlades: String(moment.lightBlades),
+            chargeFrame: moment.chargeFrame === undefined ? '' : String(moment.chargeFrame),
+            chargeSequenceFrame: moment.chargeSequenceFrame === undefined ? '' : String(moment.chargeSequenceFrame) });
           if (moment.actorFrame !== null) {
-            paintAnimationFrame(actor, sheet, frames[moment.actorFrame], point, { mirror });
-            Object.assign(actor.dataset, { element: type, sequenceFrame: String(moment.actorFrame), phase: moment.stage });
-            element.dataset.frame = String(frames[moment.actorFrame]);
+            const charge = moment.chargeFrame !== undefined;
+            const actorSheet = charge ? chargeSheet : sheet;
+            const actorFrame = charge ? chargeFrames[moment.chargeFrame] : frames[moment.actorFrame];
+            paintAnimationFrame(actor, actorSheet, actorFrame, point, { mirror });
+            Object.assign(actor.dataset, { element: type, sequenceFrame: String(charge ? moment.chargeFrame : moment.actorFrame), phase: moment.stage });
+            element.dataset.frame = String(actorFrame);
+            hideAfterimages();
             hideAnimationSprite(projectile);
             hideAnimationSprite(impact);
           } else {
@@ -214,9 +243,22 @@ export function createSpellAnimator({ root, scene } = {}) {
               paintAnimationFrame(projectile, projectileSheet, frame, position, { mirror });
               Object.assign(projectile.dataset, { element: type, sequenceFrame: String(moment.sequenceFrame), phase: 'flight',
                 contactPlane: 'leading-edge', contactX: String(position.x), contactY: String(position.y) });
+              for (const { node, lagMs, opacity } of afterimages) {
+                const sourceElapsed = Math.max(XINEOPH_TIMING.flightAt, elapsed - lagMs);
+                const past = getXineophMoment(sourceElapsed);
+                const pastPoint = curve(launch, control, targetPoint, past.progress);
+                const pastFrame = projectileFrames[past.sequenceFrame % projectileFrames.length];
+                paintAnimationFrame(node, projectileSheet, pastFrame, pastPoint, { mirror });
+                node.style.opacity = String(opacity);
+                node.style.filter = '';
+                Object.assign(node.dataset, { element: type, phase: 'trail', sourceElapsed: String(sourceElapsed),
+                  contactPlane: 'leading-edge', contactX: String(pastPoint.x), contactY: String(pastPoint.y) });
+              }
+              element.dataset.afterimages = '2';
               element.dataset.frame = String(frame);
               hideAnimationSprite(impact);
             } else {
+              hideAfterimages();
               hideAnimationSprite(projectile);
               hitFlash(job, moment.hitTime < HIT_FLASH_MS);
               paintAnimationFrame(impact, hitSheet, hitFrames[moment.hitIndex], targetPoint, { mirror });

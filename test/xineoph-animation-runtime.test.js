@@ -15,15 +15,16 @@ class Element {
   constructor(document) { this.ownerDocument = document; this.style = new Style(); this.dataset = {}; this.children = []; }
   setAttribute() {}
   append(...children) { this.children.push(...children); }
-  querySelector(selector) {
+  querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
+  querySelectorAll(selector) {
     const matches = node => selector.startsWith('.') ? node.className?.split(' ').includes(selector.slice(1))
       : node.dataset.arenaWizard === selector.match(/^\[data-arena-wizard="(fire|water)"\]$/)?.[1];
+    const found = [];
     for (const child of this.children) {
-      if (matches(child)) return child;
-      const nested = child.querySelector(selector);
-      if (nested) return nested;
+      if (matches(child)) found.push(child);
+      found.push(...child.querySelectorAll(selector));
     }
-    return null;
+    return found;
   }
 }
 function scene({ reduced = false } = {}) {
@@ -46,7 +47,18 @@ function scene({ reduced = false } = {}) {
   return { root, document, animator, wizards, pending,
     tick: time => { const callbacks = [...pending.values()]; pending.clear(); callbacks.forEach(callback => callback(time)); },
     node: name => root.querySelector(`.${name}`),
+    nodes: name => root.querySelectorAll(`.${name}`),
   };
+}
+function noAfterimages(state) {
+  const ghosts = state.nodes('spell-projectile-afterimage');
+  assert.equal(ghosts.length, 2);
+  for (const ghost of ghosts) {
+    assert.equal(ghost.hidden, true);
+    assert.equal(Number(ghost.style.opacity), 0);
+    assert.equal(ghost.style.filter || '', '');
+  }
+  assert.equal(state.animator.element.dataset.afterimages, '0');
 }
 function images(t, { fail = false } = {}) {
   const original = globalThis.Image, loaded = [];
@@ -66,7 +78,8 @@ const ready = () => new Promise(resolve => setImmediate(resolve));
 
 test('Xineoph timing keeps a full charge, exactly three wing poses and one quick impact', () => {
   assert.deepEqual(XINEOPH_TIMING, { windupEnd: 500, releaseAt: 1500, formationEnd: 1700,
-    wingFrameMs: 125, flightAt: 2075, impactAt: 2975, duration: 3315 });
+    wingFrameMs: 125, chargeFrameMs: 62.5, flightFrameMs: 1000 / 12,
+    flightAt: 2075, impactAt: 2975, duration: 3315 });
   for (const [time, stage, actorFrame, wingPose, lightBlades] of [
     [0, 'windup', 0, 0, false], [249, 'windup', 0, 0, false], [250, 'windup', 1, 0, false],
     [500, 'linger', 2, 0, false], [1499, 'linger', 2, 0, false], [1500, 'forming', 3, 0, false],
@@ -78,11 +91,19 @@ test('Xineoph timing keeps a full charge, exactly three wing poses and one quick
       [stage, actorFrame, wingPose, lightBlades], `at ${time}ms`);
   }
   assert.equal(getXineophMoment(2075).progress, 0);
+  assert.deepEqual([getXineophMoment(2159).sequenceFrame, getXineophMoment(2242).sequenceFrame,
+    getXineophMoment(2242).projectileFrame], [1, 2, 9], 'flight texture advances at twelve frames per second');
   assert.equal(getXineophMoment(2974).stage, 'flight');
   assert.equal(getXineophMoment(2975).hitTime, 0);
   assert.equal(getXineophMoment(3184).stage, 'quick-hit');
   assert.equal(getXineophMoment(3185).stage, 'impact-fade');
   assert.equal(getXineophMoment(3315).stage, 'complete');
+  for (let sequence = 0; sequence < 16; sequence += 1) {
+    const moment = getXineophMoment(500 + sequence * 62.5);
+    assert.deepEqual([moment.actorFrame, moment.chargeFrame, moment.chargeSequenceFrame], [2, sequence % 8, sequence]);
+    assert.equal(getXineophMoment(500 + (sequence + 1) * 62.5 - .001).chargeFrame, sequence % 8);
+  }
+  assert.equal(getXineophMoment(1500).chargeFrame ?? null, null, 'the charge stops before formation');
 });
 
 test('frame regions preserve source alignment, reject missing crops and reset clips for ordinary atlases', () => {
@@ -117,6 +138,7 @@ test('a failed Xineoph atlas settles once, releases the lock, and can be loaded 
   assert.equal(state.animator.isPlaying(), false); assert.equal(state.pending.size, 0);
   assert.equal(state.wizards[0].sprite.style.visibility, 'visible');
   assert.equal(state.root.dataset.spellAnimating, undefined);
+  noAfterimages(state);
   await ready();
 });
 
@@ -157,14 +179,36 @@ test('actual Xineoph playback holds fixed caster feet, releases one projectile a
       'the first flight contact plane begins at the actor release plane');
     assert.ok(Math.abs(Number(projectile.dataset.contactY) - (450 + offset.y)) < 1e-9);
     const startX = Number(projectile.dataset.logicalX);
+    state.tick(2435);
+    const ninetyMsBehind = [Number(projectile.dataset.contactX), Number(projectile.dataset.contactY)];
+    state.tick(2480);
+    const fortyFiveMsBehind = [Number(projectile.dataset.contactX), Number(projectile.dataset.contactY)];
     state.tick(2525);
     assert.ok(casterIndex === 0 ? Number(projectile.dataset.logicalX) > startX : Number(projectile.dataset.logicalX) < startX);
+    assert.equal(layer.dataset.afterimages, '2');
+    const ghosts = state.nodes('spell-projectile-afterimage').sort((left, right) =>
+      Number(left.dataset.lagMs) - Number(right.dataset.lagMs));
+    assert.equal(ghosts.length, 2);
+    for (const [index, ghost] of ghosts.entries()) {
+      const lag = [45, 90][index], recordedPoint = index === 0 ? fortyFiveMsBehind : ninetyMsBehind;
+      assert.equal(ghost.hidden, false); assert.equal(Number(ghost.style.opacity), [.22, .1][index]);
+      assert.equal(ghost.style.filter || '', '');
+      assert.equal(Number(ghost.dataset.lagMs), lag);
+      assert.equal(Number(ghost.dataset.sourceElapsed), 2525 - lag);
+      assert.ok(Math.abs(Number(ghost.dataset.contactX) - recordedPoint[0]) < 1e-9);
+      assert.ok(Math.abs(Number(ghost.dataset.contactY) - recordedPoint[1]) < 1e-9);
+      assert.ok(casterIndex === 0 ? Number(ghost.dataset.contactX) < Number(projectile.dataset.contactX)
+        : Number(ghost.dataset.contactX) > Number(projectile.dataset.contactX), 'the ghost trails, never overtakes');
+      assert.equal(ghost.dataset.frame, String(getXineophMoment(2525 - lag).projectileFrame));
+    }
     state.tick(2974); assert.equal(impacts.length, 0);
     const contactX = Number(projectile.dataset.contactX);
     assert.ok(casterIndex === 0 ? contactX < 788 : contactX > 236,
       'neither the bird nor either leading light tip can cross the target before impact');
+    for (const ghost of ghosts) assert.ok(casterIndex === 0 ? Number(ghost.dataset.contactX) < 788 : Number(ghost.dataset.contactX) > 236);
     state.tick(2975);
     assert.equal(impacts.length, 1); assert.equal(projectile.hidden, true); assert.match(target.style.filter, /brightness/);
+    noAfterimages(state);
     assert.equal(state.node('spell-impact').dataset.logicalX, casterIndex === 0 ? '788' : '236');
     state.tick(3184); assert.match(target.style.filter, /brightness/);
     state.tick(3185); assert.equal(target.style.filter, 'contrast(1.05)');
@@ -173,11 +217,39 @@ test('actual Xineoph playback holds fixed caster feet, releases one projectile a
     assert.equal(state.animator.isPlaying(), false); assert.equal(layer.hidden, true);
     assert.equal(state.root.dataset.spellAnimating, undefined);
     assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
+    noAfterimages(state);
     const duplicate = await state.animator.play({ key: `xineoph-${casterIndex}`, spellId: 'Fire-11', casterIndex,
       onImpact: () => assert.fail('completed animation replayed') });
     assert.equal(duplicate.duplicate, true); assert.equal(state.pending.size, 0);
   }
-  assert.equal(loaded.length, 1, 'actor, flight and impact share one decoded atlas');
+  assert.equal(loaded.length, 2, 'both directions share one story atlas and one pulse atlas');
+});
+
+test('the charged hold plays all eight pulse frames twice with unchanged wizard feet and body scale', async t => {
+  images(t);
+  const state = scene(), impacts = [], charge = XINEOPH_ANIMATION_SHEETS.charge;
+  assert.equal(charge.animations.fire.length, 8);
+  assert.equal(charge.targetBodyHeight, 144);
+  assert.ok(Math.abs(charge.sourceBodyHeight * charge.displayScale - 144) < 1e-9);
+  const completion = state.animator.play({ key: 'pulsing-charge', spellId: 'Fire-11', casterIndex: 0,
+    onImpact: detail => impacts.push(detail) });
+  await ready(); state.tick(0); state.tick(499);
+  const actor = state.node('spell-animation-actor');
+  assert.equal(actor.dataset.asset, 'xineophAnimation');
+  for (let sequence = 0; sequence < 16; sequence += 1) {
+    state.tick(500 + sequence * 62.5);
+    assert.equal(actor.dataset.asset, 'xineophCharge');
+    assert.equal(actor.dataset.frame, String(sequence % 8));
+    assert.deepEqual([actor.dataset.logicalX, actor.dataset.logicalY], ['236', '450']);
+    assert.equal(state.animator.element.dataset.chargeFrame, String(sequence % 8));
+    assert.equal(state.animator.element.dataset.chargeSequenceFrame, String(sequence));
+    assert.equal(state.animator.element.dataset.stage, 'linger');
+    assert.equal(impacts.length, 0); noAfterimages(state);
+  }
+  state.tick(1500);
+  assert.equal(actor.dataset.asset, 'xineophAnimation'); assert.equal(actor.dataset.frame, '3');
+  assert.equal(state.animator.element.dataset.chargeFrame, '');
+  state.tick(3315); await completion; assert.equal(impacts.length, 1); noAfterimages(state);
 });
 
 test('cancel, replacement, and reduced motion preserve callback ownership and restore standing sprites', async t => {
@@ -194,10 +266,16 @@ test('cancel, replacement, and reduced motion preserve callback ownership and re
   state.animator.cancel(); state.animator.cancel(); await second;
   assert.deepEqual(events, ['new-impact', 'new-complete']);
   assert.equal(state.wizards[0].sprite.style.visibility, 'visible'); assert.equal(state.pending.size, 0);
+  noAfterimages(state);
   const silent = state.animator.play({ key: 'silent-cancel', spellId: 'Fire-11', casterIndex: 0,
     onImpact: () => assert.fail('silent cancel delivered'), onComplete: () => assert.fail('silent cancel completed') });
   state.animator.cancel({ settle: false }); await silent; await ready();
   assert.equal(state.pending.size, 0);
+  noAfterimages(state);
+  const flightCancel = state.animator.play({ key: 'cancel-in-flight', spellId: 'Fire-11', casterIndex: 0 });
+  await ready(); state.tick(0); state.tick(2500);
+  assert.equal(state.animator.element.dataset.afterimages, '2');
+  state.animator.cancel(); await flightCancel; noAfterimages(state);
   const afterHit = state.animator.play({ key: 'cancel-after-impact', spellId: 'Fire-11', casterIndex: 0,
     onImpact: () => events.push('hit-impact'), onComplete: () => events.push('hit-complete') });
   await ready(); state.tick(0); state.tick(2975);
@@ -205,11 +283,13 @@ test('cancel, replacement, and reduced motion preserve callback ownership and re
   state.animator.cancel(); await afterHit;
   assert.deepEqual(events.slice(2), ['hit-impact', 'hit-complete']);
   assert.equal(state.wizards[1].sprite.style.filter, 'contrast(1.05)');
+  noAfterimages(state);
   const reduced = scene({ reduced: true }), calls = [];
   const skipped = await reduced.animator.play({ key: 'reduced', spellId: 'Fire-11', casterIndex: 0,
     onImpact: () => calls.push('impact'), onComplete: () => calls.push('complete') });
   assert.equal(skipped.skipped, true); assert.deepEqual(calls, ['impact', 'complete']);
   assert.equal(reduced.pending.size, 0); assert.equal(reduced.wizards[0].sprite.style.visibility, 'visible');
+  noAfterimages(reduced);
 });
 
 test('Water, Xineoph and ordinary Fire reuse the animator without stale hues or custom state', async t => {
@@ -230,6 +310,8 @@ test('Water, Xineoph and ordinary Fire reuse the animator without stale hues or 
   assert.equal(state.animator.element.dataset.customAnimation, '');
   assert.equal(state.animator.element.dataset.wingPose, '');
   assert.equal(state.animator.element.dataset.lightBlades, 'false');
+  assert.equal(state.animator.element.dataset.chargeFrame, '');
+  noAfterimages(state);
   assert.equal(state.animator.element.dataset.duration, '2840');
   assert.equal(state.animator.element.dataset.impactAt, '2500');
   assert.equal(state.node('spell-projectile').hidden, false);
