@@ -1,0 +1,925 @@
+{
+  "element": "Golem",
+  "assets": [
+    {
+      "id": "fw-aura",
+      "title": "Aura ring",
+      "file": "../Shared/Effects/aura.png",
+      "status": "current",
+      "category": "Aura",
+      "sha256": "d1b0e2bcaf61c76d2b97f260fd82cba86d9408ecbe9c5eaf37e74eb460f7b5b9",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "metadata": {
+        "columns": 4,
+        "rows": 4,
+        "animations": {
+          "aura": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "asset": "combatV2Aura",
+        "sourceWidth": 1254,
+        "sourceHeight": 1254,
+        "displayScale": 0.5,
+        "frameMs": 125,
+        "lingerMs": 1000,
+        "frameAnchors": [
+          {
+            "x": 0.5,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.5,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.5,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.5,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.4864433811802233,
+            "y": 0.620414673046252
+          },
+          {
+            "x": 0.5007974481658692,
+            "y": 0.6283891547049442
+          },
+          {
+            "x": 0.49920255183413076,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.49920255183413076,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.5007974481658692,
+            "y": 0.5901116427432217
+          },
+          {
+            "x": 0.5007974481658692,
+            "y": 0.5901116427432217
+          },
+          {
+            "x": 0.49920255183413076,
+            "y": 0.5901116427432217
+          },
+          {
+            "x": 0.49920255183413076,
+            "y": 0.5901116427432217
+          },
+          {
+            "x": 0.5,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.5,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.5,
+            "y": 0.6188197767145136
+          },
+          {
+            "x": 0.5,
+            "y": 0.6188197767145136
+          }
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "aura-spiral",
+      "title": "Original Aura draft",
+      "file": "../Archive/Fire-Water/aura-spiral.png",
+      "status": "archive",
+      "category": "Original animations",
+      "sha256": "1e4af22f25fb0895440864b13b3620d5561f857d0f8b2cf4d6e1c6c1fe57b723",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "metadata": {
+        "columns": 4,
+        "rows": 4,
+        "animations": {
+          "Formation": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "Loop": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "Fizzle": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "frameMs": 125,
+        "sourceWidth": 1254,
+        "sourceHeight": 1254
+      },
+      "notes": ""
+    },
+    {
+      "id": "aura-button",
+      "title": "Shared Aura button",
+      "file": "../Shared/Interface/aura-button.png",
+      "status": "current",
+      "category": "Interface",
+      "sha256": "d59ac9760f2464580ed7bb935b13248f551dceb0526c8bc10ef5b5648b85d9d6",
+      "sourceWidth": 2098,
+      "sourceHeight": 749,
+      "metadata": {
+        "columns": 1,
+        "rows": 1,
+        "animations": {
+          "Original image": [
+            0
+          ]
+        },
+        "sourceWidth": 2098,
+        "sourceHeight": 749
+      },
+      "notes": ""
+    },
+    {
+      "id": "battle-icons",
+      "title": "Element and battle status pixel icons",
+      "file": "../Shared/Interface/battle-icons.png",
+      "status": "current",
+      "category": "Icons",
+      "sha256": "d49fdbe6aa391357608b5cf3f94f388f31f52169f836e27221e29aa92f1c2b8b",
+      "sourceWidth": 1536,
+      "sourceHeight": 1024,
+      "metadata": {
+        "columns": 3,
+        "rows": 2,
+        "animations": {
+          "fire": [
+            0
+          ],
+          "water": [
+            1
+          ],
+          "heart": [
+            2
+          ],
+          "mana": [
+            3
+          ],
+          "shield": [
+            4
+          ],
+          "die": [
+            5
+          ]
+        },
+        "frameRects": [
+          {
+            "x": 83,
+            "y": 66,
+            "w": 421,
+            "h": 421
+          },
+          {
+            "x": 558,
+            "y": 71,
+            "w": 419,
+            "h": 419
+          },
+          {
+            "x": 1037,
+            "y": 92,
+            "w": 396,
+            "h": 396
+          },
+          {
+            "x": 67,
+            "y": 530,
+            "w": 453,
+            "h": 453
+          },
+          {
+            "x": 556,
+            "y": 549,
+            "w": 421,
+            "h": 421
+          },
+          {
+            "x": 1043,
+            "y": 564,
+            "w": 381,
+            "h": 381
+          }
+        ],
+        "sourceWidth": 1536,
+        "sourceHeight": 1024
+      },
+      "notes": ""
+    },
+    {
+      "id": "sword-icon",
+      "title": "Sword damage icon",
+      "file": "../Shared/Interface/sword-icon.png",
+      "status": "current",
+      "category": "Icons",
+      "sha256": "018ee1b0e60886f2023aa5fdb0b9807793da50cab59f875eea41922708dd1dd9",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "metadata": {
+        "columns": 1,
+        "rows": 1,
+        "animations": {
+          "Original image": [
+            0
+          ]
+        },
+        "sourceWidth": 1254,
+        "sourceHeight": 1254
+      },
+      "notes": ""
+    },
+    {
+      "id": "eag-golemPoses",
+      "title": "Golem · standing, casts, hit, boost & enhancement",
+      "file": "golem-poses.png",
+      "status": "preview",
+      "category": "Golem sprites",
+      "sha256": "a977058209708e486ed6e66a126e2bb597fb9f151499bb239d8b25f141ba493a",
+      "sourceWidth": 1024,
+      "sourceHeight": 1536,
+      "metadata": {
+        "columns": 4,
+        "rows": 6,
+        "animations": {
+          "Idle": {
+            "frames": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "frameMs": 160
+          },
+          "Basic cast": {
+            "frames": [
+              4,
+              5,
+              5,
+              6,
+              5,
+              6,
+              5,
+              6,
+              5,
+              6,
+              5,
+              6,
+              7,
+              7,
+              0,
+              0
+            ],
+            "frameMs": 125
+          },
+          "Heavy cast": {
+            "frames": [
+              8,
+              9,
+              9,
+              10,
+              9,
+              10,
+              9,
+              10,
+              9,
+              10,
+              9,
+              10,
+              11,
+              11,
+              0,
+              0
+            ],
+            "frameMs": 125
+          },
+          "Quick hit": {
+            "frames": [
+              12,
+              13,
+              14,
+              15
+            ],
+            "frameMs": 85
+          },
+          "Boost": {
+            "frames": [
+              16,
+              17,
+              17,
+              18,
+              17,
+              18,
+              17,
+              18,
+              17,
+              18,
+              17,
+              18,
+              19,
+              19,
+              0,
+              0
+            ],
+            "frameMs": 125
+          },
+          "Enhancement": {
+            "frames": [
+              20,
+              21,
+              21,
+              22,
+              21,
+              22,
+              21,
+              22,
+              21,
+              22,
+              21,
+              22,
+              23,
+              23,
+              0,
+              0
+            ],
+            "frameMs": 125
+          }
+        },
+        "title": "Golem · standing, casts, hit, boost & enhancement",
+        "src": "art/golem-poses.png",
+        "frameMs": 125,
+        "displayScale": 1,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        "sourceWidth": 1024,
+        "sourceHeight": 1536,
+        "frameRects": [
+          {
+            "x": 0,
+            "y": 0,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 256,
+            "y": 0,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 512,
+            "y": 0,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 768,
+            "y": 0,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 0,
+            "y": 256,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 256,
+            "y": 256,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 512,
+            "y": 256,
+            "w": 280,
+            "h": 256
+          },
+          {
+            "x": 800,
+            "y": 256,
+            "w": 224,
+            "h": 256
+          },
+          {
+            "x": 0,
+            "y": 512,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 256,
+            "y": 512,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 512,
+            "y": 512,
+            "w": 280,
+            "h": 256
+          },
+          {
+            "x": 800,
+            "y": 512,
+            "w": 224,
+            "h": 256
+          },
+          {
+            "x": 0,
+            "y": 768,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 256,
+            "y": 768,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 512,
+            "y": 768,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 768,
+            "y": 768,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 0,
+            "y": 1024,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 256,
+            "y": 1024,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 512,
+            "y": 1024,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 768,
+            "y": 1024,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 0,
+            "y": 1280,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 256,
+            "y": 1280,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 512,
+            "y": 1280,
+            "w": 256,
+            "h": 256
+          },
+          {
+            "x": 768,
+            "y": 1280,
+            "w": 256,
+            "h": 256
+          }
+        ],
+        "frameAnchors": [
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.45714285714285713,
+            "y": 0.890625
+          },
+          {
+            "x": 0.42857142857142855,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.45714285714285713,
+            "y": 0.890625
+          },
+          {
+            "x": 0.42857142857142855,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          },
+          {
+            "x": 0.5,
+            "y": 0.890625
+          }
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "eag-golemTransform",
+      "title": "Earth wizard ↔ Golem · transformation",
+      "file": "golem-transform.png",
+      "status": "preview",
+      "category": "Golem sprites",
+      "sha256": "aa70c44a8b1886f0ecce8b27e2f2340df5c47eb1913b34bbbb81511ee6b183ba",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "metadata": {
+        "columns": 4,
+        "rows": 4,
+        "animations": {
+          "Transform": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "Revert": [
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        "title": "Earth wizard ↔ Golem · transformation",
+        "src": "art/golem-transform.png",
+        "frameMs": 125,
+        "displayScale": 1,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.90625
+        },
+        "sourceWidth": 1254,
+        "sourceHeight": 1254,
+        "frameAnchors": [
+          {
+            "x": 0.5311004784688995,
+            "y": 0.9569377990430622
+          },
+          {
+            "x": 0.529505582137161,
+            "y": 0.960127591706539
+          },
+          {
+            "x": 0.5311004784688995,
+            "y": 0.9569377990430622
+          },
+          {
+            "x": 0.5135566188197768,
+            "y": 0.960127591706539
+          },
+          {
+            "x": 0.49282296650717705,
+            "y": 0.8899521531100478
+          },
+          {
+            "x": 0.5167464114832536,
+            "y": 0.8899521531100478
+          },
+          {
+            "x": 0.48484848484848486,
+            "y": 0.8899521531100478
+          },
+          {
+            "x": 0.5279106858054227,
+            "y": 0.8899521531100478
+          },
+          {
+            "x": 0.5279106858054227,
+            "y": 0.8899521531100478
+          },
+          {
+            "x": 0.5167464114832536,
+            "y": 0.8899521531100478
+          },
+          {
+            "x": 0.5055821371610846,
+            "y": 0.8899521531100478
+          },
+          {
+            "x": 0.4784688995215311,
+            "y": 0.9027113237639554
+          },
+          {
+            "x": 0.5263157894736842,
+            "y": 0.9122807017543859
+          },
+          {
+            "x": 0.529505582137161,
+            "y": 0.9186602870813397
+          },
+          {
+            "x": 0.532695374800638,
+            "y": 0.9186602870813397
+          },
+          {
+            "x": 0.532695374800638,
+            "y": 0.9186602870813397
+          }
+        ],
+        "frameScales": [
+          0.5714,
+          0.5714,
+          0.5714,
+          0.5714,
+          0.64,
+          0.78,
+          0.87,
+          0.87,
+          0.87,
+          0.87,
+          0.82,
+          0.68,
+          0.62,
+          0.605,
+          0.605,
+          0.605
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "eag-elementIcons",
+      "title": "Earth & Air · pixel icons",
+      "file": "../Shared/Earth-Air/Interface/earth-air-icons.png",
+      "status": "preview",
+      "category": "Interface",
+      "sha256": "0f98510ed238226f35a291f75d9e4a0e3ca1f0c21bd92ce95fdd83d8060d2ccf",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "metadata": {
+        "columns": 2,
+        "rows": 2,
+        "animations": {
+          "Earth rock": [
+            0
+          ],
+          "Air wind": [
+            1
+          ],
+          "Earthen shield": [
+            2
+          ],
+          "Golem head": [
+            3
+          ]
+        },
+        "title": "Earth & Air · pixel icons",
+        "src": "art/earth-air-icons.png",
+        "displayScale": 0.5,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "sourceWidth": 1254,
+        "sourceHeight": 1254
+      },
+      "notes": ""
+    },
+    {
+      "id": "eag-statFrames",
+      "title": "Earth & Air · stat frames",
+      "file": "../Shared/Earth-Air/Interface/earth-air-stat-frames.png",
+      "status": "preview",
+      "category": "Interface",
+      "sha256": "b2a05694c9897d3eeb39f6c955c5b1558230c23f58e1447dcfbb3a1231ca3406",
+      "sourceWidth": 1920,
+      "sourceHeight": 819,
+      "metadata": {
+        "columns": 2,
+        "rows": 1,
+        "animations": {
+          "Earth": [
+            0
+          ],
+          "Air": [
+            1
+          ]
+        },
+        "title": "Earth & Air · stat frames",
+        "src": "art/earth-air-stat-frames.png",
+        "displayScale": 0.4,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "sourceWidth": 1920,
+        "sourceHeight": 819,
+        "frameRects": [
+          {
+            "x": 66,
+            "y": 12,
+            "w": 763,
+            "h": 762
+          },
+          {
+            "x": 1073,
+            "y": 23,
+            "w": 787,
+            "h": 759
+          }
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "id": "eag-enhanceButtons",
+      "title": "Earth & Air · enhancement buttons",
+      "file": "../Shared/Earth-Air/Interface/earth-air-enhance-buttons.png",
+      "status": "preview",
+      "category": "Interface",
+      "sha256": "547feea3844ccf1c3dcbfb445a3e663550f37d4e1729aa018f9a9771c1d044e0",
+      "sourceWidth": 1774,
+      "sourceHeight": 887,
+      "metadata": {
+        "columns": 2,
+        "rows": 2,
+        "animations": {
+          "Earth": [
+            0
+          ],
+          "Air": [
+            1
+          ],
+          "Earth active": [
+            2
+          ],
+          "Air active": [
+            3
+          ]
+        },
+        "title": "Earth & Air · enhancement buttons",
+        "src": "art/earth-air-enhance-buttons.png",
+        "displayScale": 0.5,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "sourceWidth": 1774,
+        "sourceHeight": 887,
+        "frameRects": [
+          {
+            "x": 27,
+            "y": 126,
+            "w": 833,
+            "h": 312
+          },
+          {
+            "x": 914,
+            "y": 126,
+            "w": 834,
+            "h": 312
+          },
+          {
+            "x": 27,
+            "y": 496,
+            "w": 833,
+            "h": 313
+          },
+          {
+            "x": 914,
+            "y": 496,
+            "w": 834,
+            "h": 313
+          }
+        ]
+      },
+      "notes": ""
+    }
+  ]
+}

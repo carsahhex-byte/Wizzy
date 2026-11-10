@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Wizzy · Idle wizard preview</title>
+  <style>:root{font-family:Arial,Helvetica,sans-serif;color:#f0f4ed;background:#10191d;line-height:1.5;color-scheme:dark;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#223931 0,transparent 65%),#10191d;min-height:100vh}
+main{width:min(900px,100%);margin:0 auto;padding:34px 22px 28px}
+header{max-width:680px;margin-bottom:24px}
+.eyebrow{margin:0 0 6px;color:#b4cbb0;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+h1{font-size:clamp(26px,5vw,36px);line-height:1.15;margin:0 0 12px;letter-spacing:-.025em}
+header p{margin:8px 0;color:#c4d0c7}
+.preview-note{display:inline-block;font-size:13px;color:#e4d7ac;background:#30342a;border:1px solid #606747;padding:7px 11px;border-radius:6px}
+.controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 20px}
+button,select{font:inherit;font-size:14px;color:#f3f7ef;background:#263a35;border:1px solid #60746a;min-height:40px;border-radius:6px}
+button{padding:7px 15px;cursor:pointer}
+button:hover{background:#354e44}
+button:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #b5e7d0;outline-offset:4px}
+button:disabled,select:disabled{opacity:.5;cursor:default}
+label{display:flex;align-items:center;gap:7px;margin-left:4px;color:#cdd8ce;font-size:14px}
+select{padding:6px 8px}
+.timing{font-size:12px;color:#9eb3a8;margin-left:auto}
+.wizard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.wizard-card{min-width:0;overflow:hidden;background:#182724;border:1px solid #45594a;border-radius:10px}
+.wizard-card h2{font-size:18px;margin:0;padding:13px 18px 9px;border-bottom:1px solid #364b3d}
+.wizard-card.fire h2{color:#ffd198}
+.wizard-card.water h2{color:#a0dcf2}
+canvas{display:block;width:320px;max-width:100%;height:auto;margin:0 auto;aspect-ratio:320/260;image-rendering:pixelated;background:linear-gradient(#203a2e 0 83%,#36543b 83% 84%,#26392d 84% 100%)}
+.water canvas{background:linear-gradient(#1b3535 0 83%,#345b52 83% 84%,#233b35 84% 100%)}
+.frame-state{margin:0;padding:9px 18px 11px;min-height:39px;color:#a6bfb1;font-size:12px;border-top:1px solid #31473a}
+.downloads{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;padding:22px 0}
+a{color:#b9e6d2;text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:white}
+.primary-link{color:#102820;background:#b7dfc3;border:1px solid #c4e8cc;padding:10px 14px;border-radius:6px;font-size:14px;font-weight:700;text-decoration:none}
+.primary-link:hover{color:#102820;background:#d5efd9}
+.atlas{border-top:1px solid #3b5045;padding:16px 0;color:#afc4b7}
+summary{cursor:pointer;color:#d6e5d9;font-size:14px;width:max-content}
+.atlas p{font-size:12px;margin:12px 0}
+.atlas img{display:block;max-width:100%;max-height:75vh;width:auto;height:auto;image-rendering:pixelated;background:repeating-conic-gradient(#1e2927 0 25%,#2a3732 0 50%) 0/20px 20px;border:1px solid #40544a}
+footer{margin-top:18px;color:#899f93;font-size:12px}
+.load-error{padding:12px 14px;color:#ffddd0;background:#4a2822;border:1px solid #9b5847;border-radius:6px}
+[hidden]{display:none!important}
+@media(max-width:620px){main{padding:24px 16px}.wizard-grid{gap:12px}.wizard-card h2{padding:10px 12px 7px;font-size:16px}.frame-state{padding:8px 11px;font-size:11px}.timing{margin-left:0;width:100%}.downloads{gap:14px;font-size:13px}.preview-note{font-size:12px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}}
+</style>
+  <script id="idle-metadata" type="application/json">{"format":"wizzy-idle-review","version":1,"previewOnly":true,"title":"Wizzy idle wizard preview","description":"Stationary Fire and Water idle loops with breathing, a blink, hat and robe settling, and tiny ambient embers or bubbles. Review only; not installed in battle.","file":"../../Shared/Fire-Water/idle-preview.png","sourceWidth":1254,"sourceHeight":1254,"columns":4,"rows":4,"frameMs":160,"sequenceMs":1280,"sourceBodyHeight":233.5,"bodyHeight":144,"targetBodyHeight":144,"displayScale":0.6167023554603854,"frameAnchors":[{"x":0.5119617224880383,"y":0.9122807017543859},{"x":0.5199362041467305,"y":0.9122807017543859},{"x":0.518341307814992,"y":0.9122807017543859},{"x":0.5199362041467305,"y":0.9122807017543859},{"x":0.518341307814992,"y":0.9106858054226475},{"x":0.5199362041467305,"y":0.9106858054226475},{"x":0.5151515151515151,"y":0.9106858054226475},{"x":0.518341307814992,"y":0.9106858054226475},{"x":0.5119617224880383,"y":0.9090909090909091},{"x":0.5135566188197768,"y":0.9059011164274322},{"x":0.5103668261562998,"y":0.9090909090909091},{"x":0.5167464114832536,"y":0.9090909090909091},{"x":0.5167464114832536,"y":0.9074960127591707},{"x":0.5199362041467305,"y":0.9074960127591707},{"x":0.5167464114832536,"y":0.9074960127591707},{"x":0.5167464114832536,"y":0.9074960127591707}],"animations":{"fire":[0,1,2,3,4,5,6,7],"water":[8,9,10,11,12,13,14,15]},"sourceSha256":"98422ce6c1840c4ba789aa72fd91d64b4ffaaa90e5822c24ef713e657efb327b","anchorUnits":"Normalized cell coordinates; measured at feet to keep both wizards stationary.","integration":"preview-only"}</script>
+  
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Wizzy · Art review</p>
+      <h1>Idle wizard preview</h1>
+      <p>Gentle movement while the wizards wait for their next spell.</p>
+      <p class="preview-note">Preview only · These animations have not been added to battle.</p>
+    </header>
+
+    <section class="controls" aria-label="Animation playback">
+      <button id="play-toggle" type="button" aria-pressed="true">Pause</button>
+      <button id="restart" type="button">Restart</button>
+      <label for="speed">Speed
+        <select id="speed">
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.5">1.5×</option>
+          <option value="2">2×</option>
+        </select>
+      </label>
+      <span id="timing" class="timing">Loading preview…</span>
+    </section>
+
+    <p id="load-error" class="load-error" role="alert" hidden></p>
+
+    <section class="wizard-grid" aria-label="Fire and Water idle animations">
+      <article class="wizard-card fire">
+        <h2>Fire</h2>
+        <canvas id="fire-canvas" width="320" height="260" role="img" aria-label="Fire wizard standing and moving gently, facing right"></canvas>
+        <p id="fire-frame" class="frame-state">Loading…</p>
+      </article>
+      <article class="wizard-card water">
+        <h2>Water</h2>
+        <canvas id="water-canvas" width="320" height="260" role="img" aria-label="Water wizard standing and moving gently, facing left"></canvas>
+        <p id="water-frame" class="frame-state">Loading…</p>
+      </article>
+    </section>
+
+    <nav class="downloads" aria-label="Download artwork">
+      <a class="primary-link" id="download-zip" href="../../Wizzy-Sprite-Library.zip" download>Download preview ZIP</a>
+      <a id="download-png" href="./idle-wizards.png" download>Download sprite sheet</a>
+      <a id="view-atlas" href="./idle-wizards.png" target="_blank" rel="noopener">Open full sheet</a>
+    </nav>
+
+    <details class="atlas">
+      <summary>View all frames</summary>
+      <p id="sheet-details"></p>
+      <img id="atlas-image" alt="Complete Fire and Water idle animation sprite sheet">
+    </details>
+    <footer>Shown at battle scale. Original PNG pixels are preserved.</footer>
+  </main>
+<script>(() => {
+  'use strict';
+  const playToggle = document.querySelector('#play-toggle');
+  const restart = document.querySelector('#restart');
+  const speedControl = document.querySelector('#speed');
+  const timing = document.querySelector('#timing');
+  const errorBanner = document.querySelector('#load-error');
+  const image = new Image();
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let metadata;
+  let playing = !reducedMotion.matches;
+  let ready = false;
+  let elapsed = 0;
+  let speed = 1;
+  let lastTime = null;
+  const stages = ['fire', 'water'].map(element => ({
+    element,
+    canvas: document.querySelector(`#${element}-canvas`),
+    state: document.querySelector(`#${element}-frame`),
+  }));
+
+  function fail(message) {
+    errorBanner.textContent = message;
+    errorBanner.hidden = false;
+    timing.textContent = 'Preview unavailable';
+    for (const control of [playToggle, restart, speedControl]) control.disabled = true;
+    for (const stage of stages) stage.state.textContent = 'Sprite sheet unavailable';
+  }
+
+  function updatePlayButton() {
+    playToggle.textContent = playing ? 'Pause' : 'Play';
+    playToggle.setAttribute('aria-pressed', String(playing));
+    lastTime = null;
+  }
+
+  function paint() {
+    if (!ready) return;
+    const cellWidth = metadata.sourceWidth / metadata.columns;
+    const cellHeight = metadata.sourceHeight / metadata.rows;
+    const frameMs = metadata.frameMs || 160;
+    const width = cellWidth * metadata.displayScale;
+    const height = cellHeight * metadata.displayScale;
+    for (const stage of stages) {
+      const frames = metadata.animations[stage.element];
+      const relative = Math.floor(elapsed / frameMs) % frames.length;
+      const frame = frames[relative];
+      const anchor = metadata.frameAnchors[frame];
+      const column = frame % metadata.columns;
+      const row = Math.floor(frame / metadata.columns);
+      const context = stage.canvas.getContext('2d');
+      context.clearRect(0, 0, stage.canvas.width, stage.canvas.height);
+      context.imageSmoothingEnabled = false;
+      context.drawImage(image,
+        column * cellWidth, row * cellHeight, cellWidth, cellHeight,
+        stage.canvas.width / 2 - anchor.x * width, 218 - anchor.y * height,
+        width, height);
+      stage.canvas.dataset.frame = String(frame);
+      stage.canvas.dataset.relativeFrame = String(relative);
+      stage.canvas.dataset.feetY = '218';
+      stage.state.textContent = `${playing ? 'Playing' : 'Paused'} · frame ${relative + 1} / ${frames.length}`;
+    }
+  }
+
+  try {
+    metadata = JSON.parse(document.querySelector('#idle-metadata').textContent);
+    if (!metadata.file || !metadata.sourceWidth || !metadata.sourceHeight || !metadata.columns
+      || !metadata.rows || !metadata.displayScale || !metadata.frameAnchors
+      || !metadata.animations?.fire?.length || !metadata.animations?.water?.length) {
+      throw new Error('Missing sprite metadata');
+    }
+    const file = metadata.file;
+    for (const id of ['download-png', 'view-atlas']) document.querySelector(`#${id}`).href = file;
+    document.querySelector('#download-png').download = metadata.file;
+    document.querySelector('#atlas-image').src = file;
+    document.querySelector('#sheet-details').textContent = `${metadata.sourceWidth} × ${metadata.sourceHeight} PNG · ${metadata.columns} columns × ${metadata.rows} rows · original transparent artwork`;
+    const frames = metadata.animations.fire.length;
+    timing.textContent = `${frames} frames · ${metadata.frameMs || 160} ms per frame · ${(frames * (metadata.frameMs || 160) / 1000).toFixed(2)} s loop`;
+    image.onload = () => {
+      if (image.naturalWidth !== metadata.sourceWidth || image.naturalHeight !== metadata.sourceHeight) {
+        fail('The sprite sheet dimensions do not match this preview. Download the full ZIP again.');
+        return;
+      }
+      ready = true;
+      document.documentElement.dataset.previewReady = 'true';
+      paint();
+    };
+    image.onerror = () => fail('The sprite sheet could not be loaded. Keep the preview files together or download the full ZIP again.');
+    image.src = file;
+  } catch {
+    fail('This preview is missing its animation information. Download the full ZIP again.');
+  }
+
+  playToggle.addEventListener('click', () => {
+    playing = !playing;
+    updatePlayButton();
+    paint();
+  });
+  restart.addEventListener('click', () => {
+    elapsed = 0;
+    lastTime = null;
+    paint();
+  });
+  speedControl.addEventListener('change', event => {
+    speed = Number(event.target.value);
+    lastTime = null;
+  });
+  document.addEventListener('visibilitychange', () => { lastTime = null; });
+  function tick(time) {
+    if (ready && playing && !document.hidden) {
+      if (lastTime !== null) elapsed += Math.max(0, time - lastTime) * speed;
+      lastTime = time;
+      paint();
+    } else lastTime = null;
+    requestAnimationFrame(tick);
+  }
+  updatePlayButton();
+  requestAnimationFrame(tick);
+})();
+</script></body>
+</html>
