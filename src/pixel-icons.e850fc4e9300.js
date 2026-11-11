@@ -1,4 +1,4 @@
-import { resolveAssetUrl } from './asset-url.7da65c686d4f.js';
+import { resolveAssetUrl } from './asset-url.50d8e72cc3e3.js';
 
 export const PIXEL_ICON_FILE = 'Wizzy Battle Pixel Icons.png';
 const atlas = Object.freeze({width:1536,height:1024});

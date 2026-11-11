@@ -1,22 +1,23 @@
 import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.1a0e2f25920f.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.41f999d1f1ff.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.bdca32752f3b.js';
 import { SPELL_CATALOG } from './spells.dff3d4c0f256.js';
 import { validateDeck, getDeckValidation } from './decks.5ee72078e024.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, isShieldBypassActive } from './effects.116aa1ba187a.js';
-import { createHub } from './hub.8301e3aec551.js';
+import { createHub } from './hub.38974962d0ba.js';
 import { parseStorybookRoute } from './districts.41d180c8958a.js';
 import { createMultiplayer } from './multiplayer.e24a836bc82b.js';
 import { createAccounts } from './accounts.838068107580.js';
-import { fitSlabText } from './slab-text.ee15d857b9f1.js';
-import { createBattleScene } from './battle-scene.adbbd376aa13.js';
-import { createSpellAnimator } from './spell-animation.69a813f194b6.js';
-import { createAuraAnimator } from './aura-animation.efd32da16c5a.js';
-import { createMercifulAnimator } from './merciful-animation.756eeccfbde5.js';
-import { createFateAnimator } from './fate-animation.2588340ad25e.js';
-import { battlePileMarkup } from './battle-props.98d39010712b.js';
-import { getResolvedBattleVisuals } from './spell-visuals.c4f157e25c56.js';
+import { fitSlabText } from './slab-text.ba049306b4c3.js';
+import { createBattleScene } from './battle-scene.8b3b59809c6d.js';
+import { createSpellAnimator } from './spell-animation.c80bcf5d558b.js';
+import { createAuraAnimator } from './aura-animation.c7a50f971127.js';
+import { createMercifulAnimator } from './merciful-animation.3d0bba4489d6.js';
+import { createManaAnimator } from './mana-animation.908383aa5689.js';
+import { createFateAnimator } from './fate-animation.1bb9f6df3955.js';
+import { battlePileMarkup } from './battle-props.afb4c85f46fc.js';
+import { getResolvedBattleVisuals } from './spell-visuals.8b70580a1f32.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
-import { pixelIconMarkup } from './pixel-icons.504ab0bf5ee1.js';
+import { pixelIconMarkup } from './pixel-icons.e850fc4e9300.js';
 import { ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook } from './spellbooks.4c911a9dce0e.js';
 import { getGameSpellbook } from './game.1a0e2f25920f.js';
 import { createDuelStorage } from './duel-storage.cdfbbca695a5.js';
@@ -33,6 +34,7 @@ const battleScene = createBattleScene();
 const spellAnimator = createSpellAnimator({root:battleScene.element});
 const auraAnimator = createAuraAnimator({root:battleScene.element});
 const mercifulAnimator = createMercifulAnimator({root:battleScene.element});
+const manaAnimator = createManaAnimator({root:battleScene.element});
 const fateAnimator = createFateAnimator({root:app});
 const healthBars = createHealthBars({onSettled:()=>{showPendingVictory();flushPendingHandoff();}});
 let spellVisualQueue = [];
@@ -312,6 +314,9 @@ function render() {
   mercifulAnimator.sync(state.players.map((player,index)=>displayedStats(player,index)),{
     visible:!battleView.hidden && (state.status==='playing'||spellVisualBusy()),
   });
+  manaAnimator.sync(state.players.map((player,index)=>displayedStats(player,index)),{
+    visible:!battleView.hidden && (state.status==='playing'||spellVisualBusy()),
+  });
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   scheduleCombat();
@@ -347,6 +352,7 @@ function cancelSpellPresentation() {
   spellAnimator.cancel({settle:false});
   auraAnimator.reset({settle:false});
   mercifulAnimator.reset();
+  manaAnimator.reset();
   fateAnimator.reset({settle:false});
   activeSpellVisual=null;
   spellVisualQueue=[];

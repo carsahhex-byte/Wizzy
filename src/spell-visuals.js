@@ -247,7 +247,7 @@ function enhancementResult(message, player) {
   if (bonus !== getEnhancementBonus(total)
     || before < 0 || before >= MAX_ENHANCEMENT || before % ENHANCEMENT_STEP !== 0
     || after !== Math.min(MAX_ENHANCEMENT, before + bonus) || Boolean(capped) !== (gain < bonus)) return null;
-  return { enhancementBonus: bonus, enhancementGain: gain, enhancementBefore: before, enhancementAfter: after };
+  return { modifiedTotal: total, enhancementBonus: bonus, enhancementGain: gain, enhancementBefore: before, enhancementAfter: after };
 }
 
 /**

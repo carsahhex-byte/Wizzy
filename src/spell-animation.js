@@ -5,6 +5,7 @@ import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from './crea
 import { getPlayerSchool } from './elements.js';
 import { getCustomSpellSheet } from './custom-spell-sheets.js';
 import { createCustomSpellAnimator } from './custom-spell-animation.js';
+import { createEnhancementFlourish } from './enhancement-animation.js';
 
 const FRAME_MS = 125;
 const ACTOR_END = 2000;
@@ -67,6 +68,7 @@ export function createSpellAnimator({ root, scene } = {}) {
     return { node, lagMs, opacity: index === 0 ? .22 : .1 };
   });
   element.append(actor, targetActor, afterimages[1].node, afterimages[0].node, projectile, impact);
+  const enhancementFlourish = createEnhancementFlourish({root:element});
   root.append(element);
   const customAnimator = createCustomSpellAnimator({ root, scene });
   const seen = new Set();
@@ -140,6 +142,7 @@ export function createSpellAnimator({ root, scene } = {}) {
       restoreStanding(job, true);
       hitFlash(job, false);
       hideAfterimages();
+      enhancementFlourish.reset();
       for (const node of [actor, targetActor, projectile, impact]) hideAnimationSprite(node);
       element.dataset.phase = cancelled ? 'cancelled' : 'complete';
       element.dataset.stage = cancelled ? 'cancelled' : 'complete';
@@ -157,7 +160,7 @@ export function createSpellAnimator({ root, scene } = {}) {
     customAnimator.cancel({ settle });
   }
 
-  function play({ key, spellId = null, casterIndex, kind, element: requestedElement, players, golem, modifiedTotal = null, onImpact, onComplete } = {}) {
+  function play({ key, spellId = null, casterIndex, kind, element: requestedElement, players, golem, modifiedTotal = null, enhancementBonus = null, onImpact, onComplete } = {}) {
     key = String(key ?? `${kind || spellId}:${casterIndex}`);
     if (getCustomSpellSheet(spellId) && kind !== 'enhancement' && !TRANSFORMS.has(kind) && kind !== 'golem-strike') {
       if (!customAnimator.hasSeen(key) && current) finish(current, { cancelled: true, settle: false });
@@ -184,6 +187,7 @@ export function createSpellAnimator({ root, scene } = {}) {
     job.promise = new Promise(resolve => { job.resolve = resolve; });
     current = job;
     hideAfterimages();
+    enhancementFlourish.reset();
     Object.assign(element.dataset, { animationKey: key, spellAnimation: job.kind, kind: job.kind,
       spellId: String(spellId ?? ''), casterIndex: String(casterIndex ?? ''), phase: 'loading', stage: 'loading',
       customAnimation: creature?.key || '', creaturePose: '', wingPose: '', tailPose: '', formationPose: '', effectArcs: 'false', lightBlades: 'false',
@@ -263,6 +267,9 @@ export function createSpellAnimator({ root, scene } = {}) {
         const elapsed = Math.max(0, time - start);
         element.dataset.elapsed = String(Math.round(elapsed));
         if (elapsed >= duration) { finish(job); return; }
+        if (job.kind === 'enhancement') enhancementFlourish.draw(elapsed, {
+          school:type,casterIndex,modifiedTotal,enhancementBonus,
+        });
 
         if (transforming) {
           const localFrame = Math.min(frames.length - 1, Math.floor(elapsed / FRAME_MS));

@@ -1,14 +1,14 @@
-import { ASSETS, ASSET_CROPS, MAP_UI_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.41f999d1f1ff.js';
+import { ASSETS, ASSET_CROPS, MAP_UI_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.bdca32752f3b.js';
 import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.dff3d4c0f256.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.116aa1ba187a.js';
 import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckListForActive, MAX_DECK_FILE_BYTES } from './decks.5ee72078e024.js';
 import { SPELLBOOK_1, SPELLBOOK_2, SPELLBOOKS, getDeckSpellbook, getSpellbookSpells, ACTIVE_SPELLBOOK_ID, getActiveSpells } from './spellbooks.4c911a9dce0e.js';
 import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.e6ec8355a347.js';
 import { ELEMENTS, ELEMENT_INFO } from './elements.f91c53cdab44.js';
-import { fitSlabText } from './slab-text.ee15d857b9f1.js';
+import { fitSlabText } from './slab-text.ba049306b4c3.js';
 import { DISTRICTS, getDistrict, normalizeDistrictId, parseStorybookRoute } from './districts.41d180c8958a.js';
-import { roughNavigationArt, roughScreenStone, roughWizardPortrait, roughPartyArt } from './hub-art.34454738fdf8.js';
-import { pixelIconMarkup } from './pixel-icons.504ab0bf5ee1.js';
+import { roughNavigationArt, roughScreenStone, roughWizardPortrait, roughPartyArt } from './hub-art.df1df662b54c.js';
+import { pixelIconMarkup } from './pixel-icons.e850fc4e9300.js';
 
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck', 'storybook', 'battle-setup']);
 // The square artwork includes ocean around the city. Its artwork and labels

@@ -1,8 +1,8 @@
 /** Original uploaded artwork. Crop metadata only hides transparent export margins. */
-import { resolveAssetUrl } from './asset-url.7da65c686d4f.js';
+import { resolveAssetUrl } from './asset-url.50d8e72cc3e3.js';
 import { SPELL_CATALOG } from './spells.dff3d4c0f256.js';
-import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.ee15d857b9f1.js';
-import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.504ab0bf5ee1.js';
+import { COMPACT_SPELL_TEXT, slabRulesMarkup } from './slab-text.ba049306b4c3.js';
+import { PIXEL_ICON_FILE, PIXEL_ICON_CROPS } from './pixel-icons.e850fc4e9300.js';
 
 export const ASSET_FILES = Object.freeze({
   titleScene: 'Wizzy Seattle Title.png',
@@ -92,6 +92,9 @@ export const ASSET_FILES = Object.freeze({
   roughFriendsScreen: 'Wizzy Rough Friends Screen.png',
   roughBattleScreen: 'Wizzy Rough Battle Screen.png',
   spellHeatboxFx: 'Wizzy Heatbox Spell FX.png',
+  spellElementalRings: 'Wizzy Elemental Ring FX.png',
+  spellRiftTrident: 'Wizzy Rift Trident FX.png',
+  spellRiftWhirlpool: 'Wizzy Rift Whirlpool FX.png',
   spellBlazeFx: 'Wizzy Blaze Spell FX.png',
   spellCharredBladeFx: 'Wizzy Charred Blade Spell FX.png',
   spellSunsetterFx: 'Wizzy Sunsetter Spell FX.png',

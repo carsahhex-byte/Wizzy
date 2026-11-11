@@ -1,4 +1,4 @@
-import { ASSETS } from './assets.41f999d1f1ff.js';
+import { ASSETS } from './assets.bdca32752f3b.js';
 
 // CSS viewports select the approved artwork without changing a source pixel.
 // Both states share a crop, so the tower/tray and their blank plaques stay put.
