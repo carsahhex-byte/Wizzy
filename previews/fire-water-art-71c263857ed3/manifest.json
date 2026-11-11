@@ -1,0 +1,379 @@
+{
+  "format": "wizzy-fire-water-art-review",
+  "version": 1,
+  "status": "draft-review-only",
+  "integration": "art-review-only",
+  "title": "Fire & Water, reimagined",
+  "gameplayChanges": false,
+  "pixelPreservation": "Original PNG bytes preserved; current artwork is selected using runtime crop metadata.",
+  "cards": [
+    {
+      "id": "Fire-2",
+      "name": "Heatbox",
+      "element": "Fire",
+      "manaCost": 1,
+      "effectText": "Gain 1 Ember. On a 7+, gain 2 Embers instead. On a 10+, gain 3 instead.",
+      "art": "art/fire-2.png",
+      "artMetadata": {
+        "file": "art/fire-2.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1307530,
+        "sha256": "46c22d2a168df4699e965e42615de8bc04b84e6bef162f81fb90e775179eac38"
+      },
+      "concept": "A faceted firestone with curling flames and floating embers.",
+      "note": "",
+      "original": {
+        "file": "originals/fireSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2245028,
+        "sha256": "190e2c47f9ea679c9c4cab050c9f36310fba193b40f66db062ef98ff1e8ba4b4",
+        "source": "public/graphics/Pixel-Art Fire Card Collection.png",
+        "crop": {
+          "asset": "fireSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 315,
+          "y": 28,
+          "w": 255,
+          "h": 162,
+          "label": "Fire-2"
+        }
+      }
+    },
+    {
+      "id": "Fire-15",
+      "name": "Blaze",
+      "element": "Fire",
+      "manaCost": 0,
+      "effectText": "Gain 1 Ember. On a 6+, gain 1 Mana.",
+      "art": "art/fire-15.png",
+      "artMetadata": {
+        "file": "art/fire-15.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1348221,
+        "sha256": "6123d3fe659118cbea16d0b26d659bf648ae3cc96ac70d4d92800e12a43aec3a"
+      },
+      "concept": "A smaller ember-crystal heart in a compact flame burst, with a subtle Mana glint.",
+      "note": "",
+      "original": {
+        "file": "originals/fireZeroSlab.png",
+        "width": 1103,
+        "height": 1426,
+        "bytes": 1778698,
+        "sha256": "1eaa67e131d12736c19527f403244b69e20b1d801da6e63d3f28d9dd91c3458b",
+        "source": "public/graphics/Wizzy Fire-0 Slab.png",
+        "crop": {
+          "asset": "fireZeroSlab",
+          "width": 1103,
+          "height": 1426,
+          "x": 54.47872340425532,
+          "y": 71.01063829787233,
+          "w": 994.0425531914893,
+          "h": 629.0425531914893,
+          "label": "Fire-15"
+        }
+      }
+    },
+    {
+      "id": "Fire-6",
+      "name": "Charred Blade",
+      "element": "Fire",
+      "manaCost": 5,
+      "effectText": "Deal 20 damage. On a 7+, deal 30 instead and gain 2 Embers.",
+      "art": "art/fire-6.png",
+      "artMetadata": {
+        "file": "art/fire-6.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1268252,
+        "sha256": "d738c8fd9afaffdf13dacd98b841172166b3c07f1bda5ae4cb9a0a27b711b32a"
+      },
+      "concept": "A diagonal flaming sword with a dark grip, gold guard and chunky fire.",
+      "note": "",
+      "original": {
+        "file": "originals/charredBladeSword.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1318088,
+        "sha256": "b0a00276aeb9d1ccafcc608a95e8d003832514295c27c336460f0f599bd0c95a",
+        "source": "public/graphics/Wizzy Charred Blade Sword.png",
+        "crop": {
+          "asset": "charredBladeSword",
+          "width": 1536,
+          "height": 1024,
+          "x": 0,
+          "y": 0,
+          "w": 1536,
+          "h": 1024,
+          "label": "Charred Blade"
+        }
+      }
+    },
+    {
+      "id": "Fire-11",
+      "name": "Xineoph",
+      "element": "Fire",
+      "manaCost": 2,
+      "effectText": "Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.",
+      "art": "art/fire-11.png",
+      "artMetadata": {
+        "file": "art/fire-11.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1313266,
+        "sha256": "dec97ef581ee713623cf6c1759d4050dd7ac1890bfe82ec2fc34de9076965d77"
+      },
+      "concept": "A golden energy phoenix flying right with tapered flame arcs and sparkles.",
+      "note": "",
+      "original": {
+        "file": "originals/xineophCardArt.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1465611,
+        "sha256": "4bf34fb0270e11b2ddf29f405eed134449413946d62a3b629f88846259a6ca0a",
+        "source": "public/graphics/Wizzy Xineoph Phoenix Card.png",
+        "crop": {
+          "asset": "xineophCardArt",
+          "width": 1536,
+          "height": 1024,
+          "x": 0,
+          "y": 0,
+          "w": 1536,
+          "h": 1024,
+          "label": "Xineoph"
+        }
+      }
+    },
+    {
+      "id": "Fire-14",
+      "name": "Sunsetter",
+      "element": "Fire",
+      "manaCost": 8,
+      "effectText": "Deal 55 damage. On an 8+, deal 65 instead.",
+      "art": "art/fire-14.png",
+      "artMetadata": {
+        "file": "art/fire-14.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1383570,
+        "sha256": "89e86d2b5dea5737d4f01c7efb471e31869793f4735b7885e1d678ff91b008a4"
+      },
+      "concept": "A dramatic sun or fireball partly impacting the ocean, framed by dark mountains.",
+      "note": "Revisits your earlier sun-impacting-the-ocean and foreground-mountains concept.",
+      "original": {
+        "file": "originals/fireSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2245028,
+        "sha256": "190e2c47f9ea679c9c4cab050c9f36310fba193b40f66db062ef98ff1e8ba4b4",
+        "source": "public/graphics/Pixel-Art Fire Card Collection.png",
+        "crop": {
+          "asset": "fireSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 1756,
+          "y": 406,
+          "w": 256,
+          "h": 162,
+          "label": "Fire-14"
+        }
+      }
+    },
+    {
+      "id": "Water-2",
+      "name": "Sea bolt",
+      "element": "Water",
+      "manaCost": 1,
+      "effectText": "Deal 4 + 2 × Flow damage. On an 8+, gain 1 additional Flow after resolution.",
+      "art": "art/water-2.png",
+      "artMetadata": {
+        "file": "art/water-2.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1270877,
+        "sha256": "4959e662f75944c6d0d094e36df7a2ac3f18dc5a81b2badc2dcd12f6956a4855"
+      },
+      "concept": "A compressed spiral water bolt with ivory foam and droplets.",
+      "note": "",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 347,
+          "y": 30,
+          "w": 258,
+          "h": 162,
+          "label": "Water-2"
+        }
+      }
+    },
+    {
+      "id": "Water-0",
+      "name": "Swell",
+      "element": "Water",
+      "manaCost": 0,
+      "effectText": "Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.",
+      "art": "art/water-0.png",
+      "artMetadata": {
+        "file": "art/water-0.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1370876,
+        "sha256": "9f444fb810f486c7560d05b13335c3c824330c480090e14dcae51b50467486bd"
+      },
+      "concept": "A magical waterfall pouring into a clear pool, with a small Mana glimmer.",
+      "note": "",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 645,
+          "y": 400,
+          "w": 256,
+          "h": 162,
+          "label": "Water-0"
+        }
+      }
+    },
+    {
+      "id": "Water-12",
+      "name": "Coral Crash",
+      "element": "Water",
+      "manaCost": 3,
+      "effectText": "Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.",
+      "art": "art/water-12.png",
+      "artMetadata": {
+        "file": "art/water-12.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1370296,
+        "sha256": "3eff65b1b60694111eae1bc723da2a24bf0bf645d1af41df36ae9cf405e74245"
+      },
+      "concept": "A luminous jellyfish among swirling currents and coral reef shapes.",
+      "note": "",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 1227,
+          "y": 400,
+          "w": 241,
+          "h": 162,
+          "label": "Water-12"
+        }
+      }
+    },
+    {
+      "id": "Water-9",
+      "name": "Pacific",
+      "element": "Water",
+      "manaCost": 2,
+      "effectText": "Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On a 10+, deal 5 additional damage.",
+      "art": "art/water-9.png",
+      "artMetadata": {
+        "file": "art/water-9.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1439233,
+        "sha256": "e24f92ef80ab7e93397a819279453380148156ddc0ce0ee4ebc5eb372b36f40d"
+      },
+      "concept": "A magical dolphin leaping through a curling wave.",
+      "note": "",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 347,
+          "y": 400,
+          "w": 258,
+          "h": 162,
+          "label": "Water-9"
+        }
+      }
+    },
+    {
+      "id": "Water-14",
+      "name": "Poseidon's Rift",
+      "element": "Water",
+      "manaCost": 6,
+      "effectText": "Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.",
+      "art": "art/water-14.png",
+      "artMetadata": {
+        "file": "art/water-14.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1444509,
+        "sha256": "213c1a6d3ba787093ecd948c6e4981176a7d547169930353b703777a37ad0be9"
+      },
+      "concept": "A golden trident rising from a pounding whirlpool beneath a stormy sky.",
+      "note": "Revisits your earlier golden-trident-in-a-pounding-whirlpool concept.",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 1777,
+          "y": 400,
+          "w": 229,
+          "h": 162,
+          "label": "Water-14"
+        }
+      }
+    }
+  ],
+  "references": [
+    {
+      "file": "references/earth-2.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1262437,
+      "sha256": "0716435baf8ca55d6a0a3f47c47f9532cc64794fae25dce2289062372f97d5b4",
+      "title": "Earth-2 style reference"
+    },
+    {
+      "file": "references/earth-5.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1544303,
+      "sha256": "ff8083a2c0e13b444e6378ec421baab7d09b35471ab4a275fa762f4a44a40092",
+      "title": "Earth-5 style reference"
+    }
+  ]
+}

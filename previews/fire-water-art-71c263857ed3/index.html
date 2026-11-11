@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Wizzy · Fire and Water art reimagined</title>
+  <style>
+    :root{color-scheme:dark;background:#111a17;color:#e9e2cb;font-family:Arial,sans-serif}*{box-sizing:border-box}body{margin:0}main{max-width:1240px;margin:auto;padding:30px 22px 45px}h1{font-size:clamp(32px,6vw,58px);line-height:1.05;color:#e4cf92;margin:12px 0 18px}h2{font-size:23px;line-height:1.15;margin:0;color:#ecddb1}.eyebrow,.tag,button,.button{font:700 11px/1.5 'Courier New',monospace}.eyebrow{letter-spacing:1px;color:#adbea0}p{line-height:1.6}.intro{max-width:830px;color:#c2cbbd}a{color:#e7ce8c}nav,.filters,.card-heading{display:flex;flex-wrap:wrap;gap:12px;align-items:center}nav{margin:22px 0}.button,button{border:2px solid #81916a;background:#324631;padding:10px 13px;color:#fff0c9;min-height:42px;text-decoration:none;cursor:pointer}button:hover,.button:hover{background:#4a623d}button[aria-pressed=true]{border-color:#e6cc87;background:#53683e}.references{padding:17px;border:2px solid #687d55;background:#203022;margin:24px 0}.references h2{font-size:18px;margin-bottom:12px}.reference-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.reference-grid img{width:100%;height:155px;object-fit:contain;image-rendering:pixelated;background:#15231a}.references p{font-size:12px;color:#b6c4aa;margin-bottom:0}.filters{margin:28px 0 10px}.count{font:12px 'Courier New',monospace;color:#becab2}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:20px}.card{min-width:0;border:3px solid #7e653d;background:#241d18;box-shadow:5px 5px #080c08;padding:15px}.card.water{border-color:#526e89;background:#15232d}.card-heading{justify-content:space-between;margin-bottom:8px}.name{min-width:0}.id{font:11px 'Courier New',monospace;color:#c4b994;margin:5px 0 0}.water .id{color:#a8c5d9}.mana{color:#ffe08a;font:bold 16px 'Courier New',monospace;white-space:nowrap}.comparisons{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}figure{min-width:0;margin:0}figcaption{font:700 10px 'Courier New',monospace;letter-spacing:.5px;color:#c8c2ac;margin:0 0 7px}.new-label{color:#ecd691}.picture{display:flex;align-items:center;justify-content:center;aspect-ratio:3/2;background:#0f1815;border:1px solid #52604b;overflow:hidden}.picture>img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}.old-art{display:block;position:relative;width:100%;overflow:hidden}.old-art img{position:absolute;display:block;max-width:none;image-rendering:pixelated}.concept{font-size:13px;color:#d1c3a3}.water .concept{color:#b3cfdf}.effect{font-size:12px;color:#b8b5a6;border-top:1px solid #5c5545;padding-top:10px}.water .effect{border-color:#3d586c}.effect strong{color:#e3d4a3}.download{display:inline-block;margin-top:5px;font:700 12px 'Courier New',monospace}.note{font-size:11px;color:#bbb29b}.water .note{color:#a6bdc9}footer{font:11px/1.7 'Courier New',monospace;color:#adba9f;margin-top:30px}a:focus-visible,button:focus-visible{outline:3px solid #e8d393;outline-offset:3px}[hidden]{display:none!important}@media(max-width:800px){.cards{grid-template-columns:1fr}}@media(max-width:480px){main{padding:22px 13px 35px}.card{padding:12px}.comparisons{gap:8px}.references{padding:13px}.reference-grid img{height:115px}.card-heading{gap:8px}h2{font-size:22px}.concept{font-size:13px}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">WIZZY · FIRE & WATER · ILLUSTRATION REVIEW</p>
+    <h1>Fire & Water, reimagined</h1>
+    <p class="intro">Ten familiar spells in the Earth drafts’ chunkier pixel-art style: strong black outlines, bold shapes, and clear elemental colors. Compare each current illustration with its new draft.</p>
+    <nav><a class="button" id="download-all" href="Fire-Water-Art-Reimagining.zip" download>Download all artwork ↓</a><a class="button" href="manifest.json" download>Artwork index ↓</a></nav>
+  </header>
+  <section class="references" aria-label="Earth illustration style references">
+    <h2>The Earth art style</h2>
+    <div id="references" class="reference-grid"></div>
+    <p>These two Earth illustrations are the style references. The Fire and Water spells retain their own subjects and elemental palettes.</p>
+  </section>
+  <div class="filters" role="group" aria-label="Filter illustrations"><button data-filter="all" aria-pressed="true">All ten</button><button data-filter="Fire" aria-pressed="false">Fire</button><button data-filter="Water" aria-pressed="false">Water</button></div>
+  <p id="count" class="count"></p>
+  <section id="cards" class="cards" aria-label="Current and reimagined card artwork"></section>
+  <footer>Illustration drafts only. Spell names, Mana costs and effects are shown from the current spellbook for reference. These drafts have not replaced the live cards, animations or game rules.</footer>
+</main>
+<script id="review-data" type="application/json">{
+  "format": "wizzy-fire-water-art-review",
+  "version": 1,
+  "status": "draft-review-only",
+  "integration": "art-review-only",
+  "title": "Fire & Water, reimagined",
+  "gameplayChanges": false,
+  "pixelPreservation": "Original PNG bytes preserved; current artwork is selected using runtime crop metadata.",
+  "cards": [
+    {
+      "id": "Fire-2",
+      "name": "Heatbox",
+      "element": "Fire",
+      "manaCost": 1,
+      "effectText": "Gain 1 Ember. On a 7+, gain 2 Embers instead. On a 10+, gain 3 instead.",
+      "art": "art/fire-2.png",
+      "artMetadata": {
+        "file": "art/fire-2.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1307530,
+        "sha256": "46c22d2a168df4699e965e42615de8bc04b84e6bef162f81fb90e775179eac38"
+      },
+      "concept": "A faceted firestone with curling flames and floating embers.",
+      "note": "",
+      "original": {
+        "file": "originals/fireSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2245028,
+        "sha256": "190e2c47f9ea679c9c4cab050c9f36310fba193b40f66db062ef98ff1e8ba4b4",
+        "source": "public/graphics/Pixel-Art Fire Card Collection.png",
+        "crop": {
+          "asset": "fireSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 315,
+          "y": 28,
+          "w": 255,
+          "h": 162,
+          "label": "Fire-2"
+        }
+      }
+    },
+    {
+      "id": "Fire-15",
+      "name": "Blaze",
+      "element": "Fire",
+      "manaCost": 0,
+      "effectText": "Gain 1 Ember. On a 6+, gain 1 Mana.",
+      "art": "art/fire-15.png",
+      "artMetadata": {
+        "file": "art/fire-15.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1348221,
+        "sha256": "6123d3fe659118cbea16d0b26d659bf648ae3cc96ac70d4d92800e12a43aec3a"
+      },
+      "concept": "A smaller ember-crystal heart in a compact flame burst, with a subtle Mana glint.",
+      "note": "",
+      "original": {
+        "file": "originals/fireZeroSlab.png",
+        "width": 1103,
+        "height": 1426,
+        "bytes": 1778698,
+        "sha256": "1eaa67e131d12736c19527f403244b69e20b1d801da6e63d3f28d9dd91c3458b",
+        "source": "public/graphics/Wizzy Fire-0 Slab.png",
+        "crop": {
+          "asset": "fireZeroSlab",
+          "width": 1103,
+          "height": 1426,
+          "x": 54.47872340425532,
+          "y": 71.01063829787233,
+          "w": 994.0425531914893,
+          "h": 629.0425531914893,
+          "label": "Fire-15"
+        }
+      }
+    },
+    {
+      "id": "Fire-6",
+      "name": "Charred Blade",
+      "element": "Fire",
+      "manaCost": 5,
+      "effectText": "Deal 20 damage. On a 7+, deal 30 instead and gain 2 Embers.",
+      "art": "art/fire-6.png",
+      "artMetadata": {
+        "file": "art/fire-6.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1268252,
+        "sha256": "d738c8fd9afaffdf13dacd98b841172166b3c07f1bda5ae4cb9a0a27b711b32a"
+      },
+      "concept": "A diagonal flaming sword with a dark grip, gold guard and chunky fire.",
+      "note": "",
+      "original": {
+        "file": "originals/charredBladeSword.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1318088,
+        "sha256": "b0a00276aeb9d1ccafcc608a95e8d003832514295c27c336460f0f599bd0c95a",
+        "source": "public/graphics/Wizzy Charred Blade Sword.png",
+        "crop": {
+          "asset": "charredBladeSword",
+          "width": 1536,
+          "height": 1024,
+          "x": 0,
+          "y": 0,
+          "w": 1536,
+          "h": 1024,
+          "label": "Charred Blade"
+        }
+      }
+    },
+    {
+      "id": "Fire-11",
+      "name": "Xineoph",
+      "element": "Fire",
+      "manaCost": 2,
+      "effectText": "Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.",
+      "art": "art/fire-11.png",
+      "artMetadata": {
+        "file": "art/fire-11.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1313266,
+        "sha256": "dec97ef581ee713623cf6c1759d4050dd7ac1890bfe82ec2fc34de9076965d77"
+      },
+      "concept": "A golden energy phoenix flying right with tapered flame arcs and sparkles.",
+      "note": "",
+      "original": {
+        "file": "originals/xineophCardArt.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1465611,
+        "sha256": "4bf34fb0270e11b2ddf29f405eed134449413946d62a3b629f88846259a6ca0a",
+        "source": "public/graphics/Wizzy Xineoph Phoenix Card.png",
+        "crop": {
+          "asset": "xineophCardArt",
+          "width": 1536,
+          "height": 1024,
+          "x": 0,
+          "y": 0,
+          "w": 1536,
+          "h": 1024,
+          "label": "Xineoph"
+        }
+      }
+    },
+    {
+      "id": "Fire-14",
+      "name": "Sunsetter",
+      "element": "Fire",
+      "manaCost": 8,
+      "effectText": "Deal 55 damage. On an 8+, deal 65 instead.",
+      "art": "art/fire-14.png",
+      "artMetadata": {
+        "file": "art/fire-14.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1383570,
+        "sha256": "89e86d2b5dea5737d4f01c7efb471e31869793f4735b7885e1d678ff91b008a4"
+      },
+      "concept": "A dramatic sun or fireball partly impacting the ocean, framed by dark mountains.",
+      "note": "Revisits your earlier sun-impacting-the-ocean and foreground-mountains concept.",
+      "original": {
+        "file": "originals/fireSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2245028,
+        "sha256": "190e2c47f9ea679c9c4cab050c9f36310fba193b40f66db062ef98ff1e8ba4b4",
+        "source": "public/graphics/Pixel-Art Fire Card Collection.png",
+        "crop": {
+          "asset": "fireSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 1756,
+          "y": 406,
+          "w": 256,
+          "h": 162,
+          "label": "Fire-14"
+        }
+      }
+    },
+    {
+      "id": "Water-2",
+      "name": "Sea bolt",
+      "element": "Water",
+      "manaCost": 1,
+      "effectText": "Deal 4 + 2 × Flow damage. On an 8+, gain 1 additional Flow after resolution.",
+      "art": "art/water-2.png",
+      "artMetadata": {
+        "file": "art/water-2.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1270877,
+        "sha256": "4959e662f75944c6d0d094e36df7a2ac3f18dc5a81b2badc2dcd12f6956a4855"
+      },
+      "concept": "A compressed spiral water bolt with ivory foam and droplets.",
+      "note": "",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 347,
+          "y": 30,
+          "w": 258,
+          "h": 162,
+          "label": "Water-2"
+        }
+      }
+    },
+    {
+      "id": "Water-0",
+      "name": "Swell",
+      "element": "Water",
+      "manaCost": 0,
+      "effectText": "Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.",
+      "art": "art/water-0.png",
+      "artMetadata": {
+        "file": "art/water-0.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1370876,
+        "sha256": "9f444fb810f486c7560d05b13335c3c824330c480090e14dcae51b50467486bd"
+      },
+      "concept": "A magical waterfall pouring into a clear pool, with a small Mana glimmer.",
+      "note": "",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 645,
+          "y": 400,
+          "w": 256,
+          "h": 162,
+          "label": "Water-0"
+        }
+      }
+    },
+    {
+      "id": "Water-12",
+      "name": "Coral Crash",
+      "element": "Water",
+      "manaCost": 3,
+      "effectText": "Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.",
+      "art": "art/water-12.png",
+      "artMetadata": {
+        "file": "art/water-12.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1370296,
+        "sha256": "3eff65b1b60694111eae1bc723da2a24bf0bf645d1af41df36ae9cf405e74245"
+      },
+      "concept": "A luminous jellyfish among swirling currents and coral reef shapes.",
+      "note": "",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 1227,
+          "y": 400,
+          "w": 241,
+          "h": 162,
+          "label": "Water-12"
+        }
+      }
+    },
+    {
+      "id": "Water-9",
+      "name": "Pacific",
+      "element": "Water",
+      "manaCost": 2,
+      "effectText": "Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On a 10+, deal 5 additional damage.",
+      "art": "art/water-9.png",
+      "artMetadata": {
+        "file": "art/water-9.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1439233,
+        "sha256": "e24f92ef80ab7e93397a819279453380148156ddc0ce0ee4ebc5eb372b36f40d"
+      },
+      "concept": "A magical dolphin leaping through a curling wave.",
+      "note": "",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 347,
+          "y": 400,
+          "w": 258,
+          "h": 162,
+          "label": "Water-9"
+        }
+      }
+    },
+    {
+      "id": "Water-14",
+      "name": "Poseidon's Rift",
+      "element": "Water",
+      "manaCost": 6,
+      "effectText": "Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.",
+      "art": "art/water-14.png",
+      "artMetadata": {
+        "file": "art/water-14.png",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 1444509,
+        "sha256": "213c1a6d3ba787093ecd948c6e4981176a7d547169930353b703777a37ad0be9"
+      },
+      "concept": "A golden trident rising from a pounding whirlpool beneath a stormy sky.",
+      "note": "Revisits your earlier golden-trident-in-a-pounding-whirlpool concept.",
+      "original": {
+        "file": "originals/waterSlabSheet.png",
+        "width": 2037,
+        "height": 772,
+        "bytes": 2298356,
+        "sha256": "6c61eca20a282303d6f67065b1cac65c586f3a3dc6fbb12d4a58f390491bab1e",
+        "source": "public/graphics/Pixel-Art Water Card Collection.png",
+        "crop": {
+          "asset": "waterSlabSheet",
+          "width": 2037,
+          "height": 772,
+          "x": 1777,
+          "y": 400,
+          "w": 229,
+          "h": 162,
+          "label": "Water-14"
+        }
+      }
+    }
+  ],
+  "references": [
+    {
+      "file": "references/earth-2.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1262437,
+      "sha256": "0716435baf8ca55d6a0a3f47c47f9532cc64794fae25dce2289062372f97d5b4",
+      "title": "Earth-2 style reference"
+    },
+    {
+      "file": "references/earth-5.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1544303,
+      "sha256": "ff8083a2c0e13b444e6378ec421baab7d09b35471ab4a275fa762f4a44a40092",
+      "title": "Earth-5 style reference"
+    }
+  ]
+}
+</script>
+<script>
+(() => {
+  const data=JSON.parse(document.getElementById('review-data').textContent);
+  const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  document.getElementById('references').innerHTML=data.references.map(ref=>`<a href="${escape(ref.file)}" target="_blank" rel="noopener"><img src="${escape(ref.file)}" alt="${escape(ref.title)}"></a>`).join('');
+  function oldArt(card){const r=card.original.crop;return `<span class="old-art" style="aspect-ratio:${r.w}/${r.h}"><img src="${escape(card.original.file)}" alt="${escape(card.name+' current illustration')}" style="width:${r.width/r.w*100}%;height:${r.height/r.h*100}%;left:${-r.x/r.w*100}%;top:${-r.y/r.h*100}%"></span>`;}
+  document.getElementById('cards').innerHTML=data.cards.map(card=>`<article class="card ${card.element.toLowerCase()}" data-card="${escape(card.id)}" data-element="${escape(card.element)}"><div class="card-heading"><div class="name"><h2>${escape(card.name)}</h2><p class="id">${escape(card.id)} · ${escape(card.element)}</p></div><span class="mana">${card.manaCost} Mana</span></div><div class="comparisons"><figure><figcaption>CURRENT ILLUSTRATION</figcaption><a class="picture" href="${escape(card.original.file)}" target="_blank" rel="noopener">${oldArt(card)}</a></figure><figure><figcaption class="new-label">REIMAGINED DRAFT</figcaption><a class="picture" href="${escape(card.art)}" target="_blank" rel="noopener"><img src="${escape(card.art)}" alt="${escape(card.name+' reimagined: '+card.concept)}"></a></figure></div><p class="concept">${escape(card.concept)}</p>${card.note?`<p class="note">${escape(card.note)}</p>`:''}<p class="effect"><strong>Current spell:</strong> ${escape(card.effectText)}</p><a class="download" href="${escape(card.art)}" download>Original draft PNG ↓</a></article>`).join('');
+  function filter(value){for(const card of document.querySelectorAll('[data-card]'))card.hidden=value!=='all'&&card.dataset.element!==value;for(const button of document.querySelectorAll('[data-filter]'))button.setAttribute('aria-pressed',String(button.dataset.filter===value));const n=[...document.querySelectorAll('[data-card]')].filter(card=>!card.hidden).length;document.getElementById('count').textContent=n+' / '+data.cards.length+' illustrations';document.body.dataset.filter=value;}
+  for(const button of document.querySelectorAll('[data-filter]'))button.onclick=()=>filter(button.dataset.filter);
+  if(location.protocol==='file:')document.getElementById('download-all').hidden=true;
+  Promise.all([...document.images].map(image=>image.decode().then(()=>true,()=>false))).then(ready=>document.body.dataset.ready=String(ready.every(Boolean)));
+  filter('all');window.WIZZY_FIRE_WATER_ART_REVIEW=data;
+})();
+</script>
+</body>
+</html>
