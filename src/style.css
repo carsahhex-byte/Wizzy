@@ -73,7 +73,7 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .stat-panel { position: relative; width: 320px; min-width: 0; filter: drop-shadow(0 4px 2px #11132699); }
 .stat-panel.fire { height: 307.05px; }
 .stat-panel.water { height: 302.34px; }
-.stat-panel.earth { height: 307.05px; }
+.stat-panel.earth, .stat-panel.air { height: 307.05px; }
 .stat-frame { position: absolute; inset: 0; width: 100%; height: 100%; }
 .stat-panel.is-active { filter: drop-shadow(0 0 5px #ffdc6277) drop-shadow(0 4px 2px #11132699); }
 .stat-heading { position: absolute; inset: 7% 11% auto; height: 20%; display: flex; align-items: center; gap: 10px; text-shadow: 2px 3px #080a1a; }
@@ -94,6 +94,9 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .water .health-track>span { background: linear-gradient(#a5f4ff,#279cfa); }
 .earth .health-track>span { background: linear-gradient(#c6f78f,#61a239); }
 .earth .element-symbol { color: #b6d98b; }
+.earth .health-row>span { color: #c6e8a8; }
+.air .health-track>span { background: linear-gradient(#f2f8ff,#a5badb); }
+.air .health-row>span, .air .element-symbol { color: #e0ecff; }
 .golem-resource strong { font-size: 21px; }
 .golem-protected { display: inline-block; margin-left: 5px; color: #c8f59e; font-size: 12px; }
 .shield-bypass-exposed>span { color: #ffe29d; }
@@ -179,13 +182,19 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .empty-hand { grid-column: 1/-1; display: flex; align-items: center; flex-direction: column; color: #d8c9b3; text-align: center; font-size: 22px; line-height: 1.5; padding: 50px 0; }
 .empty-hand>span { font-size: 46px; color: #ffce60; }.empty-hand p { margin: 10px 0; }
 .hand-bottomline { position: absolute; inset: 0; pointer-events: none; }
-.pile { position: absolute; left: 30px; top: 315px; width: 170px; height: 164px; text-align: center; }
+.pile { position: absolute; left: 30px; top: 309px; width: 170px; height: 238px; text-align: center; }
 .tower-pile { left: auto; right: 30px; }
 button.tower-pile { border: 0; padding: 0; background: none; pointer-events: auto; }
-button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
-.pile-sign { position: absolute; inset: 0; width: 100%; height: 100%; }
-.pile-copy { position: relative; display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 20px 14px; font-size: 26px; font-weight: 900; color: #fff5b4; text-shadow: 2px 3px #080c1b,-1px -1px #080c1b,1px -1px #080c1b; line-height: 1.05; }
-.pile-copy strong { display: block; font-size: 34px; margin-top: 6px; color: white; }.pile-copy small { font-size: 20px; }
+.battle-pile-art { position: absolute; bottom: 0; left: 0; width: 170px; aspect-ratio: var(--pile-ratio); overflow: hidden; pointer-events: none; }
+.battle-pile-tower { left: 5px; width: 160px; }
+.battle-pile-art img { position: absolute; top: var(--pile-normal-y); max-width: none; display: block; image-rendering: pixelated; pointer-events: none; user-select: none; }
+.pile:hover .battle-pile-art img, .pile:focus-visible .battle-pile-art img { top: var(--pile-hover-y); }
+.battle-pile-title { position: absolute; left: -4px; right: -4px; color: #fff1ba; font: 900 23px/1.05 'Trebuchet MS',Arial,sans-serif; text-shadow: 2px 2px #0a1122,-1px -1px #0a1122; white-space: nowrap; }
+.battle-pile-title-tower { bottom: 220px; }
+.battle-pile-title-discard { bottom: 142px; }
+.battle-pile-count { position: absolute; left: 50%; transform: translateX(-50%); display: grid; place-items: center; min-width: 54px; color: #fff6d1; font: 900 25px/1 'Trebuchet MS',Arial,sans-serif; font-variant-numeric: tabular-nums; text-shadow: 1px 2px #041a11,-1px -1px #041a11; }
+.battle-pile-count-tower { bottom: 14px; }
+.battle-pile-count-discard { bottom: 13px; }
 .hand-note { display: none; }
 .enhance-controls { position: absolute; right: 30px; top: 91px; width: 170px; display: grid; gap: 12px; z-index: 2; }
 .enhance-button { position: relative; display: block; width: 170px; height: 94px; border: 0; padding: 0; background: transparent; color: #fff4d9; cursor: pointer; }

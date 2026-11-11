@@ -1,4 +1,4 @@
-import { SPELL_CATALOG, LEGACY_SPELL_NAMES } from './spells.js';
+import { SPELL_CATALOG, SPELL_NAME_ALIASES } from './spells.js';
 import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.js';
 import { getPlayerSchool } from './elements.js';
 
@@ -12,11 +12,11 @@ const SHIELD_SPELLS = new Set(['Fire-3', 'Fire-10', 'Water-3', 'Water-10', 'Eart
 const POWER_UP_SPELLS = new Set(['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15', 'Water-0', 'Earth-4']);
 const schoolOf = player => getPlayerSchool(player) || '';
 const PRIMARY_SPELLS = Object.values(SPELL_CATALOG).filter(spell => spell.category === 'Elemental');
-const namesFor = spell => [...new Set([spell.name, LEGACY_SPELL_NAMES[spell.spellId]].filter(Boolean))];
+const namesFor = spell => SPELL_NAME_ALIASES[spell.spellId] || [spell.name];
 const SPELL_NAMES = new Map(PRIMARY_SPELLS.flatMap(spell => namesFor(spell).map(name => [name, spell.spellId])));
 const COMPLETIONS = new Map(PRIMARY_SPELLS.flatMap(spell => namesFor(spell).map(name => [`${name} resolves and moves to discard.`, spell.spellId])));
 
-/** Presentation only: Fate and unknown IDs deliberately have no animation. */
+/** Primary presentation only; the separate Fate collector supplies dice feedback. */
 export function getSpellVisual(spellId) {
   if (typeof spellId !== 'string' || !Object.hasOwn(SPELL_CATALOG, spellId)) return null;
   const spell = SPELL_CATALOG[spellId];
@@ -81,6 +81,81 @@ function castSpellId(entry, player) {
   return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyCost ? spellId : null;
 }
 
+function readRoll(entry, player, kind = 'spell') {
+  const prefix = `${player.name} rolls `;
+  if (entry.type !== 'dice' || !entry.message.startsWith(prefix)) return null;
+  const text = entry.message.slice(prefix.length);
+  if (kind === 'enhancement') {
+    const match = text.match(/^([1-6]) \+ ([1-6]) = (\d+) for Enhancement; the defender has the first Fate response\.$/);
+    if (!match || Number(match[1]) + Number(match[2]) !== Number(match[3])) return null;
+    return { dice: [Number(match[1]), Number(match[2])], rawTotal: Number(match[3]), total: Number(match[3]) };
+  }
+  const match = text.match(/^([1-6]) \+ ([1-6]) = (\d+); Loaded ([+-]\d+), attacking Fate ([+-]\d+), defending Fate ([+-]?\d+): total (-?\d+)\.$/);
+  if (!match) return null;
+  const [, first, second, raw, loaded, attack, defend, total] = match;
+  const values = [first, second, raw, loaded, attack, defend, total].map(Number);
+  if (!values.every(Number.isSafeInteger) || Number(raw) !== Number(first) + Number(second)
+    || Number(loaded) < 0 || Number(total) !== Number(raw) + Number(loaded) + Number(attack) + Number(defend)) return null;
+  return { dice: [Number(first), Number(second)], rawTotal: Number(raw), total: Number(total) };
+}
+
+/** Only the exact committed-Fate log is feedback, never a response offer/pass. */
+function fateCast(entry, player) {
+  if (entry.type !== 'fate') return null;
+  for (const spellId of ['FAT-001', 'FAT-002', 'FAT-003']) {
+    const spell = SPELL_CATALOG[spellId], prefix = `${player.name} casts ${spell.name}: `;
+    if (!entry.message.startsWith(prefix)) continue;
+    const match = entry.message.slice(prefix.length).match(/^([+-]\d+) to the rolled total\.$/);
+    if (!match) return null;
+    const modifier = Number(match[1]);
+    if (spellId === 'FAT-001' ? modifier !== 4 : spellId === 'FAT-002' ? modifier !== -4 : ![2, -2].includes(modifier)) return null;
+    return { spellId, modifier };
+  }
+  return null;
+}
+
+const validFateRole = (play, playerIndex, primaryCasterIndex) => play.spellId === 'FAT-003'
+  || (play.spellId === 'FAT-001' ? playerIndex === primaryCasterIndex : playerIndex !== primaryCasterIndex);
+
+function getCastFateVisuals(previous, next, added) {
+  const events = [], usedCounts = [new Map(), new Map()];
+  const afterLogId = previous.log.at(-1).id;
+  let context = null;
+  for (const entry of next.log) {
+    const playerIndex = next.players.findIndex(player => player.id === entry.playerId);
+    if (playerIndex < 0) continue;
+    const player = next.players[playerIndex], primaryId = castSpellId(entry, player);
+    if (primaryId) context = { kind: 'spell', spellId: primaryId, casterIndex: playerIndex, round: entry.round, commitLogId: entry.id, roll: null };
+    else if (entry.type === 'enhancement'
+      && entry.message === `${player.name} attempts Enhancement for 0 Mana instead of casting a primary spell.`) {
+      context = { kind: 'enhancement', spellId: null, casterIndex: playerIndex, round: entry.round, commitLogId: entry.id, roll: null };
+    }
+    if (!context || entry.round !== context.round) continue;
+    const roll = playerIndex === context.casterIndex ? readRoll(entry, player, context.kind) : null;
+    if (roll) { context.roll = roll; continue; }
+    const play = fateCast(entry, player);
+    if (play && context.roll && validFateRole(play, playerIndex, context.casterIndex)) {
+      const previousTotal = context.roll.total;
+      context.roll.total += play.modifier;
+      if (entry.id <= afterLogId) continue;
+      const candidates = added[playerIndex].filter(card => card.spellId === play.spellId);
+      const used = usedCounts[playerIndex].get(play.spellId) ?? 0;
+      if (used >= candidates.length) continue;
+      usedCounts[playerIndex].set(play.spellId, used + 1);
+      events.push({
+        key: `fate:${entry.id}:${playerIndex}:${play.spellId}`, logId: entry.id, commitLogId: context.commitLogId,
+        casterIndex: playerIndex, primaryCasterIndex: context.casterIndex, cardId: candidates.length === 1 ? candidates[0].id : null,
+        spellId: play.spellId, kind: 'fate', element: 'Fate', manaCost: 0, damaging: false,
+        modifier: play.modifier, previousTotal, modifiedTotal: context.roll.total,
+        dice: [...context.roll.dice], rawTotal: context.roll.rawTotal, actionKind: context.kind,
+      });
+    }
+    if (entry.type === 'resolve' && COMPLETIONS.has(entry.message)
+      || entry.type === 'enhancement' && entry.message.startsWith(`${player.name} resolves Enhancement at Modified Roll `)) context = null;
+  }
+  return events;
+}
+
 /**
  * Collect only newly completed primaries between two snapshots of the same duel.
  *
@@ -109,7 +184,17 @@ export function getResolvedSpellVisuals(previous, next) {
       if (entry.visual.kind === 'golem-revert') golemForms[casterIndex] = false;
     }
     const spellId = castSpellId(entry, next.players[casterIndex]);
-    if (spellId) { commits[casterIndex] = { spellId, logId: entry.id, round: entry.round, golem: golemForms[casterIndex] }; continue; }
+    if (spellId) { commits[casterIndex] = { spellId, logId: entry.id, round: entry.round, golem: golemForms[casterIndex], modifiedTotal: null }; continue; }
+    const roll = commits[casterIndex]?.round === entry.round ? readRoll(entry, next.players[casterIndex]) : null;
+    if (roll) { commits[casterIndex].modifiedTotal = roll.total; continue; }
+    const play = fateCast(entry, next.players[casterIndex]);
+    if (play) {
+      const primary = commits.filter(commit => commit?.round === entry.round && Number.isSafeInteger(commit.modifiedTotal))
+        .sort((left, right) => right.logId - left.logId)[0];
+      const primaryIndex = commits.indexOf(primary);
+      if (primary && validFateRole(play, casterIndex, primaryIndex)) primary.modifiedTotal += play.modifier;
+      continue;
+    }
     if (entry.type !== 'resolve') continue;
     const resolvedSpellId = COMPLETIONS.get(entry.message), commit = commits[casterIndex];
     if (!resolvedSpellId || !commit || commit.spellId !== resolvedSpellId || commit.round !== entry.round) continue;
@@ -129,6 +214,7 @@ export function getResolvedSpellVisuals(previous, next) {
     events.push({
       key: `${entry.id}:${commit.logId}:${casterIndex}:${resolvedSpellId}`,
       logId: entry.id, commitLogId: commit.logId, cardId, casterIndex, spellId: resolvedSpellId, ...visual,
+      ...(Number.isSafeInteger(commit.modifiedTotal) ? { modifiedTotal: commit.modifiedTotal } : {}),
       ...(visual.element === 'Earth' ? { golem: commit.golem } : {}),
     });
   }
@@ -167,12 +253,15 @@ function enhancementResult(message, player) {
 /**
  * New primary completions, positive tiered Enhancement rewards and Aura starts.
  * The same initial/reconnect/new-duel baseline contract as the primary collector
- * applies. Legacy flat-reward logs, failed rolls, Fate and Aura duration logs do
- * not animate. Each Enhancement result must match a same-turn zero-Mana attempt.
+ * applies. Committed Fate slabs receive separate dice feedback before the next
+ * response or primary. Legacy flat rewards, failed rolls and Aura duration logs
+ * do not animate. Enhancement results require a same-turn zero-Mana attempt.
  */
 export function getResolvedBattleVisuals(previous, next) {
-  if (!isAppendOnlyUpdate(previous, next) || !newDiscards(previous, next)) return [];
-  const events = getResolvedSpellVisuals(previous, next), attempts = [null, null];
+  if (!isAppendOnlyUpdate(previous, next)) return [];
+  const added = newDiscards(previous, next);
+  if (!added) return [];
+  const events = [...getResolvedSpellVisuals(previous, next), ...getCastFateVisuals(previous, next, added)], attempts = [null, null];
   const afterLogId = previous.log.at(-1).id;
   for (const entry of next.log) {
     const effect = entry.visual;

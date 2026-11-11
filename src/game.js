@@ -1,4 +1,4 @@
-import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.js';
+import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_NAME_ALIASES } from './spells.js';
 import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.js';
 import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, GOLEM_SHIELD_THRESHOLD, GOLEM_END_TURN_DAMAGE, SPELL_RULES, applySpellEffect, applyDamageToPlayer, isShieldBypassActive, getEmberSpendRange } from './effects.js';
@@ -944,8 +944,8 @@ function refreshCurrentSpellCards(state) {
       }
       // Names are presentation metadata. Preserve the action history, paid
       // costs and resolution state while upgrading only exact old names.
-      if (Object.hasOwn(LEGACY_SPELL_NAMES, card?.spellId)
-        && card.name === LEGACY_SPELL_NAMES[card.spellId]
+      if (Object.hasOwn(SPELL_NAME_ALIASES, card?.spellId)
+        && SPELL_NAME_ALIASES[card.spellId].includes(card.name)
         && card.name !== SPELL_CATALOG[card.spellId].name) {
         card.name = SPELL_CATALOG[card.spellId].name;
         changed = true;
