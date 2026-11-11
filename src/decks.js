@@ -1,5 +1,6 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, MIN_DECK_SIZE, SPELLBOOK_VERSION } from './spells.js';
 import { SPELLBOOK_1, SPELLBOOK_2, ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbookSpells, isSpellbookId, isSpellInBook } from './spellbooks.js';
+import { isElement } from './elements.js';
 
 export { getDeckSpellbook } from './spellbooks.js';
 
@@ -8,7 +9,7 @@ export const MAX_DECK_FILE_BYTES = 65536;
 const isDeckRecord = value => value !== null && typeof value === 'object'
   && !Array.isArray(value)
   && [Object.prototype, null].includes(Object.getPrototypeOf(value));
-const isDeckElement = element => element === 'fire' || element === 'water';
+const isDeckElement = isElement;
 const deckSpellExists = spellId => typeof spellId === 'string' && Object.hasOwn(SPELL_CATALOG, spellId);
 const isSpellEligibleForDeck = (spell, element) => spell.category === 'Fate'
   || (spell.category === 'Elemental' && spell.element.toLowerCase() === element);
@@ -19,7 +20,7 @@ const deckShape = (element, entries, bookId) => ({ element, entries,
 });
 
 function requireDeckElement(element) {
-  if (!isDeckElement(element)) throw new TypeError('Choose Fire or Water as the deck’s main element.');
+  if (!isDeckElement(element)) throw new TypeError('Choose Fire, Water, or Earth as the deck’s main element.');
 }
 
 /** Inspect a playable deck or an editor draft without changing the input. */
@@ -29,7 +30,7 @@ function inspectDeck(deck, requirePlayable) {
   if (!isDeckRecord(deck)) return { valid: false, total, errors: ['A deck must be an object.'] };
   const bookId = getDeckSpellbook(deck);
   if (!isSpellbookId(bookId)) errors.push('Choose Spellbook 1 or Spellbook 2.');
-  if (!isDeckElement(deck.element)) errors.push('Choose Fire or Water as the deck’s main element.');
+  if (!isDeckElement(deck.element)) errors.push('Choose Fire, Water, or Earth as the deck’s main element.');
   if (!Array.isArray(deck.entries)) {
     return { valid: false, total, errors: [...errors, 'A deck must have a list of spell quantities.'] };
   }

@@ -1,6 +1,6 @@
 {
-  "id": "3b6eeef41a81",
-  "launch": "./wizzy-3b6eeef41a81.html",
+  "id": "06f48f3c3b01",
+  "launch": "./wizzy-06f48f3c3b01.html",
   "distribution": "game-only",
   "layout": "portrait-1024x1536",
   "screens": [
@@ -10,16 +10,17 @@
     "character",
     "friends",
     "decks",
+    "battle-setup",
     "online",
     "account",
     "battle"
   ],
-  "entry": "./src/main.75ab7625b7a3.js",
-  "stylesheet": "./src/style.cf4778a09a7e.css",
+  "entry": "./src/main.61e4760da94b.js",
+  "stylesheet": "./src/style.863b633c66dd.css",
   "stylesheets": [
-    "./src/style.cf4778a09a7e.css",
-    "./src/hub.4ca4ce5ba2a0.css",
-    "./src/multiplayer.d9e93cc388fa.css",
-    "./src/accounts.5e8dfb99140d.css"
+    "./src/style.863b633c66dd.css",
+    "./src/hub.dc66d63970a9.css",
+    "./src/multiplayer.f69c286d5230.css",
+    "./src/accounts.3744f9ec8b40.css"
   ]
 }

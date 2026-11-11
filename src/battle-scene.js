@@ -1,4 +1,6 @@
-import { ASSETS, WIZARD_SPRITES } from './assets.js';
+import { ASSETS, WIZARD_SPRITES, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from './assets.js';
+import { getPlayerSchool } from './elements.js';
+import { preloadAnimationSheet, paintAnimationFrame } from './animation-sprites.js';
 
 let atlasReady;
 
@@ -25,10 +27,10 @@ function preloadWizardAtlas() {
 }
 
 /** A persistent decorative arena; its host reattaches element after renders. */
-export function createBattleScene() {
+export function createBattleScene({ players = null } = {}) {
   const element = document.createElement('section');
   element.className = 'battle-scene';
-  element.setAttribute('aria-label', 'Fire and Water wizards in the forest ruins');
+  element.setAttribute('aria-label', 'Wizards in the forest ruins');
   element.innerHTML = '<div class="game-title"><span class="title-stars" aria-hidden="true">✦ ◆ ✦</span><h1>Wizzy</h1><p>Battle Simulator</p></div><span class="versus" aria-hidden="true">VS</span>';
 
   const view = element.ownerDocument.defaultView;
@@ -42,6 +44,9 @@ export function createBattleScene() {
     const wizard = document.createElement('div');
     wizard.className = `arena-wizard ${type}-wizard`;
     wizard.dataset.arenaWizard = type;
+    wizard.dataset.arenaSeat = String(index);
+    wizard.dataset.element = type;
+    wizard.dataset.form = 'wizard';
     wizard.setAttribute('aria-hidden', 'true');
     wizard.innerHTML = '<span class="mage-shadow"></span><span class="wizard-sprite"></span>';
     const sprite = wizard.querySelector('.wizard-sprite');
@@ -61,6 +66,9 @@ export function createBattleScene() {
   let frameRequest = 0;
   let timeline = null;
   let startPromise = null;
+  let idleFrameRequest = 0, idleStarted = null;
+  let visible = true;
+  let combatantKey = '';
   const imageReady = preloadWizardAtlas();
   const normalizeKey = key => key === null || key === undefined ? null : String(key);
   const reducedMotion = () => Boolean(view.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -70,11 +78,74 @@ export function createBattleScene() {
     entry.wizard.dataset.motion = motion;
     entry.wizard.dataset.direction = direction;
     entry.wizard.dataset.frame = String(frame);
-    entry.sprite.style.backgroundPosition = `${-frame * tileWidth}px ${-WIZARD_SPRITES.directions[entry.type][direction] * tileHeight}px`;
+    if (entry.type === 'earth') {
+      const sheet = entry.golemActive ? GOLEM_ANIMATION_SHEETS.poses
+        : motion === 'in' ? EARTH_ANIMATION_SHEETS.walk : EARTH_ANIMATION_SHEETS.idle;
+      const frames = entry.golemActive ? sheet.animations.idle : sheet.animations.earth;
+      const physicalFrame = frames[frame % frames.length];
+      paintAnimationFrame(entry.sprite, sheet, physicalFrame, anchor, { mirror: direction === 'left' });
+      return;
+    }
+    // The walking atlas includes both directions for each original wizard.
+    Object.assign(entry.sprite.style, {
+      display: 'block', width: `${tileWidth}px`, height: `${tileHeight}px`,
+      backgroundImage: `url("${ASSETS[WIZARD_SPRITES.asset]}")`,
+      backgroundSize: `${tileWidth * WIZARD_SPRITES.columns}px ${tileHeight * WIZARD_SPRITES.rows}px`,
+      backgroundPosition: `${-frame * tileWidth}px ${-WIZARD_SPRITES.directions[entry.type][direction] * tileHeight}px`,
+      transform: '', clipPath: '',
+    });
+    entry.sprite.hidden = false;
+  }
+  function stopIdleLoop() {
+    if (idleFrameRequest) view.cancelAnimationFrame(idleFrameRequest);
+    idleFrameRequest = 0;
+    idleStarted = null;
+  }
+  function startIdleLoop() {
+    if (!visible || reducedMotion() || idleFrameRequest || !wizards.some(entry => entry.type === 'earth')) return;
+    function tick(time) {
+      idleFrameRequest = 0;
+      if (!visible || timeline || element.dataset.motion !== 'idle' || reducedMotion()) return;
+      if (idleStarted === null) idleStarted = time;
+      for (const entry of wizards) if (entry.type === 'earth') {
+        const frame = Math.floor(Math.max(0, time-idleStarted) / 160);
+        pose(entry, entry.targetX, 450, entry.inward, frame, 'idle');
+      }
+      idleFrameRequest = view.requestAnimationFrame(tick);
+    }
+    idleFrameRequest = view.requestAnimationFrame(tick);
   }
   function idle() {
     for (const entry of wizards) pose(entry, entry.targetX, 450, entry.inward, idleFrame, 'idle');
     element.dataset.motion = 'idle';
+    startIdleLoop();
+  }
+  function setCombatants(players) {
+    if (!Array.isArray(players) || players.length !== 2) return false;
+    const next = players.map((player,index) => ({
+      type: getPlayerSchool(player) || (index === 0 ? 'fire' : 'water'),
+      playerId: String(player.id ?? `seat-${index+1}`),
+      golemActive: Boolean(player.golemActive),
+    }));
+    const key = JSON.stringify(next);
+    visible = true;
+    if (key === combatantKey) { startIdleLoop(); return false; }
+    combatantKey = key;
+    stopIdleLoop();
+    for (const [index, entry] of wizards.entries()) {
+      Object.assign(entry, next[index]);
+      entry.wizard.className = `arena-wizard ${entry.type}-wizard${entry.wizard.dataset.active === 'true' ? ' active-combatant' : ''}`;
+      Object.assign(entry.wizard.dataset, { arenaWizard: entry.type, arenaSeat: String(index),
+        element: entry.type, playerId: entry.playerId, form: entry.golemActive ? 'golem' : 'wizard' });
+      if (entry.type === 'earth') {
+        preloadAnimationSheet(EARTH_ANIMATION_SHEETS.walk);
+        preloadAnimationSheet(EARTH_ANIMATION_SHEETS.idle);
+        if (entry.golemActive) preloadAnimationSheet(GOLEM_ANIMATION_SHEETS.poses);
+      }
+    }
+    element.setAttribute('aria-label', `${next.map(entry => entry.type[0].toUpperCase()+entry.type.slice(1)).join(' and ')} wizards in the forest ruins`);
+    if (!timeline && element.dataset.motion !== 'prepared') idle();
+    return true;
   }
   function cancel() {
     generation += 1;
@@ -106,6 +177,8 @@ export function createBattleScene() {
     preparedKey = key;
     if (played.has(key)) return false;
     if (reducedMotion()) { played.add(key); idle(); return false; }
+    visible = true;
+    stopIdleLoop();
     for (const entry of wizards) pose(entry, entry.startX, 450, entry.inward, idleFrame, 'in');
     element.dataset.motion = 'prepared';
     return true;
@@ -119,7 +192,9 @@ export function createBattleScene() {
     played.add(key);
     runningKey = key;
     const requestGeneration = generation;
-    startPromise = imageReady.then(loaded => {
+    const sheets = wizards.filter(entry => entry.type === 'earth').map(() => preloadAnimationSheet(EARTH_ANIMATION_SHEETS.walk));
+    startPromise = Promise.all([imageReady, ...sheets]).then(loads => {
+      const loaded = loads.every(Boolean);
       if (requestGeneration !== generation || runningKey !== key) return false;
       if (!loaded || reducedMotion()) { finishEntrance(); return false; }
       timeline = { key, start: null };
@@ -143,9 +218,10 @@ export function createBattleScene() {
     });
     return startPromise;
   }
-  function hide() { finishEntrance(); }
+  function hide() { visible = false; finishEntrance(); stopIdleLoop(); }
 
   idle();
+  if (players) setCombatants(players);
   setActive(null);
-  return { element, setActive, prepareEntrance, startEntrance, finishEntrance, hide };
+  return { element, setActive, setCombatants, prepareEntrance, startEntrance, finishEntrance, hide };
 }

@@ -52,8 +52,8 @@ export function createDuelStorage(storage) {
   function load(bookId = SPELLBOOK_1) {
     const current = read(duelSaveKey(bookId), bookId);
     if (current) return current;
-    if (bookId === SPELLBOOK_1) for (const version of [13, 12, 11, 10]) {
-      const legacy = read(`wizzy.duel.v${version}`, bookId);
+    for (const version of [14, 13, 12, 11, 10]) {
+      const legacy = read(`wizzy.duel.v${version}${bookId===SPELLBOOK_1?'':`.${bookId}`}`, bookId);
       if (legacy) return legacy;
     }
     return createGame(Date.now(), Object.fromEntries(['fire', 'water'].map(element => [element, createStarterDeck(element, bookId)])));

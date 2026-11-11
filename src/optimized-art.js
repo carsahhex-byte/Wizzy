@@ -304,5 +304,190 @@ export const OPTIMIZED_ART = {
     "file": "pacificDolphinAnimation-ab0c236a41be.webp",
     "sourceSha256": "728538b595b71ca44846a952aff8c4dd3dd5f91032c12e377279aa54c0f297ff",
     "optimizedSha256": "ab0c236a41be47e93a933f0dda4b1324b62ec83c67e9c413ae3c415cb47759b0"
+  },
+  "earthWalk": {
+    "file": "earthWalk-7c2fd04f4f0e.webp",
+    "sourceSha256": "7cb4a83f37a7cc06a5aa1e806611125e2dd786a451c5a0bea3ee058bb45bdb13",
+    "optimizedSha256": "7c2fd04f4f0e3dce1886a7de448686a5e26daec9aaa20d80da5272f19e10a9b8"
+  },
+  "earthIdle": {
+    "file": "earthIdle-504785e98756.webp",
+    "sourceSha256": "e729614bc87188a2ce069d4a74ae1b9f103e00787d2c46d6706b83a811bd6660",
+    "optimizedSha256": "504785e9875618065780feb132aab2506736fabb19c3915f4b593962e0b777c3"
+  },
+  "earthBasicAttack": {
+    "file": "earthBasicAttack-47cefef608dd.webp",
+    "sourceSha256": "53248a2ab535ea66a5c3266c6534c515431a214b48be6857249b9863d4fdb21d",
+    "optimizedSha256": "47cefef608ddb3c9dd574e27f689d8e8f7cd636912af26f2a532259eeab6f09f"
+  },
+  "earthSimpleCast": {
+    "file": "earthSimpleCast-4995a9acdb01.webp",
+    "sourceSha256": "d14b77c3fe16baa35cf89d4342109da000a74f5cfb8e29b4e821c42bf7ad7839",
+    "optimizedSha256": "4995a9acdb018e9ab55226e20077fc74812b6b60a586ec9d103e0f4b4ce70cfc"
+  },
+  "earthLargeCast": {
+    "file": "earthLargeCast-d8072c92cafd.webp",
+    "sourceSha256": "965a6521f3f285e42b3ed36fa1672bc95b8c28acf67a43cd2823fde25af5a6ea",
+    "optimizedSha256": "d8072c92cafd48805a3615ebf46ddf000ae4e10bdd54a9ef916832d328c2f3d1"
+  },
+  "earthShield": {
+    "file": "earthShield-09fdb3fd7f8d.webp",
+    "sourceSha256": "1ac2829eb9834719faac96923f8534c5a64a0ffbc4aac653c86f5dd42ca94d67",
+    "optimizedSha256": "09fdb3fd7f8d13fe26b2acf826c245a42a00fd61ac7a90ef0524126ee0969f30"
+  },
+  "earthPowerUp": {
+    "file": "earthPowerUp-cf471644e5d9.webp",
+    "sourceSha256": "e81ddbdf6e85f3bfeb3129f4eb6f8b9d7cc6c32d032177d400b8484b0885abd0",
+    "optimizedSha256": "cf471644e5d905e6140f0bb14af1f6514a1147a1424d9953abcdbbab63a8cc25"
+  },
+  "earthEnhancement": {
+    "file": "earthEnhancement-a3c25d79da5a.webp",
+    "sourceSha256": "e31f8519460f3e9a67736c88cee2af94e40e57befde990abad52103b7c04af12",
+    "optimizedSha256": "a3c25d79da5a39a6e97dc419d0849e7b2ff4628cee8099f226944b813409f3d1"
+  },
+  "earthBasicProjectiles": {
+    "file": "earthBasicProjectiles-68d986f8060a.webp",
+    "sourceSha256": "3bfed5c85ac52f9bfac51ac0453c5e637899f7bedf611ec8a7db5d4c6085cb30",
+    "optimizedSha256": "68d986f8060a6de7c8933fba93e776f95c32f5e2395c3fd92e8035d04debd20a"
+  },
+  "earthLargeProjectiles": {
+    "file": "earthLargeProjectiles-ba511529cbca.webp",
+    "sourceSha256": "d674b272f4cf6ff158b6e9b5d53f3078dbd84304718a3c503df4aead6e403abc",
+    "optimizedSha256": "ba511529cbcae46e70d4a506b3239e0c5d3a7537e57baaf61125cc74217560d2"
+  },
+  "earthAura": {
+    "file": "earthAura-7faf8a27acde.webp",
+    "sourceSha256": "d1b0e2bcaf61c76d2b97f260fd82cba86d9408ecbe9c5eaf37e74eb460f7b5b9",
+    "optimizedSha256": "7faf8a27acdee5b5a2ce833a7427e0f6334b0ca6867c2ce7bd39737bed327439"
+  },
+  "golemPoses": {
+    "file": "golemPoses-7ce14e9ca0a5.webp",
+    "sourceSha256": "a977058209708e486ed6e66a126e2bb597fb9f151499bb239d8b25f141ba493a",
+    "optimizedSha256": "7ce14e9ca0a5913b9182effd36d711635f75a07c71f62c5260069221efe39626"
+  },
+  "golemTransform": {
+    "file": "golemTransform-00b3845cc683.webp",
+    "sourceSha256": "aa70c44a8b1886f0ecce8b27e2f2340df5c47eb1913b34bbbb81511ee6b183ba",
+    "optimizedSha256": "00b3845cc683018a474d2a9de2b0460f37f847d4237108233b0f11fa9580fd6a"
+  },
+  "earthIcons": {
+    "file": "earthIcons-09baf0058060.webp",
+    "sourceSha256": "0f98510ed238226f35a291f75d9e4a0e3ca1f0c21bd92ce95fdd83d8060d2ccf",
+    "optimizedSha256": "09baf00580601f86c5c113f608c0fb28099b7ccb4e3d4b7d6d708130cb2897bd"
+  },
+  "earthFrame": {
+    "file": "earthFrame-dd609a5498de.webp",
+    "sourceSha256": "b2a05694c9897d3eeb39f6c955c5b1558230c23f58e1447dcfbb3a1231ca3406",
+    "optimizedSha256": "dd609a5498de4dcc397f4f358e34f8d99f9519c2e902d5038bc7459cac443035"
+  },
+  "enhanceEarth": {
+    "file": "enhanceEarth-eedafcfb4399.webp",
+    "sourceSha256": "547feea3844ccf1c3dcbfb445a3e663550f37d4e1729aa018f9a9771c1d044e0",
+    "optimizedSha256": "eedafcfb4399c53987abb3b8db02045dd2cb01c9cda5bd16a276893c30511958"
+  },
+  "earthHeavyBoulder": {
+    "file": "earthHeavyBoulder-8b35175db75a.webp",
+    "sourceSha256": "3c98a444f92595ac236e40e5f78dc66944f5d8586087731589d5ae9845616181",
+    "optimizedSha256": "8b35175db75a8933c266cd89ab3024caa5218333e9d0e9e4861b0f7cc9bdccb7"
+  },
+  "earthMage": {
+    "file": "earthMage-504785e98756.webp",
+    "sourceSha256": "e729614bc87188a2ce069d4a74ae1b9f103e00787d2c46d6706b83a811bd6660",
+    "optimizedSha256": "504785e9875618065780feb132aab2506736fabb19c3915f4b593962e0b777c3"
+  },
+  "iconEarth": {
+    "file": "iconEarth-09baf0058060.webp",
+    "sourceSha256": "0f98510ed238226f35a291f75d9e4a0e3ca1f0c21bd92ce95fdd83d8060d2ccf",
+    "optimizedSha256": "09baf00580601f86c5c113f608c0fb28099b7ccb4e3d4b7d6d708130cb2897bd"
+  },
+  "iconEarthenShield": {
+    "file": "iconEarthenShield-09baf0058060.webp",
+    "sourceSha256": "0f98510ed238226f35a291f75d9e4a0e3ca1f0c21bd92ce95fdd83d8060d2ccf",
+    "optimizedSha256": "09baf00580601f86c5c113f608c0fb28099b7ccb4e3d4b7d6d708130cb2897bd"
+  },
+  "iconGolemHead": {
+    "file": "iconGolemHead-09baf0058060.webp",
+    "sourceSha256": "0f98510ed238226f35a291f75d9e4a0e3ca1f0c21bd92ce95fdd83d8060d2ccf",
+    "optimizedSha256": "09baf00580601f86c5c113f608c0fb28099b7ccb4e3d4b7d6d708130cb2897bd"
+  },
+  "earthCard": {
+    "file": "earthCard-3770738d370d.webp",
+    "sourceSha256": "f8940d547d8b1739c983ec77e43b800257580e766e58f781cb2dc3f5e74a4fed",
+    "optimizedSha256": "3770738d370dea260afae38b78cca88883ce69e08b44ed87ebed30369474ab06"
+  },
+  "heatboxArt": {
+    "file": "heatboxArt-13756388a188.webp",
+    "sourceSha256": "46c22d2a168df4699e965e42615de8bc04b84e6bef162f81fb90e775179eac38",
+    "optimizedSha256": "13756388a188756219dde857ce88f9cec6bb0f4424a8ca467cba9496443918ad"
+  },
+  "blazeArt": {
+    "file": "blazeArt-e3d97a10d321.webp",
+    "sourceSha256": "6123d3fe659118cbea16d0b26d659bf648ae3cc96ac70d4d92800e12a43aec3a",
+    "optimizedSha256": "e3d97a10d321c36f6db91e58277b7354fb24d5a2b6fc0076ad2176edff7b82d1"
+  },
+  "charredBladeArt": {
+    "file": "charredBladeArt-c86ff1d5920d.webp",
+    "sourceSha256": "d738c8fd9afaffdf13dacd98b841172166b3c07f1bda5ae4cb9a0a27b711b32a",
+    "optimizedSha256": "c86ff1d5920d2fee2ccb796cb72cf3d49a4c18268e78e3a1ab8921e1859df819"
+  },
+  "xineophReimaginedArt": {
+    "file": "xineophReimaginedArt-2663ec260373.webp",
+    "sourceSha256": "dbc4cbf631ef53322eeb62ee68a9523095896254a1c9d5aa5eda4a49c20afcd8",
+    "optimizedSha256": "2663ec2603733f63e59f9c978ad1c1ec7737fe7143eaa0a67eaf54273ce79cb3"
+  },
+  "sunsetterArt": {
+    "file": "sunsetterArt-33a7d1160e22.webp",
+    "sourceSha256": "89e86d2b5dea5737d4f01c7efb471e31869793f4735b7885e1d678ff91b008a4",
+    "optimizedSha256": "33a7d1160e22eea1e940ad5f8dca8343cedb9b8481cd3e3974997f7e3ff17dd7"
+  },
+  "seaBoltArt": {
+    "file": "seaBoltArt-e15da2ee458f.webp",
+    "sourceSha256": "1d0d6ae72b37c9314bce16068daa881d02f26481dbbda16fd9d3f2c727984a6a",
+    "optimizedSha256": "e15da2ee458f69d3ab2bcaa21a7f1f8238cc6b57d36dccdb4e65a9f6eefd1f84"
+  },
+  "swellArt": {
+    "file": "swellArt-62f29f16f492.webp",
+    "sourceSha256": "e4eb8cd0eff678fd22377bf03b9c5b99d1e262e6d179920a077f793d01c0644c",
+    "optimizedSha256": "62f29f16f492a8ccde7979f2f36fda489f8cef79ea18e270266516a3dd32bf98"
+  },
+  "coralCrashArt": {
+    "file": "coralCrashArt-ff567d3e9f4d.webp",
+    "sourceSha256": "3eff65b1b60694111eae1bc723da2a24bf0bf645d1af41df36ae9cf405e74245",
+    "optimizedSha256": "ff567d3e9f4de2fad9d9866f99839192b726cb37f875ad32d4ab604304fd75ed"
+  },
+  "pacificArt": {
+    "file": "pacificArt-365706627ece.webp",
+    "sourceSha256": "e24f92ef80ab7e93397a819279453380148156ddc0ce0ee4ebc5eb372b36f40d",
+    "optimizedSha256": "365706627ece585e54068cb13478702ff897aaaaf6ea6e5b9b21b1b3187765d1"
+  },
+  "poseidonRiftArt": {
+    "file": "poseidonRiftArt-e66bf89000f7.webp",
+    "sourceSha256": "213c1a6d3ba787093ecd948c6e4981176a7d547169930353b703777a37ad0be9",
+    "optimizedSha256": "e66bf89000f7d7a7745905716e4463df634c7082c5e38e9f5fce2f1ff4b0698c"
+  },
+  "earth1Art": {
+    "file": "earth1Art-f884c01af66b.webp",
+    "sourceSha256": "72b496e7dc42415cbf6a4174d77dfe261774dd1c60de965d61edf5c4ea9b15a9",
+    "optimizedSha256": "f884c01af66bdf990f5e6e92b072493a7ec51ba7a376b2d0565f0c525f94963f"
+  },
+  "earth2Art": {
+    "file": "earth2Art-123ee5e08fa1.webp",
+    "sourceSha256": "0716435baf8ca55d6a0a3f47c47f9532cc64794fae25dce2289062372f97d5b4",
+    "optimizedSha256": "123ee5e08fa13ac3a95e5fb9915130118783bce76c0984e2c372dcc3f9f8cd67"
+  },
+  "earth3Art": {
+    "file": "earth3Art-576f6c72a152.webp",
+    "sourceSha256": "838b21da49735596d6513c4ea0c3a493da094a6e0b8fdb7aeb668e09d97030b1",
+    "optimizedSha256": "576f6c72a1521e759e92ecc3796a35c0f36bb8c51f698f57c5074521a96ff11c"
+  },
+  "earth4Art": {
+    "file": "earth4Art-604fe46f8b3f.webp",
+    "sourceSha256": "0bfc237b0b6b6e754c5b915a44d971123df5dd574757de4abcc16a305d8b67c6",
+    "optimizedSha256": "604fe46f8b3fb7cf35b56facbe33d41783a4a60396eeb89a37de2f025e1342a5"
+  },
+  "earth5Art": {
+    "file": "earth5Art-ff9658367f44.webp",
+    "sourceSha256": "ff8083a2c0e13b444e6378ec421baab7d09b35471ab4a275fa762f4a44a40092",
+    "optimizedSha256": "ff9658367f444878bd5b12a33527bdc1c6788fa841e84be5a1ecd6a272d71ae1"
   }
 };

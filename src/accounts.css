@@ -38,10 +38,11 @@
 .wz-account-eyebrow { margin: 16px 0 8px; color: #b6a6df; font: 700 7px 'Courier New',monospace; letter-spacing: 1.6px; }
 .wz-account-identity h2 { margin: 0; color: #f4dfb5; font: 900 29px Georgia,serif; overflow-wrap: anywhere; }
 .wz-account-identity > p:not(.wz-account-eyebrow) { color: #bdc8dc; font-size: 12px; line-height: 1.7; }
-.wz-account-deck-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 24px 0 18px; }
+.wz-account-deck-pair { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 24px 0 18px; }
 .wz-account-deck-pair > div { display: flex; flex-direction: column; gap: 6px; padding: 16px 8px; border: 2px solid #6c7798; background: #1d2742; box-shadow: inset 2px 2px #35415d,2px 3px #0d1429; }
 .wz-account-deck-pair span { font-size: 27px; color: #ffbb88; }
-.wz-account-deck-pair > div:last-child span { color: #a7e7ed; }
+.wz-account-deck-pair .wz-account-deck-water span { color: #a7e7ed; }
+.wz-account-deck-pair .wz-account-deck-earth span { color: #c6d994; }
 .wz-account-deck-pair strong { color: #eee1c3; font-size: 13px; }
 .wz-account-deck-pair small { color: #a5b8ce; font-size: 10px; }
 .wz-account-identity > .wz-account-copy { font-size: 11px; }

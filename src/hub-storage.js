@@ -1,6 +1,7 @@
 import { SPELLBOOK_VERSION } from './spells.js';
 import { createStarterDeck, validateDeckSlot, normalizeDeckSlot, setDeckQuantity, migrateToActiveDeck } from './decks.js';
 import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook } from './spellbooks.js';
+import { ELEMENTS } from './elements.js';
 
 // Build hashes, page paths and spellbook labels must never change where a
 // compatible deck is saved. The payload still records its originating book.
@@ -14,9 +15,14 @@ const ACTIVE_CATALOG_VERSION = 'named-spellbook-v1';
 // discover, select, or rewrite the named collection's recovery records.
 export const GUEST_NAMED_SAVE_KEY = 'wizzy.named-spellbook.v1.guest';
 const namedAccountSaveKey = id => `wizzy.named-spellbook.v1.account.${encodeURIComponent(id)}`;
+// Named-collection clients know the records above and can rewrite them without
+// Earth. Keep Earth slots in a separate recovery record they cannot discover.
+export const GUEST_EARTH_SAVE_KEY = 'wizzy.earth-spellbook.v1.guest';
+const earthAccountSaveKey = id => `wizzy.earth-spellbook.v1.account.${encodeURIComponent(id)}`;
 const accountBook2SaveKey = id => `wizzy.hub.account.spellbook2.v2.${encodeURIComponent(id)}`;
 const accountSaveKey = id => `wizzy.hub.account.v2.${encodeURIComponent(id)}`;
-const elements = ['fire', 'water'];
+const elements = ELEMENTS;
+const isAccountKey = key => key.startsWith('wizzy.hub.account.') || key.startsWith('wizzy.named-spellbook.v1.account.') || key.startsWith('wizzy.earth-spellbook.v1.account.');
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const copy = value => structuredClone(value);
 
@@ -47,8 +53,8 @@ function candidateFrom(value, key, priority) {
   if (!record(value) || (value.version !== undefined && ![1, 2].includes(value.version))) return null;
   if (value.accountId !== undefined && value.accountId !== null && (typeof value.accountId !== 'string' || !value.accountId || value.accountId.length > 128)) return null;
   const accountId = value.accountId || null;
-  if ((key.startsWith('wizzy.hub.guest.') || key === GUEST_NAMED_SAVE_KEY) && accountId) return null;
-  const candidate = { key, priority, accountId, book2Only: key === GUEST_BOOK2_SAVE_KEY || key.startsWith('wizzy.hub.account.spellbook2.v2.') || key === GUEST_NAMED_SAVE_KEY || key.startsWith('wizzy.named-spellbook.v1.account.'),
+  if ((key.startsWith('wizzy.hub.guest.') || key === GUEST_NAMED_SAVE_KEY || key === GUEST_EARTH_SAVE_KEY) && accountId) return null;
+  const candidate = { key, priority, accountId, book2Only: key === GUEST_BOOK2_SAVE_KEY || key.startsWith('wizzy.hub.account.spellbook2.v2.') || key === GUEST_NAMED_SAVE_KEY || key.startsWith('wizzy.named-spellbook.v1.account.') || key === GUEST_EARTH_SAVE_KEY || key.startsWith('wizzy.earth-spellbook.v1.account.'),
     activeCatalogVersion: value.activeCatalogVersion, accountUsername: typeof value.accountUsername === 'string' ? value.accountUsername.slice(0, 24) : '',
     savedAt: Number.isSafeInteger(value.savedAt) && value.savedAt >= 0 ? value.savedAt : 0,
     profile: profileFrom(value.profile), savedDecks: {}, drafts: {}, cloudDecks: {},
@@ -145,11 +151,11 @@ export function createHubStorage(storage, { now = Date.now } = {}) {
     catch { return null; }
   }
   function keys() {
-    const result = new Set([HUB_SAVE_KEY, GUEST_SAVE_KEY, GUEST_BOOK2_SAVE_KEY, GUEST_NAMED_SAVE_KEY, `wizzy.hub.${SPELLBOOK_VERSION}`, `wizzy.hub.guest.${SPELLBOOK_VERSION}`, 'wizzy.hub.v1']);
+    const result = new Set([HUB_SAVE_KEY, GUEST_SAVE_KEY, GUEST_BOOK2_SAVE_KEY, GUEST_NAMED_SAVE_KEY, GUEST_EARTH_SAVE_KEY, `wizzy.hub.${SPELLBOOK_VERSION}`, `wizzy.hub.guest.${SPELLBOOK_VERSION}`, 'wizzy.hub.v1']);
     try {
       for (let index = 0; index < (storage?.length || 0); index += 1) {
         const key = storage.key(index);
-        if (typeof key === 'string' && (key.startsWith('wizzy.hub.') || key.startsWith('wizzy.named-spellbook.v1.account.'))) result.add(key);
+        if (typeof key === 'string' && (key.startsWith('wizzy.hub.') || isAccountKey(key))) result.add(key);
       }
     } catch { available = false; }
     return [...result];
@@ -159,14 +165,14 @@ export function createHubStorage(storage, { now = Date.now } = {}) {
       const candidate = read(key, index);
       // Old account caches had no owner in their payload. They are only read
       // when explicitly restoring that account, never mistaken for a guest.
-      return (key.startsWith('wizzy.hub.account.') || key.startsWith('wizzy.named-spellbook.v1.account.')) && !candidate?.accountId ? null : candidate;
+      return isAccountKey(key) && !candidate?.accountId ? null : candidate;
     }).filter(Boolean);
   }
   function readGuest() { return mergeCandidates(candidates().filter(candidate => !candidate.accountId)); }
   function accountCandidates(id) {
     if (typeof id !== 'string' || !id) return [];
     const stable = accountSaveKey(id);
-    const matches = keys().filter(key => key === stable || key === accountBook2SaveKey(id) || key === namedAccountSaveKey(id) || (key.startsWith('wizzy.hub.account.') && key.endsWith(`.${id}`)));
+    const matches = keys().filter(key => key === stable || key === accountBook2SaveKey(id) || key === namedAccountSaveKey(id) || key === earthAccountSaveKey(id) || (key.startsWith('wizzy.hub.account.') && key.endsWith(`.${id}`)));
     return matches.map((key, index) => read(key, index)).filter(candidate => candidate && (!candidate.accountId || candidate.accountId === id));
   }
   function readAccount(id) { return mergeCandidates(accountCandidates(id), id); }
@@ -185,6 +191,16 @@ export function createHubStorage(storage, { now = Date.now } = {}) {
     return { state, guestSnapshot, available, recovered };
   }
   function envelope(value, accountId = null) {
+    // An old complete Fire/Water payload is a valid migration input. Omission
+    // creates an empty Earth slot; a supplied invalid Earth slot is rejected.
+    if (!record(value)) return null;
+    try { value = copy(value); } catch { return null; }
+    for (const [book, bookId] of [[value, SPELLBOOK_1], [value?.spellbook2, SPELLBOOK_2]]) {
+      if (!record(book)) continue;
+      for (const field of ['savedDecks', 'drafts', 'cloudDecks']) {
+        if (record(book[field]) && book[field].earth === undefined) book[field].earth = createStarterDeck('earth', bookId);
+      }
+    }
     if (value?.spellbook2 !== undefined && !elements.every(element => ['savedDecks', 'drafts'].every(field => {
       const deck = value.spellbook2?.[field]?.[element];
       return deck?.element === element && getDeckSpellbook(deck) === SPELLBOOK_2 && validateDeckSlot(deck);
@@ -212,6 +228,11 @@ export function createHubStorage(storage, { now = Date.now } = {}) {
       { version, spellbook, activeCatalogVersion, savedAt, accountId, accountUsername, selectedSpellbookId, spellbook2 });
     write(accountId ? namedAccountSaveKey(accountId) : GUEST_NAMED_SAVE_KEY,
       { version, spellbook, activeMigrationVersion: 1, activeCatalogVersion, savedAt, accountId, accountUsername, selectedSpellbookId, spellbook2 });
+    const earthSlots = book => Object.fromEntries(['savedDecks', 'drafts', 'cloudDecks'].map(field =>
+      [field, book[field]?.earth ? { earth: book[field].earth } : null]));
+    write(accountId ? earthAccountSaveKey(accountId) : GUEST_EARTH_SAVE_KEY,
+      { version, spellbook, activeMigrationVersion: 1, activeCatalogVersion, savedAt, accountId, accountUsername,
+        ...earthSlots(packed), spellbook2: earthSlots(spellbook2) });
   }
   function cacheGuest(value) { const packed = envelope(value); writeBook2Backup(packed); const result = write(GUEST_SAVE_KEY, packed); if (!result) available = false; return result; }
   function cacheAccount(id, value) { const packed = envelope(value, id); writeBook2Backup(packed); return write(accountSaveKey(id), packed); }

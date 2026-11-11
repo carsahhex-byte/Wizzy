@@ -1,12 +1,18 @@
 import { SPELLBOOK_VERSION } from './spells.js';
 import { SAVE_VERSION, COMBAT_RULES_VERSION } from './game.js';
 import { SPELLBOOK_1, ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook, isSpellbookId } from './spellbooks.js';
+import { ELEMENTS, ELEMENT_INFO } from './elements.js';
 
 const ONLINE_STORAGE_KEY = 'wizzy.multiplayer.v2';
 const ONLINE_STATUSES = new Set(['waiting', 'playing', 'finished']);
 const onlineEscape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const onlineClone = value => structuredClone(value);
-const onlineElementName = element => element === 'water' ? 'Water' : 'Fire';
+const onlineElementName = element => ELEMENT_INFO[element]?.name || 'Choose any school';
+const onlineElementIcon = element => ({ fire: '♨', water: '≈', earth: '◆' })[element] || '✦';
+const combatUpdateMessage = 'Update Wizzy and restart the game server so both use the same Fire, Water and Earth battle rules.';
+function requireOnlineVersions(view) {
+  if (view?.spellbookVersion !== SPELLBOOK_VERSION || view.combatRulesVersion !== COMBAT_RULES_VERSION || (view.state && view.state.version !== SAVE_VERSION)) throw new Error(combatUpdateMessage);
+}
 
 function normalizeOnlineEndpoint(value) {
   const input = String(value || '').trim();
@@ -32,7 +38,7 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
   let entered = false;
   let endpoint = '';
   let name = String(getProfile()?.name || 'Wizzy').slice(0, 24);
-  let element = getProfile()?.element === 'water' ? 'water' : 'fire';
+  let element = ELEMENTS.includes(getProfile()?.element) ? getProfile().element : 'fire';
   let roomInput = '';
   let notice = '';
   let noticeKind = 'info';
@@ -63,7 +69,7 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
       if (typeof saved.endpoint === 'string' && saved.endpoint.trim()) endpoint = normalizeOnlineEndpoint(saved.endpoint);
       const previous = saved.session;
       if (previous && /^[A-Z0-9]{8}$/.test(previous.code) && typeof previous.token === 'string' && previous.token.length >= 24 && previous.token.length <= 256
-        && [0, 1].includes(previous.playerIndex) && ['fire', 'water'].includes(previous.element) && ONLINE_STATUSES.has(previous.status)
+        && [0, 1].includes(previous.playerIndex) && ELEMENTS.includes(previous.element) && ONLINE_STATUSES.has(previous.status)
         && Number.isSafeInteger(previous.revision) && previous.revision >= 0 && endpoint) {
         const spellbookId = previous.spellbookId === undefined ? SPELLBOOK_1 : previous.spellbookId;
         if (spellbookId === ACTIVE_SPELLBOOK_ID) session = { code: previous.code, token: previous.token, playerIndex: previous.playerIndex, element: previous.element, revision: previous.revision, status: previous.status, spellbookId, state: null, endpoint, players: [] };
@@ -120,13 +126,13 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
     } finally { clearTimeout(timeout); }
   }
   function validView(view) {
-    return view && /^[A-Z0-9]{8}$/.test(view.code) && [0, 1].includes(view.playerIndex) && ['fire', 'water'].includes(view.element)
+    return view && /^[A-Z0-9]{8}$/.test(view.code) && [0, 1].includes(view.playerIndex) && ELEMENTS.includes(view.element)
       && isSpellbookId(view.spellbookId === undefined ? SPELLBOOK_1 : view.spellbookId)
       && Number.isSafeInteger(view.revision) && view.revision >= 0 && ONLINE_STATUSES.has(view.status)
       && (view.status === 'waiting' || (view.state && Array.isArray(view.state.players) && view.state.players.length === 2));
   }
   function applyOnlineView(view, { first = false, deliver = true } = {}) {
-    if(view?.spellbookVersion!==SPELLBOOK_VERSION||view.combatRulesVersion!==COMBAT_RULES_VERSION||(view.state&&view.state.version!==SAVE_VERSION))throw new Error('Update and restart the game server for the new Ember consumption and Fire spell rules before starting or joining a room.');
+    requireOnlineVersions(view);
     if (!validView(view)) throw new Error('The server sent an incomplete battle response.');
     const spellbookId = view.spellbookId === undefined ? SPELLBOOK_1 : view.spellbookId;
     if (spellbookId !== ACTIVE_SPELLBOOK_ID) throw new Error('This room uses an archived collection. Start a new room with your current deck.');
@@ -203,7 +209,7 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
       const accountToken = await prepareAccountRoom();
       if (generation !== currentGeneration) return;
       const deck = getSavedDecks(spellbookId)[element];
-      const view = await requestOnline(endpoint, '/api/rooms', { method: 'POST', token: accountToken, body: { name: cleanName(), element, deck, spellbookId } });
+      const view = await requestOnline(endpoint, '/api/rooms', { method: 'POST', token: accountToken, body: { name: cleanName(), element, deck, spellbookId, combatRulesVersion: COMBAT_RULES_VERSION } });
       if (generation !== currentGeneration) return;
       entered = false;
       applyOnlineView(view, { first: true });
@@ -223,17 +229,17 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
       if (!/^[A-Z0-9]{8}$/.test(code)) throw new Error('Enter the eight-character room code shared by your friend.');
       roomInput = code;
       const info = await requestOnline(endpoint, `/api/rooms/${code}/info`);
+      requireOnlineVersions(info);
+      if (info.status !== 'waiting') throw new Error('This room is no longer available to join.');
       const spellbookId = info.spellbookId === undefined ? SPELLBOOK_1 : info.spellbookId;
       getSpellbook(spellbookId);
       if (spellbookId !== ACTIVE_SPELLBOOK_ID) throw new Error('This room uses an archived collection. Start a new room with your current deck.');
       if (spellbookId !== getSelectedSpellbookId()) throw new Error(`This room uses ${getSpellbook(spellbookId).label}. Choose it in the Deck builder before joining.`);
-      const assignedElement = info.joiningElement;
-      if (!['fire', 'water'].includes(assignedElement)) throw new Error('This room is no longer available to join.');
-      const view = await requestOnline(endpoint, `/api/rooms/${code}/join`, { method: 'POST', token: accountToken, body: { name: cleanName(), deck: getSavedDecks(spellbookId)[assignedElement], spellbookId } });
+      const view = await requestOnline(endpoint, `/api/rooms/${code}/join`, { method: 'POST', token: accountToken, body: { name: cleanName(), element, deck: getSavedDecks(spellbookId)[element], spellbookId, combatRulesVersion: COMBAT_RULES_VERSION } });
       if (generation !== currentGeneration) return;
       entered = false;
       applyOnlineView(view, { first: true });
-      if (visible) reportOnline(`Joined as the ${onlineElementName(assignedElement)} wizard.`);
+      if (visible) reportOnline(`Joined as the ${onlineElementName(element)} wizard.`);
     } catch (error) { if (generation === currentGeneration) reportOnline(error.message, 'error'); }
     finally { busy = false; if (visible) renderOnline(); if (session) schedulePoll(); }
   }
@@ -244,12 +250,12 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
     actionBusy = true; stopPolling();
     const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     try {
-      const view = await requestOnline(current.endpoint, `/api/rooms/${current.code}/actions`, { method: 'POST', token: current.token, body: { type, payload, revision: current.revision, requestId } });
+      const view = await requestOnline(current.endpoint, `/api/rooms/${current.code}/actions`, { method: 'POST', token: current.token, body: { type, payload, revision: current.revision, requestId, combatRulesVersion: COMBAT_RULES_VERSION } });
       if (generation !== currentGeneration) return null;
       return applyOnlineView(view);
     } catch (error) {
       if (generation !== currentGeneration) return null;
-      if (error.status === 409) {
+      if (error.status === 409 && error.code !== 'combat_rules_mismatch') {
         if (error.view) applyOnlineView(error.view);
         reportOnline('The battle changed before that move arrived. Your screen is updated; choose your move again.', 'info');
       } else if ([401, 404].includes(error.status)) expireOnline(error.status === 404 ? 'This room has expired or the server restarted.' : 'Your player session is no longer valid.');
@@ -272,9 +278,10 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
       const account = getAccountSession();
       if (account?.endpoint) {
         endpoint = normalizeOnlineEndpoint(account.endpoint);
-        name = String(account.account?.profile?.name || getProfile()?.name || 'Wizzy').slice(0, 24);
-        element = account.account?.profile?.element === 'water' ? 'water' : 'fire';
       }
+      const profile = account?.account?.profile || getProfile();
+      name = String(profile?.name || 'Wizzy').slice(0, 24);
+      element = ELEMENTS.includes(profile?.element) ? profile.element : 'fire';
     }
     visible = true; root.hidden = false; renderOnline();
     root.querySelector('h1')?.focus({ preventScroll: true });
@@ -295,8 +302,10 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
     const position = document.activeElement?.tagName === 'INPUT' ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
     const active = Boolean(session);
     const bookLabel = getSpellbook(session?.spellbookId || getSelectedSpellbookId()).label;
+    const opponentElement = session?.players?.[1 - session?.playerIndex]?.element;
+    const elementChoices = label => `<div class="wz-online-elements" role="group" aria-label="${label}">${ELEMENTS.map(id => `<button type="button" class="wz-online-element wz-online-${id}" data-online-action="element" data-online-element="${id}" aria-pressed="${element === id}" ${busy ? 'disabled' : ''}>${onlineElementIcon(id)} ${onlineElementName(id)}</button>`).join('')}</div>`;
     const phase = session?.status === 'waiting' ? 'WAITING FOR A WIZARD' : session?.status === 'finished' ? 'DUEL COMPLETE' : 'CONNECTED BATTLE';
-    root.innerHTML = `<section class="wz-online-phone"><header class="wz-online-header"><button type="button" data-online-action="back" aria-label="Back to Seattle map">‹</button><div><p>${onlineEscape(bookLabel)} · TWO SCREENS</p><h1 tabindex="-1">Battle Portal</h1></div><span class="wz-online-sigil" aria-hidden="true">✦</span></header><div class="wz-online-scroll">${active ? `<section class="wz-online-room"><p class="wz-online-eyebrow">${phase}</p><h2>${session.status === 'waiting' ? 'Your room is ready.' : 'Your duel is saved.'}</h2><p>Share this code with your friend:</p><code class="wz-online-code" aria-label="Room code">${onlineEscape(session.code)}</code><button class="wz-online-secondary" data-online-action="copy">Copy room code</button><div class="wz-online-seats"><span class="wz-online-seat wz-online-${session.element}"><i aria-hidden="true">${session.element === 'fire' ? '♨' : '≈'}</i><strong>${onlineElementName(session.element)}</strong><small>Your saved deck</small></span><span class="wz-online-versus">VS</span><span class="wz-online-seat wz-online-${session.element === 'fire' ? 'water' : 'fire'}"><i aria-hidden="true">${session.element === 'fire' ? '≈' : '♨'}</i><strong>${onlineElementName(session.element === 'fire' ? 'water' : 'fire')}</strong><small>${session.status === 'waiting' ? 'Waiting for friend' : 'Friend connected'}</small></span></div><p class="wz-online-room-hint">${session.status === 'waiting' ? 'The other phone opens Battle Portal, enters the same server address, then joins with this code. The battle begins when both players are ready.' : 'Resume on this phone to see your own hand and continue the battle.'}</p>${session.state ? '<button class="wz-online-primary" data-online-action="resume">Resume battle →</button>' : '<button class="wz-online-secondary" data-online-action="refresh">Check connection</button>'}<button class="wz-online-plain" data-online-action="leave">Leave this session</button><p class="wz-online-small">Room progress is kept while this server is running. Keep this tab or return on the same browser to reconnect.</p></section>` : `<section class="wz-online-intro"><span aria-hidden="true">✧</span><h2>A little friendly rivalry.</h2><p>Create a room and share its code. Each wizard plays on their own screen with a private hand.</p></section><div class="wz-online-connection"><label for="wz-online-endpoint">Game server address</label><input id="wz-online-endpoint" data-online-field="endpoint" data-online-focus="endpoint" type="url" inputmode="url" autocomplete="url" spellcheck="false" value="${onlineEscape(endpoint)}" placeholder="https://your-wizzy-server.example"><p>Use the same server address on both phones.</p><label for="wz-online-name">Your wizard name</label><input id="wz-online-name" data-online-field="name" data-online-focus="name" maxlength="24" autocomplete="nickname" value="${onlineEscape(name)}"></div><section class="wz-online-panel"><p class="wz-online-eyebrow">HOST A DUEL</p><h2>Create a battle</h2><div class="wz-online-elements" role="group" aria-label="Choose your battle element">${['fire', 'water'].map(id => `<button type="button" class="wz-online-element wz-online-${id}" data-online-action="element" data-online-element="${id}" aria-pressed="${element === id}">${id === 'fire' ? '♨' : '≈'} ${onlineElementName(id)}</button>`).join('')}</div><p>Your saved ${onlineEscape(bookLabel)} ${onlineElementName(element)} deck will be used. Your friend joins as ${onlineElementName(element === 'fire' ? 'water' : 'fire')}.</p><button class="wz-online-primary" data-online-action="create" ${busy ? 'disabled' : ''}>${busy ? 'Connecting…' : 'Create battle →'}</button></section><section class="wz-online-panel"><p class="wz-online-eyebrow">JOIN A FRIEND</p><h2>Join a battle</h2><form class="wz-online-join-form"><label class="wz-online-label" for="wz-online-room-code">Room code</label><div class="wz-online-join-row"><input id="wz-online-room-code" data-online-field="code" data-online-focus="code" maxlength="8" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="8-CHAR CODE" value="${onlineEscape(roomInput)}" required pattern="[A-Za-z0-9]{8}"><button class="wz-online-primary" type="submit" ${busy ? 'disabled' : ''}>Join →</button></div></form><p>Joining uses the matching ${onlineEscape(bookLabel)} deck. Build and save your deck in the Deck builder before joining.</p></section><details class="wz-online-help"><summary>Setting up the first two-phone test</summary><p>A game server connects both screens. For a nearby test, open Wizzy from your Mac’s multiplayer server on the same Wi-Fi. For remote play, use a hosted HTTPS server.</p><a href="https://github.com/carsahhex-byte/Wizzy/blob/codex/wizzy-hosting/docs/multiplayer.md" target="_blank" rel="noopener noreferrer">Open the multiplayer setup guide ↗</a></details>`}<div class="wz-online-status wz-online-status-${noticeKind}" role="status" aria-live="polite">${onlineEscape(notice || (connection === 'reconnecting' ? 'Reconnecting to the game server…' : active ? (connection === 'online' ? 'Connected · each player keeps a private hand.' : 'Checking your saved session…') : endpoint ? 'Ready to connect to your game server.' : 'Enter a server address to connect two phones.'))}</div></div><footer class="wz-online-footer"><span>${active ? `ROOM ${onlineEscape(session.code)}` : 'FIRE VS WATER · TWO-PLAYER TEST'}</span><span>${storageAvailable ? 'PRIVATE SESSION ON THIS DEVICE' : 'KEEP THIS TAB OPEN · SAVING UNAVAILABLE'}</span></footer></section>`;
+    root.innerHTML = `<section class="wz-online-phone"><header class="wz-online-header"><button type="button" data-online-action="back" aria-label="Back to Seattle map">‹</button><div><p>${onlineEscape(bookLabel)} · TWO SCREENS</p><h1 tabindex="-1">Battle Portal</h1></div><span class="wz-online-sigil" aria-hidden="true">✦</span></header><div class="wz-online-scroll">${active ? `<section class="wz-online-room"><p class="wz-online-eyebrow">${phase}</p><h2>${session.status === 'waiting' ? 'Your room is ready.' : 'Your duel is saved.'}</h2><p>Share this code with your friend:</p><code class="wz-online-code" aria-label="Room code">${onlineEscape(session.code)}</code><button class="wz-online-secondary" data-online-action="copy">Copy room code</button><div class="wz-online-seats"><span class="wz-online-seat wz-online-${session.element}"><i aria-hidden="true">${onlineElementIcon(session.element)}</i><strong>${onlineElementName(session.element)}</strong><small>Your saved deck</small></span><span class="wz-online-versus">VS</span><span class="wz-online-seat wz-online-${opponentElement || 'waiting'}"><i aria-hidden="true">${onlineElementIcon(opponentElement)}</i><strong>${onlineElementName(opponentElement)}</strong><small>${session.status === 'waiting' ? 'Waiting for friend' : 'Friend connected'}</small></span></div><p class="wz-online-room-hint">${session.status === 'waiting' ? 'The other phone opens Battle Portal, enters the same server address, then joins with this code. The battle begins when both players are ready.' : 'Resume on this phone to see your own hand and continue the battle.'}</p>${session.state ? '<button class="wz-online-primary" data-online-action="resume">Resume battle →</button>' : '<button class="wz-online-secondary" data-online-action="refresh">Check connection</button>'}<button class="wz-online-plain" data-online-action="leave">Leave this session</button><p class="wz-online-small">Room progress is kept while this server is running. Keep this tab or return on the same browser to reconnect.</p></section>` : `<section class="wz-online-intro"><span aria-hidden="true">✧</span><h2>A little friendly rivalry.</h2><p>Create a room and share its code. Each wizard plays on their own screen with a private hand.</p></section><div class="wz-online-connection"><label for="wz-online-endpoint">Game server address</label><input id="wz-online-endpoint" data-online-field="endpoint" data-online-focus="endpoint" type="url" inputmode="url" autocomplete="url" spellcheck="false" value="${onlineEscape(endpoint)}" placeholder="https://your-wizzy-server.example"><p>Use the same server address on both phones.</p><label for="wz-online-name">Your wizard name</label><input id="wz-online-name" data-online-field="name" data-online-focus="name" maxlength="24" autocomplete="nickname" value="${onlineEscape(name)}"></div><section class="wz-online-panel"><p class="wz-online-eyebrow">HOST A DUEL</p><h2>Create a battle</h2>${elementChoices('Choose your hosting element')}<p>Your saved ${onlineEscape(bookLabel)} ${onlineElementName(element)} deck will be used. Your friend chooses their own school and saved deck.</p><button class="wz-online-primary" data-online-action="create" ${busy ? 'disabled' : ''}>${busy ? 'Connecting…' : 'Create battle →'}</button></section><section class="wz-online-panel"><p class="wz-online-eyebrow">JOIN A FRIEND</p><h2>Join a battle</h2>${elementChoices('Choose your joining element')}<p>Your saved ${onlineEscape(bookLabel)} ${onlineElementName(element)} deck will be used.</p><form class="wz-online-join-form"><label class="wz-online-label" for="wz-online-room-code">Room code</label><div class="wz-online-join-row"><input id="wz-online-room-code" data-online-field="code" data-online-focus="code" maxlength="8" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="8-CHAR CODE" value="${onlineEscape(roomInput)}" required pattern="[A-Za-z0-9]{8}"><button class="wz-online-primary" type="submit" ${busy ? 'disabled' : ''}>Join →</button></div></form><p>Choose any school, including the same school as your friend. Build and save your deck in the Deck builder before joining.</p></section><details class="wz-online-help"><summary>Setting up the first two-phone test</summary><p>A game server connects both screens. For a nearby test, open Wizzy from your Mac’s multiplayer server on the same Wi-Fi. For remote play, use a hosted HTTPS server.</p><a href="https://github.com/carsahhex-byte/Wizzy/blob/codex/wizzy-hosting/docs/multiplayer.md" target="_blank" rel="noopener noreferrer">Open the multiplayer setup guide ↗</a></details>`}<div class="wz-online-status wz-online-status-${noticeKind}" role="status" aria-live="polite">${onlineEscape(notice || (connection === 'reconnecting' ? 'Reconnecting to the game server…' : active ? (connection === 'online' ? 'Connected · each player keeps a private hand.' : 'Checking your saved session…') : endpoint ? 'Ready to connect to your game server.' : 'Enter a server address to connect two phones.'))}</div></div><footer class="wz-online-footer"><span>${active ? `ROOM ${onlineEscape(session.code)}` : 'FIRE · WATER · EARTH · TWO-PLAYER TEST'}</span><span>${storageAvailable ? 'PRIVATE SESSION ON THIS DEVICE' : 'KEEP THIS TAB OPEN · SAVING UNAVAILABLE'}</span></footer></section>`;
     if (focus) {
       const target = [...root.querySelectorAll('[data-online-focus]')].find(node => node.dataset.onlineFocus === focus);
       target?.focus({ preventScroll: true });
@@ -323,7 +332,7 @@ export function createMultiplayer({ root, getSavedDecks, getSelectedSpellbookId 
     if (!button || !root.contains(button) || button.disabled) return;
     switch (button.dataset.onlineAction) {
       case 'back': hide(); onExit({ reason: 'back' }); break;
-      case 'element': element = button.dataset.onlineElement; renderOnline(); break;
+      case 'element': if (ELEMENTS.includes(button.dataset.onlineElement)) element = button.dataset.onlineElement; renderOnline(); break;
       case 'create': await createOnlineRoom(); break;
       case 'resume': await resume(); break;
       case 'refresh': await refreshOnline(); break;
