@@ -65,6 +65,9 @@ export const ASSET_FILES = Object.freeze({
   xineophAnimation: 'Wizzy Xineoph Phoenix Animation.png',
   xineophCharge: 'Wizzy Xineoph Charge Pulse.png',
   phoenixFireAnimation: 'Wizzy Phoenix Fire Animation.png',
+  phoenixCleanEffects: 'Wizzy Phoenix Clean Effects.png',
+  wizardIdleClean: 'Wizzy Idle Fire Water Clean.png',
+  earthIdleClean: 'Wizzy Idle Earth Clean.png',
   pacificDolphinAnimation: 'Wizzy Pacific Dolphin Animation.png',
   earthWalk: "Wizzy Earth Walk.png",
   earthIdle: "Wizzy Earth Idle.png",
@@ -425,7 +428,7 @@ export const LEGACY_XINEOPH_ANIMATION_SHEETS = Object.freeze({
  * the five flight and four impact cells contain effects only. The previous
  * Xineoph sheets remain available above, with every original bitmap unchanged.
  */
-function creatureAnimation({ asset, element, nativeFacing, sourceBodyHeight,
+function creatureAnimation({ asset, projectileAsset = asset, impactAsset = projectileAsset, element, nativeFacing, sourceBodyHeight,
   feet, lastNose, flightRects, flightNoses, impactCore }) {
   const displayScale = 144 / sourceBodyHeight;
   const common = { asset, sourceWidth: 1024, sourceHeight: 1536, columns: 4, rows: 6, nativeFacing };
@@ -453,12 +456,12 @@ function creatureAnimation({ asset, element, nativeFacing, sourceBodyHeight,
     charge: xineophSheet({ ...common, sourceBodyHeight, targetBodyHeight: 144, displayScale,
       animations: { [element]: [2,3,4,5,6,7,8,9] },
       regions: actorRegions, anchors: actorAnchors }),
-    projectile: xineophSheet({ ...common, displayScale, contactPlane: 'leading-edge',
+    projectile: xineophSheet({ ...common, asset: projectileAsset, displayScale, contactPlane: 'leading-edge',
       animations: { [element]: [15,16,17,18,19] },
       regions: { default: flightRects[15], ...flightRects }, anchors: flightAnchors }),
     // Both burst/splash layers fit around the defender rather than inheriting
     // the larger caster scale; the final source cell is intentionally empty.
-    impact: xineophSheet({ ...common, displayScale: .8,
+    impact: xineophSheet({ ...common, asset: impactAsset, displayScale: .8,
       animations: { impact: [20,21,22,23] },
       regions: { default: [0,0,256,256] }, anchors: { default: impactCore } }),
   });
@@ -466,7 +469,7 @@ function creatureAnimation({ asset, element, nativeFacing, sourceBodyHeight,
 
 export const CREATURE_ANIMATION_SHEETS = Object.freeze({
   xineoph: creatureAnimation({
-    asset: 'phoenixFireAnimation', element: 'fire', nativeFacing: 'right', sourceBodyHeight: 104,
+    asset: 'phoenixFireAnimation', projectileAsset: 'phoenixCleanEffects', element: 'fire', nativeFacing: 'right', sourceBodyHeight: 104,
     feet: [[52,236],[51.5,236],[51.5,236],[51.5,236],[52,236],
       [51.5,236],[51.5,236],[51.5,236],[52,236],[51.5,236],
       [51.5,236],[51.5,236],[52,236],[51.5,236],[51.5,236]],

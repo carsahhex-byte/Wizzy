@@ -184,7 +184,11 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
     assert.deepEqual(sheets.impact.animations.impact, [20, 21, 22, 23]);
     assert.deepEqual(frames(sheets.projectile).map(frame => sheets.projectile.frameAnchors[frame].x),
       Array(5).fill(creature.nativeFacing === 'right' ? 1 : 0), 'each native leading plane is ahead of every flight pose');
-    assert.equal(new Set(['actor', 'charge', 'projectile', 'impact'].map(role => sheets[role].asset)).size, 1, 'one clean atlas serves all four roles');
+    const expectedActor = creature.key === 'xineoph' ? 'phoenixFireAnimation' : 'pacificDolphinAnimation';
+    const expectedEffects = creature.key === 'xineoph' ? 'phoenixCleanEffects' : expectedActor;
+    assert.deepEqual(['actor', 'charge', 'projectile', 'impact'].map(role => sheets[role].asset),
+      [expectedActor, expectedActor, expectedEffects, expectedEffects],
+      'the deep-red phoenix caster stays separate from clean flying effects; Dolphin keeps its original atlas');
     for (const casterIndex of [0, 1]) {
       const state = scene(), impacts = [], completes = [], key = `${creature.key}-${casterIndex}`;
       const completion = state.animator.play({ key, spellId: creature.spellId, casterIndex,
@@ -204,6 +208,7 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
       ]) {
         state.tick(time); assert.equal(layer.dataset.stage, stage);
         assert.equal(actor.dataset.frame, String(sourceFrame));
+        assert.equal(actor.dataset.asset, expectedActor);
         assert.equal(layer.dataset.formationPose, formationPose);
         assert.equal(actor.dataset.logicalX, casterIndex === 0 ? '236' : '788');
         assert.equal(actor.dataset.logicalY, '450');
@@ -225,6 +230,15 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
       assert.ok(Math.abs(Number(projectile.dataset.contactX) - releaseX) < 1e-9);
       assert.ok(Math.abs(Number(projectile.dataset.contactY) - (450 + offset.y)) < 1e-9);
       const startX = Number(projectile.dataset.logicalX);
+      for (let index = 0; index < 5; index += 1) {
+        state.tick(2075 + index * CREATURE_TIMING.flightFrameMs + 1);
+        assert.equal(projectile.dataset.frame, String(15 + index));
+        assert.equal(projectile.dataset.asset, expectedEffects, 'each flight texture uses the effects-only atlas');
+        assert.equal(projectile.style.transform.includes('scaleX(-1)'), mirror);
+        for (const ghost of state.nodes('spell-projectile-afterimage').filter(node => !node.hidden)) {
+          assert.equal(ghost.dataset.asset, expectedEffects, 'afterimages also use the clean effects atlas');
+        }
+      }
       state.tick(2435);
       const ninetyMsBehind = [Number(projectile.dataset.contactX), Number(projectile.dataset.contactY)];
       state.tick(2480);
@@ -237,6 +251,7 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
       for (const [index, ghost] of ghosts.entries()) {
         const lag = [45, 90][index], recordedPoint = index === 0 ? fortyFiveMsBehind : ninetyMsBehind;
         assert.equal(ghost.hidden, false); assert.equal(Number(ghost.style.opacity), [.22, .1][index]);
+        assert.equal(ghost.dataset.asset, expectedEffects);
         assert.equal(ghost.style.filter || '', ''); assert.equal(Number(ghost.dataset.lagMs), lag);
         assert.equal(Number(ghost.dataset.sourceElapsed), 2525 - lag);
         assert.ok(Math.abs(Number(ghost.dataset.contactX) - recordedPoint[0]) < 1e-9);
@@ -250,6 +265,7 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
       state.tick(2975);
       assert.equal(impacts.length, 1); assert.equal(projectile.hidden, true); assert.match(target.style.filter, /brightness/); noAfterimages(state);
       assert.equal(state.node('spell-impact').dataset.logicalX, casterIndex === 0 ? '788' : '236');
+      assert.equal(state.node('spell-impact').dataset.asset, expectedEffects);
       assert.equal(state.node('spell-impact').style.filter, '');
       state.tick(3184); assert.match(target.style.filter, /brightness/);
       state.tick(3185); assert.equal(target.style.filter, 'contrast(1.05)');
@@ -263,7 +279,7 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
       assert.equal(duplicate.duplicate, true); assert.equal(state.pending.size, 0);
     }
   }
-  assert.equal(loaded.length, 2, 'four plays share one clean phoenix atlas and one clean dolphin atlas');
+  assert.equal(loaded.length, 3, 'four plays share one deep-red caster atlas, one clean phoenix effects atlas and one Dolphin atlas');
 });
 
 test('both charged holds play eight pulse frames twice with unchanged wizard feet and body scale', async t => {

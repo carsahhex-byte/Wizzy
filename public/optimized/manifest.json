@@ -599,6 +599,36 @@
     "width": 1024,
     "height": 1536
   },
+  "phoenixCleanEffects": {
+    "file": "phoenixCleanEffects-681863dcf00a.webp",
+    "source": "Wizzy Phoenix Clean Effects.png",
+    "sourceSha256": "484165abca6b69afca6336e4b993905238990b54b290f70e2985e489729d0eca",
+    "optimizedSha256": "681863dcf00a22f570251320ff37bfcbc167e7556f37ab7c6204edbee9d93855",
+    "bytes": 1334932,
+    "sourceBytes": 1850318,
+    "width": 1024,
+    "height": 1536
+  },
+  "wizardIdleClean": {
+    "file": "wizardIdleClean-05b4cfd5da79.webp",
+    "source": "Wizzy Idle Fire Water Clean.png",
+    "sourceSha256": "54ff4c53feb0401e088d070f402f5d952ed2f5da5bd76d39c439825a1f8d8c1c",
+    "optimizedSha256": "05b4cfd5da79d481bede38e8bae4cb34f64ab32772c12e4a95eab3395281d564",
+    "bytes": 598440,
+    "sourceBytes": 752654,
+    "width": 1254,
+    "height": 1254
+  },
+  "earthIdleClean": {
+    "file": "earthIdleClean-ab58d25aaf91.webp",
+    "source": "Wizzy Idle Earth Clean.png",
+    "sourceSha256": "eb4cdf0c6e8e2e6ab9f64271def3d82202c784a65a0409148e88a3a3e5b48839",
+    "optimizedSha256": "ab58d25aaf91ad4838c187eb70fd4ae87866e7926a24122ab05ccb17c54fc191",
+    "bytes": 434030,
+    "sourceBytes": 624206,
+    "width": 1774,
+    "height": 887
+  },
   "pacificDolphinAnimation": {
     "file": "pacificDolphinAnimation-ab0c236a41be.webp",
     "source": "Wizzy Pacific Dolphin Animation.png",

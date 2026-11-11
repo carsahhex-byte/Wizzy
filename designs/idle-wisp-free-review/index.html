@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Wizzy · Idle sprite review</title>
+  <style>__IDLE_REVIEW_STYLE__</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">WIZZY · OFFLINE ART REVIEW</p>
+    <h1>Quiet idle loops</h1>
+    <p class="intro">Fire, Water and Earth breathing and settling, with the surrounding wisps removed. One blink follows an open-eyed first cycle.</p>
+    <p class="review-note">Draft graphics only · Not installed in the game</p>
+  </header>
+  <p id="load-error" role="alert" hidden></p>
+  <section class="controls" aria-label="Animation controls">
+    <button id="play-toggle" type="button" disabled>Play</button>
+    <button id="restart" type="button" disabled>Restart</button>
+    <button id="step-back" type="button" disabled aria-label="Previous sequence step">← Step</button>
+    <button id="step-forward" type="button" disabled aria-label="Next sequence step">Step →</button>
+    <label>Speed <select id="speed" disabled><option value="0.25">¼×</option><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+    <label class="scrubber">Sequence step <input id="sequence-step" type="range" min="0" max="15" value="0" step="1" disabled><output id="step-label" for="sequence-step">0 / 15</output></label>
+    <p id="timing">Loading sprite sheets…</p>
+  </section>
+  <section class="wizards" aria-label="Three idle wizard previews">
+    <article class="wizard fire" data-wizard="fire">
+      <h2>Fire</h2>
+      <div class="stage"><canvas id="fire-canvas" width="320" height="250" role="img" aria-label="Fire wizard idle animation"></canvas></div>
+      <p class="frame-state" id="fire-frame">Loading…</p>
+    </article>
+    <article class="wizard water" data-wizard="water">
+      <h2>Water</h2>
+      <div class="stage"><canvas id="water-canvas" width="320" height="250" role="img" aria-label="Water wizard idle animation"></canvas></div>
+      <p class="frame-state" id="water-frame">Loading…</p>
+    </article>
+    <article class="wizard earth" data-wizard="earth">
+      <h2>Earth</h2>
+      <div class="stage"><canvas id="earth-canvas" width="320" height="250" role="img" aria-label="Earth wizard idle animation"></canvas></div>
+      <p class="frame-state" id="earth-frame">Loading…</p>
+    </article>
+  </section>
+  <aside class="details">
+    <p><strong>What to check:</strong> steady feet, gentle breathing and robe motion, no floating wisps, and one blink during the second cycle.</p>
+    <p>Use Step or the slider to inspect all 16 playback steps. Each wizard’s label identifies the cycle, eye state and physical sprite-sheet frame.</p>
+    <p>The first cycle holds a matching open-eyed pose in place of the blink frame; the second cycle plays the blink normally. Playback stays at 160 milliseconds per step.</p>
+    <p>All three bodies share a 144-pixel target height. The source sheets retain their original PNG pixels.</p>
+  </aside>
+  <footer>Private review files. Nothing is uploaded, published or connected to battle playback by this preview.</footer>
+</main>
+<script id="idle-metadata" type="application/json">__IDLE_REVIEW_METADATA__</script>
+<script>__IDLE_REVIEW_VIEWER__</script>
+</body>
+</html>
