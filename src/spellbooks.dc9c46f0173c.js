@@ -1,4 +1,4 @@
-import { SPELL_CATALOG } from './spells.6c22cd07d14f.js';
+import { SPELL_CATALOG } from './spells.116e6e94e9df.js';
 
 export const SPELLBOOK_1 = 'spellbook-1';
 export const SPELLBOOK_2 = 'spellbook-2';

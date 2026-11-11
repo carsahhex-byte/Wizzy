@@ -1,6 +1,6 @@
-import { SPELLBOOK_VERSION } from './spells.6c22cd07d14f.js';
-import { SAVE_VERSION, COMBAT_RULES_VERSION } from './game.640b393dafa6.js';
-import { SPELLBOOK_1, ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook, isSpellbookId } from './spellbooks.2bf61a1f2de3.js';
+import { SPELLBOOK_VERSION } from './spells.116e6e94e9df.js';
+import { SAVE_VERSION, COMBAT_RULES_VERSION } from './game.24053fb39595.js';
+import { SPELLBOOK_1, ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook, isSpellbookId } from './spellbooks.dc9c46f0173c.js';
 import { ELEMENTS, ELEMENT_INFO } from './elements.f91c53cdab44.js';
 
 const ONLINE_STORAGE_KEY = 'wizzy.multiplayer.v2';

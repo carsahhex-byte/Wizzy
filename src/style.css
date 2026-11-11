@@ -96,6 +96,8 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .earth .element-symbol { color: #b6d98b; }
 .golem-resource strong { font-size: 21px; }
 .golem-protected { display: inline-block; margin-left: 5px; color: #c8f59e; font-size: 12px; }
+.shield-bypass-exposed>span { color: #ffe29d; }
+.shield-bypass-exposed[data-shield-bypass-status='active']>span { color: #ffb5a8; }
 .handoff-earth-icon { display: grid; place-items: center; width: 100%; height: 100%; font-size: 100px; }
 .resource-grid { display: grid; grid-template-columns: 1fr; gap: 2px; }
 .resource { min-width: 0; display: flex; align-items: center; gap: 10px; font-size: 22px; line-height: 1.1; text-shadow: 2px 2px #090b1c; }

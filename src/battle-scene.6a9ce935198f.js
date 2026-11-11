@@ -1,6 +1,6 @@
-import { ASSETS, WIZARD_SPRITES, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from './assets.93d24e08d126.js';
+import { ASSETS, WIZARD_SPRITES, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from './assets.16c339a8ba87.js';
 import { getPlayerSchool } from './elements.f91c53cdab44.js';
-import { preloadAnimationSheet, paintAnimationFrame } from './animation-sprites.9112ea0f0146.js';
+import { preloadAnimationSheet, paintAnimationFrame } from './animation-sprites.52fb5ae204d4.js';
 
 let atlasReady;
 

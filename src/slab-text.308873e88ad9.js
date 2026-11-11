@@ -39,7 +39,7 @@ export const COMPACT_SPELL_TEXT = Object.freeze(Object.fromEntries(Object.entrie
   'Earth-1': [line('Deal 5, +5 Shield'), at('7+', '+5 Shield extra')],
   'Earth-2': [line('+10 Shield'), at('6+', '+1 Mana')],
   'Earth-3': [line('Deal 5'), at('7+', '+12 Shield')],
-  'Earth-4': [at('6+', 'Active Golem:'), line('Keep next turn')],
+  'Earth-4': [line('+3 Shield'), at('6+', 'Hits your HP'), line('Next foe turn')],
   'Earth-5': [line('Golem active: Deal 15')],
   'FAT-001': [line('+4 to roll')],
   'FAT-002': [line('−4 to roll')],

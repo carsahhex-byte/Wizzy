@@ -1,6 +1,6 @@
-import { createGame, migrateSavedGame, getGameSpellbook, SAVE_VERSION, validateSavedGame } from './game.640b393dafa6.js';
-import { createStarterDeck } from './decks.9b3cb776b8f4.js';
-import { SPELLBOOK_1, SPELLBOOK_2, isSpellbookId } from './spellbooks.2bf61a1f2de3.js';
+import { createGame, migrateSavedGame, getGameSpellbook, SAVE_VERSION, validateSavedGame } from './game.24053fb39595.js';
+import { createStarterDeck } from './decks.1fed6bf0f1db.js';
+import { SPELLBOOK_1, SPELLBOOK_2, isSpellbookId } from './spellbooks.dc9c46f0173c.js';
 
 export const RETIRED_DUEL_ARCHIVE_KEY = `wizzy.duel.v${SAVE_VERSION}.${SPELLBOOK_2}.archived-before-named-spellbook`;
 
@@ -52,7 +52,7 @@ export function createDuelStorage(storage) {
   function load(bookId = SPELLBOOK_1) {
     const current = read(duelSaveKey(bookId), bookId);
     if (current) return current;
-    for (const version of [14, 13, 12, 11, 10]) {
+    for (const version of [15, 14, 13, 12, 11, 10]) {
       const legacy = read(`wizzy.duel.v${version}${bookId===SPELLBOOK_1?'':`.${bookId}`}`, bookId);
       if (legacy) return legacy;
     }

@@ -17,6 +17,15 @@ export function activateGolemFromShield(player) {
   return true;
 }
 
+/** Earth-4 applies for the whole immediately following opponent turn. */
+export function isShieldBypassActive(state, targetIndex) {
+  if (![0, 1].includes(targetIndex) || state?.activePlayer !== 1 - targetIndex) return false;
+  const player = state.players?.[targetIndex], opponent = state.players?.[1 - targetIndex];
+  return Number.isSafeInteger(player?.shieldBypassUntilOpponentTurn)
+    && player.shieldBypassUntilOpponentTurn > 0
+    && opponent?.turnsStarted === player.shieldBypassUntilOpponentTurn;
+}
+
 const rule = (emberSpend = 'none', maxEmbers) => Object.freeze({
   requiresRoll: true, emberSpend,
   ...(maxEmbers === undefined ? {} : { maxEmbers }),
@@ -43,13 +52,13 @@ export function getEmberSpendRange(spellId, availableEmbers) {
 }
 
 /** Shared damage primitive: self damage goes directly to HP and preserves Shield. */
-export function applyDamageToPlayer(player, amount, { selfDamage = false } = {}) {
+export function applyDamageToPlayer(player, amount, { selfDamage = false, bypassShield = false } = {}) {
   if (!player || !Number.isFinite(amount) || amount < 0) throw new Error('Damage must be a nonnegative number.');
-  const absorbed = selfDamage ? 0 : Math.min(player.shield, amount);
+  const absorbed = selfDamage || bypassShield ? 0 : Math.min(player.shield, amount);
   const hpDamage = Math.min(player.hp, amount - absorbed);
   player.shield -= absorbed;
   player.hp -= hpDamage;
-  return { amount, absorbed, hpDamage, selfDamage };
+  return { amount, absorbed, hpDamage, selfDamage, ...(bypassShield ? { bypassShield: true } : {}) };
 }
 
 /** Add damage bonuses once, rounding halves upward before Shield. */
@@ -99,10 +108,12 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   const damage = (player, amount) => {
     const selfDamage = player === caster;
     const calculation = calculateEnhancedDamage(amount, selfDamage ? 0 : enhancement, selfDamage ? 0 : aura, selfDamage ? 0 : emberBonus);
-    const detail = applyDamageToPlayer(player, calculation.totalDamage, { selfDamage });
+    const detail = applyDamageToPlayer(player, calculation.totalDamage, {
+      selfDamage, bypassShield: isShieldBypassActive(state, player === caster ? casterIndex : 1 - casterIndex),
+    });
     if (!selfDamage && amount > 0) dealtOutgoingDamage = true;
     const formula = `Base ${calculation.baseDamage} + ${calculation.enhancement}% Enhancement + ${calculation.aura}% Aura${calculation.emberBonus ? ` + ${calculation.emberBonus}% Embers` : ''} = ${calculation.totalDamage} damage`;
-    record('damage', player, `${formula}. ${name(player)} takes ${detail.amount} damage${detail.absorbed ? ` (${detail.absorbed} absorbed by Shield)` : ''}; ${detail.hpDamage} HP damage.`, { ...calculation, ...detail });
+    record('damage', player, `${formula}. ${name(player)} takes ${detail.amount} damage${detail.bypassShield ? ' (bypasses Shield)' : detail.absorbed ? ` (${detail.absorbed} absorbed by Shield)` : ''}; ${detail.hpDamage} HP damage.`, { ...calculation, ...detail });
     if (!selfDamage && amount > 0 && heldEmbers > 0 && !usedEmbers) {
       usedEmbers = true;
       caster.element = 0;
@@ -157,13 +168,12 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       if (rollTotal >= 7) gainShield(12);
       break;
     case 'Earth-4':
-      if (rollTotal >= 6 && caster.golemActive) {
-        caster.golemProtectedUntilTurn = Math.max(caster.golemProtectedUntilTurn ?? 0, (caster.turnsStarted ?? 0) + 1);
-        record('shield', caster, `${name(caster)} protects Golem through their next turn; the normal Shield check returns at its end.`,
-          { golemProtectedUntilTurn: caster.golemProtectedUntilTurn });
-      } else record('resolve', caster, rollTotal < 6
-        ? `${name(caster)} does not protect Golem at Modified Roll ${rollTotal}; existing protection is unchanged.`
-        : `${name(caster)} has no active Golem; Earth-4 grants no protection.`);
+      gainShield(3);
+      if (rollTotal >= 6) {
+        caster.shieldBypassUntilOpponentTurn = (opponent.turnsStarted ?? 0) + 1;
+        record('shield', caster, `${name(caster)} receives damage directly to HP, bypassing Shield, throughout their opponent's next turn.`,
+          { shieldBypassUntilOpponentTurn: caster.shieldBypassUntilOpponentTurn });
+      }
       break;
     case 'Earth-5':
       if (caster.golemActive) damage(opponent, 15);

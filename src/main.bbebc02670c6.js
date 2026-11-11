@@ -1,22 +1,22 @@
-import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.640b393dafa6.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.93d24e08d126.js';
-import { SPELL_CATALOG } from './spells.6c22cd07d14f.js';
-import { validateDeck, getDeckValidation } from './decks.9b3cb776b8f4.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.7df40a4fbe56.js';
-import { createHub } from './hub.2cbec6fe9970.js';
+import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.24053fb39595.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.16c339a8ba87.js';
+import { SPELL_CATALOG } from './spells.116e6e94e9df.js';
+import { validateDeck, getDeckValidation } from './decks.1fed6bf0f1db.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, isShieldBypassActive } from './effects.e851a71ef139.js';
+import { createHub } from './hub.c56c5cdce987.js';
 import { parseStorybookRoute } from './districts.41d180c8958a.js';
-import { createMultiplayer } from './multiplayer.bd760ff7042b.js';
-import { createAccounts } from './accounts.cfc97009b437.js';
-import { fitSlabText } from './slab-text.3a3e555bfc3e.js';
-import { createBattleScene } from './battle-scene.5f55b5804c39.js';
-import { createSpellAnimator } from './spell-animation.96a016f8d148.js';
-import { createAuraAnimator } from './aura-animation.4dbccd74e953.js';
-import { getResolvedBattleVisuals } from './spell-visuals.a583851f1ba9.js';
+import { createMultiplayer } from './multiplayer.d3567e1306a5.js';
+import { createAccounts } from './accounts.3692769cbe84.js';
+import { fitSlabText } from './slab-text.308873e88ad9.js';
+import { createBattleScene } from './battle-scene.6a9ce935198f.js';
+import { createSpellAnimator } from './spell-animation.5eb9e482a0d7.js';
+import { createAuraAnimator } from './aura-animation.0a8af880ea0e.js';
+import { getResolvedBattleVisuals } from './spell-visuals.9db470ce394a.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
 import { pixelIconMarkup } from './pixel-icons.3f938f4df019.js';
-import { ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook } from './spellbooks.2bf61a1f2de3.js';
-import { getGameSpellbook } from './game.640b393dafa6.js';
-import { createDuelStorage } from './duel-storage.a95e6bb92a95.js';
+import { ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook } from './spellbooks.dc9c46f0173c.js';
+import { getGameSpellbook } from './game.24053fb39595.js';
+import { createDuelStorage } from './duel-storage.119759735fc7.js';
 import { ELEMENTS, ELEMENT_INFO, getPlayerSchool } from './elements.f91c53cdab44.js';
 
 let duelDeviceStorage = null;
@@ -103,8 +103,15 @@ function playerPanel(player, index) {
   player = displayedStats(player,index);
   const school=getPlayerSchool(player);
   const protectedGolem=player.golemActive&&player.golemProtectedUntilTurn!==null;
+  const exposed=player.shieldBypassUntilOpponentTurn!=null;
+  const visual=activeSpellVisual||spellVisualQueue[0];
+  const bypassActive=exposed&&isShieldBypassActive({...state,
+    activePlayer:visual?.kind==='golem-strike'?visual.casterIndex:state.activePlayer,
+    players:state.players.map((entry,seat)=>seat===index?player:entry),
+  },index);
+  const exposureTitle=exposed?'Earth-4: all damage received during the next opposing turn hits HP directly, preserving Shield.':'';
   const resource=school==='earth'
-    ? `<div class="resource element golem-resource" title="Transform at 20 Shield. At your turn's end, unprotected Golem reverts below 20 Shield; otherwise deal 15 damage. Enhancement and Aura do not boost this hit.">${pixelIconMarkup('golem')}<span>Form</span><strong data-stat="${player.id}-form" data-golem-active="${Boolean(player.golemActive)}">${player.golemActive?'Golem':'Wizard'}${protectedGolem?'<small class="golem-protected">Ward</small>':''}</strong></div>`
+    ? `<div class="resource element golem-resource ${exposed?'shield-bypass-exposed':''}" data-shield-bypass-status="${exposed?bypassActive?'active':'queued':'none'}" title="${exposureTitle||`Transform at 20 Shield. At your turn's end, unprotected Golem reverts below 20 Shield; otherwise deal 15 damage. Enhancement and Aura do not boost this hit.`}">${pixelIconMarkup('golem')}<span>${exposed?bypassActive?'HP Now':'HP Next':'Form'}</span><strong data-stat="${player.id}-form" data-golem-active="${Boolean(player.golemActive)}">${player.golemActive?'Golem':'Wizard'}${protectedGolem?'<small class="golem-protected">Ward</small>':''}</strong></div>`
     : `<div class="resource element" title="${school==='fire'?`Each held Ember adds 5% Fire damage. Current bonus: ${player.element*5}%. Damaging Fire spells consume stored Embers at resolution, then add new gains for later attacks.`:'Flow strengthens Water effects and increases after resolution.'}">${pixelIconMarkup(school)}<span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${school==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${school==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div>`;
   return `<section class="stat-panel ${school} ${state.phase!=='initiative'&&state.activePlayer === index ? 'is-active' : ''}" data-stat-seat="${index}" data-school="${school}" aria-label="${player.name} wizard stats">
     ${art(`${school}Frame`,'stat-frame')}
@@ -388,7 +395,7 @@ function update(next,message) {
   if(visuals.length){
     // A newer online spell can arrive while the last hit is still recovering.
     if(!presentedPlayers)presentedPlayers=state.players.map((player,index)=>({
-      ...Object.fromEntries(['hp','shield','element','loaded','loadedPending','enhancement','auraTurns','golemActive','golemProtectedUntilTurn'].map(key=>[key,player[key]])),
+      ...Object.fromEntries(['hp','shield','element','loaded','loadedPending','enhancement','auraTurns','golemActive','golemProtectedUntilTurn','shieldBypassUntilOpponentTurn'].map(key=>[key,player[key]])),
       mana:Math.min(player.mana,next.players[index].mana),
     }));
     const duelKey=isOnlineBattle()?`online-${onlineCode}`:localEntranceKey||'saved-local';

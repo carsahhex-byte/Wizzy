@@ -2,7 +2,7 @@ import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelect
 import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.js';
 import { SPELL_CATALOG } from './spells.js';
 import { validateDeck, getDeckValidation } from './decks.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, isShieldBypassActive } from './effects.js';
 import { createHub } from './hub.js';
 import { parseStorybookRoute } from './districts.js';
 import { createMultiplayer } from './multiplayer.js';
@@ -103,8 +103,15 @@ function playerPanel(player, index) {
   player = displayedStats(player,index);
   const school=getPlayerSchool(player);
   const protectedGolem=player.golemActive&&player.golemProtectedUntilTurn!==null;
+  const exposed=player.shieldBypassUntilOpponentTurn!=null;
+  const visual=activeSpellVisual||spellVisualQueue[0];
+  const bypassActive=exposed&&isShieldBypassActive({...state,
+    activePlayer:visual?.kind==='golem-strike'?visual.casterIndex:state.activePlayer,
+    players:state.players.map((entry,seat)=>seat===index?player:entry),
+  },index);
+  const exposureTitle=exposed?'Earth-4: all damage received during the next opposing turn hits HP directly, preserving Shield.':'';
   const resource=school==='earth'
-    ? `<div class="resource element golem-resource" title="Transform at 20 Shield. At your turn's end, unprotected Golem reverts below 20 Shield; otherwise deal 15 damage. Enhancement and Aura do not boost this hit.">${pixelIconMarkup('golem')}<span>Form</span><strong data-stat="${player.id}-form" data-golem-active="${Boolean(player.golemActive)}">${player.golemActive?'Golem':'Wizard'}${protectedGolem?'<small class="golem-protected">Ward</small>':''}</strong></div>`
+    ? `<div class="resource element golem-resource ${exposed?'shield-bypass-exposed':''}" data-shield-bypass-status="${exposed?bypassActive?'active':'queued':'none'}" title="${exposureTitle||`Transform at 20 Shield. At your turn's end, unprotected Golem reverts below 20 Shield; otherwise deal 15 damage. Enhancement and Aura do not boost this hit.`}">${pixelIconMarkup('golem')}<span>${exposed?bypassActive?'HP Now':'HP Next':'Form'}</span><strong data-stat="${player.id}-form" data-golem-active="${Boolean(player.golemActive)}">${player.golemActive?'Golem':'Wizard'}${protectedGolem?'<small class="golem-protected">Ward</small>':''}</strong></div>`
     : `<div class="resource element" title="${school==='fire'?`Each held Ember adds 5% Fire damage. Current bonus: ${player.element*5}%. Damaging Fire spells consume stored Embers at resolution, then add new gains for later attacks.`:'Flow strengthens Water effects and increases after resolution.'}">${pixelIconMarkup(school)}<span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${school==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${school==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div>`;
   return `<section class="stat-panel ${school} ${state.phase!=='initiative'&&state.activePlayer === index ? 'is-active' : ''}" data-stat-seat="${index}" data-school="${school}" aria-label="${player.name} wizard stats">
     ${art(`${school}Frame`,'stat-frame')}
@@ -388,7 +395,7 @@ function update(next,message) {
   if(visuals.length){
     // A newer online spell can arrive while the last hit is still recovering.
     if(!presentedPlayers)presentedPlayers=state.players.map((player,index)=>({
-      ...Object.fromEntries(['hp','shield','element','loaded','loadedPending','enhancement','auraTurns','golemActive','golemProtectedUntilTurn'].map(key=>[key,player[key]])),
+      ...Object.fromEntries(['hp','shield','element','loaded','loadedPending','enhancement','auraTurns','golemActive','golemProtectedUntilTurn','shieldBypassUntilOpponentTurn'].map(key=>[key,player[key]])),
       mana:Math.min(player.mana,next.players[index].mana),
     }));
     const duelKey=isOnlineBattle()?`online-${onlineCode}`:localEntranceKey||'saved-local';
