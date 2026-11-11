@@ -9,7 +9,7 @@ export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange }
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 15;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'earth-golem-v1';
+export const COMBAT_RULES_VERSION = 'earth-golem-v2';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -888,19 +888,24 @@ function refreshCurrentSpellCards(state) {
     ],
     'Fire-15': ['Gain 1 Ember and 1 Mana.', 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
+    'Earth-3': ['Deal 5 damage. On a 9+, gain 20 Shield.'],
+    'Earth-4': ['Gain 2 Mana. If Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.'],
   };
-  const previousCosts = { 'Fire-11': 3, 'Water-12': 4, 'Water-14': 8 };
+  const previousCosts = { 'Fire-11': 3, 'Water-12': 4, 'Water-14': 8, 'Earth-3': 3, 'Earth-4': 5 };
   let changed = false;
   const upgradedWaterCards = new Set();
   const upgradedSunsetterCards = new Set();
+  const upgradedEarthWardCards = new Set();
   for (const player of state.players) for (const zone of ['hand', 'deck', 'discard']) {
     for (const card of player[zone]) {
       if (Object.hasOwn(previousText, card?.spellId)
         && previousText[card.spellId].includes(card.effectText)
         && card.description === card.effectText
-        && (card.spellId !== 'Fire-11' || card.manaCost === 3 && card.cost === 3)) {
+        && (!['Fire-11', 'Earth-3', 'Earth-4'].includes(card.spellId)
+          || card.manaCost === previousCosts[card.spellId] && card.cost === card.manaCost)) {
         if (card.spellId === 'Water-0') upgradedWaterCards.add(card.id);
         if (card.spellId === 'Fire-14') upgradedSunsetterCards.add(card.id);
+        if (card.spellId === 'Earth-4') upgradedEarthWardCards.add(card.id);
         if (card.spellId === 'Fire-11') card.manaCost = card.cost = SPELL_CATALOG['Fire-11'].manaCost;
         card.effectText = SPELL_CATALOG[card.spellId].effectText;
         card.description = card.effectText;
@@ -911,6 +916,7 @@ function refreshCurrentSpellCards(state) {
         && card.manaCost === previousCosts[card.spellId] && card.cost === card.manaCost
         && card.effectText === SPELL_CATALOG[card.spellId].effectText
         && card.description === card.effectText) {
+        if (card.spellId === 'Earth-4') upgradedEarthWardCards.add(card.id);
         card.manaCost = card.cost = SPELL_CATALOG[card.spellId].manaCost;
         changed = true;
       }
@@ -923,6 +929,11 @@ function refreshCurrentSpellCards(state) {
         changed = true;
       }
     }
+  }
+  // The previous Earth-4 resolved atomically without dice. Only completed casts
+  // can carry its prior definition; a pending copy was never a legal old save.
+  if (state.pendingSpell?.spellId === 'Earth-4' && upgradedEarthWardCards.has(state.pendingSpell.cardId)) {
+    throw new Error('Invalid prior Earth-4 pending cast');
   }
   if (['rolling', 'fate', 'resolving'].includes(state.phase)
     && state.pendingSpell?.spellId === 'Fire-14'

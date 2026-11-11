@@ -62,8 +62,8 @@ const water = [
 const earth = [
   [1, 0, 'Deal 5 damage and gain 5 Shield. On a 7+, gain 5 additional Shield.'],
   [2, 2, 'Gain 10 Shield. On a 6+, gain 1 Mana.'],
-  [3, 3, 'Deal 5 damage. On a 9+, gain 20 Shield.'],
-  [4, 5, 'Gain 2 Mana. If Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.'],
+  [3, 2, 'Deal 5 damage. On a 7+, gain 12 Shield.'],
+  [4, 3, 'On a 6+, if Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.'],
   [5, 5, 'If Golem is active, deal 15 damage.'],
 ];
 const purposes = ['Basic attack', 'Early identity', 'Defensive utility', 'Strategic preparation', 'Specialized damage', 'Heavy attack', 'Signature spell'];

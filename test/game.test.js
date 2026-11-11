@@ -73,7 +73,7 @@ function fateFixture() {
   return state;
 }
 
-test('catalog has 39 spells, 33 rolling primaries, three immediate primaries and no old IDs', () => {
+test('catalog has 39 spells, 34 rolling primaries, two immediate primaries and no old IDs', () => {
   assert.equal(SAVE_VERSION, 15); assert.equal(DECK_SIZE, 30);
   assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
   assert.equal(Object.keys(SPELL_CATALOG).length, 39);

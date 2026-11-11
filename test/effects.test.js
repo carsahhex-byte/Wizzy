@@ -116,7 +116,7 @@ test('the current collection completely replaces old IDs and has no starter comp
   assert.ok(Object.keys(SPELL_CATALOG).every(id => !/^(FIR|WAT|NEU)-/.test(id)));
   assert.deepEqual(DECK_LISTS, { fire: [], water: [], earth: [] });
   for (const spell of Object.values(SPELL_CATALOG).filter(s => s.category !== 'Fate')) {
-    assert.equal(SPELL_RULES[spell.id].requiresRoll, !['Fire-0', 'Earth-4', 'Earth-5'].includes(spell.id));
+    assert.equal(SPELL_RULES[spell.id].requiresRoll, !['Fire-0', 'Earth-5'].includes(spell.id));
     assert.ok(spell.element === 'Earth' || cases.some(entry => entry[1] === spell.id), `${spell.id} has independent numerical checks (Earth in earth-engine.test.js)`);
   }
   assert.deepEqual([MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS], [100, 10, 30, 5, 5]);

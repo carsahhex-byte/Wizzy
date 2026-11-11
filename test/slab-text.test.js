@@ -79,6 +79,13 @@ test('Fate faces show only their roll change while the canonical roles remain av
   }
 });
 
+test('Earth balance text shows seven for Shield and six for Golem protection without a Mana reward', () => {
+  assert.equal(slabRulesText('Earth-3'),'Deal 5 7+ +12 Shield');
+  assert.equal(slabRulesText('Earth-4'),'6+ Active Golem: Keep next turn');
+  assert.match(slabRulesMarkup('Earth-4'),/class="slab-rule-threshold">6\+</);
+  assert.doesNotMatch(slabRulesMarkup('Earth-4'),/data-rule-word="Mana"/);
+});
+
 test('icons replace complete semantic words and keep their exact accessible text', () => {
   const kinds = { Deal: 'sword', damage: 'sword', Heal: 'heart', Ember: 'fire', Embers: 'fire', Flow: 'water', Shield: 'shield', Mana: 'mana', roll: 'die' };
   const canonical = JSON.stringify(SPELL_CATALOG);

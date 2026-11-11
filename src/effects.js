@@ -21,11 +21,11 @@ const rule = (emberSpend = 'none', maxEmbers) => Object.freeze({
   requiresRoll: true, emberSpend,
   ...(maxEmbers === undefined ? {} : { maxEmbers }),
 });
-/** Threshold spells roll; Fire-0 resolves immediately. Spending precedes resolution. */
+/** Threshold spells roll; Fire-0 and Earth-5 resolve immediately. Spending precedes resolution. */
 export const SPELL_RULES = Object.freeze(Object.fromEntries(
   Object.values(SPELL_CATALOG).filter(card => card.category !== 'Fate').map(card => [
     card.spellId,
-    ['Fire-0', 'Earth-4', 'Earth-5'].includes(card.spellId) ? Object.freeze({ requiresRoll: false, emberSpend: 'none' })
+    ['Fire-0', 'Earth-5'].includes(card.spellId) ? Object.freeze({ requiresRoll: false, emberSpend: 'none' })
       : card.spellId === 'Fire-5' ? rule('optional', 1)
       : card.spellId === 'Fire-12' ? rule('optional', 2)
         : card.spellId === 'Fire-7' ? rule('all') : rule(),
@@ -154,15 +154,16 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       break;
     case 'Earth-3':
       damage(opponent, 5);
-      if (rollTotal >= 9) gainShield(20);
+      if (rollTotal >= 7) gainShield(12);
       break;
     case 'Earth-4':
-      gainMana(2);
-      if (caster.golemActive) {
-        caster.golemProtectedUntilTurn = (caster.turnsStarted ?? 0) + 1;
+      if (rollTotal >= 6 && caster.golemActive) {
+        caster.golemProtectedUntilTurn = Math.max(caster.golemProtectedUntilTurn ?? 0, (caster.turnsStarted ?? 0) + 1);
         record('shield', caster, `${name(caster)} protects Golem through their next turn; the normal Shield check returns at its end.`,
           { golemProtectedUntilTurn: caster.golemProtectedUntilTurn });
-      }
+      } else record('resolve', caster, rollTotal < 6
+        ? `${name(caster)} does not protect Golem at Modified Roll ${rollTotal}; existing protection is unchanged.`
+        : `${name(caster)} has no active Golem; Earth-4 grants no protection.`);
       break;
     case 'Earth-5':
       if (caster.golemActive) damage(opponent, 15);
