@@ -1,0 +1,35 @@
+{
+  "format": "wizzy-xineoph-scene-review",
+  "version": 1,
+  "status": "draft-review-only",
+  "gameplayChanges": false,
+  "description": "A new phoenix scene using the Golem illustration style, rather than a floating emblem.",
+  "spell": {
+    "id": "Fire-11",
+    "name": "Xineoph",
+    "manaCost": 2,
+    "effectText": "Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana."
+  },
+  "artwork": {
+    "file": "art/xineoph.png",
+    "width": 1536,
+    "height": 1024,
+    "bytes": 1914219,
+    "sha256": "03daae24ada671e9450cfb687c14f40fc5067280b2d72f5dfc304dffa07953de"
+  },
+  "previous": {
+    "file": "references/previous-xineoph.png",
+    "width": 1536,
+    "height": 1024,
+    "bytes": 1313266,
+    "sha256": "dec97ef581ee713623cf6c1759d4050dd7ac1890bfe82ec2fc34de9076965d77"
+  },
+  "styleReference": {
+    "file": "references/earth-5-golem.png",
+    "width": 1536,
+    "height": 1024,
+    "bytes": 1544303,
+    "sha256": "ff8083a2c0e13b444e6378ec421baab7d09b35471ab4a275fa762f4a44a40092"
+  },
+  "pixelPreservation": "Original PNG bytes preserved unchanged."
+}
