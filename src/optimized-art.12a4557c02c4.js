@@ -300,6 +300,21 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "d881fc9cf0aacc7dcde438d603f4c13d7bdeada72b3226319554bf65ca639e70",
     "optimizedSha256": "a5ecc11edabffa28e26ad81ec6b10457722b81a889c5385c64b04a2ca59fa6f3"
   },
+  "phoenixCleanEffects": {
+    "file": "phoenixCleanEffects-681863dcf00a.webp",
+    "sourceSha256": "484165abca6b69afca6336e4b993905238990b54b290f70e2985e489729d0eca",
+    "optimizedSha256": "681863dcf00a22f570251320ff37bfcbc167e7556f37ab7c6204edbee9d93855"
+  },
+  "wizardIdleClean": {
+    "file": "wizardIdleClean-05b4cfd5da79.webp",
+    "sourceSha256": "54ff4c53feb0401e088d070f402f5d952ed2f5da5bd76d39c439825a1f8d8c1c",
+    "optimizedSha256": "05b4cfd5da79d481bede38e8bae4cb34f64ab32772c12e4a95eab3395281d564"
+  },
+  "earthIdleClean": {
+    "file": "earthIdleClean-ab58d25aaf91.webp",
+    "sourceSha256": "eb4cdf0c6e8e2e6ab9f64271def3d82202c784a65a0409148e88a3a3e5b48839",
+    "optimizedSha256": "ab58d25aaf91ad4838c187eb70fd4ae87866e7926a24122ab05ccb17c54fc191"
+  },
   "pacificDolphinAnimation": {
     "file": "pacificDolphinAnimation-ab0c236a41be.webp",
     "sourceSha256": "728538b595b71ca44846a952aff8c4dd3dd5f91032c12e377279aa54c0f297ff",

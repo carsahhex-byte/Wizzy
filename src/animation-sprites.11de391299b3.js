@@ -1,4 +1,4 @@
-import { ASSETS } from './assets.16c339a8ba87.js';
+import { ASSETS } from './assets.875cdb8100e6.js';
 
 const imageLoads = new Map();
 

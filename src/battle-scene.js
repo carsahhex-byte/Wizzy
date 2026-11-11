@@ -1,5 +1,6 @@
 import { ASSETS, WIZARD_SPRITES, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from './assets.js';
 import { getPlayerSchool } from './elements.js';
+import { IDLE_ANIMATION_SHEETS } from './idle-sprites.js';
 import { preloadAnimationSheet, paintAnimationFrame } from './animation-sprites.js';
 
 let atlasReady;
@@ -66,27 +67,38 @@ export function createBattleScene({ players = null } = {}) {
   let frameRequest = 0;
   let timeline = null;
   let startPromise = null;
-  let idleFrameRequest = 0, idleStarted = null;
+  let idleFrameRequest = 0, idleElapsed = 0, lastIdleTime = null, idleGeneration = 0;
   let visible = true;
   let combatantKey = '';
   const imageReady = preloadWizardAtlas();
   const normalizeKey = key => key === null || key === undefined ? null : String(key);
-  const reducedMotion = () => Boolean(view.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const motionMedia = view.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const reducedMotion = () => Boolean(motionMedia?.matches);
 
   function pose(entry, x, y, direction, frame, motion) {
     entry.wizard.style.transform = `translate(${Math.round(x - anchor.x)}px, ${Math.round(y - anchor.y)}px)`;
     entry.wizard.dataset.motion = motion;
     entry.wizard.dataset.direction = direction;
-    entry.wizard.dataset.frame = String(frame);
-    if (entry.type === 'earth') {
-      const sheet = entry.golemActive ? GOLEM_ANIMATION_SHEETS.poses
-        : motion === 'in' ? EARTH_ANIMATION_SHEETS.walk : EARTH_ANIMATION_SHEETS.idle;
-      const frames = entry.golemActive ? sheet.animations.idle : sheet.animations.earth;
-      const physicalFrame = frames[frame % frames.length];
-      paintAnimationFrame(entry.sprite, sheet, physicalFrame, anchor, { mirror: direction === 'left' });
+    if (motion === 'idle' || entry.type === 'earth' && entry.golemActive) {
+      const sheet = entry.golemActive ? GOLEM_ANIMATION_SHEETS.poses : IDLE_ANIMATION_SHEETS[entry.type];
+      const frames = sheet.animations.idle;
+      const sequenceFrame = frame % frames.length;
+      const physicalFrame = frames[sequenceFrame];
+      const nativeFacing = sheet.nativeFacing || 'right';
+      paintAnimationFrame(entry.sprite, sheet, physicalFrame, anchor, { mirror: direction !== nativeFacing });
+      Object.assign(entry.sprite.dataset, { sequenceFrame: String(sequenceFrame), phase: motion });
+      entry.wizard.dataset.frame = String(physicalFrame);
       return;
     }
-    // The walking atlas includes both directions for each original wizard.
+    entry.wizard.dataset.frame = String(frame);
+    if (entry.type === 'earth') {
+      const sheet = EARTH_ANIMATION_SHEETS.walk;
+      const physicalFrame = sheet.animations.earth[frame % sheet.animations.earth.length];
+      paintAnimationFrame(entry.sprite, sheet, physicalFrame, anchor, { mirror: direction !== sheet.facing.earth });
+      entry.sprite.dataset.phase = motion;
+      return;
+    }
+    // Entrance retains the original directional Fire/Water walking atlas.
     Object.assign(entry.sprite.style, {
       display: 'block', width: `${tileWidth}px`, height: `${tileHeight}px`,
       backgroundImage: `url("${ASSETS[WIZARD_SPRITES.asset]}")`,
@@ -94,29 +106,40 @@ export function createBattleScene({ players = null } = {}) {
       backgroundPosition: `${-frame * tileWidth}px ${-WIZARD_SPRITES.directions[entry.type][direction] * tileHeight}px`,
       transform: '', clipPath: '',
     });
+    Object.assign(entry.sprite.dataset, { asset: WIZARD_SPRITES.asset, frame: String(frame), phase: motion });
     entry.sprite.hidden = false;
   }
-  function stopIdleLoop() {
+  function stopIdleLoop({ reset = false } = {}) {
+    idleGeneration += 1;
     if (idleFrameRequest) view.cancelAnimationFrame(idleFrameRequest);
     idleFrameRequest = 0;
-    idleStarted = null;
+    lastIdleTime = null;
+    if (reset) idleElapsed = 0;
+  }
+  function paintIdle() {
+    const frame = reducedMotion() ? 0 : Math.floor(idleElapsed / 160);
+    for (const entry of wizards) pose(entry, entry.targetX, 450, entry.inward, frame, 'idle');
   }
   function startIdleLoop() {
-    if (!visible || reducedMotion() || idleFrameRequest || !wizards.some(entry => entry.type === 'earth')) return;
+    if (!visible || element.ownerDocument.hidden || reducedMotion() || idleFrameRequest
+      || timeline || element.dataset.motion !== 'idle') return;
+    const requestGeneration = idleGeneration;
     function tick(time) {
+      if (requestGeneration !== idleGeneration) return;
       idleFrameRequest = 0;
-      if (!visible || timeline || element.dataset.motion !== 'idle' || reducedMotion()) return;
-      if (idleStarted === null) idleStarted = time;
-      for (const entry of wizards) if (entry.type === 'earth') {
-        const frame = Math.floor(Math.max(0, time-idleStarted) / 160);
-        pose(entry, entry.targetX, 450, entry.inward, frame, 'idle');
+      if (!visible || element.ownerDocument.hidden || timeline || element.dataset.motion !== 'idle' || reducedMotion()) {
+        lastIdleTime = null;
+        return;
       }
+      if (lastIdleTime !== null) idleElapsed += Math.max(0, time - lastIdleTime);
+      lastIdleTime = time;
+      paintIdle();
       idleFrameRequest = view.requestAnimationFrame(tick);
     }
     idleFrameRequest = view.requestAnimationFrame(tick);
   }
   function idle() {
-    for (const entry of wizards) pose(entry, entry.targetX, 450, entry.inward, idleFrame, 'idle');
+    paintIdle();
     element.dataset.motion = 'idle';
     startIdleLoop();
   }
@@ -131,17 +154,13 @@ export function createBattleScene({ players = null } = {}) {
     visible = true;
     if (key === combatantKey) { startIdleLoop(); return false; }
     combatantKey = key;
-    stopIdleLoop();
     for (const [index, entry] of wizards.entries()) {
       Object.assign(entry, next[index]);
       entry.wizard.className = `arena-wizard ${entry.type}-wizard${entry.wizard.dataset.active === 'true' ? ' active-combatant' : ''}`;
       Object.assign(entry.wizard.dataset, { arenaWizard: entry.type, arenaSeat: String(index),
         element: entry.type, playerId: entry.playerId, form: entry.golemActive ? 'golem' : 'wizard' });
-      if (entry.type === 'earth') {
-        preloadAnimationSheet(EARTH_ANIMATION_SHEETS.walk);
-        preloadAnimationSheet(EARTH_ANIMATION_SHEETS.idle);
-        if (entry.golemActive) preloadAnimationSheet(GOLEM_ANIMATION_SHEETS.poses);
-      }
+      preloadAnimationSheet(entry.golemActive ? GOLEM_ANIMATION_SHEETS.poses : IDLE_ANIMATION_SHEETS[entry.type]);
+      if (entry.type === 'earth') preloadAnimationSheet(EARTH_ANIMATION_SHEETS.walk);
     }
     element.setAttribute('aria-label', `${next.map(entry => entry.type[0].toUpperCase()+entry.type.slice(1)).join(' and ')} wizards in the forest ruins`);
     if (!timeline && element.dataset.motion !== 'prepared') idle();
@@ -176,9 +195,9 @@ export function createBattleScene({ players = null } = {}) {
     finishEntrance();
     preparedKey = key;
     if (played.has(key)) return false;
-    if (reducedMotion()) { played.add(key); idle(); return false; }
     visible = true;
-    stopIdleLoop();
+    if (reducedMotion()) { played.add(key); idle(); return false; }
+    stopIdleLoop({ reset: true });
     for (const entry of wizards) pose(entry, entry.startX, 450, entry.inward, idleFrame, 'in');
     element.dataset.motion = 'prepared';
     return true;
@@ -220,6 +239,24 @@ export function createBattleScene({ players = null } = {}) {
   }
   function hide() { visible = false; finishEntrance(); stopIdleLoop(); }
 
+  // Pause the decorative clock while hidden; normal renders and spell setup
+  // keep its phase, so repeated UI updates cannot postpone every second blink.
+  element.ownerDocument.addEventListener?.('visibilitychange', () => {
+    if (element.ownerDocument.hidden) stopIdleLoop();
+    else startIdleLoop();
+  });
+  motionMedia?.addEventListener?.('change', () => {
+    if (reducedMotion()) {
+      stopIdleLoop();
+      if (timeline || element.dataset.motion === 'prepared') finishEntrance();
+      else if (element.dataset.motion === 'idle') paintIdle();
+    } else if (element.dataset.motion === 'idle') {
+      paintIdle();
+      startIdleLoop();
+    }
+  });
+
+  for (const entry of wizards) preloadAnimationSheet(IDLE_ANIMATION_SHEETS[entry.type]);
   idle();
   if (players) setCombatants(players);
   setActive(null);

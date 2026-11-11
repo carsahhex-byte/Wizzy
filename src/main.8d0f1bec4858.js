@@ -1,23 +1,24 @@
 import { getEnhancementBonus, createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell, endTurn, beginRefresh, toggleRefreshCard, confirmRefresh, cancelRefresh, canCancelStagedAction, cancelStagedAction, getActingPlayerIndex, canSelectCard, canCastSelected, getEmberSpendRange, SPELL_RULES, HAND_LIMIT, OPENING_HAND_SIZE, activateEnhancement, rollEnhancement, canEnhance, MAX_ENHANCEMENT, ENHANCEMENT_THRESHOLD, activateAura, canActivateAura, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.24053fb39595.js';
-import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.16c339a8ba87.js';
+import { ASSETS, ASSET_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.875cdb8100e6.js';
 import { SPELL_CATALOG } from './spells.116e6e94e9df.js';
 import { validateDeck, getDeckValidation } from './decks.1fed6bf0f1db.js';
 import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, isShieldBypassActive } from './effects.e851a71ef139.js';
-import { createHub } from './hub.c56c5cdce987.js';
+import { createHub } from './hub.873a46e9597c.js';
 import { parseStorybookRoute } from './districts.41d180c8958a.js';
 import { createMultiplayer } from './multiplayer.d3567e1306a5.js';
 import { createAccounts } from './accounts.3692769cbe84.js';
-import { fitSlabText } from './slab-text.308873e88ad9.js';
-import { createBattleScene } from './battle-scene.6a9ce935198f.js';
-import { createSpellAnimator } from './spell-animation.5eb9e482a0d7.js';
-import { createAuraAnimator } from './aura-animation.0a8af880ea0e.js';
+import { fitSlabText } from './slab-text.30cdee08e2de.js';
+import { createBattleScene } from './battle-scene.e179404884f9.js';
+import { createSpellAnimator } from './spell-animation.595b700dcef7.js';
+import { createAuraAnimator } from './aura-animation.0c38f77496a0.js';
 import { getResolvedBattleVisuals } from './spell-visuals.9db470ce394a.js';
 import { createHealthBars } from './health-bars.b204b645d6fa.js';
-import { pixelIconMarkup } from './pixel-icons.3f938f4df019.js';
+import { pixelIconMarkup } from './pixel-icons.9f49af1f18a3.js';
 import { ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook } from './spellbooks.dc9c46f0173c.js';
 import { getGameSpellbook } from './game.24053fb39595.js';
 import { createDuelStorage } from './duel-storage.119759735fc7.js';
 import { ELEMENTS, ELEMENT_INFO, getPlayerSchool } from './elements.f91c53cdab44.js';
+import { classifyBattleChoice } from './battle-choice.547da4f3b0c1.js';
 
 let duelDeviceStorage = null;
 try { duelDeviceStorage = globalThis.localStorage; } catch {}
@@ -148,8 +149,8 @@ function phaseHint(active) {
     case 'rolling': return 'Rolling two dice…';
     case 'enhancing': return `${active.name} is rolling Enhancement. ${enhancementTiersText}. Cap ${MAX_ENHANCEMENT}%.`;
     case 'resolving': return `Resolving your ${pendingActionName()}…`;
-    case 'end': return 'End Turn passes; Hand Refresh chooses discards. Tap background to cancel.';
-    case 'refresh': return `${state.refreshCardIds.length} selected. Refresh confirms; End Turn passes. Tap background to cancel.`;
+    case 'end': return 'End Turn confirms; blue Hand Refresh chooses discards. Tap elsewhere to change your choice.';
+    case 'refresh': return `${state.refreshCardIds.length} selected. Red Hand Refresh confirms. Tap elsewhere to cancel or choose End Turn again.`;
     case 'ready-to-pass': return 'Hand refreshed. Click End Turn to pass to the next wizard.';
     default: return state.primaryUsed?(state.primaryAction==='aura'?`Aura activated: +${AURA_BONUS}% damage for your next ${active.auraTurns} own turns. The activation turn does not count. End Turn to continue.`:state.primaryAction==='enhancement'&&state.lastRoll?.kind==='enhancement'?enhancementOutcomeHint(active):'Primary spell resolved. End Turn to continue.'):`${active.name} · cast a slab, Enhance, or activate Aura.`;
   }
@@ -163,7 +164,8 @@ function cardView(card, active, finished) {
   const selected = state.phase==='fate'?state.selectedFateCardIds.includes(card.id):state.selectedCardId===card.id;
   const refreshSelected = state.refreshCardIds.includes(card.id);
   const pending = state.pendingCardId === card.id;
-  const eligible=canActOnline()&&canSelectCard(state,card.id);
+  const selectionState=state.phase==='end'?cancelStagedAction(state):state;
+  const eligible=canActOnline()&&canSelectCard(selectionState,card.id);
   const unavailable = finished || !canActOnline() || (state.phase!=='refresh'&&!eligible);
   const muted=state.phase==='fate'&&card.category!=='Fate';
   const inactiveFate=state.phase==='fate'&&card.category==='Fate'&&!eligible;
@@ -679,20 +681,72 @@ function canApplyQueuedCancel(request) {
     && request.completedRevision !== null && multiplayer.getSession()?.revision === request.completedRevision
     && canActOnline() && canCancelStagedAction(state) && !document.querySelector('dialog[open]');
 }
-document.addEventListener('click',event=>{
-  if (battleView.hidden || event.defaultPrevented || event.button !== 0
-    || spellVisualBusy() || document.querySelector('dialog[open]')) return;
-  // The original event path survives a control's synchronous board rerender.
-  if (event.composedPath().some(node => node instanceof Element && node.matches(battleControlSelector))) return;
-  if (isOnlineBattle() && onlineBusy) {
-    const request = onlineActionInFlight;
-    if (request?.staged) request.cancelRequested = true;
+let replayingBattleChoice = false;
+function battleChoiceIntent(event){
+  const path=event.composedPath().filter(node=>node instanceof Element);
+  const card=path.find(node=>node.matches('[data-card-id]'));
+  const control=card||path.find(node=>node.matches(battleControlSelector));
+  if(!control)return {action:'background',selector:null,disabled:false};
+  if(card)return {action:'card',selector:`[data-card-id="${CSS.escape(card.dataset.cardId)}"]`,disabled:card.disabled};
+  const twist=path.find(node=>node.matches('[data-twist-card]'));
+  if(twist)return {action:'twist',selector:`[data-twist-card="${CSS.escape(twist.dataset.twistCard)}"][data-twist-value="${CSS.escape(twist.dataset.twistValue)}"]`,disabled:twist.disabled};
+  const selector=control.id?`#${CSS.escape(control.id)}`
+    :control.matches('[data-enhance-player]')?`[data-enhance-player="${control.dataset.enhancePlayer}"]`
+    :control.matches('[data-aura-player]')?`[data-aura-player="${control.dataset.auraPlayer}"]`
+    :control.matches('summary')?'.combat-log>summary':null;
+  return {action:control.id||'other',selector,disabled:Boolean(control.disabled)};
+}
+function replayBattleChoice(intent){
+  if(!intent?.selector||battleView.hidden||spellVisualBusy()||document.querySelector('dialog[open]'))return;
+  const control=document.querySelector(intent.selector);
+  if(!control||control.disabled)return;
+  replayingBattleChoice=true;
+  try{control.click();}finally{replayingBattleChoice=false;}
+}
+async function cancelOnlineChoice(intent){
+  const identity={code:onlineCode,playerIndex:onlinePlayerIndex,activePlayer:state.activePlayer,
+    round:state.round,fatePlayer:state.fatePlayer,fateStep:state.pendingSpell?.fateStep,
+    expectedPhase:['end','refresh'].includes(state.phase)?'main':state.phase};
+  await sendOnlineAction('cancelStagedAction');
+  if(!isOnlineBattle()||onlineCode!==identity.code||onlinePlayerIndex!==identity.playerIndex
+    ||state.activePlayer!==identity.activePlayer||state.round!==identity.round||state.phase!==identity.expectedPhase
+    ||identity.expectedPhase==='fate'&&(state.fatePlayer!==identity.fatePlayer||state.pendingSpell?.fateStep!==identity.fateStep)
+    ||state.selectedCardId!==null||state.selectedFateCardIds.length||state.refreshCardIds.length||!canActOnline())return;
+  replayBattleChoice(intent);
+}
+function captureBattleChoice(event,disabledPointer=false){
+  if(replayingBattleChoice||battleView.hidden||event.defaultPrevented||event.button!==0
+    ||spellVisualBusy()||document.querySelector('dialog[open]'))return;
+  const intent=battleChoiceIntent(event);
+  // Disabled controls do not emit a click in every browser. Their pointer tap
+  // can still dismiss a reversible choice, then retry a now-available action.
+  if(disabledPointer&&!intent.disabled)return;
+  let choiceState=state;
+  if(isOnlineBattle()&&onlineBusy){
+    const request=onlineActionInFlight;
+    if(!request?.staged)return;
+    choiceState={...state,phase:request.expectedPhase,
+      selectedCardId:request.type==='selectCard'?request.payload.cardId:state.selectedCardId};
+    const choice=classifyBattleChoice(choiceState,intent.action);
+    if(choice==='keep')return;
+    event.preventDefault();event.stopImmediatePropagation();
+    request.cancelRequested=true;
+    request.cancelIntent=choice==='cancel-and-continue'?intent:null;
     return;
   }
-  if (!canActOnline() || !canCancelStagedAction(state)) return;
-  if (isOnlineBattle()) void sendOnlineAction('cancelStagedAction');
-  else update(cancelStagedAction(state),'Staged choice canceled. Choose your next action.');
-});
+  if(!canActOnline()||!canCancelStagedAction(choiceState))return;
+  const choice=classifyBattleChoice(choiceState,intent.action);
+  if(choice==='keep')return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const followup=choice==='cancel-and-continue'?intent:null;
+  if(isOnlineBattle())void cancelOnlineChoice(followup);
+  else{
+    update(cancelStagedAction(state),'Staged choice canceled. Choose your next action.');
+    replayBattleChoice(followup);
+  }
+}
+document.addEventListener('pointerdown',event=>captureBattleChoice(event,true),true);
+document.addEventListener('click',event=>captureBattleChoice(event),true);
 
 document.querySelector('#begin-turn').addEventListener('click',()=>{handoff.close();scheduleCombat();app.querySelector('.spell-card:not(:disabled)')?.focus({preventScroll:true});});
 document.querySelector('#opening-roll').addEventListener('click',event=>{
@@ -871,7 +925,7 @@ async function sendOnlineAction(type,payload={}){
   const request={code:onlineCode,playerIndex:onlinePlayerIndex,activePlayer:state.activePlayer,
     round:state.round,phase:state.phase,fatePlayer:state.fatePlayer,fateStep:state.pendingSpell?.fateStep,
     expectedPhase:type==='endTurn'?'end':type==='beginRefresh'?'refresh':state.phase,
-    staged:stagedOnlineAction(type),cancelRequested:false,completedRevision:null};
+    type,payload:{...payload},staged:stagedOnlineAction(type),cancelRequested:false,cancelIntent:null,completedRevision:null};
   onlineActionInFlight=request;
   onlineBusy=true;render();
   try {
@@ -889,7 +943,7 @@ async function sendOnlineAction(type,payload={}){
       if(isOnlineBattle())render();
       // Finish a reversible request before clearing its resulting staged state.
       // Casts, Fate responses and confirmed passes never enter this queue.
-      if(request.cancelRequested&&canApplyQueuedCancel(request))void sendOnlineAction('cancelStagedAction');
+      if(request.cancelRequested&&canApplyQueuedCancel(request))await cancelOnlineChoice(request.cancelIntent);
     }
   }
 }
