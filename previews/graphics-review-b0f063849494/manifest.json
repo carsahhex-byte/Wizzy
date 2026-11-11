@@ -1,0 +1,3423 @@
+{
+  "format": "wizzy-graphics-review",
+  "version": 1,
+  "previewOnly": true,
+  "integration": "not-installed",
+  "title": "Wizzy rough pixel graphics review",
+  "fragments": [
+    "earth.json",
+    "fate.json",
+    "fire.json",
+    "frames.json",
+    "props.json",
+    "ui.json",
+    "water.json"
+  ],
+  "proposedNames": {
+    "Earth-1": "OffoDefo",
+    "Earth-2": "Bengal Shield",
+    "Earth-3": "Earthbound",
+    "Earth-4": "Merciful",
+    "Earth-5": "Tectonic",
+    "Water-12": "Carbonate"
+  },
+  "preservedAnimations": [
+    "Fire-11",
+    "Water-9"
+  ],
+  "timing": {
+    "formationMs": 500,
+    "lingerMs": 1000,
+    "travelMs": 1000,
+    "impactMs": 340,
+    "hitFlashMs": 210,
+    "fateMs": 600
+  },
+  "spells": [
+    {
+      "id": "Earth-1",
+      "name": "OffoDefo",
+      "file": "art/earth/offodefo.png",
+      "kind": "attack",
+      "target": "opponent",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "description": "A small mossy stone coalesces, jabs forward, then returns as protective stone plates.",
+      "notes": [
+        "FX only, with no Wizard or Golem body.",
+        "Formation 0–3; hold 4–7; rightward jab 8–11; returning shield plates 12–15.",
+        "The shield follow-through belongs around the caster; any future scene playback should move that phase from the opponent back to the caster.",
+        "Current rule: deal 5 damage and gain 5 Shield;7+ gives 5 additional Shield. No mechanical changes."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "a367475cda3cbea67af166550a36dc89e65d352f5e3b5a8938a46fb8845c467f",
+      "bytes": 843071,
+      "sourceGeneration": "exec-3f94bdc3-b32a-4e18-b7d1-8d17756610c8.png",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "Earth-2",
+      "name": "Bengal Shield",
+      "file": "art/earth/bengal-shield.png",
+      "kind": "shield",
+      "target": "caster",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "description": "Layered mossy stone slabs assemble into a broad shield; a tiny violet Mana glint appears before the stone-flake fade.",
+      "notes": [
+        "FX only; compatible with either Wizard or Golem form.",
+        "Formation 0–3; clean shield hold 4–7; optional Mana flourish 8–11; disassembly 12–15.",
+        "Current rule: gain 10 Shield;6+ grants 1 Mana. The violet flourish is conditional in any future implementation."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "990a1583e43461d25f4aa33c0786f5c417188f7fc84167605ffe34a53d9e843b",
+      "bytes": 686042,
+      "sourceGeneration": "exec-06ea0f50-c833-44d0-9dda-6cc62f5f1e8f.png",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "Earth-3",
+      "name": "Earthbound",
+      "file": "art/earth/earthbound.png",
+      "kind": "attack",
+      "target": "opponent",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.88
+      },
+      "description": "A low ridge charges into a forward stone wave, then rises into a compact three-slab rampart.",
+      "notes": [
+        "FX only, no caster body or fixed landscape.",
+        "Formation 0–3; hold 4–7; rightward ground wave 8–11; conditional rampart 12–15.",
+        "Current rule: deal 5 damage;7+ gains 12 Shield. Future playback attaches the conditional rampart to the caster."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "c430ba93b55adddab0773c31b6e5ab4fe0dacb9a6a86defb54cb30c75ac5e127",
+      "bytes": 607096,
+      "sourceGeneration": "exec-98f564a6-15a0-4c22-bbde-a4c312d5e1f9.png",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "Earth-4",
+      "name": "Merciful",
+      "file": "art/earth/merciful.png",
+      "kind": "persistent",
+      "target": "caster",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "loopFrames": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "description": "Three mossy stone fragments assemble around an empty caster space, orbit through eight distinct poses, then scatter and fade.",
+      "notes": [
+        "FX only; compatible with both Wizard and Golem bodies.",
+        "Formation 0–3; persistent loop 4–11; fade 12–15.",
+        "Base spell grants 3 Shield. Persistence is eligible only on 6+.",
+        "On the qualifying result, fragments persist until the END OF THE OPPONENT’S NEXT TURN, not the end of the current turn.",
+        "Duration indicator for the current incoming-damage-bypasses-Shield rule, not the former Golem-protection mechanic.",
+        "Review-only animation must simulate expiry; no live-game timing is installed."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "a00e30c037c9899692fd0815aeca6a96ba6ddecb06a3a3528cfaec476e7c948a",
+      "bytes": 888154,
+      "sourceGeneration": "exec-b1a6ac40-1c16-448e-bddd-08bcef5969b5.png",
+      "persistsUntil": "end-of-opponent-next-turn",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "Earth-5",
+      "name": "Tectonic",
+      "file": "art/earth/tectonic.png",
+      "kind": "attack",
+      "target": "opponent",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.83
+      },
+      "description": "A detached stone-fist effect assembles, charges, slams into a travelling crack, then shatters into dust.",
+      "notes": [
+        "FX only, with no complete Golem body.",
+        "Formation 0–3; hold 4–7; slam and travelling crack 8–11; shatter/fade 12–15.",
+        "Valid only while Golem is active; current rule deals 15 damage. This spell is separate from the automatic Golem end-turn strike."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "ee59952368380254d00f3eb6de44da8a1704f0fc91fa6770f6ab671f90c8dec4",
+      "bytes": 1016449,
+      "sourceGeneration": "exec-087db5b1-4b2d-4871-b0e1-d45afacf103a.png",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "FAT-001",
+      "name": "Fortune",
+      "file": "art/fate/fate-effects.png",
+      "columns": 3,
+      "rows": 1,
+      "frames": [
+        0
+      ],
+      "kind": "fate",
+      "target": "dice",
+      "element": "fate",
+      "frameMs": 75,
+      "durationMs": 600,
+      "description": "A gold luck star rises and twinkles above the rolled dice after Fortune is played.",
+      "presentation": {
+        "risePixels": 8,
+        "pulse": true,
+        "fade": true,
+        "position": "above-dice"
+      },
+      "notes": [
+        "One clean pixel glyph per Fate; the review player animates its rise, twinkle and fade over 0.6 seconds.",
+        "Play after this Fate card is used and before the primary spell resolves.",
+        "No wizard animation or change to Fate response priority."
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 260947,
+      "sha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae"
+    },
+    {
+      "id": "FAT-002",
+      "name": "Misfortune",
+      "file": "art/fate/fate-effects.png",
+      "columns": 3,
+      "rows": 1,
+      "frames": [
+        1
+      ],
+      "kind": "fate",
+      "target": "dice",
+      "element": "fate",
+      "frameMs": 75,
+      "durationMs": 600,
+      "description": "A lavender crescent briefly pulses above the rolled dice after Misfortune is played.",
+      "presentation": {
+        "risePixels": 8,
+        "pulse": true,
+        "fade": true,
+        "position": "above-dice"
+      },
+      "notes": [
+        "One clean pixel glyph per Fate; the review player animates its rise, twinkle and fade over 0.6 seconds.",
+        "Play after this Fate card is used and before the primary spell resolves.",
+        "No wizard animation or change to Fate response priority."
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 260947,
+      "sha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae"
+    },
+    {
+      "id": "FAT-003",
+      "name": "Twist",
+      "file": "art/fate/fate-effects.png",
+      "columns": 3,
+      "rows": 1,
+      "frames": [
+        2
+      ],
+      "kind": "fate",
+      "target": "dice",
+      "element": "fate",
+      "frameMs": 75,
+      "durationMs": 600,
+      "description": "Opposing gold and lavender arrows rise and settle above the rolled dice after Twist is played.",
+      "presentation": {
+        "risePixels": 8,
+        "pulse": true,
+        "fade": true,
+        "position": "above-dice"
+      },
+      "notes": [
+        "One clean pixel glyph per Fate; the review player animates its rise, twinkle and fade over 0.6 seconds.",
+        "Play after this Fate card is used and before the primary spell resolves.",
+        "No wizard animation or change to Fate response priority."
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 260947,
+      "sha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae"
+    },
+    {
+      "id": "Fire-2",
+      "name": "Heatbox",
+      "file": "art/fire/heatbox.png",
+      "columns": 4,
+      "rows": 4,
+      "kind": "buff",
+      "target": "caster",
+      "element": "fire",
+      "description": "A faceted firestone pulses and contracts while ember motes gather back into its core.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "durationMs": 2200,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "sha256": "44d6244df7c27ffdb03e77881cfa6e1d9f13d786c7f6552d8f4957a806ce2c1c",
+      "previewPath": "caster-orbit",
+      "stages": [
+        {
+          "name": "form",
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "charge",
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "frameMs": 125,
+          "loops": 2,
+          "durationMs": 1000
+        },
+        {
+          "name": "release",
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "dissipate",
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "frameMs": 100
+        }
+      ],
+      "notes": "Effects-only draft atlas: no wizard/body/hat. Artwork is generated PNG bytes without image processing. Use exact proportional cell boundaries; source size can have half-pixel cell divisions. Keep existing caster source and game rules. One-second charge uses two loops of frames4–7. Quick attack impact is320ms. Preview parameters are draft choreography, not runtime integration.",
+      "conditional": {
+        "thresholds": [
+          7,
+          10
+        ],
+        "visual": "Ember count should follow resolved gain1/2/3; atlas orbit particles are decorative only."
+      },
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.5398089171974523
+        },
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5015974440894568,
+          "y": 0.5493630573248408
+        },
+        {
+          "x": 0.47770700636942676,
+          "y": 0.5652866242038217
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.49201277955271566,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.47929936305732485,
+          "y": 0.4968051118210863
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4984076433121019,
+          "y": 0.5
+        }
+      ],
+      "frameBounds": [
+        [
+          0,
+          25,
+          314,
+          289
+        ],
+        [
+          0,
+          9,
+          313,
+          305
+        ],
+        [
+          1,
+          31,
+          312,
+          283
+        ],
+        [
+          0,
+          41,
+          300,
+          273
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          308,
+          313
+        ],
+        [
+          1,
+          0,
+          312,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          301,
+          311
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ]
+      ],
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "Fire-15",
+      "name": "Blaze",
+      "file": "art/fire/blaze.png",
+      "columns": 4,
+      "rows": 4,
+      "kind": "buff",
+      "target": "caster",
+      "element": "fire",
+      "description": "A curling flame opens into a fiery crown; violet-gold Mana glints accompany the empowered result.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "durationMs": 2200,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "sha256": "28a872154db7f2b1bac2bc874c7a2b916d2b20b94f0b48be0d96084b4ca800e7",
+      "previewPath": "caster-rise",
+      "stages": [
+        {
+          "name": "form",
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "charge",
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "frameMs": 125,
+          "loops": 2,
+          "durationMs": 1000
+        },
+        {
+          "name": "release",
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "dissipate",
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "frameMs": 100
+        }
+      ],
+      "notes": "Effects-only draft atlas: no wizard/body/hat. Artwork is generated PNG bytes without image processing. Use exact proportional cell boundaries; source size can have half-pixel cell divisions. Keep existing caster source and game rules. One-second charge uses two loops of frames4–7. Quick attack impact is320ms. Preview parameters are draft choreography, not runtime integration.",
+      "conditional": {
+        "threshold": 6,
+        "visual": "Mana glint corresponds to the on-6+ Mana reward; core flame and Ember appear on all casts."
+      },
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4984076433121019,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4840764331210191,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5143769968051118,
+          "y": 0.5
+        },
+        {
+          "x": 0.48089171974522293,
+          "y": 0.5015974440894568
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.47770700636942676,
+          "y": 0.5
+        }
+      ],
+      "frameBounds": [
+        [
+          0,
+          9,
+          314,
+          305
+        ],
+        [
+          0,
+          9,
+          313,
+          305
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          304,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          9,
+          0,
+          304,
+          313
+        ],
+        [
+          0,
+          1,
+          302,
+          312
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          300,
+          314
+        ]
+      ],
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "Fire-6",
+      "name": "Charred Blade",
+      "file": "art/fire/charred-blade.png",
+      "columns": 4,
+      "rows": 4,
+      "kind": "attack",
+      "target": "opponent",
+      "element": "fire",
+      "description": "A burning sword charges, swings through a broad fiery arc, then breaks into impact sparks.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "durationMs": 2120,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "sha256": "87cc0845c40e5f69a3f4140a30b798843d08e26a528a96009be56b384b7ca4b1",
+      "previewPath": "slash-travel",
+      "stages": [
+        {
+          "name": "form",
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "charge",
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "frameMs": 125,
+          "loops": 2,
+          "durationMs": 1000
+        },
+        {
+          "name": "release",
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "impact",
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "frameMs": 80
+        }
+      ],
+      "notes": "Effects-only draft atlas: no wizard/body/hat. Artwork is generated PNG bytes without image processing. Use exact proportional cell boundaries; source size can have half-pixel cell divisions. Keep existing caster source and game rules. One-second charge uses two loops of frames4–7. Quick attack impact is320ms. Preview parameters are draft choreography, not runtime integration.",
+      "conditional": {
+        "threshold": 7,
+        "visual": "Add resolved Ember-gain feedback only when7+; attack occurs on every cast."
+      },
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.5366242038216561
+        },
+        {
+          "x": 0.5,
+          "y": 0.5302547770700637
+        },
+        {
+          "x": 0.5,
+          "y": 0.5302547770700637
+        },
+        {
+          "x": 0.49044585987261147,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5015974440894568,
+          "y": 0.5
+        },
+        {
+          "x": 0.48089171974522293,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4840764331210191,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5015974440894568,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        }
+      ],
+      "frameBounds": [
+        [
+          0,
+          23,
+          314,
+          291
+        ],
+        [
+          0,
+          19,
+          313,
+          295
+        ],
+        [
+          0,
+          19,
+          313,
+          295
+        ],
+        [
+          0,
+          9,
+          308,
+          305
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          1,
+          0,
+          312,
+          313
+        ],
+        [
+          0,
+          0,
+          302,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          304,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          1,
+          0,
+          312,
+          314
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ]
+      ],
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "Fire-14",
+      "name": "Sunsetter",
+      "file": "art/fire/sunsetter.png",
+      "columns": 4,
+      "rows": 4,
+      "kind": "attack",
+      "target": "opponent",
+      "element": "fire",
+      "description": "A burning sun charges into a falling meteor, exploding in an orange shockwave and chunky steam.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "durationMs": 2120,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "sha256": "20bfc9a8da676fff26c0c8386d0cbef8625ecaf0dedac54fabde4c8b9f2300b4",
+      "previewPath": "meteor-descent",
+      "stages": [
+        {
+          "name": "form",
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "charge",
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "frameMs": 125,
+          "loops": 2,
+          "durationMs": 1000
+        },
+        {
+          "name": "release",
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "impact",
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "frameMs": 80
+        }
+      ],
+      "notes": "Effects-only draft atlas: no wizard/body/hat. Artwork is generated PNG bytes without image processing. Use exact proportional cell boundaries; source size can have half-pixel cell divisions. Keep existing caster source and game rules. One-second charge uses two loops of frames4–7. Quick attack impact is320ms. Preview parameters are draft choreography, not runtime integration.",
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.5159235668789809
+        },
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.4585987261146497,
+          "y": 0.5366242038216561
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4984076433121019,
+          "y": 0.5
+        },
+        {
+          "x": 0.517515923566879,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4984076433121019,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.47770700636942676,
+          "y": 0.5
+        }
+      ],
+      "frameBounds": [
+        [
+          0,
+          10,
+          314,
+          304
+        ],
+        [
+          0,
+          9,
+          313,
+          305
+        ],
+        [
+          0,
+          9,
+          313,
+          305
+        ],
+        [
+          0,
+          23,
+          288,
+          291
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          11,
+          0,
+          303,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          300,
+          314
+        ]
+      ],
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "id": "Water-2",
+      "name": "Sea bolt",
+      "file": "art/water/sea-bolt.png",
+      "columns": 4,
+      "rows": 4,
+      "width": 1254,
+      "height": 1254,
+      "kind": "attack",
+      "target": "opponent",
+      "element": "water",
+      "nativeFacing": "right",
+      "description": "A tightly spiralling water arrow forms, ripples with foam, darts forward and breaks into a compact splash.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "holdMs": 1000,
+      "stages": {
+        "formation": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "hold": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "travel": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "impact": [
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "sha256": "6e9d10c11e1ad9c9fe3c0a5ee261233bacc9ac491e89725082b2f9edf9b2c8b4",
+      "notes": "Effects-only atlas: existing caster can remain fixed and the projectile can move in either direction by mirroring. Additional Flow is conditional on the resolved 8+ result; it is not awarded by this preview."
+    },
+    {
+      "id": "Water-0",
+      "name": "Swell",
+      "file": "art/water/swell.png",
+      "columns": 4,
+      "rows": 4,
+      "width": 1254,
+      "height": 1254,
+      "kind": "buff",
+      "target": "caster",
+      "element": "water",
+      "nativeFacing": "right",
+      "description": "A circular pool gathers beneath the caster and a foaming ocean crest curls around an empty center, shedding Mana glints and water motes.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "holdMs": 1000,
+      "stages": {
+        "formation": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "hold": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "fade": [
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "sha256": "048eae43a58791f2fb129a92e7c7dc93f89296a87bdd8ec8ee96a1cf66ffcd9d",
+      "notes": "Clean transparent revision replaces an unused first draft with a white matte. Empty ring centers are transparent for a future caster overlay. Mana gain is on cast; the extra Flow is only for a resolved 7+ result. No live rule or artwork is changed."
+    },
+    {
+      "id": "Water-12",
+      "name": "Carbonate",
+      "previousName": "Coral Crash",
+      "file": "art/water/carbonate.png",
+      "columns": 4,
+      "rows": 4,
+      "width": 1254,
+      "height": 1254,
+      "kind": "attack",
+      "target": "opponent",
+      "element": "water",
+      "nativeFacing": "right",
+      "description": "A cyan jellyfish-shaped energy pulse gathers within coral currents, streams forward with curling tentacles, then bursts into a foamy splash.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "holdMs": 1000,
+      "stages": {
+        "formation": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "hold": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "travel": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "impact": [
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "conditionalEffects": [
+        {
+          "threshold": 7,
+          "effect": "A brief healing pulse returns to the caster only when the resolved roll qualifies; the permanent attack atlas contains no unconditional heart icon."
+        }
+      ],
+      "sha256": "bcba4f20d0a3ab8fae932c7c1cfe623bb420b36d24b388cd894fa39340b7e75f",
+      "notes": "Uses the current jellyfish/coral illustration motif. Renamed for this review only; stable Water-12 identity and current 3 Mana, 12 + 2 × Flow damage, 7+ heal 2 HP per Flow are recorded without changing live game data."
+    },
+    {
+      "id": "Water-14",
+      "name": "Poseidon's Rift",
+      "file": "art/water/poseidons-rift.png",
+      "columns": 4,
+      "rows": 4,
+      "width": 1254,
+      "height": 1254,
+      "kind": "attack",
+      "target": "opponent",
+      "element": "water",
+      "nativeFacing": "right",
+      "description": "A golden trident rises from a pounding whirlpool, tilts into a powerful forward rush, and detonates into forked water and gold fragments.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "holdMs": 1000,
+      "stages": {
+        "formation": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "hold": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "travel": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "impact": [
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "sha256": "9d5c9c6021c1b71e9ed546d99e521359fab502d9350c100f567fbb463203ab70",
+      "notes": "Effects-only heavy spell atlas, mirror for the opposite seat. Current 6 Mana cost and printed Flow-scaled damage remain unchanged."
+    }
+  ],
+  "screens": [
+    {
+      "id": "deck",
+      "name": "Spell Workshop",
+      "file": "art/ui/deck-screen.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "sha256": "f3230928ff333aba47fd361069d4a345dd5878d3f3a665645936def8511c5d68",
+      "bytes": 2268792,
+      "description": "Selected-deck parchment panel above a four-column slab collection, elemental tabs, quantity controls, save actions.",
+      "kind": "concept-screen",
+      "note": "Static visual layout mockup. Embedded sample icons, labels and counts are illustrative; live card faces, text and controls will be overlaid during a later approved integration."
+    },
+    {
+      "id": "character",
+      "name": "Your Wizzy",
+      "file": "art/ui/character-screen.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "sha256": "c2102ad84099cc041e2d9abc6174142910e16e21a3ab5e5d20a06088ef0ca172",
+      "bytes": 2189488,
+      "description": "Deep-red Fire wizard portrait stage, editable name concept, school selectors, starting duel stat panel and deck/account actions.",
+      "kind": "concept-screen",
+      "note": "Static visual layout mockup. Embedded sample icons, labels and counts are illustrative; live card faces, text and controls will be overlaid during a later approved integration."
+    },
+    {
+      "id": "friends",
+      "name": "Your Party",
+      "file": "art/ui/friends-screen.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "sha256": "048ae47eb1aabf81648d523ae75eac2069f2f61b8b92233cf2102f5fa9bac5e5",
+      "bytes": 2302882,
+      "description": "Party illustration, create-room and join-code panels, shared-screen entry and reserved future friends-list strip.",
+      "kind": "concept-screen",
+      "note": "Static visual layout mockup. Embedded sample icons, labels and counts are illustrative; live card faces, text and controls will be overlaid during a later approved integration."
+    },
+    {
+      "id": "battle",
+      "name": "Choose Your Wizards",
+      "file": "art/ui/battle-screen.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "sha256": "edf13628b5220513612d659f0f87cd621f4c537c39bc8cdc6998941407b309fc",
+      "bytes": 2367814,
+      "description": "Two inward-facing wizard portrait panels, independent Fire/Water/Earth selectors, saved-deck status and local/room mode actions.",
+      "kind": "concept-screen",
+      "note": "Static visual layout mockup. Embedded sample icons, labels and counts are illustrative; live card faces, text and controls will be overlaid during a later approved integration."
+    }
+  ],
+  "graphics": [
+    {
+      "id": "earth-stat-frame",
+      "name": "Earth stat frame",
+      "file": "art/frames/earth-stat-frame.png",
+      "kind": "frame",
+      "description": "The supplied simple green-and-gold stat frame, preserved byte-for-byte. Blank interior for live stats in a later integration.",
+      "notes": [
+        "Original source is public/graphics/Earth Stat Frame.png.",
+        "This review does not replace the active Earth frame."
+      ],
+      "width": 1292,
+      "height": 1218,
+      "bytes": 1067187,
+      "sha256": "c10771a2bd720b5ef151f456ac6f683ce726c83dc555237d703acd379b1a6368"
+    },
+    {
+      "id": "air-stat-frame",
+      "name": "Air stat frame",
+      "file": "art/frames/air-stat-frame.png",
+      "kind": "frame",
+      "description": "Matching restrained gold border and sky-slate interior, without bulky exterior decoration. Air artwork only.",
+      "notes": [
+        "Air is not enabled as a playable class in this review.",
+        "Blank heading and stats for future live text."
+      ],
+      "width": 1292,
+      "height": 1218,
+      "bytes": 1220688,
+      "sha256": "e00ffd2774324ad45a0f950d5845415b2307bd680a3225e188f61633f1047797"
+    },
+    {
+      "id": "spell-tower",
+      "name": "Spell Tower",
+      "file": "art/props/tower-discard.png",
+      "kind": "prop",
+      "columns": 2,
+      "rows": 2,
+      "frames": [
+        0,
+        2
+      ],
+      "description": "A compact magical tower visibly storing rectangular spell slabs, with a blank count plaque. Normal and sparkling hover poses.",
+      "stateOrder": [
+        "normal",
+        "hover"
+      ],
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1071781,
+      "sha256": "9bd21ff421f1515ff955360bcd9f43e6629efafc6607c1fe0838d7a266950e52"
+    },
+    {
+      "id": "discard-pile",
+      "name": "Discard Pile",
+      "file": "art/props/tower-discard.png",
+      "kind": "prop",
+      "columns": 2,
+      "rows": 2,
+      "frames": [
+        1,
+        3
+      ],
+      "description": "Spent slabs and cards collected in a wooden tray, with a blank count plaque. Normal and sparkling hover poses.",
+      "stateOrder": [
+        "normal",
+        "hover"
+      ],
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1071781,
+      "sha256": "9bd21ff421f1515ff955360bcd9f43e6629efafc6607c1fe0838d7a266950e52"
+    },
+    {
+      "id": "navigation-buttons",
+      "name": "Navigation button states",
+      "file": "art/ui/navigation-buttons.png",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA",
+      "sha256": "9ac4d6e3d21fd36cdc60fd4f51f99628eba5ed285aedcc37edbea021c6b94c31",
+      "bytes": 1352451,
+      "columns": 4,
+      "rows": 4,
+      "rowOrder": [
+        "Deck",
+        "Character",
+        "Friends",
+        "Battle"
+      ],
+      "columnOrder": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled"
+      ],
+      "description": "Sixteen transparent rough-pixel parchment navigation buttons. States add brighter gold edges, recessed shade and muted disabled palette. Original PNG is unchanged.",
+      "cells": [
+        {
+          "name": "Deck",
+          "state": "normal",
+          "frame": 0,
+          "cell": [
+            0,
+            0,
+            314,
+            314
+          ],
+          "visibleBounds": [
+            8,
+            156,
+            298,
+            139
+          ]
+        },
+        {
+          "name": "Deck",
+          "state": "hover",
+          "frame": 1,
+          "cell": [
+            314,
+            0,
+            313,
+            314
+          ],
+          "visibleBounds": [
+            321,
+            156,
+            298,
+            139
+          ]
+        },
+        {
+          "name": "Deck",
+          "state": "pressed",
+          "frame": 2,
+          "cell": [
+            627,
+            0,
+            313,
+            314
+          ],
+          "visibleBounds": [
+            634,
+            156,
+            300,
+            139
+          ]
+        },
+        {
+          "name": "Deck",
+          "state": "disabled",
+          "frame": 3,
+          "cell": [
+            940,
+            0,
+            314,
+            314
+          ],
+          "visibleBounds": [
+            948,
+            156,
+            299,
+            139
+          ]
+        },
+        {
+          "name": "Character",
+          "state": "normal",
+          "frame": 4,
+          "cell": [
+            0,
+            314,
+            314,
+            313
+          ],
+          "visibleBounds": [
+            8,
+            444,
+            298,
+            137
+          ]
+        },
+        {
+          "name": "Character",
+          "state": "hover",
+          "frame": 5,
+          "cell": [
+            314,
+            314,
+            313,
+            313
+          ],
+          "visibleBounds": [
+            321,
+            444,
+            299,
+            137
+          ]
+        },
+        {
+          "name": "Character",
+          "state": "pressed",
+          "frame": 6,
+          "cell": [
+            627,
+            314,
+            313,
+            313
+          ],
+          "visibleBounds": [
+            635,
+            444,
+            299,
+            137
+          ]
+        },
+        {
+          "name": "Character",
+          "state": "disabled",
+          "frame": 7,
+          "cell": [
+            940,
+            314,
+            314,
+            313
+          ],
+          "visibleBounds": [
+            948,
+            444,
+            299,
+            137
+          ]
+        },
+        {
+          "name": "Friends",
+          "state": "normal",
+          "frame": 8,
+          "cell": [
+            0,
+            627,
+            314,
+            313
+          ],
+          "visibleBounds": [
+            7,
+            731,
+            299,
+            137
+          ]
+        },
+        {
+          "name": "Friends",
+          "state": "hover",
+          "frame": 9,
+          "cell": [
+            314,
+            627,
+            313,
+            313
+          ],
+          "visibleBounds": [
+            321,
+            731,
+            299,
+            138
+          ]
+        },
+        {
+          "name": "Friends",
+          "state": "pressed",
+          "frame": 10,
+          "cell": [
+            627,
+            627,
+            313,
+            313
+          ],
+          "visibleBounds": [
+            635,
+            731,
+            299,
+            138
+          ]
+        },
+        {
+          "name": "Friends",
+          "state": "disabled",
+          "frame": 11,
+          "cell": [
+            940,
+            627,
+            314,
+            313
+          ],
+          "visibleBounds": [
+            948,
+            731,
+            299,
+            137
+          ]
+        },
+        {
+          "name": "Battle",
+          "state": "normal",
+          "frame": 12,
+          "cell": [
+            0,
+            940,
+            314,
+            314
+          ],
+          "visibleBounds": [
+            7,
+            1019,
+            299,
+            138
+          ]
+        },
+        {
+          "name": "Battle",
+          "state": "hover",
+          "frame": 13,
+          "cell": [
+            314,
+            940,
+            313,
+            314
+          ],
+          "visibleBounds": [
+            321,
+            1018,
+            298,
+            139
+          ]
+        },
+        {
+          "name": "Battle",
+          "state": "pressed",
+          "frame": 14,
+          "cell": [
+            627,
+            940,
+            313,
+            314
+          ],
+          "visibleBounds": [
+            635,
+            1019,
+            299,
+            138
+          ]
+        },
+        {
+          "name": "Battle",
+          "state": "disabled",
+          "frame": 15,
+          "cell": [
+            940,
+            940,
+            314,
+            314
+          ],
+          "visibleBounds": [
+            948,
+            1019,
+            299,
+            138
+          ]
+        }
+      ]
+    }
+  ],
+  "assets": {
+    "art/earth/bengal-shield.png": {
+      "file": "art/earth/bengal-shield.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 686042,
+      "sha256": "990a1583e43461d25f4aa33c0786f5c417188f7fc84167605ffe34a53d9e843b"
+    },
+    "art/earth/earthbound.png": {
+      "file": "art/earth/earthbound.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 607096,
+      "sha256": "c430ba93b55adddab0773c31b6e5ab4fe0dacb9a6a86defb54cb30c75ac5e127"
+    },
+    "art/earth/merciful.png": {
+      "file": "art/earth/merciful.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 888154,
+      "sha256": "a00e30c037c9899692fd0815aeca6a96ba6ddecb06a3a3528cfaec476e7c948a"
+    },
+    "art/earth/offodefo.png": {
+      "file": "art/earth/offodefo.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 843071,
+      "sha256": "a367475cda3cbea67af166550a36dc89e65d352f5e3b5a8938a46fb8845c467f"
+    },
+    "art/earth/tectonic.png": {
+      "file": "art/earth/tectonic.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1016449,
+      "sha256": "ee59952368380254d00f3eb6de44da8a1704f0fc91fa6770f6ab671f90c8dec4"
+    },
+    "art/fate/fate-effects.png": {
+      "file": "art/fate/fate-effects.png",
+      "width": 2172,
+      "height": 724,
+      "bytes": 260947,
+      "sha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae"
+    },
+    "art/fire/blaze.png": {
+      "file": "art/fire/blaze.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 623211,
+      "sha256": "28a872154db7f2b1bac2bc874c7a2b916d2b20b94f0b48be0d96084b4ca800e7"
+    },
+    "art/fire/charred-blade.png": {
+      "file": "art/fire/charred-blade.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 672486,
+      "sha256": "87cc0845c40e5f69a3f4140a30b798843d08e26a528a96009be56b384b7ca4b1"
+    },
+    "art/fire/heatbox.png": {
+      "file": "art/fire/heatbox.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 600826,
+      "sha256": "44d6244df7c27ffdb03e77881cfa6e1d9f13d786c7f6552d8f4957a806ce2c1c"
+    },
+    "art/fire/sunsetter.png": {
+      "file": "art/fire/sunsetter.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 682967,
+      "sha256": "20bfc9a8da676fff26c0c8386d0cbef8625ecaf0dedac54fabde4c8b9f2300b4"
+    },
+    "art/frames/air-stat-frame.png": {
+      "file": "art/frames/air-stat-frame.png",
+      "width": 1292,
+      "height": 1218,
+      "bytes": 1220688,
+      "sha256": "e00ffd2774324ad45a0f950d5845415b2307bd680a3225e188f61633f1047797"
+    },
+    "art/frames/earth-stat-frame.png": {
+      "file": "art/frames/earth-stat-frame.png",
+      "width": 1292,
+      "height": 1218,
+      "bytes": 1067187,
+      "sha256": "c10771a2bd720b5ef151f456ac6f683ce726c83dc555237d703acd379b1a6368"
+    },
+    "art/props/tower-discard.png": {
+      "file": "art/props/tower-discard.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1071781,
+      "sha256": "9bd21ff421f1515ff955360bcd9f43e6629efafc6607c1fe0838d7a266950e52"
+    },
+    "art/ui/battle-screen.png": {
+      "file": "art/ui/battle-screen.png",
+      "width": 948,
+      "height": 1659,
+      "bytes": 2367814,
+      "sha256": "edf13628b5220513612d659f0f87cd621f4c537c39bc8cdc6998941407b309fc"
+    },
+    "art/ui/character-screen.png": {
+      "file": "art/ui/character-screen.png",
+      "width": 948,
+      "height": 1659,
+      "bytes": 2189488,
+      "sha256": "c2102ad84099cc041e2d9abc6174142910e16e21a3ab5e5d20a06088ef0ca172"
+    },
+    "art/ui/deck-screen.png": {
+      "file": "art/ui/deck-screen.png",
+      "width": 948,
+      "height": 1659,
+      "bytes": 2268792,
+      "sha256": "f3230928ff333aba47fd361069d4a345dd5878d3f3a665645936def8511c5d68"
+    },
+    "art/ui/friends-screen.png": {
+      "file": "art/ui/friends-screen.png",
+      "width": 948,
+      "height": 1659,
+      "bytes": 2302882,
+      "sha256": "048ae47eb1aabf81648d523ae75eac2069f2f61b8b92233cf2102f5fa9bac5e5"
+    },
+    "art/ui/navigation-buttons.png": {
+      "file": "art/ui/navigation-buttons.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1352451,
+      "sha256": "9ac4d6e3d21fd36cdc60fd4f51f99628eba5ed285aedcc37edbea021c6b94c31"
+    },
+    "art/water/carbonate.png": {
+      "file": "art/water/carbonate.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1531601,
+      "sha256": "bcba4f20d0a3ab8fae932c7c1cfe623bb420b36d24b388cd894fa39340b7e75f"
+    },
+    "art/water/poseidons-rift.png": {
+      "file": "art/water/poseidons-rift.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1349000,
+      "sha256": "9d5c9c6021c1b71e9ed546d99e521359fab502d9350c100f567fbb463203ab70"
+    },
+    "art/water/sea-bolt.png": {
+      "file": "art/water/sea-bolt.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1389850,
+      "sha256": "6e9d10c11e1ad9c9fe3c0a5ee261233bacc9ac491e89725082b2f9edf9b2c8b4"
+    },
+    "art/water/swell.png": {
+      "file": "art/water/swell.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1045280,
+      "sha256": "048eae43a58791f2fb129a92e7c7dc93f89296a87bdd8ec8ee96a1cf66ffcd9d"
+    },
+    "art/references/fireWaterIdle.png": {
+      "file": "art/references/fireWaterIdle.png",
+      "width": 1254,
+      "height": 1254,
+      "bytes": 752654,
+      "sha256": "54ff4c53feb0401e088d070f402f5d952ed2f5da5bd76d39c439825a1f8d8c1c",
+      "referenceOnly": true
+    },
+    "art/references/earthIdle.png": {
+      "file": "art/references/earthIdle.png",
+      "width": 1774,
+      "height": 887,
+      "bytes": 624206,
+      "sha256": "eb4cdf0c6e8e2e6ab9f64271def3d82202c784a65a0409148e88a3a3e5b48839",
+      "referenceOnly": true
+    },
+    "art/references/golem.png": {
+      "file": "art/references/golem.png",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1898826,
+      "sha256": "a977058209708e486ed6e66a126e2bb597fb9f151499bb239d8b25f141ba493a",
+      "referenceOnly": true
+    },
+    "art/references/fireWaterCast.png": {
+      "file": "art/references/fireWaterCast.png",
+      "width": 887,
+      "height": 1774,
+      "bytes": 1285349,
+      "sha256": "7580f07dbc407ffb80889992fa03bf868d83d30f7c1cc7333a97781b1c7418c6",
+      "referenceOnly": true
+    },
+    "art/references/earthCast.png": {
+      "file": "art/references/earthCast.png",
+      "width": 887,
+      "height": 1774,
+      "bytes": 1097540,
+      "sha256": "53248a2ab535ea66a5c3266c6534c515431a214b48be6857249b9863d4fdb21d",
+      "referenceOnly": true
+    },
+    "art/references/forest.png": {
+      "file": "art/references/forest.png",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 2254841,
+      "sha256": "9660cdca7c31b259e17b20e736793d190aa6abbb7dd3d63d29e673213f053a5c",
+      "referenceOnly": true
+    }
+  },
+  "references": {
+    "fireWaterIdle": {
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "sourceBodyHeight": 234,
+      "frameAnchors": [
+        {
+          "x": 0.518341307814992,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5231259968102073,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5135566188197768,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5167464114832536,
+          "y": 0.9090909090909091
+        },
+        {
+          "x": 0.5167464114832536,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        }
+      ],
+      "file": "art/references/fireWaterIdle.png"
+    },
+    "fire": {
+      "asset": "wizardIdleClean",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "sourceBodyHeight": 234,
+      "frameAnchors": [
+        {
+          "x": 0.518341307814992,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5231259968102073,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5135566188197768,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5167464114832536,
+          "y": 0.9090909090909091
+        },
+        {
+          "x": 0.5167464114832536,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        }
+      ],
+      "targetBodyHeight": 144,
+      "displayScale": 0.6153846153846154,
+      "frameMs": 160,
+      "nativeFacing": "right",
+      "animations": {
+        "idle": [
+          0,
+          1,
+          2,
+          1,
+          4,
+          5,
+          6,
+          7,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "file": "art/references/fireWaterIdle.png",
+      "sequence": [
+        0,
+        1,
+        2,
+        1,
+        4,
+        5,
+        6,
+        7,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "water": {
+      "asset": "wizardIdleClean",
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "sourceBodyHeight": 234,
+      "frameAnchors": [
+        {
+          "x": 0.518341307814992,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5231259968102073,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5135566188197768,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5167464114832536,
+          "y": 0.9090909090909091
+        },
+        {
+          "x": 0.5167464114832536,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.5199362041467305,
+          "y": 0.9122807017543859
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.5215311004784688,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        },
+        {
+          "x": 0.518341307814992,
+          "y": 0.9106858054226475
+        }
+      ],
+      "targetBodyHeight": 144,
+      "displayScale": 0.6153846153846154,
+      "frameMs": 160,
+      "nativeFacing": "left",
+      "animations": {
+        "idle": [
+          8,
+          9,
+          10,
+          9,
+          12,
+          13,
+          14,
+          15,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      "file": "art/references/fireWaterIdle.png",
+      "sequence": [
+        8,
+        9,
+        10,
+        9,
+        12,
+        13,
+        14,
+        15,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    "earthIdle": {
+      "sourceWidth": 1774,
+      "sourceHeight": 887,
+      "columns": 4,
+      "rows": 2,
+      "sourceBodyHeight": 337,
+      "frameAnchors": [
+        {
+          "x": 0.5163472378804961,
+          "y": 0.9177001127395716
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9177001127395716
+        },
+        {
+          "x": 0.5174746335963923,
+          "y": 0.9177001127395716
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9177001127395716
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9165727170236753
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9165727170236753
+        },
+        {
+          "x": 0.5174746335963923,
+          "y": 0.9165727170236753
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9165727170236753
+        }
+      ],
+      "file": "art/references/earthIdle.png"
+    },
+    "earth": {
+      "asset": "earthIdleClean",
+      "sourceWidth": 1774,
+      "sourceHeight": 887,
+      "columns": 4,
+      "rows": 2,
+      "sourceBodyHeight": 337,
+      "frameAnchors": [
+        {
+          "x": 0.5163472378804961,
+          "y": 0.9177001127395716
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9177001127395716
+        },
+        {
+          "x": 0.5174746335963923,
+          "y": 0.9177001127395716
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9177001127395716
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9165727170236753
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9165727170236753
+        },
+        {
+          "x": 0.5174746335963923,
+          "y": 0.9165727170236753
+        },
+        {
+          "x": 0.5186020293122886,
+          "y": 0.9165727170236753
+        }
+      ],
+      "targetBodyHeight": 144,
+      "displayScale": 0.42729970326409494,
+      "frameMs": 160,
+      "nativeFacing": "right",
+      "animations": {
+        "idle": [
+          0,
+          1,
+          1,
+          3,
+          4,
+          5,
+          6,
+          7,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "file": "art/references/earthIdle.png",
+      "sequence": [
+        0,
+        1,
+        1,
+        3,
+        4,
+        5,
+        6,
+        7,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "golem": {
+      "asset": "golemPoses",
+      "sourceWidth": 1024,
+      "sourceHeight": 1536,
+      "columns": 4,
+      "rows": 6,
+      "frameMs": 125,
+      "displayScale": 1,
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.45714285714285713,
+          "y": 0.890625
+        },
+        {
+          "x": 0.42857142857142855,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.45714285714285713,
+          "y": 0.890625
+        },
+        {
+          "x": 0.42857142857142855,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        },
+        {
+          "x": 0.5,
+          "y": 0.890625
+        }
+      ],
+      "frameRects": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 256,
+          "y": 0,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 512,
+          "y": 0,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 768,
+          "y": 0,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 0,
+          "y": 256,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 256,
+          "y": 256,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 512,
+          "y": 256,
+          "w": 280,
+          "h": 256
+        },
+        {
+          "x": 800,
+          "y": 256,
+          "w": 224,
+          "h": 256
+        },
+        {
+          "x": 0,
+          "y": 512,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 256,
+          "y": 512,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 512,
+          "y": 512,
+          "w": 280,
+          "h": 256
+        },
+        {
+          "x": 800,
+          "y": 512,
+          "w": 224,
+          "h": 256
+        },
+        {
+          "x": 0,
+          "y": 768,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 256,
+          "y": 768,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 512,
+          "y": 768,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 768,
+          "y": 768,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 0,
+          "y": 1024,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 256,
+          "y": 1024,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 512,
+          "y": 1024,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 768,
+          "y": 1024,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 0,
+          "y": 1280,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 256,
+          "y": 1280,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 512,
+          "y": 1280,
+          "w": 256,
+          "h": 256
+        },
+        {
+          "x": 768,
+          "y": 1280,
+          "w": 256,
+          "h": 256
+        }
+      ],
+      "anchor": {
+        "x": 0.5,
+        "y": 0.890625
+      },
+      "animations": {
+        "Idle": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "Basic cast": [
+          4,
+          5,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          7,
+          7,
+          0,
+          0
+        ],
+        "Heavy cast": [
+          8,
+          9,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          11,
+          11,
+          0,
+          0
+        ],
+        "Quick hit": [
+          12,
+          13,
+          14,
+          15
+        ],
+        "Boost": [
+          16,
+          17,
+          17,
+          18,
+          17,
+          18,
+          17,
+          18,
+          17,
+          18,
+          17,
+          18,
+          19,
+          19,
+          0,
+          0
+        ],
+        "Enhancement": [
+          20,
+          21,
+          21,
+          22,
+          21,
+          22,
+          21,
+          22,
+          21,
+          22,
+          21,
+          22,
+          23,
+          23,
+          0,
+          0
+        ],
+        "idle": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "basicCast": [
+          4,
+          5,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          7,
+          7,
+          0,
+          0
+        ],
+        "basicAttack": [
+          4,
+          5,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          7,
+          7,
+          0,
+          0
+        ],
+        "simpleCast": [
+          4,
+          5,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          5,
+          6,
+          7,
+          7,
+          0,
+          0
+        ],
+        "heavyCast": [
+          8,
+          9,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          11,
+          11,
+          0,
+          0
+        ],
+        "largeCast": [
+          8,
+          9,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          9,
+          10,
+          11,
+          11,
+          0,
+          0
+        ],
+        "hit": [
+          12,
+          13,
+          14,
+          15
+        ],
+        "hitReaction": [
+          12,
+          13,
+          14,
+          15
+        ],
+        "powerUp": [
+          16,
+          17,
+          17,
+          18,
+          17,
+          18,
+          17,
+          18,
+          17,
+          18,
+          17,
+          18,
+          19,
+          19,
+          0,
+          0
+        ],
+        "enhancement": [
+          20,
+          21,
+          21,
+          22,
+          21,
+          22,
+          21,
+          22,
+          21,
+          22,
+          21,
+          22,
+          23,
+          23,
+          0,
+          0
+        ]
+      },
+      "nativeFacing": "right",
+      "sequence": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "file": "art/references/golem.png"
+    },
+    "fireWaterCast": {
+      "asset": "combatV2BasicAttack",
+      "sourceWidth": 887,
+      "sourceHeight": 1774,
+      "columns": 4,
+      "rows": 8,
+      "sourceBodyHeight": 178,
+      "targetBodyHeight": 144,
+      "displayScale": 0.8089887640449438,
+      "frameMs": 125,
+      "lingerMs": 1000,
+      "animations": {
+        "fire": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "water": [
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ]
+      },
+      "frameAnchors": [
+        {
+          "x": 0.49379932356257045,
+          "y": 0.9019165727170236
+        },
+        {
+          "x": 0.4971815107102593,
+          "y": 0.9019165727170236
+        },
+        {
+          "x": 0.496054114994363,
+          "y": 0.9019165727170236
+        },
+        {
+          "x": 0.4971815107102593,
+          "y": 0.9019165727170236
+        },
+        {
+          "x": 0.49379932356257045,
+          "y": 0.90304396843292
+        },
+        {
+          "x": 0.4971815107102593,
+          "y": 0.90304396843292
+        },
+        {
+          "x": 0.496054114994363,
+          "y": 0.90304396843292
+        },
+        {
+          "x": 0.4971815107102593,
+          "y": 0.90304396843292
+        },
+        {
+          "x": 0.49379932356257045,
+          "y": 0.9041713641488163
+        },
+        {
+          "x": 0.4971815107102593,
+          "y": 0.9041713641488163
+        },
+        {
+          "x": 0.49379932356257045,
+          "y": 0.9041713641488163
+        },
+        {
+          "x": 0.4971815107102593,
+          "y": 0.9041713641488163
+        },
+        {
+          "x": 0.496054114994363,
+          "y": 0.9052987598647125
+        },
+        {
+          "x": 0.49492671927846676,
+          "y": 0.9007891770011274
+        },
+        {
+          "x": 0.5005636978579482,
+          "y": 0.9052987598647125
+        },
+        {
+          "x": 0.49943630214205187,
+          "y": 0.9007891770011274
+        },
+        {
+          "x": 0.5073280721533259,
+          "y": 0.9064261555806088
+        },
+        {
+          "x": 0.5084554678692221,
+          "y": 0.9064261555806088
+        },
+        {
+          "x": 0.5095828635851184,
+          "y": 0.9064261555806088
+        },
+        {
+          "x": 0.5107102593010147,
+          "y": 0.9064261555806088
+        },
+        {
+          "x": 0.5095828635851184,
+          "y": 0.9075535512965051
+        },
+        {
+          "x": 0.5107102593010147,
+          "y": 0.9075535512965051
+        },
+        {
+          "x": 0.5095828635851184,
+          "y": 0.9075535512965051
+        },
+        {
+          "x": 0.5107102593010147,
+          "y": 0.9075535512965051
+        },
+        {
+          "x": 0.5118376550169109,
+          "y": 0.9086809470124013
+        },
+        {
+          "x": 0.5062006764374295,
+          "y": 0.9086809470124013
+        },
+        {
+          "x": 0.5118376550169109,
+          "y": 0.9086809470124013
+        },
+        {
+          "x": 0.5129650507328072,
+          "y": 0.9086809470124013
+        },
+        {
+          "x": 0.5095828635851184,
+          "y": 0.9098083427282976
+        },
+        {
+          "x": 0.5084554678692221,
+          "y": 0.9098083427282976
+        },
+        {
+          "x": 0.5118376550169109,
+          "y": 0.9098083427282976
+        },
+        {
+          "x": 0.5107102593010147,
+          "y": 0.9098083427282976
+        }
+      ],
+      "file": "art/references/fireWaterCast.png"
+    },
+    "earthCast": {
+      "asset": "earthBasicAttack",
+      "sourceWidth": 887,
+      "sourceHeight": 1774,
+      "columns": 4,
+      "rows": 8,
+      "frameMs": 125,
+      "displayScale": 0.9473684210526315,
+      "frameAnchors": [
+        {
+          "x": 0.4983089064261556,
+          "y": 0.9470124013528749
+        },
+        {
+          "x": 0.49492671927846676,
+          "y": 0.9470124013528749
+        },
+        {
+          "x": 0.4915445321307779,
+          "y": 0.9470124013528749
+        },
+        {
+          "x": 0.4926719278466742,
+          "y": 0.9470124013528749
+        },
+        {
+          "x": 0.4915445321307779,
+          "y": 0.943630214205186
+        },
+        {
+          "x": 0.4904171364148816,
+          "y": 0.943630214205186
+        },
+        {
+          "x": 0.48928974069898534,
+          "y": 0.943630214205186
+        },
+        {
+          "x": 0.49492671927846676,
+          "y": 0.943630214205186
+        },
+        {
+          "x": 0.49379932356257045,
+          "y": 0.9447576099210823
+        },
+        {
+          "x": 0.4904171364148816,
+          "y": 0.9447576099210823
+        },
+        {
+          "x": 0.48928974069898534,
+          "y": 0.9447576099210823
+        },
+        {
+          "x": 0.49492671927846676,
+          "y": 0.9447576099210823
+        },
+        {
+          "x": 0.4915445321307779,
+          "y": 0.9413754227733935
+        },
+        {
+          "x": 0.4926719278466742,
+          "y": 0.9413754227733935
+        },
+        {
+          "x": 0.4915445321307779,
+          "y": 0.9413754227733935
+        },
+        {
+          "x": 0.49943630214205187,
+          "y": 0.9413754227733935
+        },
+        {
+          "x": 0.5050732807215332,
+          "y": 0.9470124013528749
+        },
+        {
+          "x": 0.5084554678692221,
+          "y": 0.9470124013528749
+        },
+        {
+          "x": 0.5073280721533259,
+          "y": 0.9470124013528749
+        },
+        {
+          "x": 0.5084554678692221,
+          "y": 0.9470124013528749
+        },
+        {
+          "x": 0.5095828635851184,
+          "y": 0.9481397970687712
+        },
+        {
+          "x": 0.5062006764374295,
+          "y": 0.9481397970687712
+        },
+        {
+          "x": 0.5073280721533259,
+          "y": 0.9481397970687712
+        },
+        {
+          "x": 0.5084554678692221,
+          "y": 0.9481397970687712
+        },
+        {
+          "x": 0.5073280721533259,
+          "y": 0.9492671927846674
+        },
+        {
+          "x": 0.5062006764374295,
+          "y": 0.9492671927846674
+        },
+        {
+          "x": 0.5050732807215332,
+          "y": 0.9492671927846674
+        },
+        {
+          "x": 0.5062006764374295,
+          "y": 0.9492671927846674
+        },
+        {
+          "x": 0.5073280721533259,
+          "y": 0.9503945885005637
+        },
+        {
+          "x": 0.5062006764374295,
+          "y": 0.9503945885005637
+        },
+        {
+          "x": 0.5050732807215332,
+          "y": 0.9503945885005637
+        },
+        {
+          "x": 0.5084554678692221,
+          "y": 0.9503945885005637
+        }
+      ],
+      "sourceBodyHeight": 152,
+      "targetBodyHeight": 144,
+      "launchAnchors": {
+        "earth": {
+          "x": 0.7508455467869222,
+          "y": 0.7158962795941376
+        },
+        "air": {
+          "x": 0.2615558060879369,
+          "y": 0.7249154453213078
+        }
+      },
+      "facing": {
+        "earth": "right",
+        "air": "left"
+      },
+      "animations": {
+        "earth": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "air": [
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ]
+      },
+      "file": "art/references/earthCast.png"
+    },
+    "forest": {
+      "file": "art/references/forest.png"
+    }
+  },
+  "draft": false
+}
