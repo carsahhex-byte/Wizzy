@@ -83,13 +83,21 @@ test('every named attack and buff runs its own atlas with one impact and clean m
       onImpact:()=>calls.push('impact'),onComplete:()=>calls.push('complete')}));
     await ready();state.tick(0);
     const layer=state.animator.customElement,effect=state.node('custom-spell-effect');
-    assert.equal(layer.hidden,false,id);assert.equal(layer.dataset.spellId,id);assert.equal(effect.dataset.asset,sheet.asset);
-    assert.equal(effect.dataset.mirrored,String(seat===1));assert.equal(state.wizards[seat].sprite.style.visibility,'hidden');
+    assert.equal(layer.hidden,false,id);assert.equal(layer.dataset.spellId,id);
+    if(id==='Fire-14'){
+      assert.equal(effect.hidden,true,'Sunsetter uses the existing heavy Fire charge without a second orb');
+      assert.equal(state.node('custom-spell-actor').dataset.asset,'combatV2LargeCast');
+    }else{
+      assert.equal(effect.dataset.asset,sheet.asset);assert.equal(effect.dataset.mirrored,String(seat===1));
+    }
+    assert.equal(state.wizards[seat].sprite.style.visibility,'hidden');
     state.tick(500);state.tick(1499);
-    assert.equal(layer.dataset.phase,'lingering',id);assert.equal(effect.dataset.asset,sheet.asset);
+    assert.equal(layer.dataset.phase,'lingering',id);
+    if(id==='Fire-14')assert.equal(effect.hidden,true);else assert.equal(effect.dataset.asset,sheet.asset);
     const moment=getCustomSpellMoment(id,0,{modifiedTotal:12,golem});
     if(moment.damaging){
       assert.deepEqual(calls,[]);state.tick(1500);assert.equal(layer.dataset.phase,'flight');
+      assert.equal(effect.dataset.asset,sheet.asset);assert.equal(effect.dataset.mirrored,String(seat===1));
       state.tick(2499);assert.deepEqual(calls,[]);state.tick(2500);assert.deepEqual(calls,['impact']);
       assert.notEqual(state.wizards[1-seat].sprite.style.filter,'contrast(1.05)');
       state.tick(2710);assert.equal(state.wizards[1-seat].sprite.style.filter,'contrast(1.05)');
@@ -99,6 +107,98 @@ test('every named attack and buff runs its own atlas with one impact and clean m
     assert.equal(state.animator.isPlaying(),false);assert.equal(state.pending.size,0);
     assert.equal(state.root.dataset.customSpell,undefined);assert.equal(state.root.dataset.spellAnimating,undefined);
     for(const wizard of state.wizards){assert.equal(wizard.sprite.style.visibility,'visible');assert.equal(wizard.sprite.style.filter,'contrast(1.05)');}
+  }
+});
+
+test('hand-held effects form in front of the caster on either side instead of above the hat',async t=>{
+  fakeImages(t);
+  const placements=[['Fire-2',75,390],['Fire-15',75,390],['Fire-6',85,380],
+    ['Water-2',85,380],['Water-0',75,390],['Water-12',90,380],['Water-14',100,370],['Earth-1',75,385]];
+  for(const [id,inward,y]of placements)for(const seat of[0,1]){
+    const state=makeScene({school:getCustomSpellSheet(id).element,casterIndex:seat});
+    const job=state.animator.play(options(state,id,{key:`front:${id}:${seat}`,casterIndex:seat}));
+    await ready();state.tick(0);
+    const effect=state.node('custom-spell-effect'),actor=state.node('custom-spell-actor');
+    const casterX=seat===0?236:788,direction=seat===0?1:-1;
+    assert.ok(state.animator.customElement.children.indexOf(effect)>state.animator.customElement.children.indexOf(actor),
+      'the isolated effect draws in front of the casting actor');
+    for(const time of[0,375,500,1000,1499]){
+      state.tick(time);
+      assert.equal(effect.hidden,false,`${id}:${seat}:${time}`);
+      assert.equal(Number(effect.dataset.logicalX),casterX+direction*inward,`${id} faces the opponent`);
+      assert.equal(Number(effect.dataset.logicalY),y,`${id} remains at hand/face height through the charge`);
+      assert.equal(effect.dataset.mirrored,String(seat===1));
+    }
+    state.tick(3000);await job;
+  }
+});
+
+test('ground effects stay on the arena floor and self-protection stays centered on its caster',async t=>{
+  fakeImages(t);
+  for(const id of['Earth-3','Earth-5'])for(const seat of[0,1]){
+    const state=makeScene({school:'earth',casterIndex:seat,golem:id==='Earth-5'});
+    const job=state.animator.play(options(state,id,{key:`ground:${id}:${seat}`,casterIndex:seat,golem:id==='Earth-5'}));
+    await ready();state.tick(0);
+    const effect=state.node('custom-spell-effect');
+    for(const time of[0,375,500,1499,1500,1750,2250,2499]){
+      state.tick(time);assert.equal(effect.hidden,false);
+      assert.equal(effect.dataset.logicalY,'430',`${id}:${seat}:${time} keeps its base at ground level`);
+    }
+    state.tick(2500);assert.equal(effect.dataset.logicalY,'430');
+    assert.equal(effect.dataset.logicalX,String(id==='Earth-3'?(seat===0?236:788):(seat===0?788:236)));
+    state.tick(2840);await job;
+  }
+  for(const [id,y]of[['Earth-2',360],['Earth-4',370]])for(const seat of[0,1]){
+    const state=makeScene({school:'earth',casterIndex:seat});
+    const job=state.animator.play(options(state,id,{key:`self:${id}:${seat}`,casterIndex:seat}));
+    await ready();state.tick(0);
+    for(const time of[0,500,1499]){
+      state.tick(time);const effect=state.node('custom-spell-effect');
+      assert.equal(effect.dataset.logicalX,String(seat===0?236:788),`${id} surrounds its caster`);
+      assert.equal(Number(effect.dataset.logicalY),y);
+    }
+    state.tick(3000);await job;
+  }
+});
+
+test('Sunsetter has one heavy charge and launches its custom meteor continuously from that charge',async t=>{
+  fakeImages(t);
+  for(const seat of[0,1]){
+    const state=makeScene({school:'fire',casterIndex:seat}),calls=[];
+    const job=state.animator.play(options(state,'Fire-14',{key:`sunsetter:${seat}`,casterIndex:seat,
+      onImpact:()=>calls.push('impact'),onComplete:()=>calls.push('complete')}));
+    await ready();state.tick(0);
+    const effect=state.node('custom-spell-effect'),actor=state.node('custom-spell-actor'),layer=state.animator.customElement;
+    assert.equal(layer.dataset.chargeSource,'heavy-fire-actor');
+    for(const time of[0,375,500,1000,1375,1499]){
+      state.tick(time);
+      assert.equal(effect.hidden,true,`no isolated custom orb before release at ${time}`);
+      assert.equal(layer.dataset.effectVisible,'false');
+      assert.equal(actor.dataset.asset,'combatV2LargeCast');
+      assert.equal(Number(actor.dataset.frame),Math.floor(time/125));
+      assert.equal(actor.hidden,false);
+    }
+    state.tick(1500);
+    assert.equal(effect.hidden,false);assert.equal(effect.dataset.asset,'spellSunsetterFx');assert.equal(effect.dataset.frame,'8');
+    assert.equal(effect.dataset.logicalX,String(seat===0?297:727));assert.equal(effect.dataset.logicalY,'324');
+    assert.equal(actor.dataset.frame,'1','clean recovery excludes the baked outgoing orb');
+    const launchX=Number(effect.dataset.logicalX),direction=seat===0?1:-1;
+    let previousX=launchX;
+    for(const [time,frame,actorFrame]of[[1501,8,1],[1625,8,1],[1750,9,15],[1875,9,15],[2000,10,null],[2250,11,null],[2499,11,null]]){
+      state.tick(time);
+      assert.equal(Number(effect.dataset.frame),frame);
+      assert.ok((Number(effect.dataset.logicalX)-previousX)*direction>=0,'meteor moves continuously toward the opponent');
+      assert.ok(Number(effect.dataset.logicalY)>=240,'flight begins at the held charge instead of teleporting above the arena');
+      if(actorFrame===null)assert.equal(actor.hidden,true);else{
+        assert.equal(actor.hidden,false);assert.equal(Number(actor.dataset.frame),actorFrame);
+      }
+      previousX=Number(effect.dataset.logicalX);
+    }
+    assert.equal(effect.dataset.logicalX,String(seat===0?788:236),'meteor reaches the opponent at the end of flight');
+    assert.deepEqual(calls,[]);state.tick(2500);assert.deepEqual(calls,['impact']);
+    assert.equal(effect.dataset.frame,'12');
+    state.tick(2710);assert.equal(state.wizards[1-seat].sprite.style.filter,'contrast(1.05)');
+    state.tick(2840);await job;assert.deepEqual(calls,['impact','complete']);
   }
 });
 

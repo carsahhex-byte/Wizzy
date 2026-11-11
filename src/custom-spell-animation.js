@@ -13,6 +13,22 @@ const callsSafely = (view, callback, result) => {try {callback?.(result);} catch
 const lerp = (a,b,t) => a+(b-a)*t;
 const clamp = value => Math.max(0,Math.min(1,value));
 const flashFilter = 'brightness(1.4) sepia(1) saturate(8) hue-rotate(-45deg)';
+// Offsets are from the caster's feet, toward the opponent. The effect's
+// anchor sits at the hand/face, a shield's center, or a ground effect's base.
+const castPlacements = Object.freeze({
+  'Fire-2': {x:75,y:-60,size:160}, 'Fire-15': {x:75,y:-60,size:160},
+  'Fire-6': {x:85,y:-70,size:180}, 'Fire-14': {x:61,y:-126,size:260},
+  'Water-2': {x:85,y:-70,size:180}, 'Water-0': {x:75,y:-60,size:180},
+  'Water-12': {x:90,y:-70,size:185}, 'Water-14': {x:100,y:-80,size:210},
+  'Earth-1': {x:75,y:-65,size:175}, 'Earth-2': {x:0,y:-90,size:220},
+  'Earth-3': {x:75,y:-20,size:280}, 'Earth-4': {x:0,y:-80,size:200},
+  'Earth-5': {x:100,y:-20,size:280},
+});
+// Match the meteor's bright core to the last held core in the existing heavy
+// Fire actor. Centering each whole cell makes the core jump during its flight.
+const sunsetterFlightAnchors = Object.freeze([
+  {x:.5810,y:.5401}, {x:.5825,y:.5593}, {x:.5999,y:.5870}, {x:.6252,y:.6069},
+]);
 const qualified = (sheet,total) => Number.isFinite(total)&&sheet.threshold!==null&&total>=sheet.threshold;
 const rewardSheet = kind => {
   const crop=PIXEL_ICON_CROPS[kind];
@@ -36,9 +52,9 @@ export function getCustomSpellMoment(spellId,time,{modifiedTotal=null,golem=fals
     hitFlash:damaging&&elapsed>=2500&&elapsed<2710,actorVisible:elapsed<Math.min(2000,duration)};
   if(elapsed>=duration)return {...common,phase:'complete',frame:15,visible:false};
   if(elapsed<500)return {...common,phase:inactive?'inactive-forming':'forming',
-    frame:inactive?[0,1,0,1][Math.floor(elapsed/125)]:Math.floor(elapsed/125),visible:true};
+    frame:inactive?[0,1,0,1][Math.floor(elapsed/125)]:Math.floor(elapsed/125),visible:spellId!=='Fire-14'};
   if(elapsed<1500)return {...common,phase:inactive?'inactive-fizzle':'lingering',
-    frame:inactive?[0,1][Math.floor((elapsed-500)/125)%2]:4+Math.floor((elapsed-500)/125)%4,visible:true};
+    frame:inactive?[0,1][Math.floor((elapsed-500)/125)%2]:4+Math.floor((elapsed-500)/125)%4,visible:spellId!=='Fire-14'};
   if(damaging&&elapsed<2500)return {...common,phase:'flight',frame:8+Math.floor((elapsed-1500)/250),visible:true};
   if(damaging)return {...common,phase:['Earth-1','Earth-3'].includes(spellId)?'caster-shield':'impact',
     frame:12+Math.min(3,Math.floor((elapsed-2500)/85)),visible:spellId!=='Earth-3'||isQualified};
@@ -121,26 +137,28 @@ export function createCustomSpellAnimator({root,scene}={}) {
     Object.assign(node.dataset,{element:job.type,phase:layer.dataset.phase,mirrored:String(job.casterIndex===1)});
   }
   function paint(job,elapsed,moment) {
-    const {casterIndex,sheet}=job,point=feet[casterIndex],target=feet[1-casterIndex];
+    const {casterIndex}=job,point=feet[casterIndex],target=feet[1-casterIndex];
     Object.assign(layer.dataset,{elapsed:String(Math.round(elapsed)),phase:moment.phase,stage:moment.phase,
       frame:String(moment.frame),qualified:String(moment.qualified),effectVisible:String(moment.visible),
       hitFlash:String(moment.hitFlash),inactiveGolem:String(moment.inactive)});
     if(moment.actorVisible){
       hideStanding(job,'caster');
       const local=Math.min(15,Math.floor(elapsed/125));
-      paintAnimationFrame(actor,job.actorSheet,job.actorFrames[local],point,{mirror:job.actorMirror});
+      // Heavy Fire recovery cells contain another departing fireball. Sunsetter
+      // has its own projectile, so recover with the clean crouch/standing cells.
+      const actorFrame=job.spellId==='Fire-14'&&local>=12?(local<14?1:15):local;
+      paintAnimationFrame(actor,job.actorSheet,job.actorFrames[actorFrame],point,{mirror:job.actorMirror});
       Object.assign(actor.dataset,{element:job.type,phase:elapsed<500?'forming':elapsed<1500?'lingering':'recovering',sequenceFrame:String(local)});
     }else{hideAnimationSprite(actor);restoreStanding(job,'caster');}
     if(moment.visible){
-      let x=point.x,y=350,size=sheet.element==='earth'?220:200;
-      if(job.spellId==='Water-0')size=230;
-      if(job.spellId==='Earth-4'){y=370;size=200;}
-      if(job.spellId==='Fire-14'){y=elapsed<1500?245:370;size=260;}
+      const direction=casterIndex===0?1:-1,cast=castPlacements[job.spellId];
+      const launch={x:point.x+direction*cast.x,y:point.y+cast.y};
+      let {x,y}=launch,size=cast.size;
       if(moment.damaging&&elapsed>=1500){
-        const ratio=clamp((elapsed-1500)/1000),direction=casterIndex===0?1:-1;
-        x=lerp(point.x+direction*45,target.x,ratio);y=350-Math.sin(Math.PI*ratio)*28;
-        if(job.spellId==='Fire-14'){x=lerp(point.x,target.x,ratio);y=lerp(10,340,ratio);size=260;}
-        if(['Earth-3','Earth-5'].includes(job.spellId)){y=430;size=280;}
+        const ratio=clamp((elapsed-1500)/1000);
+        x=lerp(launch.x,target.x,ratio);y=lerp(launch.y,340,ratio)-Math.sin(Math.PI*ratio)*28;
+        if(job.spellId==='Fire-14')y=lerp(launch.y,340,ratio)-Math.sin(Math.PI*ratio)*90;
+        if(['Earth-3','Earth-5'].includes(job.spellId))y=launch.y;
         if(elapsed>=2500){
           x=['Earth-1','Earth-3'].includes(job.spellId)?point.x:target.x;
           y=job.spellId==='Earth-3'||job.spellId==='Earth-5'?430:340;size=250;
@@ -172,11 +190,14 @@ export function createCustomSpellAnimator({root,scene}={}) {
     if(current?.key===key)return current.promise;
     if(seen.has(key))return Promise.resolve({key,spellId,casterIndex,duplicate:true});
     cancel({settle:false});seen.add(key);
-    const sheet=getCustomSpellSheet(spellId),visual=getSpellVisual(spellId);
+    const sourceSheet=getCustomSpellSheet(spellId),visual=getSpellVisual(spellId);
+    const sheet=spellId==='Fire-14'&&sourceSheet?{...sourceSheet,
+      frameAnchors:sourceSheet.frameAnchors.map((anchor,index)=>index>=8&&index<12?sunsetterFlightAnchors[index-8]:anchor)}:sourceSheet;
     const job={key,spellId,casterIndex,sheet,kind:visual?.kind||'none',onImpact,onComplete,done:false,impacted:false};
     job.promise=new Promise(resolve=>{job.resolve=resolve;});current=job;
     Object.assign(layer.dataset,{animationKey:key,spellId:String(spellId??''),casterIndex:String(casterIndex??''),
-      kind:job.kind,customAnimation:'named-spell',phase:'loading',stage:'loading',modifiedTotal:Number.isFinite(modifiedTotal)?String(modifiedTotal):'',afterimages:'0'});
+      kind:job.kind,customAnimation:'named-spell',phase:'loading',stage:'loading',modifiedTotal:Number.isFinite(modifiedTotal)?String(modifiedTotal):'',afterimages:'0',
+      chargeSource:spellId==='Fire-14'?'heavy-fire-actor':'custom-effect'});
     if(!sheet||!visual||![0,1].includes(casterIndex)||reduced()){finish(job,{skipped:true});return job.promise;}
     const casterNode=atSeat(root,casterIndex),targetNode=atSeat(root,1-casterIndex),type=sheet.element;
     const isGolem=type==='earth'&&Boolean(golem??players?.[casterIndex]?.golemActive??casterNode?.dataset.form==='golem');
