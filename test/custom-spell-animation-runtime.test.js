@@ -74,7 +74,7 @@ test('missing image support settles both callbacks once and releases all present
   assert.equal(state.wizards[0].sprite.style.visibility,'visible');
 });
 
-test('every named attack and buff runs its own atlas with one impact and clean mirrored completion',async t=>{
+test('every named attack and buff runs its approved layers with one impact and clean mirrored completion',async t=>{
   fakeImages(t);
   for(const id of CUSTOM_SPELL_IDS)for(const seat of [0,1]){
     const sheet=getCustomSpellSheet(id),golem=id==='Earth-5';
@@ -87,17 +87,24 @@ test('every named attack and buff runs its own atlas with one impact and clean m
     if(id==='Fire-14'){
       assert.equal(effect.hidden,true,'Sunsetter uses the existing heavy Fire charge without a second orb');
       assert.equal(state.node('custom-spell-actor').dataset.asset,'combatV2LargeCast');
+    }else if(id==='Water-14'){
+      assert.equal(effect.hidden,true,'the whirlpool forms before the trident appears');
+      assert.equal(state.node('rift-whirlpool').dataset.asset,'spellRiftWhirlpool');
+    }else if(['Fire-2','Water-0'].includes(id)){
+      assert.equal(effect.dataset.asset,'spellElementalRings');
     }else{
       assert.equal(effect.dataset.asset,sheet.asset);assert.equal(effect.dataset.mirrored,String(seat===1));
     }
     assert.equal(state.wizards[seat].sprite.style.visibility,'hidden');
     state.tick(500);state.tick(1499);
-    assert.equal(layer.dataset.phase,'lingering',id);
-    if(id==='Fire-14')assert.equal(effect.hidden,true);else assert.equal(effect.dataset.asset,sheet.asset);
+    assert.equal(layer.dataset.phase,getCustomSpellMoment(id,1499,{modifiedTotal:12,golem}).phase,id);
+    if(id==='Fire-14')assert.equal(effect.hidden,true);
+    else assert.equal(effect.dataset.asset,['Fire-2','Water-0'].includes(id)?'spellElementalRings':id==='Water-14'?'spellRiftTrident':sheet.asset);
     const moment=getCustomSpellMoment(id,0,{modifiedTotal:12,golem});
     if(moment.damaging){
-      assert.deepEqual(calls,[]);state.tick(1500);assert.equal(layer.dataset.phase,'flight');
-      assert.equal(effect.dataset.asset,sheet.asset);assert.equal(effect.dataset.mirrored,String(seat===1));
+      assert.deepEqual(calls,[]);state.tick(1500);assert.equal(layer.dataset.phase,getCustomSpellMoment(id,1500,{modifiedTotal:12,golem}).phase);
+      assert.equal(effect.dataset.asset,id==='Water-14'?'spellRiftTrident':sheet.asset);
+      if(id!=='Water-14')assert.equal(effect.dataset.mirrored,String(seat===1));
       state.tick(2499);assert.deepEqual(calls,[]);state.tick(2500);assert.deepEqual(calls,['impact']);
       assert.notEqual(state.wizards[1-seat].sprite.style.filter,'contrast(1.05)');
       state.tick(2710);assert.equal(state.wizards[1-seat].sprite.style.filter,'contrast(1.05)');
@@ -112,8 +119,8 @@ test('every named attack and buff runs its own atlas with one impact and clean m
 
 test('hand-held effects form in front of the caster on either side instead of above the hat',async t=>{
   fakeImages(t);
-  const placements=[['Fire-2',75,390],['Fire-15',75,390],['Fire-6',85,380],
-    ['Water-2',85,380],['Water-0',75,390],['Water-12',90,380],['Water-14',100,370],['Earth-1',75,385]];
+  const placements=[['Fire-15',75,390],['Fire-6',85,380],
+    ['Water-2',85,380],['Water-12',90,380],['Earth-1',75,385]];
   for(const [id,inward,y]of placements)for(const seat of[0,1]){
     const state=makeScene({school:getCustomSpellSheet(id).element,casterIndex:seat});
     const job=state.animator.play(options(state,id,{key:`front:${id}:${seat}`,casterIndex:seat}));
@@ -142,11 +149,11 @@ test('ground effects stay on the arena floor and self-protection stays centered 
     const effect=state.node('custom-spell-effect');
     for(const time of[0,375,500,1499,1500,1750,2250,2499]){
       state.tick(time);assert.equal(effect.hidden,false);
-      assert.equal(effect.dataset.logicalY,'430',`${id}:${seat}:${time} keeps its base at ground level`);
+      assert.equal(effect.dataset.logicalY,id==='Earth-3'?'450':'430',`${id}:${seat}:${time} keeps its base at ground level`);
     }
-    state.tick(2500);assert.equal(effect.dataset.logicalY,'430');
+    state.tick(2500);assert.equal(effect.dataset.logicalY,id==='Earth-3'?'450':'430');
     assert.equal(effect.dataset.logicalX,String(id==='Earth-3'?(seat===0?236:788):(seat===0?788:236)));
-    state.tick(2840);await job;
+    state.tick(getCustomSpellMoment(id,0,{modifiedTotal:12,golem:id==='Earth-5'}).duration);await job;
   }
   for(const [id,y]of[['Earth-2',360],['Earth-4',370]])for(const seat of[0,1]){
     const state=makeScene({school:'earth',casterIndex:seat});
@@ -161,7 +168,7 @@ test('ground effects stay on the arena floor and self-protection stays centered 
   }
 });
 
-test('Sunsetter has one heavy charge and launches its custom meteor continuously from that charge',async t=>{
+test('Sunsetter keeps one heavy charge, drops its meteor from the sky and expands its explosion',async t=>{
   fakeImages(t);
   for(const seat of[0,1]){
     const state=makeScene({school:'fire',casterIndex:seat}),calls=[];
@@ -180,7 +187,8 @@ test('Sunsetter has one heavy charge and launches its custom meteor continuously
     }
     state.tick(1500);
     assert.equal(effect.hidden,false);assert.equal(effect.dataset.asset,'spellSunsetterFx');assert.equal(effect.dataset.frame,'8');
-    assert.equal(effect.dataset.logicalX,String(seat===0?297:727));assert.equal(effect.dataset.logicalY,'324');
+    assert.equal(effect.dataset.logicalX,String(seat===0?266:758));assert.equal(effect.dataset.logicalY,'-180');
+    assert.equal(effect.dataset.trajectory,'from-sky');
     assert.equal(actor.dataset.frame,'1','clean recovery excludes the baked outgoing orb');
     const launchX=Number(effect.dataset.logicalX),direction=seat===0?1:-1;
     let previousX=launchX;
@@ -188,17 +196,168 @@ test('Sunsetter has one heavy charge and launches its custom meteor continuously
       state.tick(time);
       assert.equal(Number(effect.dataset.frame),frame);
       assert.ok((Number(effect.dataset.logicalX)-previousX)*direction>=0,'meteor moves continuously toward the opponent');
-      assert.ok(Number(effect.dataset.logicalY)>=240,'flight begins at the held charge instead of teleporting above the arena');
+      assert.ok(Number(effect.dataset.logicalY)>=-180&&Number(effect.dataset.logicalY)<=350,'meteor descends through the arena');
       if(actorFrame===null)assert.equal(actor.hidden,true);else{
         assert.equal(actor.hidden,false);assert.equal(Number(actor.dataset.frame),actorFrame);
       }
       previousX=Number(effect.dataset.logicalX);
     }
-    assert.equal(effect.dataset.logicalX,String(seat===0?788:236),'meteor reaches the opponent at the end of flight');
+    assert.ok(Math.abs(Number(effect.dataset.logicalX)-(seat===0?788:236))<=2,'meteor reaches the opponent at the end of flight');
     assert.deepEqual(calls,[]);state.tick(2500);assert.deepEqual(calls,['impact']);
     assert.equal(effect.dataset.frame,'12');
+    const widthAtImpact=parseFloat(effect.style.width),burst=state.node('revised-spell-burst');
+    assert.equal(burst.hidden,false);assert.equal(burst.dataset.burst,'expanding-fire-ring');
     state.tick(2710);assert.equal(state.wizards[1-seat].sprite.style.filter,'contrast(1.05)');
-    state.tick(2840);await job;assert.deepEqual(calls,['impact','complete']);
+    state.tick(3000);assert.ok(parseFloat(effect.style.width)>widthAtImpact+100,'explosion grows beyond the projectile');
+    assert.equal(layer.hidden,false,'the blast can linger while the hit flash stays quick');
+    state.tick(3250);await job;assert.deepEqual(calls,['impact','complete']);
+    assert.equal(effect.hidden,true);assert.equal(burst.hidden,true);
+  }
+});
+
+test('Swell surrounds either caster with separate rear and front wave halves for its standard duration',async t=>{
+  fakeImages(t);
+  for(const seat of[0,1]){
+    const state=makeScene({school:'water',casterIndex:seat}),calls=[];
+    const job=state.animator.play(options(state,'Water-0',{casterIndex:seat,modifiedTotal:6,
+      onImpact:()=>calls.push('impact'),onComplete:()=>calls.push('complete')}));
+    await ready();state.tick(0);
+    const front=state.node('custom-spell-effect'),back=state.node('revised-ring-back'),rear=state.node('revised-spell-rear-layer');
+    for(const time of[375,500,1000,1499,1900,2100]){
+      state.tick(time);
+      assert.equal(front.hidden,false);assert.equal(back.hidden,false);assert.equal(rear.hidden,false);
+      for(const node of[front,back]){
+        assert.equal(node.dataset.asset,'spellElementalRings');assert.equal(node.dataset.logicalX,seat===0?'236':'788');
+        assert.equal(node.dataset.logicalY,'439','wave circles the feet rather than floating beside the face');
+        assert.ok(Number(node.dataset.frame)>=4&&Number(node.dataset.frame)<=7,'the wave uses Water frames');
+      }
+      assert.equal(back.dataset.layer,'behind-wizard');assert.equal(front.dataset.layer,'in-front-of-feet');
+      assert.match(back.style.clipPath,/^inset\(0 0 /);assert.match(front.style.clipPath,/^inset\([^ ]+ 0 0 0\)$/);
+      assert.equal(rear.style.zIndex,'1');
+    }
+    assert.deepEqual(calls,['impact']);assert.equal(Number(state.animator.customElement.dataset.duration),2240);
+    state.tick(2240);await job;assert.deepEqual(calls,['impact','complete']);
+    assert.equal(rear.hidden,true);assert.equal(back.hidden,true);assert.equal(front.hidden,true);
+  }
+});
+
+test('Heatbox tiers circle the feet, rise on seven and descend into a sparkling burst on ten',async t=>{
+  fakeImages(t);
+  for(const seat of[0,1])for(const [total,tier,duration]of[[6,0,2240],[7,7,2840],[9,7,2840],[10,10,3840]]){
+    const state=makeScene({school:'fire',casterIndex:seat}),players=structuredClone(state.players),calls=[];
+    const job=state.animator.play(options(state,'Fire-2',{key:`heat:${seat}:${total}`,casterIndex:seat,modifiedTotal:total,
+      onImpact:()=>calls.push('impact'),onComplete:()=>calls.push('complete')}));
+    await ready();state.tick(0);const layer=state.animator.customElement,front=state.node('custom-spell-effect');
+    const back=state.node('revised-ring-back'),burst=state.node('revised-spell-burst');
+    assert.equal(layer.dataset.variant,String(tier));assert.equal(front.dataset.logicalY,'439');
+    state.tick(500);assert.deepEqual(calls,['impact']);
+    state.tick(1499);
+    assert.equal(front.dataset.logicalY,tier===0?'439':'326');
+    assert.equal(back.dataset.logicalY,front.dataset.logicalY,'ring halves rise together around the caster');
+    assert.equal(front.dataset.logicalX,seat===0?'236':'788');
+    if(tier===10){
+      state.tick(2250);assert.ok(Number(front.dataset.logicalY)>326&&Number(front.dataset.logicalY)<439);
+      state.tick(2500);assert.equal(front.dataset.logicalY,'439');assert.equal(burst.hidden,false);
+      const sparkle=layer.querySelector('.enhancement-flourish');
+      assert.equal(sparkle.hidden,false);assert.equal(sparkle.dataset.tier,'12');
+      assert.equal(layer.dataset.phase,'burst');state.tick(3499);assert.equal(burst.hidden,false);
+    }else{
+      state.tick(Math.min(duration-1,2500));assert.equal(burst.hidden,true);
+      assert.equal(layer.querySelector('.enhancement-flourish').hidden,true);
+    }
+    assert.equal(Number(layer.dataset.duration),duration);state.tick(duration);await job;
+    assert.deepEqual(calls,['impact','complete']);assert.deepEqual(state.players,players,'the flourish cannot grant additional resources or Enhancement');
+    assert.equal(back.hidden,true);assert.equal(burst.hidden,true);
+    assert.equal(layer.querySelector('.enhancement-flourish').hidden,true);
+  }
+});
+
+test('Poseidon’s Rift rises from an inward whirlpool, rotates during a half-second hover and accelerates into its dive',async t=>{
+  fakeImages(t);
+  for(const seat of[0,1]){
+    const state=makeScene({school:'water',casterIndex:seat}),calls=[],direction=seat===0?1:-1;
+    const job=state.animator.play(options(state,'Water-14',{key:`rift:${seat}`,casterIndex:seat,
+      onImpact:()=>calls.push('impact'),onComplete:()=>calls.push('complete')}));
+    await ready();state.tick(0);
+    const effect=state.node('custom-spell-effect'),pool=state.node('rift-whirlpool'),actor=state.node('custom-spell-actor');
+    const poolX=(seat===0?236:788)+direction*95;
+    assert.equal(effect.hidden,true);assert.equal(Number(pool.dataset.logicalX),poolX);assert.equal(pool.dataset.logicalY,'420');
+    state.tick(500);assert.equal(effect.dataset.asset,'spellRiftTrident');assert.equal(effect.dataset.logicalY,'429');
+    assert.equal(actor.dataset.frame,'17','clean Water pose excludes its baked heavy wave charge');
+    state.tick(1499);assert.equal(effect.dataset.logicalY,'291');assert.equal(effect.dataset.rotation,'0');
+    state.tick(1500);assert.equal(state.animator.customElement.dataset.phase,'trident-hover');
+    state.tick(1750);assert.equal(Number(effect.dataset.rotation),direction*45);
+    assert.equal(Number(effect.dataset.logicalX),poolX);assert.ok(Math.abs(Number(effect.dataset.logicalY)-291)<=3);
+    state.tick(1999);assert.equal(state.animator.customElement.dataset.phase,'trident-hover');
+    assert.ok(Math.abs(Number(effect.dataset.rotation)-direction*90)<.01);
+    state.tick(2000);assert.equal(state.animator.customElement.dataset.phase,'trident-dive');
+    assert.equal(Number(effect.dataset.logicalX),poolX);assert.equal(effect.dataset.logicalY,'291');
+    state.tick(2125);const firstQuarter=Number(effect.dataset.logicalX);
+    state.tick(2250);const middle=Number(effect.dataset.logicalX);assert.equal(pool.hidden,true,'whirlpool subsides after launch');
+    state.tick(2375);const thirdQuarter=Number(effect.dataset.logicalX);
+    assert.ok(Math.abs(thirdQuarter-middle)>Math.abs(firstQuarter-poolX),'the trident eases into a fast dive');
+    state.tick(2499);assert.deepEqual(calls,[]);assert.ok(Math.abs(Number(effect.dataset.logicalX)-(seat===0?788:236))<3);
+    state.tick(2500);assert.deepEqual(calls,['impact']);assert.equal(effect.dataset.asset,'spellPoseidonRiftFx');
+    state.tick(2710);assert.equal(state.wizards[1-seat].sprite.style.filter,'contrast(1.05)');
+    state.tick(2840);await job;assert.deepEqual(calls,['impact','complete']);assert.equal(pool.hidden,true);
+  }
+});
+
+test('Earthbound hits along the ground before a threshold-only temporary stone shell flashes white and fades',async t=>{
+  fakeImages(t);
+  for(const seat of[0,1])for(const total of[6,7]){
+    const state=makeScene({school:'earth',casterIndex:seat}),players=structuredClone(state.players),calls=[];
+    const job=state.animator.play(options(state,'Earth-3',{key:`shell:${seat}:${total}`,casterIndex:seat,modifiedTotal:total,
+      onImpact:()=>calls.push('impact'),onComplete:()=>calls.push('complete')}));
+    await ready();state.tick(0);const effect=state.node('custom-spell-effect'),shell=state.node('earthbound-stone-shell');
+    for(const time of[0,500,1499,1500,2000,2499]){
+      state.tick(time);assert.equal(effect.dataset.logicalY,'450');assert.equal(effect.dataset.contactPlane,'ground');
+      assert.equal(shell.hidden,true);
+    }
+    state.tick(2500);assert.deepEqual(calls,['impact']);assert.equal(!shell.hidden,total>=7);
+    if(total>=7){
+      assert.equal(shell.dataset.temporary,'true');assert.equal(shell.dataset.phase,'shell-building');
+      assert.equal(state.wizards[seat].sprite.style.visibility,'hidden');assert.equal(shell.dataset.asset,'golemTransform');
+      assert.equal(effect.dataset.logicalX,seat===0?'236':'788');assert.equal(effect.dataset.logicalY,'450');
+      state.tick(2940);assert.equal(shell.style.filter,'brightness(0) invert(1)');assert.equal(effect.style.filter,shell.style.filter);
+      assert.equal(shell.dataset.phase,'white-flash');state.tick(3310);assert.equal(shell.dataset.phase,'shell-fade');
+      assert.ok(Number(shell.style.opacity)>0&&Number(shell.style.opacity)<1);
+    }else assert.equal(effect.hidden,true,'a failed Shield threshold cannot show a stone transformation');
+    state.tick(total>=7?3500:2840);await job;assert.deepEqual(calls,['impact','complete']);
+    assert.equal(shell.hidden,true);assert.equal(state.wizards[seat].sprite.style.visibility,'visible');
+    assert.equal(state.wizards[seat].node.dataset.form,'wizard');assert.deepEqual(state.players,players,'the temporary shell cannot change actual Golem form');
+  }
+});
+
+test('revised spell cancellation clears rear waves, pools, shells and sparkles before another action',async t=>{
+  fakeImages(t);
+  for(const[id,total,time]of[['Fire-2',10,3000],['Fire-14',12,3000],['Water-0',7,1000],['Water-14',12,1750],['Earth-3',7,3000]]){
+    const state=makeScene({school:getCustomSpellSheet(id).element}),calls=[];
+    const job=state.animator.play(options(state,id,{key:`cancel:${id}`,modifiedTotal:total,
+      onImpact:()=>calls.push('impact'),onComplete:()=>calls.push('complete')}));
+    await ready();state.tick(0);state.tick(time);state.animator.cancel({settle:false});await job;
+    for(const name of['revised-ring-back','rift-whirlpool','revised-spell-burst','earthbound-stone-shell','custom-spell-effect'])
+      assert.equal(state.node(name).hidden,true,`${id} leaves no ${name}`);
+    assert.equal(state.node('revised-spell-rear-layer').hidden,true);
+    assert.equal(state.animator.customElement.querySelector('.enhancement-flourish').hidden,true);
+    assert.equal(state.pending.size,0);assert.equal(state.wizards[0].sprite.style.visibility,'visible');
+    assert.equal(calls.filter(value=>value==='complete').length,0,'replacement does not settle a canceled presentation');
+    const next=state.animator.play(options(state,'Fire-6',{key:`next:${id}`}));
+    await ready();state.tick(5000);assert.equal(state.node('custom-spell-effect').style.clipPath,'');
+    assert.equal(state.node('custom-spell-effect').style.filter,'');state.tick(7840);await next;
+  }
+});
+
+test('reduced motion settles each revised spell once without leaving temporary layers or altering players',async t=>{
+  fakeImages(t);
+  for(const id of['Fire-2','Fire-14','Water-0','Water-14','Earth-3']){
+    const state=makeScene({school:getCustomSpellSheet(id).element,reduced:true}),before=structuredClone(state.players),calls=[];
+    const result=await state.animator.play(options(state,id,{onImpact:()=>calls.push('impact'),onComplete:()=>calls.push('complete')}));
+    assert.equal(result.skipped,true);assert.deepEqual(calls,['impact','complete']);assert.deepEqual(state.players,before);
+    assert.equal(state.animator.customElement.hidden,true);assert.equal(state.node('revised-spell-rear-layer').hidden,true);
+    assert.equal(state.node('earthbound-stone-shell').hidden,true);assert.equal(state.node('rift-whirlpool').hidden,true);
+    assert.equal(state.animator.customElement.querySelector('.enhancement-flourish').hidden,true);
+    assert.equal(state.pending.size,0);assert.equal(state.wizards[0].sprite.style.visibility,'visible');
   }
 });
 
@@ -210,7 +369,7 @@ test('threshold-only Shield and Mana feedback uses final Modified Roll and stays
     const fx=state.node('custom-spell-effect');assert.equal(!fx.hidden,shown);
     if(shown)assert.equal(fx.dataset.logicalX,'788','Shield follow-through is on Earth, not the opponent');
     assert.equal(state.animator.customElement.dataset.hitFlash,'true','primary damage still hits for base rolls');
-    state.tick(2840);await job;
+    state.tick(getCustomSpellMoment(id,0,{modifiedTotal:total}).duration);await job;
   }
   for(const [id,threshold,kind] of [['Fire-15',6,'mana'],['Earth-2',6,'mana'],['Water-12',7,'heart'],['Water-2',8,'water'],['Fire-6',7,'fire']]){
     for(const total of [threshold-1,threshold]){

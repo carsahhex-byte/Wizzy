@@ -869,6 +869,36 @@
     "width": 1254,
     "height": 1254
   },
+  "spellElementalRings": {
+    "file": "spellElementalRings-56f9d4100235.webp",
+    "source": "Wizzy Elemental Ring FX.png",
+    "sourceSha256": "0b8a5eb5b470e37cb3907667920f4935005aea0da8f6c19b68635efecda51961",
+    "optimizedSha256": "56f9d4100235542ea27906dc7373dbb86a5f54d241741d558b8bbd8306aeb099",
+    "bytes": 811518,
+    "sourceBytes": 979746,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellRiftTrident": {
+    "file": "spellRiftTrident-1c4a342e7e73.webp",
+    "source": "Wizzy Rift Trident FX.png",
+    "sourceSha256": "89e3091537e01d56f23a0e5d8185c7e868d1f3af5ead65b49a3607d1d1e67cf8",
+    "optimizedSha256": "1c4a342e7e73c944fe848b7615b2113ba4cc4e832a8bd8697ca6c3e3c949833a",
+    "bytes": 527074,
+    "sourceBytes": 716040,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellRiftWhirlpool": {
+    "file": "spellRiftWhirlpool-55d0939e7ca3.webp",
+    "source": "Wizzy Rift Whirlpool FX.png",
+    "sourceSha256": "3fcec09d280b332e1587ed13727baee225403c8640e440f3bb6fa625b53f2112",
+    "optimizedSha256": "55d0939e7ca3ef959a2c2cded8f6f57ad0d2ae7eea50e8fd73509efb302f6a74",
+    "bytes": 929808,
+    "sourceBytes": 1146972,
+    "width": 1254,
+    "height": 1254
+  },
   "spellBlazeFx": {
     "file": "spellBlazeFx-56aadd3eb6b4.webp",
     "source": "Wizzy Blaze Spell FX.png",

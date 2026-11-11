@@ -4,6 +4,7 @@ import { getSpellVisual } from './spell-visuals.js';
 import { getPlayerSchool } from './elements.js';
 import { PIXEL_ICON_CROPS } from './pixel-icons.js';
 import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.js';
+import { getRevisedSpellMoment, createRevisedSpellPainter } from './revised-spell-animation.js';
 
 export const CUSTOM_SPELL_TIMING = Object.freeze({ formationEnd: 500, releaseAt: 1500,
   impactAt: 2500, attackEnd: 2840, hitFlashMs: 210, hitFrameMs: 85, actorEnd: 2000 });
@@ -42,6 +43,7 @@ const canRelease = (spellId,isQualified) => ['Fire-2','Water-0'].includes(spellI
 /** Physical frame selection is independent of combat state and atlas dimensions. */
 export function getCustomSpellMoment(spellId,time,{modifiedTotal=null,golem=false}={}) {
   const sheet=getCustomSpellSheet(spellId);if(!sheet)return null;
+  const revised=getRevisedSpellMoment(spellId,time,{modifiedTotal,golem});if(revised)return revised;
   const elapsed=Math.max(0,Number(time)||0),isQualified=qualified(sheet,modifiedTotal);
   const inactive=spellId==='Earth-5'&&!golem,damaging=sheet.kind==='attack'&&!inactive;
   const persistent=spellId==='Earth-4'&&isQualified;
@@ -92,6 +94,7 @@ export function createCustomSpellAnimator({root,scene}={}) {
   const targetActor=createAnimationSprite(document,'custom-spell-hit-actor');
   const feedback=[0,1].map(index=>createAnimationSprite(document,`custom-spell-secondary custom-spell-secondary-${index}`));
   layer.append(actor,effect,targetActor,...feedback);root.append(layer);
+  const revisedPainter=createRevisedSpellPainter({root,layer,effect});
   const nodes=[actor,effect,targetActor,...feedback],seen=new Set();
   let current=null,sequence=0,generation=0,request=0;
   const reduced=()=>Boolean(view.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -120,6 +123,7 @@ export function createCustomSpellAnimator({root,scene}={}) {
     if(current===job){
       generation++;if(request)view.cancelAnimationFrame(request);request=0;
       restoreStanding(job,'caster');restoreStanding(job,'target');flash(job,false);
+      revisedPainter.reset();
       for(const node of nodes){hideAnimationSprite(node);node.style.filter='';node.style.opacity='1';}
       Object.assign(layer.dataset,{phase:cancelled?'cancelled':'complete',stage:cancelled?'cancelled':'complete'});
       layer.hidden=true;layer.style.display='none';
@@ -147,10 +151,15 @@ export function createCustomSpellAnimator({root,scene}={}) {
       // Heavy Fire recovery cells contain another departing fireball. Sunsetter
       // has its own projectile, so recover with the clean crouch/standing cells.
       const actorFrame=job.spellId==='Fire-14'&&local>=12?(local<14?1:15):local;
-      paintAnimationFrame(actor,job.actorSheet,job.actorFrames[actorFrame],point,{mirror:job.actorMirror});
+      const cleanFrame=job.spellId==='Water-14'?(local>=12?15:local>=2?1:local):actorFrame;
+      paintAnimationFrame(actor,job.actorSheet,job.actorFrames[cleanFrame],point,{mirror:job.actorMirror});
       Object.assign(actor.dataset,{element:job.type,phase:elapsed<500?'forming':elapsed<1500?'lingering':'recovering',sequenceFrame:String(local)});
     }else{hideAnimationSprite(actor);restoreStanding(job,'caster');}
-    if(moment.visible){
+    const revisedPaint=revisedPainter.draw(job,elapsed,moment);
+    if(revisedPaint.shellVisible)hideStanding(job,'caster');
+    if(revisedPaint.handled){
+      layer.dataset.effectVisible=String(!effect.hidden);
+    }else if(moment.visible){
       const direction=casterIndex===0?1:-1,cast=castPlacements[job.spellId];
       const launch={x:point.x+direction*cast.x,y:point.y+cast.y};
       let {x,y}=launch,size=cast.size;
@@ -193,11 +202,11 @@ export function createCustomSpellAnimator({root,scene}={}) {
     const sourceSheet=getCustomSpellSheet(spellId),visual=getSpellVisual(spellId);
     const sheet=spellId==='Fire-14'&&sourceSheet?{...sourceSheet,
       frameAnchors:sourceSheet.frameAnchors.map((anchor,index)=>index>=8&&index<12?sunsetterFlightAnchors[index-8]:anchor)}:sourceSheet;
-    const job={key,spellId,casterIndex,sheet,kind:visual?.kind||'none',onImpact,onComplete,done:false,impacted:false};
+    const job={key,spellId,casterIndex,sheet,modifiedTotal,kind:visual?.kind||'none',onImpact,onComplete,done:false,impacted:false};
     job.promise=new Promise(resolve=>{job.resolve=resolve;});current=job;
     Object.assign(layer.dataset,{animationKey:key,spellId:String(spellId??''),casterIndex:String(casterIndex??''),
       kind:job.kind,customAnimation:'named-spell',phase:'loading',stage:'loading',modifiedTotal:Number.isFinite(modifiedTotal)?String(modifiedTotal):'',afterimages:'0',
-      chargeSource:spellId==='Fire-14'?'heavy-fire-actor':'custom-effect'});
+      chargeSource:spellId==='Fire-14'?'heavy-fire-actor':spellId==='Water-14'?'whirlpool-trident':'custom-effect'});
     if(!sheet||!visual||![0,1].includes(casterIndex)||reduced()){finish(job,{skipped:true});return job.promise;}
     const casterNode=atSeat(root,casterIndex),targetNode=atSeat(root,1-casterIndex),type=sheet.element;
     const isGolem=type==='earth'&&Boolean(golem??players?.[casterIndex]?.golemActive??casterNode?.dataset.form==='golem');
@@ -213,9 +222,9 @@ export function createCustomSpellAnimator({root,scene}={}) {
       caster:casterNode?{node:casterNode,sprite:casterNode.querySelector('.wizard-sprite')}:null,
       target:targetNode?{node:targetNode,sprite:targetNode.querySelector('.wizard-sprite'),flashing:false}:null});
     Object.assign(layer.dataset,{element:type,targetElement:String(targetType||''),targetIndex:String(1-casterIndex),
-      mirrored:String(casterIndex===1),duration:String(first.duration),impactAt:String(first.impactAt),releaseAt:'1500',lingerMs:'1000'});
+      mirrored:String(casterIndex===1),duration:String(first.duration),impactAt:String(first.impactAt),releaseAt:spellId==='Water-14'?'2000':'1500',lingerMs:'1000'});
     Object.assign(root.dataset,{spellAnimating:'true',customSpell:spellId,customCasterIndex:String(casterIndex)});
-    const token=generation,needed=[actorSheet,sheet,...job.feedback.map(reward=>rewards[reward.kind])];
+    const token=generation,needed=[actorSheet,sheet,...revisedPainter.sheetsFor(job),...job.feedback.map(reward=>rewards[reward.kind])];
     if(first.damaging&&targetGolem)needed.push(GOLEM_ANIMATION_SHEETS.poses);
     Promise.all(needed.map(preloadAnimationSheet)).then(loaded=>{
       if(current!==job||job.done||generation!==token)return;

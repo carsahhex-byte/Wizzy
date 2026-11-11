@@ -12,6 +12,7 @@ import { createBattleScene } from './battle-scene.js';
 import { createSpellAnimator } from './spell-animation.js';
 import { createAuraAnimator } from './aura-animation.js';
 import { createMercifulAnimator } from './merciful-animation.js';
+import { createManaAnimator } from './mana-animation.js';
 import { createFateAnimator } from './fate-animation.js';
 import { battlePileMarkup } from './battle-props.js';
 import { getResolvedBattleVisuals } from './spell-visuals.js';
@@ -33,6 +34,7 @@ const battleScene = createBattleScene();
 const spellAnimator = createSpellAnimator({root:battleScene.element});
 const auraAnimator = createAuraAnimator({root:battleScene.element});
 const mercifulAnimator = createMercifulAnimator({root:battleScene.element});
+const manaAnimator = createManaAnimator({root:battleScene.element});
 const fateAnimator = createFateAnimator({root:app});
 const healthBars = createHealthBars({onSettled:()=>{showPendingVictory();flushPendingHandoff();}});
 let spellVisualQueue = [];
@@ -312,6 +314,9 @@ function render() {
   mercifulAnimator.sync(state.players.map((player,index)=>displayedStats(player,index)),{
     visible:!battleView.hidden && (state.status==='playing'||spellVisualBusy()),
   });
+  manaAnimator.sync(state.players.map((player,index)=>displayedStats(player,index)),{
+    visible:!battleView.hidden && (state.status==='playing'||spellVisualBusy()),
+  });
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
   if(focusKey) app.querySelector(`[data-focus="${CSS.escape(focusKey)}"]`)?.focus({preventScroll:true});
   scheduleCombat();
@@ -347,6 +352,7 @@ function cancelSpellPresentation() {
   spellAnimator.cancel({settle:false});
   auraAnimator.reset({settle:false});
   mercifulAnimator.reset();
+  manaAnimator.reset();
   fateAnimator.reset({settle:false});
   activeSpellVisual=null;
   spellVisualQueue=[];

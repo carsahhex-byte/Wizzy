@@ -435,6 +435,21 @@ export const OPTIMIZED_ART = {
     "sourceSha256": "44d6244df7c27ffdb03e77881cfa6e1d9f13d786c7f6552d8f4957a806ce2c1c",
     "optimizedSha256": "6fdd32d5266c3c231fdaf218cb9e8a81185b857a68de2465f64c709507b2e3b0"
   },
+  "spellElementalRings": {
+    "file": "spellElementalRings-56f9d4100235.webp",
+    "sourceSha256": "0b8a5eb5b470e37cb3907667920f4935005aea0da8f6c19b68635efecda51961",
+    "optimizedSha256": "56f9d4100235542ea27906dc7373dbb86a5f54d241741d558b8bbd8306aeb099"
+  },
+  "spellRiftTrident": {
+    "file": "spellRiftTrident-1c4a342e7e73.webp",
+    "sourceSha256": "89e3091537e01d56f23a0e5d8185c7e868d1f3af5ead65b49a3607d1d1e67cf8",
+    "optimizedSha256": "1c4a342e7e73c944fe848b7615b2113ba4cc4e832a8bd8697ca6c3e3c949833a"
+  },
+  "spellRiftWhirlpool": {
+    "file": "spellRiftWhirlpool-55d0939e7ca3.webp",
+    "sourceSha256": "3fcec09d280b332e1587ed13727baee225403c8640e440f3bb6fa625b53f2112",
+    "optimizedSha256": "55d0939e7ca3ef959a2c2cded8f6f57ad0d2ae7eea50e8fd73509efb302f6a74"
+  },
   "spellBlazeFx": {
     "file": "spellBlazeFx-56aadd3eb6b4.webp",
     "sourceSha256": "28a872154db7f2b1bac2bc874c7a2b916d2b20b94f0b48be0d96084b4ca800e7",

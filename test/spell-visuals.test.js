@@ -384,7 +384,7 @@ test('battle visuals emit one stable Enhancement event for every successful tier
     assert.deepEqual(event, {
       key: `enhancement:${after.log.at(-1).id}:0`, logId: after.log.at(-1).id, commitLogId: pending.log.at(-1).id,
       casterIndex: 0, element: 'Fire', kind: 'enhancement', spellId: null, manaCost: 0, damaging: false,
-      enhancementBonus: bonus, enhancementGain: gain, enhancementBefore: bank, enhancementAfter: bank + gain,
+      modifiedTotal: dice[0] + dice[1], enhancementBonus: bonus, enhancementGain: gain, enhancementBefore: bank, enhancementAfter: bank + gain,
     });
     assert.equal(getResolvedBattleVisuals(pending, after)[0].key, event.key);
     assert.deepEqual(getResolvedSpellVisuals(before, after), [], 'the original primary-only API remains unchanged');
