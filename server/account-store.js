@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { normalizeDeckSlot, migrateToActiveDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
 import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook } from '../src/spellbooks.js';
+import { ELEMENTS } from '../src/elements.js';
 
 const derive = promisify(scrypt);
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
@@ -32,27 +33,32 @@ function password(value, login = false) {
   return value;
 }
 
-const emptySpellbookTwoDecks = () => Object.fromEntries(['fire', 'water'].map(element => [element, { element, spellbookId: SPELLBOOK_2, entries: [] }]));
-function savedDeckPair(value, spellbookId) {
-  if (!record(value)) throw new Error('Provide Fire and Water deck slots.');
-  return Object.fromEntries(['fire', 'water'].map(element => {
-    const deck = normalizeDeckSlot(value[element]);
+const emptyDeckSlot = (element, spellbookId) => ({ element, ...(spellbookId === SPELLBOOK_2 ? { spellbookId } : {}), entries: [] });
+const emptySpellbookTwoDecks = () => Object.fromEntries(ELEMENTS.map(element => [element, emptyDeckSlot(element, SPELLBOOK_2)]));
+function savedDeckSlots(value, spellbookId, existing) {
+  if (!record(value)) throw new Error('Provide Fire, Water and Earth deck slots.');
+  return Object.fromEntries(ELEMENTS.map(element => {
+    // Older clients know only Fire and Water. An omitted Earth slot cannot erase
+    // a deck saved by a newer client, even when the older client has reloaded.
+    const source = element === 'earth' && !Object.hasOwn(value, element)
+      ? existing?.[element] ?? emptyDeckSlot(element, spellbookId) : value[element];
+    const deck = normalizeDeckSlot(source);
     if (deck.element !== element || getDeckSpellbook(deck) !== spellbookId) throw new Error(`The ${element} deck must belong to ${spellbookId === SPELLBOOK_2 ? 'Spellbook 2' : 'Spellbook 1'}.`);
     return [element, deck];
   }));
 }
 
-function savedData(value) {
+function savedData(value, existing) {
   if (value?.spellbookVersion !== undefined && value.spellbookVersion !== SPELLBOOK_VERSION) fail(400, 'spellbook_changed', 'Update Wizzy and build decks from the current spellbook.');
   const profile = value?.profile;
-  if (!record(profile) || typeof profile.name !== 'string' || !['fire', 'water'].includes(profile.element)) fail(400, 'invalid_profile', 'Choose a wizard name and Fire or Water element.');
+  if (!record(profile) || typeof profile.name !== 'string' || !ELEMENTS.includes(profile.element)) fail(400, 'invalid_profile', 'Choose a wizard name and Fire, Water or Earth element.');
   const name = profile.name.replace(/[\u0000-\u001f\u007f]/g, '').trim();
   if (!name || name.length > 24) fail(400, 'invalid_profile', 'Wizard names must contain 1 to 24 characters.');
-  if (!record(value?.decks)) fail(400, 'invalid_deck', 'Provide Fire and Water deck slots.');
+  if (!record(value?.decks)) fail(400, 'invalid_deck', 'Provide Fire, Water and Earth deck slots.');
   let decks, spellbook2Decks;
   try {
-    decks = savedDeckPair(value.decks, SPELLBOOK_1);
-    if (value.spellbook2Decks !== undefined) spellbook2Decks = savedDeckPair(value.spellbook2Decks, SPELLBOOK_2);
+    decks = savedDeckSlots(value.decks, SPELLBOOK_1, existing?.decks);
+    if (value.spellbook2Decks !== undefined) spellbook2Decks = savedDeckSlots(value.spellbook2Decks, SPELLBOOK_2, existing?.spellbook2Decks);
   } catch (error) { fail(400, 'invalid_deck', error.message || 'A saved deck slot must be empty or contain 1–30 legal slabs.'); }
   return { profile: { name, element: profile.element }, decks, ...(spellbook2Decks ? { spellbook2Decks } : {}) };
 }
@@ -111,7 +117,7 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
 
   function currentAccount(row) {
     if (row.spellbook_version === SPELLBOOK_VERSION) return row;
-    const empty = { fire: { element: 'fire', entries: [] }, water: { element: 'water', entries: [] } };
+    const empty = Object.fromEntries(ELEMENTS.map(element => [element, emptyDeckSlot(element, SPELLBOOK_1)]));
     db.exec('BEGIN IMMEDIATE;');
     try {
       const fresh = db.prepare('SELECT * FROM accounts WHERE id = ?').get(row.id);
@@ -130,10 +136,11 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
     const row = currentAccount(value);
     const archived = db.prepare('SELECT 1 FROM account_deck_archives WHERE account_id = ? LIMIT 1').get(row.id);
     const decks = JSON.parse(row.decks_json);
+    if (!Object.hasOwn(decks, 'earth')) decks.earth = emptyDeckSlot('earth', SPELLBOOK_1);
     const second = JSON.parse(row.spellbook2_decks_json || '{}');
     const hasSecond = Object.keys(second).length > 0;
     const messages = new Set();
-    const spellbook2Decks = Object.fromEntries(['fire', 'water'].map(element => {
+    const spellbook2Decks = Object.fromEntries(ELEMENTS.map(element => {
       const source = hasSecond ? second[element] : decks[element];
       try {
         const result = migrateToActiveDeck(source);
@@ -175,7 +182,7 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
       const id = randomUUID();
       try {
         db.prepare('INSERT INTO accounts (id, username, password_salt, password_hash, name, element, decks_json, spellbook_version, spellbook2_decks_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .run(id, loginName, salt, hash.toString('hex'), data.profile.name, data.profile.element, JSON.stringify(data.decks), SPELLBOOK_VERSION, JSON.stringify(data.spellbook2Decks || Object.fromEntries(['fire', 'water'].map(element => {
+          .run(id, loginName, salt, hash.toString('hex'), data.profile.name, data.profile.element, JSON.stringify(data.decks), SPELLBOOK_VERSION, JSON.stringify(data.spellbook2Decks || Object.fromEntries(ELEMENTS.map(element => {
             const promoted = migrateToActiveDeck(data.decks[element]);
             return [element, promoted.removed.length ? emptySpellbookTwoDecks()[element] : promoted.deck];
           }))), now());
@@ -196,8 +203,9 @@ export function createAccountStore({ dbPath = ':memory:', now = Date.now, sessio
     },
     get(token) { return publicAccount(rowForToken(token)); },
     update(token, input) {
-      const row = rowForToken(token), data = savedData(input);
+      const row = rowForToken(token);
       if (!Number.isSafeInteger(input?.revision) || input.revision !== row.revision) fail(409, 'account_changed', 'Your saved decks changed on another screen. Load the latest account before saving.', publicAccount(row));
+      const data = savedData(input, publicAccount(row));
       if (data.spellbook2Decks && input.activeCatalogVersion !== 'named-spellbook-v1') {
         const current = publicAccount(row);
         if (Object.values(current.spellbook2Decks).some(deck => deck.entries.length)

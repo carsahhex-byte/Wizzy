@@ -19,7 +19,7 @@ export const SPELL_DISPLAY_NAMES = Object.freeze({
 });
 export const LEGACY_SPELL_NAMES = Object.freeze(Object.fromEntries(Object.keys(SPELL_DISPLAY_NAMES).map(id => [id, id])));
 
-const artwork = Object.freeze({ Fire: 'fireCard', Water: 'waterCard', Fate: 'fateCard' });
+const artwork = Object.freeze({ Fire: 'fireCard', Water: 'waterCard', Earth: 'earthCard', Fate: 'fateCard' });
 const spell = (id, element, manaCost, effectText, purpose) => Object.freeze({
   id, spellId: id, name: SPELL_DISPLAY_NAMES[id] || id, element, category: 'Elemental', type: element,
   slabType: element, manaCost, effectText, art: artwork[element], purpose,
@@ -59,6 +59,13 @@ const water = [
   [13, 6, 'Deal 20 + 3 × Flow damage. On a 7+, deal 10 additional damage.'],
   [14, 6, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
 ];
+const earth = [
+  [1, 0, 'Deal 5 damage and gain 5 Shield. On a 7+, gain 5 additional Shield.'],
+  [2, 2, 'Gain 10 Shield. On a 6+, gain 1 Mana.'],
+  [3, 3, 'Deal 5 damage. On a 9+, gain 20 Shield.'],
+  [4, 5, 'Gain 2 Mana. If Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.'],
+  [5, 5, 'If Golem is active, deal 15 damage.'],
+];
 const purposes = ['Basic attack', 'Early identity', 'Defensive utility', 'Strategic preparation', 'Specialized damage', 'Heavy attack', 'Signature spell'];
 const fate = (id, name, role, effectText) => Object.freeze({
   id, spellId: id, name, element: 'Shared', category: 'Fate', type: 'Fate',
@@ -69,16 +76,17 @@ const fate = (id, name, role, effectText) => Object.freeze({
 export const SPELL_CATALOG = Object.freeze(Object.fromEntries([
   ...fire.map(([number, mana, text]) => spell(`Fire-${number}`, 'Fire', mana, text, [0, 15].includes(number) ? 'Resource preparation' : purposes[(number - 1) % 7])),
   ...water.map(([number, mana, text]) => spell(`Water-${number}`, 'Water', mana, text, number === 0 ? 'Resource preparation' : purposes[(number - 1) % 7])),
+  ...earth.map(([number, mana, text]) => spell(`Earth-${number}`, 'Earth', mana, text, number === 4 ? 'Golem protection' : number === 5 ? 'Golem attack' : 'Shield development')),
   fate('FAT-001', 'Fortune', 'Attacking', '+4 to the Modified Roll when attacking.'),
   fate('FAT-002', 'Misfortune', 'Defending', '−4 to the Modified Roll when defending.'),
   fate('FAT-003', 'Twist', 'Flexible', 'Choose +2 or −2 to the Modified Roll.'),
 ].map(definition => [definition.spellId, definition])));
 
 /** No supplied starter compositions: players build their own current-spellbook decks. */
-export const DECK_LISTS = Object.freeze({ fire: Object.freeze([]), water: Object.freeze([]) });
+export const DECK_LISTS = Object.freeze({ fire: Object.freeze([]), water: Object.freeze([]), earth: Object.freeze([]) });
 export const SOURCE_INFO = Object.freeze({
   additionalSpells: Object.freeze(['Fire-0', 'Fire-15', 'Water-0']),
-  playableSpellCount: 13,
+  playableSpellCount: 18,
   legacyCatalogSpellCount: 34,
   spellbook: Object.freeze({
     file: 'Wizzy Master Spellbook Nov4.pdf', title: 'Wizzy / Master Spellbook V2.1',

@@ -1,14 +1,15 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.js';
 import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.js';
 import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, SPELL_RULES, applySpellEffect, getEmberSpendRange } from './effects.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, GOLEM_SHIELD_THRESHOLD, GOLEM_END_TURN_DAMAGE, SPELL_RULES, applySpellEffect, applyDamageToPlayer, getEmberSpendRange } from './effects.js';
+import { ELEMENT_INFO, isElement, getPlayerSchool } from './elements.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'ember-consumption-v1';
+export const COMBAT_RULES_VERSION = 'earth-golem-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -25,6 +26,7 @@ const LOG_TYPES = ['info', 'turn', 'round', 'cast', 'fate', 'resolve', 'refresh'
 export const CARD_CATALOG = Object.freeze({
   fire: Object.freeze(Object.values(SPELL_CATALOG).filter(card => card.element === 'Fire' || card.category === 'Fate')),
   water: Object.freeze(Object.values(SPELL_CATALOG).filter(card => card.element === 'Water' || card.category === 'Fate')),
+  earth: Object.freeze(Object.values(SPELL_CATALOG).filter(card => card.element === 'Earth' || card.category === 'Fate')),
 });
 
 /** Private online views expose only the viewer's deck definition. */
@@ -62,8 +64,8 @@ function makeDeck(owner, random, deckDefinition) {
   return deck;
 }
 
-function addLog(state, message, type = 'info', playerId = null) {
-  state.log.push({ id: state.log.length + 1, round: state.round, playerId, message, type });
+function addLog(state, message, type = 'info', playerId = null, visual = null) {
+  state.log.push({ id: state.log.length + 1, round: state.round, playerId, message, type, ...(visual ? { visual } : {}) });
 }
 
 function applyWaterZeroCastMana(state) {
@@ -84,34 +86,48 @@ function drawToHandLimit(player) {
   return drawCount;
 }
 
+/**
+ * New battles: { players: [{ element: 'earth', deck }, { element: 'earth', deck }] }.
+ * Seat IDs are unique even in mirrors. The legacy { fire, water } form keeps its
+ * original identities, card IDs, and ordering for saved-duel/API compatibility.
+ */
 export function createGame(seed = Date.now(), deckConfigs = {}) {
   if (!deckConfigs || typeof deckConfigs !== 'object' || Array.isArray(deckConfigs)
     || ![Object.prototype, null].includes(Object.getPrototypeOf(deckConfigs))
-    || Object.keys(deckConfigs).some((key) => !['fire', 'water'].includes(key))) {
-    throw new Error('Deck configurations must be keyed by fire or water.');
+    || Object.keys(deckConfigs).some((key) => !['fire', 'water', 'players'].includes(key))) {
+    throw new Error('Choose two player seats, or deck configurations keyed by fire and water.');
   }
-  const spellbookId = getDeckSpellbook(deckConfigs.fire || deckConfigs.water);
+  const seated = Object.hasOwn(deckConfigs, 'players');
+  if (seated && (Object.keys(deckConfigs).length !== 1 || !Array.isArray(deckConfigs.players)
+    || deckConfigs.players.length !== 2 || deckConfigs.players.some(player => !player || typeof player !== 'object'
+      || Array.isArray(player) || ![Object.prototype, null].includes(Object.getPrototypeOf(player))
+      || Object.keys(player).some(key => !['element', 'deck'].includes(key)) || !isElement(player.element)))) {
+    throw new Error('Choose exactly two player seats, each with a Fire, Water, or Earth element and a deck.');
+  }
+  const seats = seated ? deckConfigs.players.map((player, index) => ({ id: `seat-${index + 1}`, school: player.element, input: player.deck }))
+    : ['fire', 'water'].map(school => ({ id: school, school, input: deckConfigs[school] }));
+  const spellbookId = getDeckSpellbook(seats.find(seat => seat.input)?.input);
   if (!isSpellbookId(spellbookId)) throw new Error('Choose Spellbook 1 or Spellbook 2.');
-  const definitions = Object.fromEntries(['fire', 'water'].map(id => {
-    const input = deckConfigs[id];
-    if (validateDeck(input) && input.element !== id) throw new Error(`The ${id} wizard requires a ${id} deck.`);
+  const definitions = seats.map(({ school, input }) => {
+    if (validateDeck(input) && input.element !== school) throw new Error(`The ${school} wizard requires a ${school} deck.`);
     if (input && !isSpellbookId(getDeckSpellbook(input))) throw new Error('Choose Spellbook 1 or Spellbook 2.');
-    return [id, validateDeck(input) ? normalizeDeck(input)
-      : validateDeckSlot(input) && input.element === id ? normalizeDeckSlot(input)
-        : { element: id, entries: [], ...(spellbookId === SPELLBOOK_1 ? {} : { spellbookId }) }];
-  }));
-  if (getDeckSpellbook(definitions.fire) !== getDeckSpellbook(definitions.water)) {
+    return validateDeck(input) ? normalizeDeck(input)
+      : validateDeckSlot(input) && input.element === school ? normalizeDeckSlot(input)
+        : { element: school, entries: [], ...(spellbookId === SPELLBOOK_1 ? {} : { spellbookId }) };
+  });
+  if (getDeckSpellbook(definitions[0]) !== getDeckSpellbook(definitions[1])) {
     throw new Error('Both wizards must use the same spellbook.');
   }
-  const ready = ['fire', 'water'].every(id => validateDeck(definitions[id]));
+  const ready = definitions.every(validateDeck);
   const random = randomGenerator(seed);
-  const players = ['fire', 'water'].map((id) => {
-    const deckDefinition = definitions[id];
+  const players = seats.map(({ id, school }, index) => {
+    const deckDefinition = definitions[index];
     const deck = ready ? makeDeck(id, random, deckDefinition) : [];
     return {
-      id, name: id === 'fire' ? 'Fire' : 'Water',
-      elementName: id === 'fire' ? 'Embers' : 'Flow',
+      id, school, name: ELEMENT_INFO[school].name,
+      elementName: ELEMENT_INFO[school].resource,
       hp: MAX_HP, maxHp: MAX_HP, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
+      golemActive: false, golemProtectedUntilTurn: null,
       turnsStarted: 0, enhancement: 0, auraTurns: 0, deckDefinition,
       hand: deck.splice(0, OPENING_HAND_SIZE), deck, discard: [],
     };
@@ -127,7 +143,7 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
   if (ready) {
     addLog(state, `The duel begins. Both wizards receive ${MAX_HP} HP, 3 mana, and up to ${OPENING_HAND_SIZE} spell slabs from their towers.`);
     addLog(state, 'Each wizard rolls one die to decide who starts. Ties are rerolled.');
-  } else addLog(state, 'Build and save legal Fire and Water decks of 1–30 slabs to begin. Previous spellbook decks are not used.');
+  } else addLog(state, 'Build and save legal decks of 1–30 slabs for both wizards to begin. Previous spellbook decks are not used.');
   return state;
 }
 
@@ -473,7 +489,7 @@ function completeSpell(next, rollTotal) {
     casterIndex: pending.casterIndex, spellId: pending.spellId,
     rollTotal, emberSpent: pending.emberSpent,
   });
-  for (const event of events) addLog(next, event.message, event.type ?? 'resolve', event.playerId ?? null);
+  for (const event of events) addLog(next, event.message, event.type ?? 'resolve', event.playerId ?? null, event.visual);
   clearPending(next);
   next.phase = 'main';
   addLog(next, `${card.name} resolves and moves to discard.`, 'resolve', caster.id);
@@ -516,6 +532,28 @@ export function endTurn(state) {
   // The first End Turn click only reveals refresh. The activation's existing
   // primary marker also survives refresh, so only subsequent owner passes tick Aura.
   const endingPlayer = next.players[next.activePlayer];
+  if (getPlayerSchool(endingPlayer) === 'earth') {
+    if (endingPlayer.golemProtectedUntilTurn !== null
+      && endingPlayer.turnsStarted >= endingPlayer.golemProtectedUntilTurn) {
+      endingPlayer.golemProtectedUntilTurn = null;
+      addLog(next, `${endingPlayer.name}'s Golem protection expires before the end-of-turn Shield check.`, 'shield', endingPlayer.id);
+    }
+    if (endingPlayer.golemActive && endingPlayer.golemProtectedUntilTurn === null
+      && endingPlayer.shield < GOLEM_SHIELD_THRESHOLD) {
+      endingPlayer.golemActive = false;
+      addLog(next, `${endingPlayer.name} reverts from Golem at ${endingPlayer.shield} Shield; no Golem strike.`, 'shield', endingPlayer.id,
+        { kind: 'golem-revert', casterIndex: next.activePlayer });
+    }
+    if (endingPlayer.golemActive) {
+      const targetIndex = 1 - next.activePlayer;
+      const opponent = next.players[targetIndex];
+      const damage = applyDamageToPlayer(opponent, GOLEM_END_TURN_DAMAGE);
+      addLog(next, `${endingPlayer.name}'s Golem strikes for ${GOLEM_END_TURN_DAMAGE} damage. ${opponent.name} takes ${damage.hpDamage} HP damage${damage.absorbed ? ` (${damage.absorbed} absorbed by Shield)` : ''}.`, 'damage', opponent.id,
+        { kind: 'golem-strike', casterIndex: next.activePlayer, targetIndex, amount: GOLEM_END_TURN_DAMAGE });
+      finishDuel(next);
+      if (next.status === 'finished') return next;
+    }
+  }
   if (endingPlayer.loaded > 0) addLog(next, `${endingPlayer.name}'s unused Loaded +${endingPlayer.loaded} expires.`, 'loaded', endingPlayer.id);
   endingPlayer.loaded = 0;
   if (endingPlayer.auraTurns > 0 && next.primaryAction !== 'aura') {
@@ -662,9 +700,12 @@ export function assertGame(state) {
   const setup = state.phase === 'setup';
   const allIds = new Set();
   state.players.forEach((player, index) => {
-    const id = index === 0 ? 'fire' : 'water';
-    requireValue(player && player.id === id && player.name === (index === 0 ? 'Fire' : 'Water'), 'player identity');
-    requireValue(player.elementName === (index === 0 ? 'Embers' : 'Flow'), 'element name');
+    const id = player?.id;
+    const school = player?.school;
+    const legacySeats = state.players[0]?.id === 'fire' && state.players[1]?.id === 'water';
+    requireValue(player && isElement(school) && (legacySeats ? id === ['fire', 'water'][index] && school === id : id === `seat-${index + 1}`)
+      && player.name === ELEMENT_INFO[school].name, 'player identity');
+    requireValue(player.elementName === ELEMENT_INFO[school].resource, 'element name');
     requireValue(player.maxHp === MAX_HP && Number.isSafeInteger(player.hp) && player.hp >= 0 && player.hp <= MAX_HP, 'HP');
     for (const key of ['mana', 'shield', 'element', 'loaded', 'loadedPending', 'turnsStarted']) {
       requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
@@ -672,11 +713,16 @@ export function assertGame(state) {
     requireValue(Number.isSafeInteger(player.enhancement) && player.enhancement >= 0 && player.enhancement <= MAX_ENHANCEMENT && player.enhancement % ENHANCEMENT_STEP === 0, 'Enhancement cap');
     requireValue(Number.isSafeInteger(player.auraTurns) && player.auraTurns >= 0 && player.auraTurns <= AURA_DURATION, 'Aura duration');
     requireValue(player.mana <= MAX_MANA && player.shield <= MAX_SHIELD, 'resource cap');
-    requireValue(player.element <= (index === 0 ? MAX_EMBERS : MAX_FLOW), 'element cap');
+    requireValue(player.element <= (school === 'earth' ? 0 : school === 'fire' ? MAX_EMBERS : MAX_FLOW), 'element cap');
+    requireValue(typeof player.golemActive === 'boolean' && (player.golemProtectedUntilTurn === null
+      || Number.isSafeInteger(player.golemProtectedUntilTurn) && player.golemProtectedUntilTurn >= player.turnsStarted
+        && player.golemProtectedUntilTurn <= player.turnsStarted + 1), 'Golem state');
+    requireValue(school === 'earth' ? player.golemActive || player.golemProtectedUntilTurn === null
+      : !player.golemActive && player.golemProtectedUntilTurn === null, 'Golem school');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
     requireValue(player.hand.length <= HAND_LIMIT, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
-    requireValue(player.deckDefinition?.element === id, 'deck element');
+    requireValue(player.deckDefinition?.element === school, 'deck element');
     if (setup) {
       requireValue(cards.length === 0 && validateDeckSlot(player.deckDefinition), 'deck setup');
     } else {
@@ -814,7 +860,14 @@ export function assertGame(state) {
   state.log.forEach((entry, index) => {
     requireValue(entry && entry.id === index + 1 && Number.isSafeInteger(entry.round) && entry.round > 0 && entry.round <= state.round, 'log entry');
     requireValue(typeof entry.message === 'string' && entry.message.length <= 500 && LOG_TYPES.includes(entry.type)
-      && [null, 'fire', 'water'].includes(entry.playerId), 'log content');
+      && [null, ...state.players.map(player => player.id)].includes(entry.playerId), 'log content');
+    if (entry.visual !== undefined) {
+      requireValue(entry.visual && ['golem-transform', 'golem-revert', 'golem-strike'].includes(entry.visual.kind)
+        && [0, 1].includes(entry.visual.casterIndex)
+        && state.players[entry.visual.casterIndex].school === 'earth', 'Golem visual');
+      if (entry.visual.kind === 'golem-strike') requireValue(entry.visual.targetIndex === 1 - entry.visual.casterIndex
+        && entry.visual.amount === GOLEM_END_TURN_DAMAGE, 'Golem strike visual');
+    }
   });
 }
 
@@ -897,7 +950,7 @@ function refreshCurrentSpellCards(state) {
 /** Upgrade current-catalog duels without re-dealing or replaying paid effects. */
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![10, 11, 12, 13, SAVE_VERSION].includes(value.version)) return null;
+  if (!value || ![10, 11, 12, 13, 14, SAVE_VERSION].includes(value.version)) return null;
   try {
     if (value.version === 10 && (!Array.isArray(value.players) || value.players.some(player => !Array.isArray(player?.hand) || player.hand.length > 5))) return null;
     const next = structuredClone(value);
@@ -908,6 +961,17 @@ export function migrateSavedGame(value) {
       return next;
     }
     next.version = SAVE_VERSION;
+    for (const player of next.players) {
+      if (!Object.hasOwn(player, 'school')) player.school = player.deckDefinition?.element;
+      if (!Object.hasOwn(player, 'golemActive')) player.golemActive = false;
+      if (!Object.hasOwn(player, 'golemProtectedUntilTurn')) player.golemProtectedUntilTurn = null;
+    }
+    // Version 14 already has current Fate/Enhancement timing. Only add seat
+    // metadata; never replay its paid effects, rolls, Mana, or turn counters.
+    if (value.version === 14) {
+      assertGame(next);
+      return next;
+    }
     const beforeEnhancement = value.version < 12;
     if (beforeEnhancement && next.phase === 'enhancing') return null;
     for (const player of next.players) {

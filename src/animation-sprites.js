@@ -64,10 +64,10 @@ export function paintAnimationFrame(node, sheet, frame, point, { mirror = false,
     hideAnimationSprite(node);
     return false;
   }
-  const scale = sheet.displayScale * size;
+  const scale = sheet.displayScale * (sheet.frameScales?.[frame] ?? 1) * size;
   const width = rect.w * scale;
   const height = rect.h * scale;
-  const anchor = sheet.frameAnchors?.[frame] || { x: .5, y: .5 };
+  const anchor = sheet.frameAnchors?.[frame] || sheet.anchor || { x: .5, y: .5 };
   Object.assign(node.style, {
     display: 'block', width: `${width}px`, height: `${height}px`,
     backgroundImage: `url("${ASSETS[sheet.asset]}")`,

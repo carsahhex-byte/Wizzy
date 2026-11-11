@@ -17,6 +17,7 @@ import { pixelIconMarkup } from './pixel-icons.js';
 import { ACTIVE_SPELLBOOK_ID, getDeckSpellbook, getSpellbook } from './spellbooks.js';
 import { getGameSpellbook } from './game.js';
 import { createDuelStorage } from './duel-storage.js';
+import { ELEMENTS, ELEMENT_INFO, getPlayerSchool } from './elements.js';
 
 let duelDeviceStorage = null;
 try { duelDeviceStorage = globalThis.localStorage; } catch {}
@@ -27,12 +28,13 @@ const handoff = document.querySelector('#handoff');
 const battleScene = createBattleScene();
 const spellAnimator = createSpellAnimator({root:battleScene.element});
 const auraAnimator = createAuraAnimator({root:battleScene.element});
-const healthBars = createHealthBars({onSettled:()=>showPendingVictory()});
+const healthBars = createHealthBars({onSettled:()=>{showPendingVictory();flushPendingHandoff();}});
 let spellVisualQueue = [];
 let activeSpellVisual = null;
 let presentedPlayers = null;
 let spellVisualGeneration = 0;
 let pendingVictory = false;
+let pendingHandoff = null;
 let arenaSequence = 0;
 let localEntranceKey = null;
 const onlineEntranceRooms = new Set();
@@ -44,6 +46,8 @@ let diceAnimationTimer;
 let emberChoice = null;
 const twistDirections = Object.create(null);
 let pendingBattleDecks = null;
+let pendingBattleElements = null;
+let pendingModeElement = 'fire';
 let shouldEnterAfterRestart = false;
 let state = loadGame();
 let localState = state;
@@ -63,13 +67,13 @@ const openingAcknowledged = { local: state.phase !== 'initiative', online: true 
 try { lastBattleMode=localStorage.getItem('wizzy.battle.mode')==='online'?'online':'local'; } catch {}
 
 const isOnlineBattle = () => battleMode === 'online';
-const displayedPlayerIndex = () => isOnlineBattle() ? onlinePlayerIndex : getActingPlayerIndex(state);
-const canActOnline = () => !spellVisualBusy() && !['setup','initiative'].includes(state.phase) && (!isOnlineBattle() || (!onlineBusy && multiplayer?.isActive() && getActingPlayerIndex(state) === onlinePlayerIndex));
+const displayedPlayerIndex = () => isOnlineBattle() ? onlinePlayerIndex : pendingHandoff?pendingHandoff.previousPlayerIndex:getActingPlayerIndex(state);
+const canActOnline = () => !pendingHandoff && !spellVisualBusy() && !['setup','initiative'].includes(state.phase) && (!isOnlineBattle() || (!onlineBusy && multiplayer?.isActive() && getActingPlayerIndex(state) === onlinePlayerIndex));
 const canRollOpeningOnline = () => isOnlineBattle() && !onlineBusy && multiplayer?.isActive() && state.phase === 'initiative' && state.initiative?.rolls[onlinePlayerIndex] === null;
-function createLocalGame(decks) {
+function createLocalGame(decks, selectedElements = ['fire','water']) {
   cancelSpellPresentation();
   localEntranceKey = `local-${++arenaSequence}`;
-  return createGame(Date.now(),decks);
+  return createGame(Date.now(),{players:selectedElements.map(element=>({element,deck:decks[element]}))});
 }
 function arenaEntranceKey() {
   if (!isOnlineBattle()) return localEntranceKey;
@@ -97,11 +101,16 @@ function handFrame() {
 }
 function playerPanel(player, index) {
   player = displayedStats(player,index);
-  return `<section class="stat-panel ${player.id} ${state.phase!=='initiative'&&state.activePlayer === index ? 'is-active' : ''}" aria-label="${player.name} wizard stats">
-    ${art(player.id === 'fire' ? 'fireFrame' : 'waterFrame','stat-frame')}
-    <div class="stat-heading"><span class="element-symbol" aria-hidden="true">${pixelIconMarkup(player.id==='fire'?'fire':'water')}</span><h2>${player.name}</h2><span class="player-label">${state.startingPlayer===null?'':state.startingPlayer===index?'1ST':'2ND'}</span>${state.phase!=='initiative'&&state.activePlayer === index ? '<span class="active-dot" aria-label="Active wizard"></span>' : ''}</div>
+  const school=getPlayerSchool(player);
+  const protectedGolem=player.golemActive&&player.golemProtectedUntilTurn!==null;
+  const resource=school==='earth'
+    ? `<div class="resource element golem-resource" title="Transform at 20 Shield. At your turn's end, unprotected Golem reverts below 20 Shield; otherwise deal 15 damage. Enhancement and Aura do not boost this hit.">${pixelIconMarkup('golem')}<span>Form</span><strong data-stat="${player.id}-form" data-golem-active="${Boolean(player.golemActive)}">${player.golemActive?'Golem':'Wizard'}${protectedGolem?'<small class="golem-protected">Ward</small>':''}</strong></div>`
+    : `<div class="resource element" title="${school==='fire'?`Each held Ember adds 5% Fire damage. Current bonus: ${player.element*5}%. Damaging Fire spells consume stored Embers at resolution, then add new gains for later attacks.`:'Flow strengthens Water effects and increases after resolution.'}">${pixelIconMarkup(school)}<span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${school==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${school==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div>`;
+  return `<section class="stat-panel ${school} ${state.phase!=='initiative'&&state.activePlayer === index ? 'is-active' : ''}" data-stat-seat="${index}" data-school="${school}" aria-label="${player.name} wizard stats">
+    ${art(`${school}Frame`,'stat-frame')}
+    <div class="stat-heading"><span class="element-symbol" aria-hidden="true">${pixelIconMarkup(school)}</span><h2>${ELEMENT_INFO[school].name}</h2><span class="player-label">${state.startingPlayer===null?`P${index+1}`:state.startingPlayer===index?'1ST':'2ND'}</span>${state.phase!=='initiative'&&state.activePlayer === index ? '<span class="active-dot" aria-label="Active wizard"></span>' : ''}</div>
     <div class="stat-body"><div class="health-row"><span class="health-label">${pixelIconMarkup('heart')}<span>HP</span></span><strong data-stat="${player.id}-hp">${player.hp}<small> / ${player.maxHp}</small></strong></div><div data-health-bar-slot="${index}"></div>
-    <div class="resource-grid"><div class="resource mana">${pixelIconMarkup('mana')}<span>Mana</span><strong data-stat="${player.id}-mana" data-current="${player.mana}" data-cap="${MAX_MANA}" aria-label="${player.mana} Mana, maximum ${MAX_MANA}">${player.mana}<small class="stat-limit"> / ${MAX_MANA}</small></strong></div><div class="resource shield">${pixelIconMarkup('shield')}<span>Shield</span><strong data-stat="${player.id}-shield" data-current="${player.shield}" data-cap="${MAX_SHIELD}" aria-label="${player.shield} Shield, maximum ${MAX_SHIELD}">${player.shield}<small class="stat-limit"> / ${MAX_SHIELD}</small></strong></div><div class="resource element" title="${player.id==='fire'?`Each held Ember adds 5% Fire damage. Current bonus: ${player.element*5}%. Damaging Fire spells consume stored Embers at resolution, then add new gains for later attacks.`:'Flow strengthens Water effects and increases after resolution.'}">${pixelIconMarkup(player.id==='fire'?'fire':'water')}<span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${player.id==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${player.id==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div><div class="resource loaded">${pixelIconMarkup('die')}<span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
+    <div class="resource-grid"><div class="resource mana">${pixelIconMarkup('mana')}<span>Mana</span><strong data-stat="${player.id}-mana" data-current="${player.mana}" data-cap="${MAX_MANA}" aria-label="${player.mana} Mana, maximum ${MAX_MANA}">${player.mana}<small class="stat-limit"> / ${MAX_MANA}</small></strong></div><div class="resource shield">${pixelIconMarkup('shield')}<span>Shield</span><strong data-stat="${player.id}-shield" data-current="${player.shield}" data-cap="${MAX_SHIELD}" aria-label="${player.shield} Shield, maximum ${MAX_SHIELD}">${player.shield}<small class="stat-limit"> / ${MAX_SHIELD}</small></strong></div>${resource}<div class="resource loaded">${pixelIconMarkup('die')}<span>Loaded</span><strong class="loaded-value" data-stat="${player.id}-loaded">+${player.loaded}${player.loadedPending?`<small title="Available next turn">+${player.loadedPending} next</small>`:''}</strong></div></div></div>
   </section>`;
 }
 const enhancementTiersText = `${ENHANCEMENT_THRESHOLD}+: +${getEnhancementBonus(ENHANCEMENT_THRESHOLD)}% · 9+: +${getEnhancementBonus(9)}% · 12+: +${getEnhancementBonus(12)}%`;
@@ -116,9 +125,9 @@ function enhancementOutcomeHint(active) {
 }
 function phaseHint(active) {
   const visual = activeSpellVisual || spellVisualQueue[0];
-  if (visual) return `${state.players[visual.casterIndex].name} · ${SPELL_CATALOG[visual.spellId]?.name || (visual.kind==='enhancement'?'Enhancement':'Aura')} is resolving…`;
+  if (visual) return `${state.players[visual.casterIndex].name} · ${SPELL_CATALOG[visual.spellId]?.name || ({enhancement:'Enhancement',aura:'Aura','golem-transform':'Golem transformation','golem-revert':'Return to wizard','golem-strike':'Golem strike'}[visual.kind]||'Spell')} is resolving…`;
   if (state.status === 'finished') return `${state.players[state.winner].name} wins the duel!`;
-  if(state.phase==='setup')return 'Build and save your new Fire and Water decks in the Deck workshop.';
+  if(state.phase==='setup')return 'Build a Fire, Water or Earth deck, then choose both wizards before battle.';
   if(state.phase==='initiative')return isOnlineBattle()
     ? onlineBusy?'Sending your opening roll…':state.initiative.rolls[onlinePlayerIndex]===null?'Roll your opening die. The higher roll goes first.':'Your opening die is rolled. Waiting for the other wizard.'
     : 'Both wizards roll one die to decide who goes first.';
@@ -167,7 +176,7 @@ function enhancementWidgets(){
   const description=maxed?'MAX 30%':state.phase==='enhancing'?'ROLLING…':pendingEnhancement()?'FATE OPEN':`${player.name.toUpperCase()} · 0 MANA`;
   const auraAvailable=canActOnline()&&canActivateAura(state,index)&&(!isOnlineBattle()||onlinePlayerIndex===index);
   const auraCaption=player.auraTurns?`ACTIVE · +${AURA_BONUS}% · ${player.auraTurns} TURNS`:`${AURA_COST} MANA · ${AURA_DURATION} OWN TURNS`;
-  return `<div class="enhancement-status" aria-label="Both wizards’ damage bonuses">${state.players.map((wizard,i)=>displayedStats(wizard,i)).map((wizard,i)=>`<div class="enhancement-label ${wizard.id}" data-enhancement-player="${i}" data-enhancement="${wizard.enhancement}" aria-label="${wizard.name}: ${wizard.enhancement}% Enhancement; ${wizard.auraTurns?`${AURA_BONUS}% Aura, ${wizard.auraTurns} own turns remaining`:'Aura inactive'}"><small>${wizard.name.toUpperCase()}</small><strong>${wizard.enhancement}% Enh.</strong><span class="aura-status" data-aura-turns-player="${i}" data-aura-turns="${wizard.auraTurns}">${wizard.auraTurns?`+${AURA_BONUS}% Aura · ${wizard.auraTurns} turns`:'Aura inactive'}</span></div>`).join('')}</div><div class="enhance-controls" aria-label="${player.name} primary actions"><button type="button" class="enhance-button ${player.id}" data-enhance-player="${index}" data-focus="enhance-${index}" aria-label="${player.name} Enhancement. ${maxed?'Maximum 30% reached.':`Roll 2d6, then alternate Fate responses starting with the defender. The final modified total awards ${enhancementTiersText}. Loaded does not apply. Add to stored Enhancement up to ${MAX_ENHANCEMENT}% for your next damaging spell, instead of a primary spell. Zero Mana. Current ${player.enhancement}%.`}" title="Instead of a primary spell: roll, then Fate; ${enhancementTiersText}; no Loaded; total cap ${MAX_ENHANCEMENT}%. 0 Mana." ${enhancementAvailable(index)?'':'disabled'}>${art('enhanceButtons','enhance-button-art',ASSET_CROPS[player.id==='fire'?'enhanceFire':'enhanceWater'])}<span class="enhance-button-caption enhancement-tier-caption"><span>${description}</span><span class="enhancement-tier-values" data-enhancement-roll-tiers>${enhancementTiersText}</span></span></button><button type="button" class="enhance-button aura-button" data-aura-player="${index}" data-focus="aura-${index}" aria-label="${player.name} Aura. ${player.auraTurns?`Active: 10% damage, ${player.auraTurns} own turns remaining.`:`Spend ${AURA_COST} Mana for 10% damage for ${AURA_DURATION} subsequent own turns; activation does not count. Uses your primary action. No dice.`}" title="${player.auraTurns?'Aura is already active':`1 Mana: +10% damage for your next 3 own turns. Activation does not count. Uses your primary action.`}" ${auraAvailable?'':'disabled'}>${art('auraButton','enhance-button-art aura-button-art')}<span class="enhance-button-caption">${auraCaption}</span></button></div>`;
+  return `<div class="enhancement-status" aria-label="Both wizards’ damage bonuses">${state.players.map((wizard,i)=>displayedStats(wizard,i)).map((wizard,i)=>`<div class="enhancement-label ${getPlayerSchool(wizard)}" data-enhancement-player="${i}" data-enhancement="${wizard.enhancement}" aria-label="${wizard.name}: ${wizard.enhancement}% Enhancement; ${wizard.auraTurns?`${AURA_BONUS}% Aura, ${wizard.auraTurns} own turns remaining`:'Aura inactive'}"><small>${wizard.name.toUpperCase()}</small><strong>${wizard.enhancement}% Enh.</strong><span class="aura-status" data-aura-turns-player="${i}" data-aura-turns="${wizard.auraTurns}">${wizard.auraTurns?`+${AURA_BONUS}% Aura · ${wizard.auraTurns} turns`:'Aura inactive'}</span></div>`).join('')}</div><div class="enhance-controls" aria-label="${player.name} primary actions"><button type="button" class="enhance-button ${getPlayerSchool(player)}" data-enhance-player="${index}" data-focus="enhance-${index}" aria-label="${player.name} Enhancement. ${maxed?'Maximum 30% reached.':`Roll 2d6, then alternate Fate responses starting with the defender. The final modified total awards ${enhancementTiersText}. Loaded does not apply. Add to stored Enhancement up to ${MAX_ENHANCEMENT}% for your next damaging spell, instead of a primary spell. Zero Mana. Current ${player.enhancement}%.`}" title="Instead of a primary spell: roll, then Fate; ${enhancementTiersText}; no Loaded; total cap ${MAX_ENHANCEMENT}%. 0 Mana." ${enhancementAvailable(index)?'':'disabled'}>${getPlayerSchool(player)==='earth'?art('enhanceEarth','enhance-button-art'):art('enhanceButtons','enhance-button-art',ASSET_CROPS[getPlayerSchool(player)==='fire'?'enhanceFire':'enhanceWater'])}${getPlayerSchool(player)==='earth'?'<span class="earth-enhance-label" aria-hidden="true">ENHANCE</span>':''}<span class="enhance-button-caption enhancement-tier-caption"><span>${description}</span><span class="enhancement-tier-values" data-enhancement-roll-tiers>${enhancementTiersText}</span></span></button><button type="button" class="enhance-button aura-button" data-aura-player="${index}" data-focus="aura-${index}" aria-label="${player.name} Aura. ${player.auraTurns?`Active: 10% damage, ${player.auraTurns} own turns remaining.`:`Spend ${AURA_COST} Mana for 10% damage for ${AURA_DURATION} subsequent own turns; activation does not count. Uses your primary action. No dice.`}" title="${player.auraTurns?'Aura is already active':`1 Mana: +10% damage for your next 3 own turns. Activation does not count. Uses your primary action.`}" ${auraAvailable?'':'disabled'}>${art('auraButton','enhance-button-art aura-button-art')}<span class="enhance-button-caption">${auraCaption}</span></button></div>`;
 }
 const pipPositions={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 function pips(value) {
@@ -199,7 +208,7 @@ function renderOpeningRoll() {
     const value=initiative.rolls[index];
     const own=!isOnlineBattle()||onlinePlayerIndex===index;
     const disabled=completed||value!==null||onlineBusy;
-    return `<section class="opening-player ${player.id} ${own?'is-own':''}" aria-label="${player.name} opening roll"><strong>${player.name}${isOnlineBattle()&&own?' · YOU':''}</strong><div class="opening-die">${diceFace(value,index)}</div><span class="opening-value" data-testid="opening-value-${index}">${value===null?'Not rolled':value}</span>${own&&!completed?`<button class="secondary-button" data-opening-player="${index}" ${disabled?'disabled':''}>${value!==null?'Rolled':onlineBusy?'Rolling…':`Roll ${player.name}`}</button>`:!completed?'<span class="opening-wait">Waiting for their roll</span>':''}</section>`;
+    return `<section class="opening-player ${getPlayerSchool(player)} ${own?'is-own':''}" aria-label="${player.name} opening roll"><strong>${player.name}${isOnlineBattle()&&own?' · YOU':''}</strong><div class="opening-die">${diceFace(value,index)}</div><span class="opening-value" data-testid="opening-value-${index}">${value===null?'Not rolled':value}</span>${own&&!completed?`<button class="secondary-button" data-opening-player="${index}" ${disabled?'disabled':''}>${value!==null?'Rolled':onlineBusy?'Rolling…':`Roll ${player.name}`}</button>`:!completed?'<span class="opening-wait">Waiting for their roll</span>':''}</section>`;
   }).join('')}</div>${previousTie?`<p class="opening-tie">Previous round tied ${previousTie.rolls[0]}–${previousTie.rolls[1]}. Both dice reset.</p>`:''}<p class="dialog-footnote">Start with up to ${OPENING_HAND_SIZE} slabs from your deck. The second player draws 1 on their first turn if available. Hand limit: ${HAND_LIMIT}. Draws stop at an empty tower.</p>`;
   const continueButton=document.querySelector('#opening-continue');
   continueButton.hidden=!completed;
@@ -209,7 +218,7 @@ function renderOpeningRoll() {
 }
 const signed=value=>`${value>=0?'+':''}${value}`;
 function diceView() {
-  if(state.phase==='initiative')return `<section class="dice-area" aria-label="Opening rolls">${art('diceFrame','dice-frame')}<strong class="roll-total">Opening roll</strong><div class="dice-pair">${diceFace(state.initiative.rolls[0],0)}${diceFace(state.initiative.rolls[1],1)}</div><span class="roll-breakdown">FIRE · WATER</span><span class="dice-caption">HIGHER ROLL TAKES THE FIRST TURN</span></section>`;
+  if(state.phase==='initiative')return `<section class="dice-area" aria-label="Opening rolls">${art('diceFrame','dice-frame')}<strong class="roll-total">Opening roll</strong><div class="dice-pair">${diceFace(state.initiative.rolls[0],0)}${diceFace(state.initiative.rolls[1],1)}</div><span class="roll-breakdown">${state.players.map(player=>ELEMENT_INFO[getPlayerSchool(player)].name.toUpperCase()).join(' · ')}</span><span class="dice-caption">HIGHER ROLL TAKES THE FIRST TURN</span></section>`;
   const rolling=['rolling','enhancing'].includes(state.phase);
   const last=rolling?null:state.lastRoll;
   const enhancement=last?.kind==='enhancement';
@@ -253,7 +262,7 @@ function render() {
   const castArt=isFate?(fateCount?'castFate':'skipFate'):'cast';
   const focusKey = document.activeElement?.dataset.focus;
   const bookLabel=getSpellbook(getGameSpellbook(state)).label;
-  document.querySelector('#battle-session-label').textContent=isOnlineBattle()?`${bookLabel} · ROOM ${onlineCode} · YOU ARE ${displayPlayer.name.toUpperCase()}`:`${bookLabel} · LOCAL DUEL · FIRE / WATER`;
+  document.querySelector('#battle-session-label').textContent=isOnlineBattle()?`${bookLabel} · ROOM ${onlineCode} · YOU ARE ${displayPlayer.name.toUpperCase()}`:`${bookLabel} · LOCAL DUEL · ${state.players.map(player=>ELEMENT_INFO[getPlayerSchool(player)].name.toUpperCase()).join(' / ')}`;
   document.querySelector('#battle-connection').textContent=isOnlineBattle()?(onlineStatus||'Connected · private hand'):'';
   document.querySelector('#battle-connection').hidden=!isOnlineBattle();
   document.querySelector('#battle-new').hidden=isOnlineBattle();
@@ -263,18 +272,19 @@ function render() {
   document.querySelector('#victory-online').hidden=!isOnlineBattle();
   app.innerHTML = `<div class="game-shell">
     <header class="topbar"><span class="wordmark">WIZZY <small>BATTLE SIMULATOR</small></span><span class="save-state">${storageAvailable ? '✦ DUEL SAVED' : 'SAVING UNAVAILABLE'}</span><button class="view-toggle" id="toggle-fit" aria-label="${fitScreen?'Switch to larger view':'Fit game to screen'}">${fitScreen?'Larger view ↗':'Fit screen ↙'}</button><button class="settings-button" id="open-settings" aria-label="Open settings and game rules">⚙</button></header>
-    <div class="game-board ${active.id} phase-${state.phase}" style="--forest:url('${ASSETS.forest}')">
+    <div class="game-board ${getPlayerSchool(active)} phase-${state.phase}" style="--forest:url('${ASSETS.forest}')">
     <div data-battle-scene-slot></div>
     <div class="battle-hud">${playerPanel(state.players[0],0)}${diceView()}${playerPanel(state.players[1],1)}</div>
     <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${displayPlayer.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${isOnlineBattle()?'YOUR ':''}${displayPlayer.name.toUpperCase()} · ${isOnlineBattle()&&!canActOnline()?'WAITING':isFate?(state.fatePlayer===state.activePlayer?'ATTACKING FATE':'DEFENDING FATE'):'SPELLBOOK'}</span><span data-testid="hand-count">${handCount(displayPlayer)} / ${HAND_LIMIT} SLABS</span></div>
-    <div class="cards ${displayPlayer.id} cards-${displayPlayer.hand.length}" aria-label="${displayPlayer.name} wizard’s spell slabs">${displayPlayer.hand.map(card=>cardView(card,displayPlayer,finished)).join('')||`<div class="empty-hand"><span>✧</span><p>No slabs in hand.<br>${deckCount(displayPlayer)>0?'Refresh or draw on your next turn.':'Your tower is empty; draws stop.<br>Use available actions or End Turn.'}</p></div>`}</div>
+    <div class="cards ${getPlayerSchool(displayPlayer)} cards-${displayPlayer.hand.length}" aria-label="${displayPlayer.name} wizard’s spell slabs">${displayPlayer.hand.map(card=>cardView(card,displayPlayer,finished)).join('')||`<div class="empty-hand"><span>✧</span><p>No slabs in hand.<br>${deckCount(displayPlayer)>0?'Refresh or draw on your next turn.':'Your tower is empty; draws stop.<br>Use available actions or End Turn.'}</p></div>`}</div>
     ${enhancementWidgets()}<div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${displayPlayer.discard.length} <small>${displayPlayer.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${isOnlineBattle()&&!canActOnline()?'YOUR PRIVATE HAND':state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${deckCount(displayPlayer)} <small>${deckCount(displayPlayer)===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
     <div class="turn-controls"><div class="phase-hint" role="status">${hintView(active,selected)}${isOnlineBattle()&&state.pendingSpell&&!pendingEnhancement()?'<button class="text-button" id="inspect-pending">Read pending spell</button>':''}</div>
     <div class="action-bar"><div class="round-plaque" aria-label="${opening?'Opening roll':`Round ${state.round}, ${active.name} wizard’s turn`}">${art('round','round-art')}<span class="round-cover"><strong>Round <span data-testid="round-number">${state.round}</span></strong><span>${finished?'Duel complete':opening?'Opening roll':`${active.name}’s Turn`}</span></span></div>
     <button class="art-button cast-button" id="cast-spell" data-focus="cast" aria-label="${castLabel}" ${finished||resolving||!canActOnline()||(isFate?(fateCount>0&&!canCastSelected(state)):!canCastSelected(state))?'disabled':''}>${art(castArt,'button-art')}</button>
     <div class="end-controls"><button class="art-button refresh-button ${showRefresh?'is-revealed':''} ${state.phase==='refresh'?'is-confirming':''}" id="hand-refresh" data-focus="refresh" aria-label="${state.phase==='refresh'?`Confirm hand refresh and pass, ${state.refreshCardIds.length} slabs selected`:'Hand Refresh'}" ${!showRefresh||!canActOnline()?'disabled tabindex="-1"':''} ${!showRefresh?'aria-hidden="true"':''}>${art('refresh','button-art')}${state.phase==='refresh'?`<span class="refresh-count">${state.refreshCardIds.length} selected · confirm</span>`:''}</button><button class="art-button end-button ${ending?'is-ending':''}" id="end-turn" data-focus="end" aria-label="${['end','refresh','ready-to-pass'].includes(state.phase)?`End Turn and pass to ${state.players[1-state.activePlayer].name}`:'End Turn'}" ${finished||!canActOnline()||(isOnlineBattle()&&state.activePlayer!==onlinePlayerIndex)||['fate','rolling','enhancing','resolving'].includes(state.phase)?'disabled':''}>${art('endTurn','button-art')}</button></div></div></div>
     <details class="combat-log" ${logOpen?'open':''}><summary aria-label="View combat log">${art('combatLog','log-button')}<span class="log-count">${state.log.length}</span><span class="chevron" aria-hidden="true">⌄</span></summary><ol>${state.log.slice().reverse().map(entry=>`<li><span class="log-round">R${entry.round}</span><span>${escape(entry.message)}</span></li>`).join('')}</ol></details>
-    <footer class="game-footer"><span>${isOnlineBattle()?'TWO SCREENS · YOUR HAND IS PRIVATE':'LOCAL DUEL · TWO WIZARDS, ONE SCREEN'}</span><span>FIRE · WATER · FATE</span></footer></div></div>`;
+    <footer class="game-footer"><span>${isOnlineBattle()?'TWO SCREENS · YOUR HAND IS PRIVATE':'LOCAL DUEL · TWO WIZARDS, ONE SCREEN'}</span><span>FIRE · WATER · EARTH · FATE</span></footer></div></div>`;
+  battleScene.setCombatants(state.players.map((player,index)=>displayedStats(player,index)));
   const entranceKey = arenaEntranceKey();
   if (entranceKey) battleScene.prepareEntrance(entranceKey);
   else battleScene.finishEntrance();
@@ -322,6 +332,7 @@ function cancelSpellPresentation() {
   spellVisualQueue=[];
   presentedPlayers=null;
   pendingVictory=false;
+  pendingHandoff=null;
   healthBars.reset();
 }
 function showPendingVictory() {
@@ -342,6 +353,14 @@ function playNextSpellVisual() {
     // The engine already resolved and saved the spell. Only its displayed
     // counters wait for impact; animation callbacks never apply combat effects.
     if(!spellVisualQueue.length)presentedPlayers=null;
+    else if(!event.kind.startsWith('golem-')&&spellVisualQueue.every(queued=>['golem-transform','golem-revert'].includes(queued.kind))){
+      // A form change follows the spell's hit. Release its HP and resources
+      // now, while keeping the standing model until the transformation lands.
+      presentedPlayers=state.players.map((player,index)=>({
+        golemActive:presentedPlayers?.[index]?.golemActive??player.golemActive,
+        golemProtectedUntilTurn:presentedPlayers?.[index]?.golemProtectedUntilTurn??player.golemProtectedUntilTurn,
+      }));
+    }
     render();
   };
   const complete=()=>{
@@ -352,12 +371,13 @@ function playNextSpellVisual() {
       presentedPlayers=null;
       render();
       showPendingVictory();
+      flushPendingHandoff();
     }
   };
   battleScene.finishEntrance();
   Promise.resolve().then(()=>{
     if(!isCurrent())return {cancelled:true};
-    const options={...event,onImpact:impact,onComplete:complete};
+    const options={...event,players:state.players.map((player,index)=>displayedStats(player,index)),onImpact:impact,onComplete:complete};
     return event.kind==='aura'?auraAnimator.activate(options):spellAnimator.play(options);
   }).then(result=>{if(result?.duplicate)complete();}).catch(complete);
 }
@@ -368,7 +388,7 @@ function update(next,message) {
   if(visuals.length){
     // A newer online spell can arrive while the last hit is still recovering.
     if(!presentedPlayers)presentedPlayers=state.players.map((player,index)=>({
-      ...Object.fromEntries(['hp','shield','element','loaded','loadedPending','enhancement','auraTurns'].map(key=>[key,player[key]])),
+      ...Object.fromEntries(['hp','shield','element','loaded','loadedPending','enhancement','auraTurns','golemActive','golemProtectedUntilTurn'].map(key=>[key,player[key]])),
       mana:Math.min(player.mana,next.players[index].mana),
     }));
     const duelKey=isOnlineBattle()?`online-${onlineCode}`:localEntranceKey||'saved-local';
@@ -378,9 +398,10 @@ function update(next,message) {
   // passes automatically. Keep Water-0's committed Mana visible even while its
   // later Flow gain waits for the power-up impact. Callbacks never pay it again.
   if(presentedPlayers)for(const entry of next.log.slice(state.log.length)){
-    const match=entry.type==='resource'&&entry.playerId==='water'
-      ? /^Water gains ([01]) Mana on cast(?: \(maximum 10\))?\.$/.exec(entry.message):null;
-    if(match)presentedPlayers[1].mana=Math.min(next.players[1].mana,presentedPlayers[1].mana+Number(match[1]));
+    const index=next.players.findIndex(player=>player.id===entry.playerId&&getPlayerSchool(player)==='water');
+    const match=entry.type==='resource'&&index>=0
+      ? /^.+ gains ([01]) Mana on cast(?: \(maximum 10\))?\.$/.exec(entry.message):null;
+    if(match)presentedPlayers[index].mana=Math.min(next.players[index].mana,presentedPlayers[index].mana+Number(match[1]));
   }
   if(wasPlaying && next.status==='finished' && !battleView.hidden)pendingVictory=true;
   state=next;saveGame();render();
@@ -424,9 +445,24 @@ function showHandoff(playerIndex=state.activePlayer,kind='turn') {
   const player=state.players[playerIndex];
   document.querySelector('#handoff-title').textContent=kind==='fate'?`${player.name} · ${playerIndex===state.activePlayer?'attacking':'defending'} Fate`:`${player.name}’s turn`;
   document.querySelector('#handoff-description').textContent=kind==='fate'?`The dice have rolled${state.lastRoll?` ${state.lastRoll.dice.join(' + ')} for a modified total of ${state.lastRoll.total}`:''}. Pass the screen to ${player.name}. Play one Fate slab or Skip Fate. Your opponent can respond after every card. Two consecutive passes resolve the ${pendingActionName()}.`:`Round ${state.round}. Pass the screen to the ${player.name} wizard. ${handCount(player)?'Your hand is ready.':'No slabs in hand. Draws stop at an empty tower.'}`;
-  document.querySelector('#handoff-portrait').innerHTML=art(player.id==='fire'?'fireMage':'waterMage');
+  document.querySelector('#handoff-portrait').innerHTML=getPlayerSchool(player)==='earth'?`<span class="handoff-earth-icon">${pixelIconMarkup('earth')}</span>`:art(getPlayerSchool(player)==='fire'?'fireMage':'waterMage');
   document.querySelector('#begin-turn').innerHTML=`${kind==='fate'?'Choose Fate':'Begin turn'} <span aria-hidden="true">→</span>`;
   handoff.showModal();
+}
+function flushPendingHandoff(){
+  if(!pendingHandoff||spellVisualBusy()||healthBars.isAnimating())return;
+  const next=pendingHandoff;
+  pendingHandoff=null;
+  if(!isOnlineBattle()&&!battleView.hidden&&state.status==='playing'){
+    showHandoff(next.playerIndex);
+    render();
+  }
+}
+function updateTurnPass(next){
+  const previous=state.activePlayer;
+  if(next.activePlayer!==previous)pendingHandoff={playerIndex:next.activePlayer,previousPlayerIndex:previous};
+  update(next);
+  flushPendingHandoff();
 }
 function finishFateWindow() {
   if(isOnlineBattle()){sendOnlineAction('skipFate');return;}
@@ -540,9 +576,12 @@ function showDeck(playerId=state.players[displayedPlayerIndex()].id) {
   document.querySelector('#deck-heading').textContent=`${getSpellbook(getDeckSpellbook(player.deckDefinition)).label} · ${player.name} deck · ${getDeckValidation(player.deckDefinition).total} spell ${getDeckValidation(player.deckDefinition).total === 1 ? 'slab' : 'slabs'}`;
   document.querySelector('#deck-summary').textContent=`${deckCount(player)} in tower · ${handCount(player)} in hand · ${player.discard.length} discarded. Current battle deck · ${player.deckDefinition.entries.length} distinct spells.`;
   document.querySelector('#deck-entries').innerHTML=groups;
-  document.querySelectorAll('[data-deck-player]').forEach(button=>{
-    button.setAttribute('aria-pressed',String(button.dataset.deckPlayer===playerId));
-    button.hidden=isOnlineBattle()&&button.dataset.deckPlayer!==state.players[onlinePlayerIndex].id;
+  document.querySelectorAll('[data-deck-player]').forEach((button,index)=>{
+    const combatant=state.players[index];
+    button.dataset.deckPlayer=combatant.id;
+    button.textContent=`Player ${index+1} · ${ELEMENT_INFO[getPlayerSchool(combatant)].name}`;
+    button.setAttribute('aria-pressed',String(combatant.id===playerId));
+    button.hidden=isOnlineBattle()&&index!==onlinePlayerIndex;
   });
   const dialog=document.querySelector('#deck-inspector');
   if(!dialog.open)dialog.showModal();
@@ -605,18 +644,16 @@ app.addEventListener('click',event=>{
     case 'end-turn':{
       if(!canActOnline())break;
       if(isOnlineBattle()){sendOnlineAction('endTurn');break;}
-      const previous=state.activePlayer;update(endTurn(state));
-      if(state.activePlayer!==previous)showHandoff();
-      else if(state.phase==='end')app.querySelector('#hand-refresh')?.focus({preventScroll:true});
+      const previous=state.activePlayer;updateTurnPass(endTurn(state));
+      if(state.activePlayer===previous&&state.phase==='end')app.querySelector('#hand-refresh')?.focus({preventScroll:true});
       break;
     }
     case 'hand-refresh':{
       if(!canActOnline())break;
       if(isOnlineBattle()){sendOnlineAction(state.phase==='refresh'?'confirmRefresh':'beginRefresh');break;}
       const previous=state.activePlayer;
-      update(state.phase==='refresh'?confirmRefresh(state):beginRefresh(state));
-      if(state.activePlayer!==previous)showHandoff();
-      else app.querySelector(state.phase==='refresh'?'[data-card-id]':'#end-turn')?.focus({preventScroll:true});
+      updateTurnPass(state.phase==='refresh'?confirmRefresh(state):beginRefresh(state));
+      if(state.activePlayer===previous)app.querySelector(state.phase==='refresh'?'[data-card-id]':'#end-turn')?.focus({preventScroll:true});
       break;
     }
     case 'cancel-refresh':if(!isOnlineBattle())update(cancelRefresh(state));break;
@@ -675,11 +712,15 @@ function restartGame() {
   if(isOnlineBattle())return;
   clearCombatTimers();
   for(const id of ['victory','restart','ember-choice'])document.getElementById(id).close();
-  const decks=pendingBattleDecks||hub.getSavedDecks(getGameSpellbook(state));
+  if(!pendingBattleDecks||!pendingBattleElements){openBattleChooser(getPlayerSchool(state.players[0]));return;}
+  const decks=pendingBattleDecks,selectedElements=pendingBattleElements;
   pendingBattleDecks=null;
-  if(shouldEnterAfterRestart){shouldEnterAfterRestart=false;enterBattle();}
+  pendingBattleElements=null;
+  const enterAfter=shouldEnterAfterRestart;
+  shouldEnterAfterRestart=false;
   openingAcknowledged.local=false;
-  update(createLocalGame(decks),'A new duel has begun with your saved decks. Roll to decide who starts.');
+  update(createLocalGame(decks,selectedElements),'A new duel has begun with your saved decks. Roll to decide who starts.');
+  if(enterAfter)enterBattle();
 }
 document.querySelector('#confirm-restart').addEventListener('click',restartGame);
 document.querySelector('#victory-restart').addEventListener('click',restartGame);
@@ -716,10 +757,11 @@ const hub=createHub({root:document.querySelector('#hub'),assets:ASSETS,onInspect
   const username=accounts.getSession()?.account?.username;
   hub.setAccountStatus({username,state:'syncing',message:'Saving to your account…'});
   accounts.save(data).catch(error=>hub.setAccountStatus({username,state:'offline',message:error?.message||'Saved on this device. Cloud sync will need a retry.'}));
-},onBattle:({decks,forceNew=false}={})=>{
+},onBattle:({decks,forceNew=false,selectedElements,element,profile}={})=>{
   pendingModeDecks=decks||hub.getSavedDecks();
+  pendingModeElement=element||profile?.element||hub.getProfile().element||'fire';
   restoreLocalBattle(getDeckSpellbook(pendingModeDecks.fire));
-  if(forceNew){const chosenDecks=pendingModeDecks;pendingModeDecks=null;requestNewBattle(chosenDecks,true);return;}
+  if(forceNew&&selectedElements){const chosenDecks=pendingModeDecks;pendingModeDecks=null;requestNewBattle(chosenDecks,true,selectedElements);return;}
   document.querySelector('#resume-local').hidden=localState.status!=='playing'||localState.phase==='setup';
   document.querySelector('#battle-mode-title').textContent=`${getSpellbook(getGameSpellbook(localState)).label} · How will you battle?`;
   document.querySelector('#resume-local-detail').textContent=`${getSpellbook(getGameSpellbook(localState)).label} · Round ${localState.round}. Keep the current hands and progress. Turn draws and refreshes draw up to ${HAND_LIMIT} while your tower has slabs.`;
@@ -858,19 +900,14 @@ function isUntouchedBattle(){
   if(state.phase==='initiative')return !state.initiative.history.length&&state.initiative.rolls.every(value=>value===null);
   return false;
 }
-const localDecksReady=decks=>validateDeck(decks?.fire)&&validateDeck(decks?.water);
-function showDeckSetup(decks=hub.getSavedDecks()){
-  const element=validateDeck(decks.fire)?'water':'fire';
-  leaveBattle('deck');
-  hub.showDeckSetup(`Save a Fire deck and a Water deck in ${getSpellbook(getDeckSpellbook(decks.fire)).label}, with 1–30 slabs each, before starting a shared-screen battle.`,element,getDeckSpellbook(decks.fire));
+const localDecksReady=(decks,selectedElements)=>Array.isArray(selectedElements)&&selectedElements.length===2
+  &&selectedElements.every(element=>ELEMENTS.includes(element)&&validateDeck(decks?.[element]));
+function openBattleChooser(element=hub.getProfile().element){
+  leaveBattle('home');
+  hub.showBattleChooser({element});
 }
 function enterBattle(){
-  if(!isOnlineBattle()&&state.phase==='setup'){
-    const decks=hub.getSavedDecks(getGameSpellbook(state));
-    if(!localDecksReady(decks)){showDeckSetup(decks);return;}
-    openingAcknowledged.local=false;
-    state=createLocalGame(decks);saveGame();
-  }
+  if(!isOnlineBattle()&&state.phase==='setup'){openBattleChooser();return;}
   if(!isOnlineBattle() && state.phase === 'initiative' && !localEntranceKey) localEntranceKey = `local-${++arenaSequence}`;
   hub.hide();multiplayer?.hide();accounts?.hide();battleView.hidden=false;
   lastBattleMode=battleMode;
@@ -882,22 +919,23 @@ function leaveBattle(screen='home',options={}){
   cancelSpellPresentation();
   battleScene.hide();
   clearCombatTimers();
-  pendingBattleDecks=null;shouldEnterAfterRestart=false;
+  pendingBattleDecks=null;pendingBattleElements=null;shouldEnterAfterRestart=false;
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
   restoreLocalBattle();multiplayer?.hide();accounts?.hide();battleView.hidden=true;hub.show(screen,options);
 }
-function requestNewBattle(decks=hub.getSavedDecks(getGameSpellbook(state)),enterAfter=false){
+function requestNewBattle(decks=hub.getSavedDecks(getGameSpellbook(state)),enterAfter=false,selectedElements=null){
   if(isOnlineBattle())return;
-  restoreLocalBattle(getDeckSpellbook(decks.fire));
-  if(!localDecksReady(decks)){showDeckSetup(decks);return;}
-  if(state.phase==='setup'){
+  if(!selectedElements){openBattleChooser(getPlayerSchool(state.players[0]));return;}
+  restoreLocalBattle(getDeckSpellbook(decks[selectedElements[0]]));
+  if(!localDecksReady(decks,selectedElements)){openBattleChooser(selectedElements[0]);return;}
+  if(isUntouchedBattle()||state.status==='finished'){
     openingAcknowledged.local=false;
-    update(createLocalGame(decks));
+    update(createLocalGame(decks,selectedElements));
     if(enterAfter)enterBattle();
     return;
   }
   clearCombatTimers();
-  pendingBattleDecks=decks;shouldEnterAfterRestart=enterAfter;
+  pendingBattleDecks=decks;pendingBattleElements=selectedElements;shouldEnterAfterRestart=enterAfter;
   document.querySelector('#restart').showModal();
 }
 document.querySelector('#battle-home').addEventListener('click',()=>leaveBattle());
@@ -906,14 +944,8 @@ document.querySelector('#battle-online-lobby').addEventListener('click',openOnli
 document.querySelector('#victory-online').addEventListener('click',()=>{multiplayer.leave();openOnlineLobby();});
 document.querySelector('#choose-local').addEventListener('click',()=>{
   document.querySelector('#battle-mode').close();restoreLocalBattle();
-  const decks=pendingModeDecks||hub.getSavedDecks();
   pendingModeDecks=null;
-  if(!localDecksReady(decks)){pendingModeDecks=null;showDeckSetup(decks);return;}
-  if(isUntouchedBattle()){
-    openingAcknowledged.local=false;
-    update(createLocalGame(decks));
-    enterBattle();
-  }else requestNewBattle(decks,true);
+  openBattleChooser(pendingModeElement);
 });
 document.querySelector('#resume-local').addEventListener('click',()=>{
   document.querySelector('#battle-mode').close();restoreLocalBattle();
@@ -926,8 +958,8 @@ document.querySelector('#resume-online').addEventListener('click',()=>{
   if(session?.state)receiveOnlineView(session,true);
   else openOnlineLobby();
 });
-document.querySelector('[data-close="restart"]').addEventListener('click',()=>{pendingBattleDecks=null;shouldEnterAfterRestart=false;});
-document.querySelector('#restart').addEventListener('cancel',()=>{pendingBattleDecks=null;shouldEnterAfterRestart=false;});
+document.querySelector('[data-close="restart"]').addEventListener('click',()=>{pendingBattleDecks=null;pendingBattleElements=null;shouldEnterAfterRestart=false;});
+document.querySelector('#restart').addEventListener('cancel',()=>{pendingBattleDecks=null;pendingBattleElements=null;shouldEnterAfterRestart=false;});
 document.querySelector('#restart').addEventListener('close',scheduleCombat);
 function syncAppRoute(){
   const screen=location.hash.slice(1);
@@ -943,7 +975,7 @@ function syncAppRoute(){
     }else{restoreLocalBattle(hub.getSelectedSpellbookId());enterBattle();}
     return;
   }
-  leaveBattle(['title','home','character','friends','deck'].includes(screen)?screen:'title');
+  leaveBattle(['title','home','character','friends','deck','battle-setup'].includes(screen)?screen:'title');
 }
 window.addEventListener('hashchange',syncAppRoute);
 window.addEventListener('popstate',syncAppRoute);

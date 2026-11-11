@@ -110,13 +110,13 @@ async function service(t, options = {}) {
 
 test('room creation, opposite-element joins and private player views support two independent screens', async t => {
   const api = await service(t);
-  assert.deepEqual((await api.request('/api/health')).data, { ok: true, service: 'wizzy-multiplayer', storage: 'memory', spellbookVersion: SPELLBOOK_VERSION, accounts: { enabled: true, storage: 'memory' } });
+  assert.deepEqual((await api.request('/api/health')).data, { ok: true, service: 'wizzy-multiplayer', storage: 'memory', spellbookVersion: SPELLBOOK_VERSION, combatRulesVersion: COMBAT_RULES_VERSION, accounts: { enabled: true, storage: 'memory' } });
   const host = await api.create();
   assert.equal(host.combatRulesVersion, COMBAT_RULES_VERSION);
   assert.match(host.code, /^[A-Z2-9]{8}$/); assert.match(host.token, /^[A-Za-z0-9_-]{43}$/);
   assert.deepEqual([host.revision, host.status, host.state, host.playerIndex], [0, 'waiting', null, 0]);
   const info = await api.request(`/api/rooms/${host.code}/info`);
-  assert.deepEqual(info.data, { code: host.code, spellbookId: 'spellbook-1', status: 'waiting', joiningElement: 'water' });
+  assert.deepEqual(info.data, { code: host.code, spellbookVersion: SPELLBOOK_VERSION, combatRulesVersion: COMBAT_RULES_VERSION, spellbookId: 'spellbook-1', status: 'waiting', hostElement: 'fire', availableElements: ['fire', 'water', 'earth'], joiningElement: 'water' });
   assert.equal((await api.request(`/api/rooms/${host.code}`)).status, 401);
   assert.equal((await api.request(`/api/rooms/${host.code}?token=${host.token}`)).status, 401, 'query strings do not authenticate');
   const guest = await api.join(host);
@@ -411,7 +411,9 @@ test('server rolls and Loaded decide Fire-15 Mana or Water-0 extra Flow with ind
         assert.ok(samples < 2, 'the server samples exactly two dice for this cast');
         return (dice[samples++] - .5) / 6;
       }, createMatch: decks => resourceFixture(decks, { spellId, mana, element, loaded }) });
-      const host = await api.create(role, resourceDeck(role, spellId)), guest = await api.join(host);
+      let host, guest;
+      if (index === 0) { host = await api.create(role, resourceDeck(role, spellId)); guest = await api.join(host); }
+      else { guest = await api.create(); host = await api.join(guest, resourceDeck(role, spellId)); }
       const initial = (await api.get(host)).state, defending = (await api.get(guest)).state;
       const [primary, second] = initial.players[index].hand.filter(card => card.spellId === spellId);
       assert.equal(primary.manaCost, 0);
@@ -460,7 +462,9 @@ test('Fate changes Fire-15 conditional Mana or Water-0 extra Flow without repeat
           assert.ok(samples < 2, 'Fate modifies the captured roll instead of sampling again');
           return (dice[samples++] - .5) / 6;
         }, createMatch: decks => resourceFixture(decks, { spellId, mana, element, fate: true }) });
-        const host = await api.create(role, resourceDeck(role, spellId)), guest = await api.join(host);
+        let host, guest;
+        if (index === 0) { host = await api.create(role, resourceDeck(role, spellId)); guest = await api.join(host); }
+        else { guest = await api.create(); host = await api.join(guest, resourceDeck(role, spellId)); }
         const initial = (await api.get(host)).state;
         const [primary, second] = initial.players[index].hand.filter(card => card.spellId === spellId);
         await api.action(host, 'selectCard', { cardId: primary.id });
@@ -819,7 +823,7 @@ test('stale and repeated network requests cannot duplicate moves or apply client
   assert.equal((await send({ type: 'endTurn', payload: {}, state: { hp: 99 }, revision: castResult.data.revision, requestId: 'fake-state' })).status, 400);
 });
 
-test('custom deck legality and opposite seats are checked before creating a match', async t => {
+test('custom deck legality and selected elements are checked before creating a match', async t => {
   const api = await service(t, { createMatch: decks => createGame(32, decks) });
   const custom = legalDeck('fire');
   custom.entries.find(entry => entry.spellId === 'Fire-6').quantity -= 1;
@@ -830,10 +834,10 @@ test('custom deck legality and opposite seats are checked before creating a matc
   const bad = legalDeck('fire'); bad.entries[0].quantity = 4;
   assert.equal((await api.request('/api/rooms', { method: 'POST', body: { name: 'Bad', element: 'fire', deck: bad } })).status, 400);
   const waterHost = await api.create('water');
-  assert.deepEqual((await api.request(`/api/rooms/${waterHost.code}/info`)).data, { code: waterHost.code, spellbookId: 'spellbook-1', status: 'waiting', joiningElement: 'fire' });
-  assert.equal((await api.request(`/api/rooms/${waterHost.code}/join`, { method: 'POST', body: { name: 'Wrong', deck: legalDeck('water') } })).status, 400);
+  assert.deepEqual((await api.request(`/api/rooms/${waterHost.code}/info`)).data, { code: waterHost.code, spellbookVersion: SPELLBOOK_VERSION, combatRulesVersion: COMBAT_RULES_VERSION, spellbookId: 'spellbook-1', status: 'waiting', hostElement: 'water', availableElements: ['fire', 'water', 'earth'], joiningElement: 'fire' });
+  assert.equal((await api.request(`/api/rooms/${waterHost.code}/join`, { method: 'POST', body: { name: 'Wrong', element: 'fire', deck: legalDeck('water') } })).status, 400);
   const fireGuest = await api.join(waterHost);
-  assert.deepEqual([fireGuest.playerIndex, fireGuest.element, fireGuest.state.activePlayer], [0, 'fire', 0]);
+  assert.deepEqual([fireGuest.playerIndex, fireGuest.element, fireGuest.state.activePlayer], [1, 'fire', 0]);
 });
 
 test('rooms accept one through thirty slabs while preserving element checks and private hands', async t => {
@@ -944,7 +948,7 @@ test('Water-0 fills Mana at commitment during a private pending Fate chain, caps
     let samples = 0;
     const api = await service(t, { rollRandom: () => { samples++; return 0; },
       createMatch: decks => resourceFixture(decks, { spellId: 'Water-0', mana, element: 4, fate: true }) });
-    const host = await api.create('water', resourceDeck('water', 'Water-0')), guest = await api.join(host);
+    const guest = await api.create(), host = await api.join(guest, resourceDeck('water', 'Water-0'));
     const initial = (await api.get(host)).state, card = initial.players[1].hand.find(card => card.spellId === 'Water-0');
     await api.action(host, 'selectCard', { cardId: card.id });
     const selected = await api.get(host);
@@ -1036,8 +1040,91 @@ test('two production screens receive the same consumed Ember damage and reconnec
     assert.deepEqual(view.state.players.map(player => [player.hp, player.shield]), [[100, 0], [91, 0]]);
     assert.deepEqual([view.state.players[0].element, view.state.players[0].enhancement, view.state.players[0].mana], [2, 0, 2]);
     assert.match(view.state.log.findLast(entry => entry.type === 'damage').message, /15% Embers = 16 damage/);
-    assert.equal(view.combatRulesVersion, 'ember-consumption-v1');
+    assert.equal(view.combatRulesVersion, COMBAT_RULES_VERSION);
   }
   assert.deepEqual((await api.request(`/api/rooms/${host.code}/actions`, castRequest)).data, cast.data);
   assert.deepEqual(await api.get(host), cast.data, 'reconnecting preserves the paid cost and completed damage');
+});
+
+test('all nine current-school pairings keep seat ownership independent and both hands private', async t => {
+  let openingRoll = 0;
+  const api = await service(t, { allowArchivedSpellbook: false, createMatch: undefined, rateLimit: false,
+    initiativeRandom: () => openingRoll++ % 2 === 0 ? .99 : 0 });
+  const schools = ['fire', 'water', 'earth'];
+  const spellIds = { fire: 'Fire-11', water: 'Water-0', earth: 'Earth-1' };
+  const deck = element => ({ element, spellbookId: 'spellbook-2', entries: [{ spellId: spellIds[element], quantity: 6 }] });
+  for (const hostElement of schools) for (const guestElement of schools) {
+    const label = `${hostElement} / ${guestElement}`;
+    const host = await api.create(hostElement, deck(hostElement));
+    assert.equal(host.playerIndex, 0, label);
+    assert.deepEqual(host.players.map(player => player.element), [hostElement, null], label);
+    const info = (await api.request(`/api/rooms/${host.code}/info`)).data;
+    assert.deepEqual(info.availableElements, schools);
+    const joined = await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: {
+      name: 'Guest', element: guestElement, deck: deck(guestElement), combatRulesVersion: COMBAT_RULES_VERSION,
+    } });
+    assert.equal(joined.status, 200, `${label}: ${joined.data.error}`);
+    const guest = joined.data;
+    assert.equal(guest.playerIndex, 1, label); assert.equal(guest.element, guestElement, label);
+    assert.deepEqual(guest.players.map(player => player.element), [hostElement, guestElement], label);
+    await api.action(host, 'rollInitiative'); await api.action(guest, 'rollInitiative');
+    const ownViews = [await api.get(host), await api.get(guest)];
+    for (const [index, view] of ownViews.entries()) {
+      assert.deepEqual(view.state.players.map(player => player.school), [hostElement, guestElement], label);
+      assert.equal(view.state.players[index].deckDefinition.element, index === 0 ? hostElement : guestElement, label);
+      assert.equal(view.state.players[index].hand.length, 5, label);
+      assert.deepEqual(view.state.players[1 - index].hand, [], label);
+      assert.equal(view.state.players[1 - index].deckDefinition, null, label);
+      assert.ok(view.state.players.every(player => player.deck.length === 0), label);
+    }
+    assert.equal((await api.action(guest, 'endTurn')).status, 403, label);
+    await api.action(host, 'selectCard', { cardId: ownViews[0].state.players[0].hand[0].id });
+    assert.equal((await api.get(guest)).state.selectedCardId, null, `${label}: opponent selection is private`);
+  }
+});
+
+test('online Golem damage is automatic, flat, private and applied only once on an actual pass', async t => {
+  const api = await service(t, { allowArchivedSpellbook: false, createMatch: decks => {
+    let state = createGame(91, decks);
+    state = rollInitiative(rollInitiative(state, 0, () => 0), 1, () => .99);
+    Object.assign(state.players[1], { shield: 25, golemActive: true, enhancement: 30, auraTurns: 2 });
+    state.players[0].shield = 8;
+    return state;
+  } });
+  const deck = (element, spellId) => ({ element, spellbookId: 'spellbook-2', entries: [{ spellId, quantity: 6 }] });
+  const host = await api.create('water', deck('water', 'Water-0'));
+  const guest = await api.join(host, deck('earth', 'Earth-1'));
+  assert.equal(guest.element, 'earth'); assert.equal(guest.playerIndex, 1);
+  const initial = await api.get(guest);
+  assert.equal((await api.action(guest, 'golemStrike', { damage: 999 })).status, 400);
+  const staged = await api.action(guest, 'endTurn');
+  assert.deepEqual(staged.data.state.players.map(player => [player.hp, player.shield]), [[100, 8], [100, 25]]);
+  const body = { type: 'endTurn', revision: staged.data.revision, requestId: 'one-automatic-golem-pass', combatRulesVersion: COMBAT_RULES_VERSION };
+  const send = () => api.request(`/api/rooms/${host.code}/actions`, { method: 'POST', token: guest.token, body });
+  const passed = await send(); assert.equal(passed.status, 200, passed.data.error);
+  for (const view of [passed.data, await api.get(host)]) {
+    assert.deepEqual(view.state.players.map(player => [player.hp, player.shield]), [[93, 0], [100, 25]]);
+    assert.equal(view.state.players[1].enhancement, 30, 'the automatic strike never consumes Enhancement');
+    assert.equal(view.state.log.filter(entry => entry.visual?.kind === 'golem-strike').length, 1);
+    assert.equal(view.state.players[1 - view.playerIndex].hand.length, 0);
+  }
+  assert.deepEqual((await send()).data, passed.data);
+  assert.deepEqual(await api.get(guest), passed.data, 'polling cannot repeat the strike');
+  assert.equal(initial.state.players[0].hp, 100);
+});
+
+test('combat version mismatches fail explicitly before rooms, seats or actions change', async t => {
+  const api = await service(t, { createMatch: fixtureMatch });
+  const mismatch = { combatRulesVersion: 'older-combat-rules' };
+  const rejected = await api.request('/api/rooms', { method: 'POST', body: { name: 'Old', element: 'fire', deck: legalDeck('fire'), ...mismatch } });
+  assert.equal(rejected.status, 409); assert.equal(rejected.data.code, 'combat_rules_mismatch');
+  const host = await api.create();
+  const rejectedJoin = await api.request(`/api/rooms/${host.code}/join`, { method: 'POST', body: { name: 'Old', element: 'water', deck: legalDeck('water'), ...mismatch } });
+  assert.equal(rejectedJoin.status, 409); assert.equal(rejectedJoin.data.code, 'combat_rules_mismatch');
+  assert.equal((await api.get(host)).status, 'waiting');
+  await api.join(host);
+  const before = await api.get(host);
+  const rejectedAction = await api.action(host, 'endTurn', {}, mismatch);
+  assert.equal(rejectedAction.status, 409); assert.equal(rejectedAction.data.code, 'combat_rules_mismatch');
+  assert.deepEqual(await api.get(host), before);
 });

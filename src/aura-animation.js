@@ -1,5 +1,6 @@
 import { COMBAT_ANIMATION_SHEETS } from './assets.js';
 import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.js';
+import { getPlayerSchool } from './elements.js';
 
 const FEET = [{ x: 236, y: 439 }, { x: 788, y: 439 }];
 const FRAME_MS = 125;
@@ -26,6 +27,7 @@ export function createAuraAnimator({ root } = {}) {
   const rings = FEET.map((point, index) => {
     const node = createAnimationSprite(document, 'aura-animation-ring');
     node.dataset.auraPlayer = String(index);
+    node.dataset.arenaSeat = String(index);
     node.dataset.phase = 'hidden';
     node.dataset.auraTurns = '0';
     element.append(node);
@@ -205,6 +207,7 @@ export function createAuraAnimator({ root } = {}) {
     visible = showing;
     for (const ring of rings) {
       const turns = Math.max(0, Number(players?.[ring.index]?.auraTurns) || 0);
+      ring.node.dataset.element = getPlayerSchool(players?.[ring.index]) || '';
       ring.node.dataset.auraTurns = String(turns);
       if (current?.casterIndex === ring.index) {
         // The host deliberately holds the old 0-turn UI until the impact callback.

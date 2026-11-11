@@ -48,7 +48,19 @@ try {
   const buildGit = args => git([`--git-dir=${gitDir}`, `--work-tree=${output}`, ...args], { cwd: output, env });
   buildGit(['read-tree', '--empty']);
   buildGit(['add', '--all', '--force', '.']);
+  // Art reviews and the sprite-library download have independent, immutable
+  // URLs. A game-only release must not remove those previously shared files.
+  const preserved = parent ? git(['ls-tree','-r','-z',parent,'--','previews/']).split('\0').filter(Boolean) : [];
+  for (const entry of preserved) {
+    const tab=entry.indexOf('\t'), metadata=entry.slice(0,tab).split(' '), filename=entry.slice(tab+1);
+    if (tab<0 || metadata[1]!=='blob' || !filename.startsWith('previews/')) throw new Error('Unexpected review entry.');
+    buildGit(['update-index','--add','--cacheinfo',metadata[0],metadata[2],filename]);
+  }
   const tree = buildGit(['write-tree']);
+  for (const entry of preserved) {
+    const tab=entry.indexOf('\t'), filename=entry.slice(tab+1), blob=entry.slice(0,tab).split(' ')[2];
+    if(git(['rev-parse',`${tree}:${filename}`])!==blob)throw new Error(`Review file changed: ${filename}`);
+  }
   if (parent && git(['rev-parse', `${parent}^{tree}`]) === tree) {
     console.log('The published branch already contains this exact build.');
     process.exitCode = 0;

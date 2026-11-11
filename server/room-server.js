@@ -11,6 +11,7 @@ import {
 import { normalizeDeck } from '../src/decks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
 import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook, isSpellbookId } from '../src/spellbooks.js';
+import { ELEMENTS, ELEMENT_INFO } from '../src/elements.js';
 import { createAccountStore, AccountError } from './account-store.js';
 
 const DEFAULT_ROOT = path.resolve(import.meta.dirname, '../dist');
@@ -27,6 +28,13 @@ const isRecord = value => value !== null && typeof value === 'object' && !Array.
 const tokenHash = token => createHash('sha256').update(token).digest();
 const cleanCode = value => String(value).replace(/[ -]/g, '').toUpperCase();
 const secureRoll = () => (randomInt(6) + .5) / 6;
+const legacyJoiningElement = room => room.players[room.hostIndex]?.deck.element === 'fire' ? 'water' : 'fire';
+
+function requireCombatRules(body) {
+  if (body.combatRulesVersion !== undefined && body.combatRulesVersion !== COMBAT_RULES_VERSION) {
+    fail(409, 'combat_rules_mismatch', 'Update Wizzy and restart the game server so both use the same Fire, Water and Earth battle rules.');
+  }
+}
 
 function playerName(value) {
   if (typeof value !== 'string') fail(400, 'invalid_name', 'Enter a wizard name.');
@@ -48,7 +56,7 @@ function playableDeck(value, element, spellbookId = getDeckSpellbook(value)) {
   try {
     const deck = normalizeDeck(value);
     if (getDeckSpellbook(deck) !== spellbookId) throw new Error('Choose a deck from the selected spellbook.');
-    if (deck.element !== element) throw new Error(`This seat needs a ${element === 'fire' ? 'Fire' : 'Water'} deck.`);
+    if (deck.element !== element) throw new Error(`Choose a saved ${ELEMENT_INFO[element].name} deck for your selected element.`);
     return deck;
   } catch (error) { fail(400, 'invalid_deck', error.message || 'Choose a legal deck of 1–30 slabs.'); }
 }
@@ -90,10 +98,10 @@ function roomView(room, playerIndex) {
     spellbookVersion: SPELLBOOK_VERSION,
     spellbookId: room.spellbookId || SPELLBOOK_1,
     combatRulesVersion: COMBAT_RULES_VERSION,
-    code: room.code, playerIndex, element: playerIndex === 0 ? 'fire' : 'water',
+    code: room.code, playerIndex, element: room.players[playerIndex].deck.element,
     revision: room.revision,
     status: room.state ? room.state.status : 'waiting',
-    players: room.players.map((player, index) => ({ name: player?.name || '', element: index === 0 ? 'fire' : 'water', joined: Boolean(player) })),
+    players: room.players.map(player => ({ name: player?.name || '', element: player?.deck.element ?? null, joined: Boolean(player) })),
     state,
   };
 }
@@ -190,8 +198,9 @@ export function createMultiplayerServer(options = {}) {
     return code;
   }
   function applyAction(room, playerIndex, body) {
+    requireCombatRules(body);
     if (!isRecord(body.payload ?? {})) fail(400, 'invalid_action', 'Action details must be an object.');
-    if (Object.keys(body).some(key => !['type', 'payload', 'revision', 'requestId'].includes(key))) fail(400, 'invalid_action', 'Only battle actions may be submitted.');
+    if (Object.keys(body).some(key => !['type', 'payload', 'revision', 'requestId', 'combatRulesVersion'].includes(key))) fail(400, 'invalid_action', 'Only battle actions may be submitted.');
     if (typeof body.requestId !== 'string' || !/^[A-Za-z0-9:_-]{8,100}$/.test(body.requestId)) fail(400, 'invalid_request_id', 'Each action needs a unique request ID.');
     const player = room.players[playerIndex];
     const signature = JSON.stringify({ type: body.type, payload: body.payload ?? {}, revision: body.revision });
@@ -306,7 +315,7 @@ export function createMultiplayerServer(options = {}) {
       let result;
       let status = 200;
       if (url.pathname === '/api/health' && request.method === 'GET') {
-        result = { ok: true, service: 'wizzy-multiplayer', storage: 'memory', spellbookVersion: SPELLBOOK_VERSION, accounts: { enabled: true, storage: accounts.storage } };
+        result = { ok: true, service: 'wizzy-multiplayer', storage: 'memory', spellbookVersion: SPELLBOOK_VERSION, combatRulesVersion: COMBAT_RULES_VERSION, accounts: { enabled: true, storage: accounts.storage } };
       } else if (url.pathname.startsWith('/api/accounts/')) {
         const operation = url.pathname.slice('/api/accounts/'.length);
         if (operation === 'register' && request.method === 'POST') {
@@ -326,13 +335,14 @@ export function createMultiplayerServer(options = {}) {
       } else if (url.pathname === '/api/rooms' && request.method === 'POST') {
         limit(`create:${ip}`, 10);
         const body = await jsonBody(request);
-        if (!['fire', 'water'].includes(body.element)) fail(400, 'invalid_element', 'Choose Fire or Water.');
+        requireCombatRules(body);
+        if (!ELEMENTS.includes(body.element)) fail(400, 'invalid_element', 'Choose Fire, Water or Earth.');
         const account = optionalAccount(request);
         const name = account ? account.profile.name : playerName(body.name);
         const spellbookId = requestedSpellbook(body, account, allowArchivedSpellbook);
         const deck = playableDeck(account ? accountDeck(account, body.element, spellbookId) : body.deck, body.element, spellbookId);
         if (rooms.size >= maxRooms) fail(503, 'rooms_full', 'The battle server is full. Please try again later.');
-        const playerIndex = body.element === 'fire' ? 0 : 1;
+        const playerIndex = 0;
         const player = newPlayer(name, deck, account?.id);
         const room = { code: newCode(), spellbookId, hostIndex: playerIndex, revision: 0, players: [null, null], state: null, touchedAt: now() };
         room.players[playerIndex] = player.record; rooms.set(room.code, room);
@@ -344,19 +354,23 @@ export function createMultiplayerServer(options = {}) {
         const operation = match[2];
         if (operation === 'info' && request.method === 'GET') {
           limit(`info:${ip}`, 120);
-          result = { code: room.code, spellbookId: room.spellbookId || SPELLBOOK_1, status: room.state ? room.state.status : 'waiting', joiningElement: room.hostIndex === 0 ? 'water' : 'fire' };
+          result = { code: room.code, spellbookVersion: SPELLBOOK_VERSION, combatRulesVersion: COMBAT_RULES_VERSION,
+            spellbookId: room.spellbookId || SPELLBOOK_1, status: room.state ? room.state.status : 'waiting',
+            hostElement: room.players[room.hostIndex].deck.element, availableElements: [...ELEMENTS], joiningElement: legacyJoiningElement(room) };
         } else if (operation === 'join' && request.method === 'POST') {
           limit(`join:${ip}`, 30);
           if (room.state || room.players.every(Boolean)) fail(409, 'room_full', 'Both seats in this battle are already taken.');
           const body = await jsonBody(request);
+          requireCombatRules(body);
           const playerIndex = room.players[0] ? 1 : 0;
           const account = optionalAccount(request);
-          const element = playerIndex === 0 ? 'fire' : 'water';
+          const element = body.element ?? (account ? legacyJoiningElement(room) : body.deck?.element);
+          if (!ELEMENTS.includes(element)) fail(400, 'invalid_element', 'Choose Fire, Water or Earth.');
           const spellbookId = requestedSpellbook(body, account, allowArchivedSpellbook);
           if (spellbookId !== (room.spellbookId || SPELLBOOK_1)) fail(409, 'spellbook_mismatch', 'This room uses a different spellbook. Select its spellbook in Deck before joining.');
           const player = newPlayer(account ? account.profile.name : playerName(body.name), playableDeck(account ? accountDeck(account, element, spellbookId) : body.deck, element, spellbookId), account?.id);
           const nextPlayers = room.players.slice(); nextPlayers[playerIndex] = player.record;
-          const state = makeMatch({ fire: nextPlayers[0].deck, water: nextPlayers[1].deck });
+          const state = makeMatch({ players: nextPlayers.map(entry => ({ element: entry.deck.element, deck: entry.deck })) });
           assertGame(state);
           room.players = nextPlayers; room.state = state; room.revision += 1; room.touchedAt = now();
           result = { ...roomView(room, playerIndex), token: player.token };

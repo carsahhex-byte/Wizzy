@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createDuelStorage, duelSaveKey } from '../src/duel-storage.js';
 import { SPELLBOOK_1, SPELLBOOK_2 } from '../src/spellbooks.js';
 import { createStarterDeck } from '../src/decks.js';
-import { createGame, getGameSpellbook, assertGame, validateSavedGame, rollInitiative, selectCard, castSelected, rollDice, skipFate, resolveSpell } from '../src/game.js';
+import { createGame, getGameSpellbook, SAVE_VERSION, assertGame, validateSavedGame, rollInitiative, selectCard, castSelected, rollDice, skipFate, resolveSpell } from '../src/game.js';
 
 function memory() {
   const data = new Map();
@@ -21,7 +21,7 @@ test('both spellbooks keep independent duel progress without changing legacy key
   const one = rollInitiative(rollInitiative(createGame(5, decks()), 0, () => .9), 1, () => 0);
   const two = createGame(6, decks(SPELLBOOK_2));
   const original = structuredClone(one);
-  assert.equal(duelSaveKey(), 'wizzy.duel.v14');
+  assert.equal(duelSaveKey(), `wizzy.duel.v${SAVE_VERSION}`);
   browser.setItem('wizzy.duel.v13', 'an older archived save');
   assert.equal(saves.save(one), true);
   const savedOne = browser.getItem(duelSaveKey());
@@ -78,5 +78,29 @@ test('unavailable device storage still opens separate empty spellbook slots', ()
     const state = saves.load(bookId);
     assert.equal(getGameSpellbook(state), bookId); assert.equal(state.phase, 'setup');
     assert.equal(saves.save(state), false);
+  }
+});
+
+test('version 14 active duels resume through the Earth update without overwriting their original save', () => {
+  for (const bookId of [SPELLBOOK_1,SPELLBOOK_2]) {
+    const browser=memory(),saves=createDuelStorage(browser);
+    const old=createGame(41,decks(bookId));
+    old.version=14;
+    for (const player of old.players) {
+      delete player.school;
+      delete player.golemActive;
+      delete player.golemProtectedUntilTurn;
+    }
+    const key=`wizzy.duel.v14${bookId===SPELLBOOK_1?'':`.${bookId}`}`;
+    const original=JSON.stringify(old);
+    browser.setItem(key,original);
+    const resumed=saves.load(bookId);
+    assert.equal(resumed.version,SAVE_VERSION);
+    assert.equal(resumed.phase,'initiative');
+    assert.deepEqual(resumed.players.map(player=>player.school),['fire','water']);
+    assert.equal(resumed.players[0].hand.length,5);
+    assert.equal(saves.save(resumed),true);
+    assert.equal(browser.getItem(key),original);
+    assert.deepEqual(saves.load(bookId),resumed);
   }
 });

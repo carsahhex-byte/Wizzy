@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { SPELLBOOK_1, SPELLBOOK_2 } from '../src/spellbooks.js';
 import { SPELLBOOK_VERSION } from '../src/spells.js';
 import { createStarterDeck, getEligibleSpells, normalizeDeckSlot, setDeckQuantity, validateDeck } from '../src/decks.js';
-import { createHubStorage, HUB_SAVE_KEY, GUEST_SAVE_KEY, GUEST_BOOK2_SAVE_KEY, GUEST_NAMED_SAVE_KEY, restoreHubDraft } from '../src/hub-storage.js';
+import { createHubStorage, HUB_SAVE_KEY, GUEST_SAVE_KEY, GUEST_BOOK2_SAVE_KEY, GUEST_NAMED_SAVE_KEY, GUEST_EARTH_SAVE_KEY, restoreHubDraft } from '../src/hub-storage.js';
 
 class BrowserStorage {
   constructor(entries = []) { this.items = new Map(entries); this.blocked = new Set(); this.blockReads = false; }
@@ -21,7 +21,7 @@ const alternate = element => {
   return setDeckQuantity(setDeckQuantity(deck, deck.entries[0].spellId, 2), 'FAT-001', 1);
 };
 const snapshot = (name = 'Guest', accountId = null) => {
-  const savedDecks = { fire: legal('fire'), water: legal('water') };
+  const savedDecks = { fire: legal('fire'), water: legal('water'), earth: createStarterDeck('earth') };
   return { profile: { name, element: 'fire' }, savedDecks, drafts: structuredClone(savedDecks),
     accountId, accountUsername: accountId ? name.toLowerCase() : '', cloudDecks: accountId ? structuredClone(savedDecks) : null };
 };
@@ -242,6 +242,7 @@ test('empty slots and 1–30 slab decks retain their exact counts across guest a
     guest.savedDecks = {
       fire: { element: 'fire', entries: total ? [{ spellId: 'Fire-0', quantity: total }] : [] },
       water: { element: 'water', entries: total ? [{ spellId: 'Water-1', quantity: total }] : [] },
+      earth: createStarterDeck('earth'),
     };
     guest.drafts = structuredClone(guest.savedDecks);
     assert.equal(store.save(guest), true, `${total} slabs`);
@@ -314,15 +315,18 @@ test('existing Fire-15 and Water-0 guest and account caches survive compatible r
   guest.savedDecks = {
     fire: { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 30 }] },
     water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 1 }] },
+    earth: createStarterDeck('earth'),
   };
   guest.drafts = {
     fire: { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 4 }] },
     water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 29 }] },
+    earth: createStarterDeck('earth'),
   };
   const account = { ...structuredClone(guest), savedAt: 200, accountId: 'resource-owner', accountUsername: 'resource_owner' };
   account.savedDecks = {
     fire: { element: 'fire', entries: [{ spellId: 'Fire-15', quantity: 1 }] },
     water: { element: 'water', entries: [{ spellId: 'Water-0', quantity: 30 }] },
+    earth: createStarterDeck('earth'),
   };
   account.drafts = structuredClone(account.savedDecks);
   account.cloudDecks = structuredClone(guest.savedDecks);
@@ -353,6 +357,7 @@ const testingBook = (quantity = 3) => {
   const savedDecks = {
     fire: setDeckQuantity(createStarterDeck('fire', SPELLBOOK_2), 'Fire-11', quantity),
     water: setDeckQuantity(createStarterDeck('water', SPELLBOOK_2), 'Water-9', quantity),
+    earth: createStarterDeck('earth', SPELLBOOK_2),
   };
   return { savedDecks, drafts: structuredClone(savedDecks), cloudDecks: null };
 };
@@ -520,4 +525,109 @@ test('named-generation backups survive a newer cached two-book rewrite of every 
   const guest = store.readGuest();
   assert.equal(guest.accountId, null);
   assert.deepEqual(guest.spellbook2.savedDecks.fire.entries, [{ spellId: 'Fire-6', quantity: 5 }]);
+});
+
+test('pre-Earth guest and account records gain empty slots while preserving both books and unsaved drafts', () => {
+  const disk = new BrowserStorage();
+  const prior = { version: 2, activeMigrationVersion: 1, activeCatalogVersion: 'named-spellbook-v1', savedAt: 40,
+    ...snapshot('Before Earth'), spellbook2: testingBook(7) };
+  prior.drafts.fire = setDeckQuantity(prior.drafts.fire, prior.drafts.fire.entries[0].spellId, 1);
+  prior.spellbook2.drafts.water = setDeckQuantity(prior.spellbook2.drafts.water, 'FAT-001', 9);
+  for (const book of [prior, prior.spellbook2]) for (const field of ['savedDecks', 'drafts']) delete book[field].earth;
+  const original = json(prior);
+  disk.setItem(GUEST_SAVE_KEY, original);
+  const store = createHubStorage(disk);
+  const guest = store.readGuest();
+  for (const [book, expected, bookId] of [[guest, prior, SPELLBOOK_1], [guest.spellbook2, prior.spellbook2, SPELLBOOK_2]]) {
+    for (const field of ['savedDecks', 'drafts']) {
+      for (const element of ['fire', 'water']) assert.deepEqual(book[field][element], expected[field][element]);
+      assert.deepEqual(book[field].earth, createStarterDeck('earth', bookId));
+    }
+  }
+  assert.equal(disk.getItem(GUEST_SAVE_KEY), original, 'reading preserves the original record');
+  const account = { ...structuredClone(prior), accountId: 'pre-earth-owner', accountUsername: 'pre_earth', cloudDecks: structuredClone(prior.savedDecks) };
+  account.spellbook2.cloudDecks = structuredClone(account.spellbook2.savedDecks);
+  assert.equal(store.cacheAccount(account.accountId, account), true, 'old complete payloads are accepted for migration');
+  const cached = store.readAccount(account.accountId);
+  assert.equal(cached.accountId, account.accountId);
+  assert.deepEqual(cached.cloudDecks.earth, createStarterDeck('earth'));
+  assert.deepEqual(cached.spellbook2.cloudDecks.earth, createStarterDeck('earth', SPELLBOOK_2));
+  for (const element of ['fire', 'water']) {
+    assert.deepEqual(cached.drafts[element], prior.drafts[element]);
+    assert.deepEqual(cached.spellbook2.drafts[element], prior.spellbook2.drafts[element]);
+  }
+  assert.deepEqual(store.readGuest().drafts, guest.drafts, 'account migration keeps guest drafts separate');
+});
+
+test('Earth slots preserve empty, short and full decks and independent unsaved drafts through reload and recovery', () => {
+  for (const total of [0, 1, 30]) {
+    const disk = new BrowserStorage(), store = createHubStorage(disk);
+    const guest = { ...snapshot(`Earth ${total}`), profile: { name: `Earth ${total}`, element: 'earth' }, spellbook2: testingBook() };
+    for (const [book, bookId] of [[guest, SPELLBOOK_1], [guest.spellbook2, SPELLBOOK_2]]) {
+      book.savedDecks.earth = total ? setDeckQuantity(createStarterDeck('earth', bookId), 'Earth-1', total) : createStarterDeck('earth', bookId);
+      book.drafts.earth = setDeckQuantity(createStarterDeck('earth', bookId), 'Earth-5', 29);
+    }
+    assert.equal(store.save(guest), true);
+    disk.removeItem(HUB_SAVE_KEY);
+    const restored = createHubStorage(disk).load().state;
+    assert.equal(restored.profile.element, 'earth');
+    assert.deepEqual(restored.savedDecks, guest.savedDecks);
+    assert.deepEqual(restored.drafts, guest.drafts);
+    assert.deepEqual(restored.spellbook2, guest.spellbook2);
+    assert.equal(validateDeck(restored.spellbook2.savedDecks.earth), total > 0);
+    const account = { ...structuredClone(guest), accountId: 'earth-owner', accountUsername: 'earth_owner', cloudDecks: structuredClone(guest.savedDecks) };
+    account.spellbook2.cloudDecks = structuredClone(guest.spellbook2.savedDecks);
+    assert.equal(store.save(account), true);
+    assert.deepEqual(store.readAccount(account.accountId).spellbook2, account.spellbook2);
+    assert.deepEqual(store.readGuest().spellbook2, guest.spellbook2);
+    const invalid = structuredClone(account);
+    invalid.spellbook2.drafts.earth = { element: 'earth', spellbookId: SPELLBOOK_2, entries: [{ spellId: 'Earth-1', quantity: 31 }] };
+    const before = disk.getItem(HUB_SAVE_KEY);
+    assert.equal(store.save(invalid), false);
+    assert.equal(disk.getItem(HUB_SAVE_KEY), before);
+  }
+});
+
+test('Earth recovery records survive old named-client rewrites without replacing new Fire or Water edits or crossing owners', () => {
+  const disk = new BrowserStorage(), store = createHubStorage(disk, { now: () => 100 });
+  for (const owner of [null, 'earth-alice']) {
+    const current = { ...snapshot(owner ? 'Earth Alice' : 'Earth Guest', owner), spellbook2: testingBook(3) };
+    current.savedDecks.earth = setDeckQuantity(createStarterDeck('earth'), 'Earth-2', 5);
+    current.drafts.earth = setDeckQuantity(createStarterDeck('earth'), 'FAT-001', 7);
+    current.spellbook2.savedDecks.earth = setDeckQuantity(createStarterDeck('earth', SPELLBOOK_2), 'Earth-4', 30);
+    current.spellbook2.drafts.earth = setDeckQuantity(createStarterDeck('earth', SPELLBOOK_2), 'Earth-5', 1);
+    if (owner) {
+      current.cloudDecks = structuredClone(current.savedDecks);
+      current.spellbook2.cloudDecks = structuredClone(current.spellbook2.savedDecks);
+    }
+    assert.equal(store.save(current), true);
+    const earthKey = owner ? `wizzy.earth-spellbook.v1.account.${encodeURIComponent(owner)}` : GUEST_EARTH_SAVE_KEY;
+    const earthRaw = disk.getItem(earthKey), protectedRecord = JSON.parse(earthRaw);
+    assert.equal(protectedRecord.profile, undefined);
+    assert.equal(protectedRecord.savedDecks.fire, undefined, 'Earth recovery never carries Fire/Water data');
+    const cached = { ...structuredClone(current), version: 2, activeMigrationVersion: 1, activeCatalogVersion: 'named-spellbook-v1', savedAt: 9000 };
+    cached.profile = { name: 'Newer cached name', element: 'water' };
+    cached.savedDecks.fire = alternate('fire');
+    cached.spellbook2.savedDecks.water = setDeckQuantity(createStarterDeck('water', SPELLBOOK_2), 'Water-9', 21);
+    cached.spellbook2.drafts.water = setDeckQuantity(createStarterDeck('water', SPELLBOOK_2), 'Water-0', 12);
+    for (const book of [cached, cached.spellbook2]) {
+      for (const field of ['savedDecks', 'drafts', 'cloudDecks']) if (book[field]) delete book[field].earth;
+    }
+    for (const key of [HUB_SAVE_KEY, owner ? `wizzy.hub.account.v2.${owner}` : GUEST_SAVE_KEY,
+      owner ? `wizzy.hub.account.spellbook2.v2.${owner}` : GUEST_BOOK2_SAVE_KEY,
+      owner ? `wizzy.named-spellbook.v1.account.${owner}` : GUEST_NAMED_SAVE_KEY]) disk.setItem(key, json(cached));
+    const restored = createHubStorage(disk).load().state;
+    assert.equal(restored.accountId, owner);
+    assert.equal(restored.profile.name, cached.profile.name);
+    for (const [book, expected, earth] of [[restored, cached, current], [restored.spellbook2, cached.spellbook2, current.spellbook2]]) {
+      for (const field of ['savedDecks', 'drafts']) {
+        assert.deepEqual(book[field].earth, earth[field].earth);
+        for (const element of ['fire', 'water']) assert.deepEqual(book[field][element], expected[field][element]);
+      }
+      if (owner) assert.deepEqual(book.cloudDecks.earth, earth.cloudDecks.earth);
+    }
+    assert.equal(disk.getItem(earthKey), earthRaw);
+    assert.equal(store.readAccount('unrelated-earth-owner'), null);
+  }
+  assert.deepEqual(store.readGuest().spellbook2.savedDecks.earth.entries, [{ spellId: 'Earth-4', quantity: 30 }]);
 });

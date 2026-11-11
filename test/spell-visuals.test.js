@@ -9,11 +9,11 @@ import {
 } from '../src/game.js';
 
 const EXPECTED = {
-  'basic-attack': ['Fire-1', 'Fire-4', 'Fire-5', 'Fire-8', 'Fire-11', 'Water-1', 'Water-2', 'Water-4', 'Water-5', 'Water-8', 'Water-9', 'Water-11', 'Water-12'],
+  'basic-attack': ['Fire-1', 'Fire-4', 'Fire-5', 'Fire-8', 'Fire-11', 'Water-1', 'Water-2', 'Water-4', 'Water-5', 'Water-8', 'Water-9', 'Water-11', 'Water-12', 'Earth-1', 'Earth-3'],
   'simple-cast': ['Fire-6', 'Fire-12', 'Water-6'],
-  'large-cast': ['Fire-7', 'Fire-13', 'Fire-14', 'Water-7', 'Water-13', 'Water-14'],
-  shield: ['Fire-3', 'Fire-10', 'Water-3', 'Water-10'],
-  'power-up': ['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15', 'Water-0'],
+  'large-cast': ['Fire-7', 'Fire-13', 'Fire-14', 'Water-7', 'Water-13', 'Water-14', 'Earth-5'],
+  shield: ['Fire-3', 'Fire-10', 'Water-3', 'Water-10', 'Earth-2'],
+  'power-up': ['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15', 'Water-0', 'Earth-4'],
 };
 
 const allCards = player => [...player.hand, ...player.deck, ...player.discard];
@@ -81,10 +81,10 @@ function deepFreeze(value) {
   return value;
 }
 
-test('all 31 primary spells have the specified routes and Fate has no animation', () => {
+test('all 36 primary spells have the specified routes and Fate has no animation', () => {
   const mapped = Object.values(EXPECTED).flat();
-  assert.equal(mapped.length, 31); assert.equal(new Set(mapped).size, 31);
-  assert.equal(Object.keys(SPELL_CATALOG).length, 34);
+  assert.equal(mapped.length, 36); assert.equal(new Set(mapped).size, 36);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 39);
   for (const [kind, spellIds] of Object.entries(EXPECTED)) for (const spellId of spellIds) {
     const spell = SPELL_CATALOG[spellId], damaging = !['shield', 'power-up'].includes(kind);
     assert.deepEqual(getSpellVisual(spellId), { kind, element: spell.element, manaCost: spell.manaCost, damaging }, spellId);
@@ -135,7 +135,7 @@ test('resumed casts at prior prices animate once without changing paid costs', (
 });
 
 test('unknown, retired, malformed and prototype names never produce an animation', () => {
-  for (const value of [null, undefined, 1, {}, [], 'Fire-16', 'Fire--1', 'FIR-001', 'Earth-1', 'fire-1', '__proto__', 'constructor']) {
+  for (const value of [null, undefined, 1, {}, [], 'Fire-16', 'Fire--1', 'FIR-001', 'Earth-6', 'fire-1', '__proto__', 'constructor']) {
     assert.equal(getSpellVisual(value), null);
   }
   const visual = getSpellVisual('Fire-1'); visual.kind = 'changed';
@@ -561,4 +561,51 @@ test('compatible tiered Enhancement completion logs keep their original award se
   legacy.log.at(-1).message = 'Fire rolls 3 + 6 = 9 for Enhancement: tier +20%; gains +20%; 20% Enh.';
   assert.equal(getResolvedBattleVisuals(before, legacy)[0].enhancementGain, 20);
   assert.deepEqual(getResolvedBattleVisuals(null, legacy), [], 'loading a historical result is a baseline');
+});
+
+test('Earth mirror completions use unique seats and cast before the resulting Golem transformation', () => {
+  const before = {
+    version: 1, status: 'playing', round: 1, startingPlayer: 0,
+    players: [0, 1].map(index => ({ id: `seat-${index + 1}`, name: 'Earth', school: 'earth', golemActive: false, discard: [] })),
+    log: [{ id: 1, round: 1, playerId: null, type: 'start', message: 'Earth mirror begins.' }],
+  };
+  const after = structuredClone(before);
+  after.players[1].discard.push({ id: 'earth-card', spellId: 'Earth-3' });
+  after.players[1].golemActive = true;
+  after.log.push(
+    { id: 2, round: 1, playerId: 'seat-2', type: 'cast', message: 'Earth casts Earth-3 for 3 mana.' },
+    { id: 3, round: 1, playerId: 'seat-2', type: 'golem', message: 'Earth transforms.', visual: { kind: 'golem-transform', casterIndex: 1 } },
+    { id: 4, round: 1, playerId: 'seat-2', type: 'resolve', message: 'Earth-3 resolves and moves to discard.' },
+  );
+  const events = getResolvedBattleVisuals(before, after);
+  assert.deepEqual(events.map(event => [event.kind, event.casterIndex]), [['basic-attack', 1], ['golem-transform', 1]]);
+  assert.equal(events[0].golem, false, 'a Shield-granting cast keeps its original wizard form');
+  assert.deepEqual(getResolvedBattleVisuals(after, structuredClone(after)), []);
+  assert.deepEqual(getResolvedBattleVisuals(null, after), []);
+
+  const ended = structuredClone(after);
+  ended.log.push({ id: 5, round: 1, playerId: 'seat-1', type: 'damage', message: 'Earth strikes.',
+    visual: { kind: 'golem-strike', casterIndex: 1, targetIndex: 0, amount: 15 } });
+  const [strike] = getResolvedBattleVisuals(after, ended);
+  assert.deepEqual([strike.kind, strike.casterIndex, strike.targetIndex, strike.amount, strike.golem], ['golem-strike', 1, 0, 15, true]);
+  assert.deepEqual(getResolvedBattleVisuals(ended, structuredClone(ended)), []);
+  ended.log.at(-1).visual.amount = 25;
+  assert.deepEqual(getResolvedBattleVisuals(after, ended), []);
+});
+
+test('real Earth mirror Shield resolution and end turn produce one cast, transformation and Golem strike', () => {
+  let state = createGame(3, { players: [
+    { element: 'earth', deck: { element: 'earth', entries: [{ spellId: 'Earth-2', quantity: 1 }] } },
+    { element: 'earth', deck: { element: 'earth', entries: [{ spellId: 'Earth-1', quantity: 1 }] } },
+  ] });
+  state = rollInitiative(rollInitiative(state, 0, () => .9), 1, () => 0);
+  state.players[0].shield = 15; state.players[0].mana = 10;
+  const before = state, resolved = complete(cast(state, 'Earth-2'));
+  assert.deepEqual(getResolvedBattleVisuals(before, resolved).map(event => event.kind), ['shield', 'golem-transform']);
+  assert.equal(resolved.players[0].golemActive, true);
+  const ended = endTurn(endTurn(resolved)), [strike] = getResolvedBattleVisuals(resolved, ended);
+  assert.equal(ended.players[1].hp, 85);
+  assert.deepEqual([strike.kind, strike.casterIndex, strike.targetIndex, strike.amount], ['golem-strike', 0, 1, 15]);
+  assert.deepEqual(getResolvedBattleVisuals(before, ended).map(event => event.kind), ['shield', 'golem-transform', 'golem-strike']);
+  assert.deepEqual(getResolvedBattleVisuals(ended, structuredClone(ended)), []);
 });

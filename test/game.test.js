@@ -73,11 +73,11 @@ function fateFixture() {
   return state;
 }
 
-test('catalog has 34 spells, 30 rolling primaries, one immediate primary and no old IDs', () => {
-  assert.equal(SAVE_VERSION, 14); assert.equal(DECK_SIZE, 30);
+test('catalog has 39 spells, 33 rolling primaries, three immediate primaries and no old IDs', () => {
+  assert.equal(SAVE_VERSION, 15); assert.equal(DECK_SIZE, 30);
   assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
-  assert.equal(Object.keys(SPELL_CATALOG).length, 34);
-  assert.equal(Object.keys(SPELL_RULES).length, 31);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 39);
+  assert.equal(Object.keys(SPELL_RULES).length, 36);
   for (const element of ['Fire', 'Water']) for (let index = 1; index <= 14; index += 1) {
     assert.ok(SPELL_CATALOG[`${element}-${index}`]);
     assert.equal(SPELL_RULES[`${element}-${index}`].requiresRoll, true);
@@ -738,7 +738,7 @@ test('Fire-0 respects the five-Ember cap and rejects spending before any card is
 
 test('additive Fire-0 preserves current-format duels and cannot be forged into a pending dice spell', () => {
   const previous = fresh(), snapshot = JSON.parse(JSON.stringify(previous));
-  assert.equal(SAVE_VERSION, 14); assert.equal(migrateSavedGame(previous), previous);
+  assert.equal(SAVE_VERSION, 15); assert.equal(migrateSavedGame(previous), previous);
   assert.equal(validateSavedGame(snapshot), true);
   let state = handOf(fresh({ fire: ['Fire-0'] }), 0, ['Fire-0', 'Fire-1']);
   assertGame(state); assert.equal(migrateSavedGame(state), state);
@@ -1473,7 +1473,7 @@ test('v14 staged saves retain unspent Loaded and cancellation never refunds old 
   const initial = fateFixture(); initial.players[0].loaded = 4; initial.players[0].auraTurns = 2;
   for (const staged of [endTurn(initial), beginRefresh(endTurn(initial))]) {
     const saved = JSON.parse(JSON.stringify(staged));
-    assert.equal(saved.version, 14); assert.equal(validateSavedGame(saved), true);
+    assert.equal(saved.version, SAVE_VERSION); assert.equal(validateSavedGame(saved), true);
     assert.equal(migrateSavedGame(saved), saved); assert.deepEqual(cancelStagedAction(saved), initial);
   }
   const old = version13Save(endTurn(initial)); old.players[0].loaded = 0;
@@ -1591,7 +1591,7 @@ test('a one-slab rolled Water-0 deck resumes without rerolling, replaying gains 
   state = complete(pending, [3, 4]);
   assert.deepEqual([state.players[1].mana, state.players[1].element, state.players[1].hand.length, state.players[1].deck.length, state.players[1].discard.length], [4, 2, 0, 0, 1]);
   const saved = JSON.parse(JSON.stringify(state)), snapshot = structuredClone(saved);
-  assert.equal(saved.version, 14); assert.equal(validateSavedGame(saved), true); assert.equal(migrateSavedGame(saved), saved);
+  assert.equal(saved.version, SAVE_VERSION); assert.equal(validateSavedGame(saved), true); assert.equal(migrateSavedGame(saved), saved);
   assert.equal(resolveSpell(saved), saved); assert.deepEqual(saved, snapshot);
   state = pass(pass(saved));
   assert.deepEqual([state.players[1].mana, state.players[1].element, state.players[1].hand.length, state.players[1].deck.length, state.players[1].discard.length], [6, 2, 0, 0, 1]);

@@ -1,8 +1,8 @@
 # Current spellbook and custom decks
 
-The game exposes one active spellbook containing **13 unique slabs: five Fire, five Water and three Fate**. The former Spellbook 1 selector is removed. The former testing collection is now the current collection, with Fire-6 replacing Fire-5. Stable internal IDs retain saved-file and artwork references; the following names appear on live cards, deck lists, inspections and new combat logs.
+The game exposes one active spellbook containing **18 unique slabs: five Fire, five Water, five Earth and three Fate**. The former Spellbook 1 selector is removed. The former testing collection is now the current collection, with Fire-6 replacing Fire-5. Stable internal IDs retain saved-file and artwork references; the following names appear on live cards, deck lists, inspections and new combat logs.
 
-Stable IDs are retained; Poseidon's Rift now costs 6 Mana. **Each held Ember grants +5% outgoing Fire damage, up to +25%, and the held bank is consumed by the next damaging Fire spell before that spell grants new Embers.** Embers have no turn or round expiry. Charred Blade, Sunsetter and Blaze use the revised effects below. Xineoph and Pacific use dedicated phoenix and dolphin animations; their card artwork, the flaming sword, Water Flow, Fate timing, Enhancement and Aura remain unchanged.
+Stable IDs are retained; Poseidon's Rift now costs 6 Mana. **Each held Ember grants +5% outgoing Fire damage, up to +25%, and the held bank is consumed by the next damaging Fire spell before that spell grants new Embers.** Embers have no turn or round expiry. Charred Blade, Sunsetter and Blaze use the revised effects below. Xineoph and Pacific use dedicated phoenix and dolphin animations; all fifteen active elemental illustrations now use the approved Earth-style artwork, including chunky Xineoph, ocean-wave Swell and arrow-shaped Sea bolt. Water Flow, Fate timing, Enhancement and Aura retain their existing rules.
 
 ## Active cards
 
@@ -18,6 +18,11 @@ Stable IDs are retained; Poseidon's Rift now costs 6 Mana. **Each held Ember gra
 | Water-12 | Coral Crash | 3 | Deal 12 + 2 × Flow damage. On 7+, heal 2 HP per Flow. |
 | Water-9 | Pacific | 2 | Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On 10+, deal 5 additional damage. |
 | Water-14 | Poseidon's Rift | 6 | Deal 15 + 5 × Flow damage. On 8+, deal 12 additional damage. |
+| Earth-1 | Earth-1 | 0 | Deal 5 damage and gain 5 Shield. On 7+, gain 5 additional Shield. |
+| Earth-2 | Earth-2 | 2 | Gain 10 Shield. On 6+, gain 1 Mana. |
+| Earth-3 | Earth-3 | 3 | Deal 5 damage. On 9+, gain 20 Shield. |
+| Earth-4 | Earth-4 | 5 | Gain 2 Mana. Protect an already-active Golem until the normal Shield check at the end of your next Earth turn. |
+| Earth-5 | Earth-5 | 5 | If Golem is active, deal 15 damage. |
 | FAT-001 | Fortune | 0 | +4 to the Modified Roll when attacking. |
 | FAT-002 | Misfortune | 0 | −4 to the Modified Roll when defending. |
 | FAT-003 | Twist | 0 | Choose +2 or −2 to the Modified Roll. |
@@ -36,11 +41,11 @@ The spellbook's original source is **Wizzy Master Spellbook Nov4.pdf**, Master S
 
 ## Build, save and transfer a deck
 
-Open **Deck**, choose Fire or Water, and add slabs from the current collection. The selected list occupies the upper panel; the lower collection keeps four cards per row. Filters cover All, Fire, Water, Fate and **In Deck**.
+Open **Deck**, choose Fire, Water or Earth, and add slabs from the current collection. The selected list occupies the upper panel; the lower collection keeps four cards per row. Filters cover All, Fire, Water, Earth, Fate and **In Deck**.
 
-A playable deck has **1–30 total slabs**, with **unlimited copies per spell**, using one main element plus Fate. Fire and Water cannot be mixed. There are no Neutral spells or mandatory category quotas. Empty drafts remain editable but are not playable.
+A playable deck has **1–30 total slabs**, with **unlimited copies per spell**, using one main element plus Fate. Different main elements cannot be mixed. There are no Neutral spells or mandatory category quotas. Empty drafts remain editable but are not playable.
 
-**Save deck** stores the legal composition; **Save & battle** saves it before starting a battle. Shared-screen play requires saved Fire and Water decks. Each two-screen player needs the saved deck for their own role. Account saves sync through the game server; drafts remain on the device. Saving a composition never changes an ongoing duel.
+**Save deck** stores the legal composition; **Save & battle** saves it before starting a battle. Shared-screen play opens a wizard chooser for Player 1 and Player 2; each can select Fire, Water or Earth, including mirrors. Only the selected decks need to be saved. Each two-screen player independently selects a school and uses their saved deck for that school. Account saves sync through the game server; drafts remain on the device. Saving a composition never changes an ongoing duel.
 
 **Download deck** exports a legal nonempty deck. **Upload deck** loads a draft for review; press Save deck to use it. The file limit is 64 KB. Files keep stable IDs, rather than depending on display names:
 
@@ -86,3 +91,7 @@ Current cards keep their existing frames and most supplied artwork, centered com
 Xineoph and Pacific use separate transparent creature atlases. Each charges for 500 ms, then loops eight pulse frames twice at 62.5 ms per frame during the 500–1500 ms hold, with fixed feet. Two formation frames start at 1.5 and 1.6 seconds and last 100 ms each. Three wing or tail poses begin at 1.7, 1.825 and 1.95 seconds; flame or wave arcs appear on the third pose, without the former straight light blades. Flight starts at 2.075 seconds and lasts 900 ms. Two faint afterimages follow by 45 and 90 ms during flight only, including mirrored travel, and clear before impact, on cancellation and at completion. Fire normally travels left to right and Water right to left. One combined impact occurs at 2.975 seconds; the defender's red flash lasts 210 ms, and the 340 ms impact window ends at 3.315 seconds. The arena and standing wizards remain the existing scene, with no duplicate full-scene overlay. Card art, costs, printed effects, Ember consumption, Flow gains and Fate timing do not change.
 
 The canonical metadata is in `src/spells.js`; active-pool membership is in `src/spellbooks.js`; `src/effects.js` implements effects; `src/game.js` owns combat timing; and `src/decks.js` validates and reviews compositions.
+
+## Golem timing
+
+Earth transforms at 20 Shield. Shield loss does not immediately revert it. On the final committed Earth turn pass, expire Earth-4 protection if due and then check Shield: an unprotected Golem at 19 or lower reverts before damage. If still active, deal a flat 15 damage through normal Shield; Aura and Enhancement do not change it, and Enhancement is preserved. Earth-5 is a separate damaging spell, so its cast can be followed by the passive strike. Earth-4 only protects an already-active Golem; its next-turn end check is not delayed for another turn.

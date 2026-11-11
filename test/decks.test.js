@@ -27,8 +27,8 @@ test('the sole active book has the requested names, stable IDs, current effects,
     'Water-14': ["Poseidon's Rift", 6, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
   };
   assert.equal(ACTIVE_SPELLBOOK_ID, SPELLBOOK_2);
-  assert.equal(getActiveSpells().length, 13);
-  assert.deepEqual(ACTIVE_SPELL_IDS.filter(id => !id.startsWith('FAT-')), Object.keys(expected));
+  assert.equal(getActiveSpells().length, 18);
+  assert.deepEqual(ACTIVE_SPELL_IDS.filter(id => !id.startsWith('FAT-') && !id.startsWith('Earth-')), Object.keys(expected));
   assert.equal(ACTIVE_SPELL_IDS.includes('Fire-5'), false);
   assert.equal(getActiveSpells().filter(card => card.category === 'Fate').length, 3);
   for (const [id, values] of Object.entries(expected)) {
@@ -81,11 +81,12 @@ test('active imports review old test files and keep names outside portable deck 
 
 test('Spellbook 2 contains exactly the paired test spells and Fate with unchanged definitions', () => {
   const expected = ['Fire-2', 'Fire-15', 'Fire-6', 'Fire-11', 'Fire-14',
-    'Water-2', 'Water-0', 'Water-12', 'Water-9', 'Water-14', 'FAT-001', 'FAT-002', 'FAT-003'];
+    'Water-2', 'Water-0', 'Water-12', 'Water-9', 'Water-14',
+    'Earth-1', 'Earth-2', 'Earth-3', 'Earth-4', 'Earth-5', 'FAT-001', 'FAT-002', 'FAT-003'];
   assert.deepEqual(SPELLBOOKS[SPELLBOOK_2].spellIds, expected);
   assert.equal(SPELLBOOK_ROLE_PAIRS.length, 5);
-  assert.equal(getSpellbookSpells(SPELLBOOK_1).length, 34);
-  assert.equal(getSpellbookSpells(SPELLBOOK_2).length, 13);
+  assert.equal(getSpellbookSpells(SPELLBOOK_1).length, 39);
+  assert.equal(getSpellbookSpells(SPELLBOOK_2).length, 18);
   for (const spell of getSpellbookSpells(SPELLBOOK_2)) assert.equal(spell, SPELL_CATALOG[spell.spellId], 'book copies retain identical cost, effect, name and artwork');
   for (const element of ['fire', 'water']) {
     const eligible = getEligibleSpells(element, SPELLBOOK_2);
@@ -145,7 +146,7 @@ test('book restrictions reject excluded spells, cross-element cards and unknown 
 });
 
 test('new spellbook starts with empty independent deck slots and no old cards', () => {
-  assert.equal(Object.keys(SPELL_CATALOG).length, 34);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 39);
   assert.equal(Object.values(SPELL_CATALOG).filter(card => card.element === 'Fire').length, 16);
   assert.equal(Object.values(SPELL_CATALOG).filter(card => card.element === 'Water').length, 15);
   for (const element of ['fire', 'water']) {
@@ -163,7 +164,7 @@ test('new spellbook starts with empty independent deck slots and no old cards', 
     assert.ok(eligible.every(card => card.category === 'Fate' || card.element.toLowerCase() === element));
     assert.ok(eligible.every(card => !/^(FIR|WAT|NEU)-/.test(card.spellId)));
   }
-  for (const value of ['earth', 'Fire', null, undefined, '__proto__']) assert.throws(() => createStarterDeck(value));
+  for (const value of ['air', 'Fire', null, undefined, '__proto__']) assert.throws(() => createStarterDeck(value));
 });
 
 test('draft editing supports new elemental and Fate slabs without a fixed composition', () => {

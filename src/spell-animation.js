@@ -1,7 +1,8 @@
-import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS, CREATURE_ANIMATION_SHEETS } from './assets.js';
+import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS, CREATURE_ANIMATION_SHEETS, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from './assets.js';
 import { getSpellVisual } from './spell-visuals.js';
 import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.js';
 import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from './creature-animation.js';
+import { getPlayerSchool } from './elements.js';
 
 const FRAME_MS = 125;
 const ACTOR_END = 2000;
@@ -14,6 +15,15 @@ const HIT_END = ARRIVAL + HIT_FRAME_MS * 4;
 const FEET = [{ x: 236, y: 450 }, { x: 788, y: 450 }];
 const actorSheets = { 'basic-attack': 'basicAttack', 'simple-cast': 'simpleCast', 'large-cast': 'largeCast',
   shield: 'shield', 'power-up': 'powerUp', enhancement: 'enhancement' };
+const TRANSFORMS = new Set(['golem-transform', 'golem-revert']);
+const schoolOf = player => getPlayerSchool(player) || '';
+const nativeFacing = (sheet, type) => sheet?.facing?.[type] || (type === 'water' || type === 'air' ? 'left' : 'right');
+const framesFor = (sheet, type, name) => sheet?.animations?.[type] || sheet?.animations?.[name];
+function wizardAt(root, index) {
+  const seated = root.querySelector(`[data-arena-seat="${index}"]`);
+  return seated?.dataset.arenaSeat === String(index) ? seated
+    : root.querySelector(`[data-arena-wizard="${index === 0 ? 'fire' : 'water'}"]`);
+}
 // Measured white-core offsets in each approved actor's release frame (12).
 const releaseOffsets = {
   'basic-attack': { fire: { x: 64.31, y: -51.37 }, water: { x: -61.48, y: -52.58 } },
@@ -47,13 +57,14 @@ export function createSpellAnimator({ root, scene } = {}) {
   const actor = createAnimationSprite(document, 'spell-animation-actor');
   const projectile = createAnimationSprite(document, 'spell-projectile');
   const impact = createAnimationSprite(document, 'spell-impact');
+  const targetActor = createAnimationSprite(document, 'spell-hit-actor');
   const afterimages = [45, 90].map((lagMs, index) => {
     const node = createAnimationSprite(document, `spell-projectile-afterimage spell-projectile-afterimage-${index + 1}`);
     node.dataset.lagMs = String(lagMs);
     node.style.opacity = '0';
     return { node, lagMs, opacity: index === 0 ? .22 : .1 };
   });
-  element.append(actor, afterimages[1].node, afterimages[0].node, projectile, impact);
+  element.append(actor, targetActor, afterimages[1].node, afterimages[0].node, projectile, impact);
   root.append(element);
   const seen = new Set();
   let current = null, generation = 0, frameRequest = 0;
@@ -123,9 +134,10 @@ export function createSpellAnimator({ root, scene } = {}) {
       if (frameRequest) view.cancelAnimationFrame(frameRequest);
       frameRequest = 0;
       restoreStanding(job);
+      restoreStanding(job, true);
       hitFlash(job, false);
       hideAfterimages();
-      for (const node of [actor, projectile, impact]) hideAnimationSprite(node);
+      for (const node of [actor, targetActor, projectile, impact]) hideAnimationSprite(node);
       element.dataset.phase = cancelled ? 'cancelled' : 'complete';
       element.dataset.stage = cancelled ? 'cancelled' : 'complete';
       element.hidden = true;
@@ -141,19 +153,24 @@ export function createSpellAnimator({ root, scene } = {}) {
     if (current) finish(current, { cancelled: true, settle });
   }
 
-  function play({ key, spellId = null, casterIndex, kind, onImpact, onComplete } = {}) {
+  function play({ key, spellId = null, casterIndex, kind, element: requestedElement, players, golem, onImpact, onComplete } = {}) {
     key = String(key ?? `${kind || spellId}:${casterIndex}`);
     if (current?.key === key) return current.promise;
     if (seen.has(key)) return Promise.resolve({ key, spellId, casterIndex, duplicate: true });
     // Replacement playback must not release the replacement's presentation lock.
     cancel({ settle: false });
     seen.add(key);
-    const visual = kind === 'enhancement'
-      ? { kind, element: casterIndex === 0 ? 'Fire' : 'Water', damaging: false }
+    const casterNode = wizardAt(root, casterIndex);
+    const targetNode = wizardAt(root, 1 - casterIndex);
+    const requestedType = String(requestedElement || schoolOf(players?.[casterIndex]) || casterNode?.dataset.element
+      || casterNode?.dataset.arenaWizard || (casterIndex === 0 ? 'fire' : 'water')).toLowerCase();
+    const transforming = TRANSFORMS.has(kind), striking = kind === 'golem-strike';
+    const visual = kind === 'enhancement' || transforming || striking
+      ? { kind, element: requestedType, damaging: striking }
       : getSpellVisual(spellId);
     const job = { key, spellId, casterIndex, kind: visual?.kind || 'none', onImpact, onComplete,
       done: false, impacted: false, casterHidden: false, flash: false };
-    const creature = kind === 'enhancement' ? null : getCreatureAnimation(spellId);
+    const creature = kind === 'enhancement' || transforming || striking ? null : getCreatureAnimation(spellId);
     const customCreature = creature !== null;
     const creatureSheets = customCreature ? CREATURE_ANIMATION_SHEETS[creature.key] : null;
     job.promise = new Promise(resolve => { job.resolve = resolve; });
@@ -167,34 +184,52 @@ export function createSpellAnimator({ root, scene } = {}) {
       finish(job, { skipped: true });
       return job.promise;
     }
-    const type = visual.element.toLowerCase(), targetType = casterIndex === 0 ? 'water' : 'fire';
-    const sheet = customCreature ? creatureSheets?.actor : COMBAT_ANIMATION_SHEETS[actorSheets[job.kind]];
-    const frames = sheet?.animations[type];
+    const type = visual.element.toLowerCase(), targetType = schoolOf(players?.[1 - casterIndex]) || targetNode?.dataset.element
+      || targetNode?.dataset.arenaWizard || (casterIndex === 0 ? 'water' : 'fire');
+    const isGolem = type === 'earth' && (golem ?? players?.[casterIndex]?.golemActive ?? casterNode?.dataset.form === 'golem');
+    const isEarth = type === 'earth' || type === 'air';
+    const actionName = striking ? 'largeCast' : actorSheets[job.kind];
+    const sheet = transforming ? GOLEM_ANIMATION_SHEETS.transform : customCreature ? creatureSheets?.actor
+      : isGolem ? GOLEM_ANIMATION_SHEETS.poses : (isEarth ? EARTH_ANIMATION_SHEETS : COMBAT_ANIMATION_SHEETS)[actionName];
+    const frames = transforming ? sheet?.animations[kind === 'golem-transform' ? 'transform' : 'revert']
+      : framesFor(sheet, type, isGolem && actionName === 'shield' ? 'powerUp' : actionName);
     const chargeSheet = customCreature ? creatureSheets?.charge : null;
     const chargeFrames = chargeSheet?.animations[type];
-    const projectileSheet = customCreature ? creatureSheets?.projectile
-      : COMBAT_ANIMATION_SHEETS[job.kind === 'large-cast' ? 'largeProjectiles' : 'basicProjectiles'];
-    const projectileFrames = projectileSheet?.animations[type];
-    const hitSheet = customCreature ? creatureSheets?.impact : SPELL_ANIMATION_SHEETS.basicAttack;
-    const hitFrames = hitSheet?.animations.impact;
-    if (frames?.length !== (customCreature ? 7 : 16)
-      || visual.damaging && (projectileFrames?.length !== (customCreature ? 5 : 16) || hitFrames?.length !== 4)
+    const heavyEarth = type === 'earth' && (job.kind === 'large-cast' || striking);
+    const projectileSheet = customCreature ? creatureSheets?.projectile : heavyEarth ? GOLEM_ANIMATION_SHEETS.heavyBoulder
+      : (isEarth ? EARTH_ANIMATION_SHEETS : COMBAT_ANIMATION_SHEETS)[job.kind === 'large-cast' ? 'largeProjectiles' : 'basicProjectiles'];
+    const projectileFrames = heavyEarth ? [...(projectileSheet?.animations.formation || projectileSheet?.animations.Formation?.frames || []),
+      ...(projectileSheet?.animations.flight || projectileSheet?.animations['Rolling flight']?.frames || [])] : projectileSheet?.animations[type];
+    const hitSheet = heavyEarth ? projectileSheet : customCreature ? creatureSheets?.impact : SPELL_ANIMATION_SHEETS.basicAttack;
+    const hitFrames = heavyEarth ? hitSheet?.animations.impact || hitSheet?.animations['Quick shatter']?.frames : hitSheet?.animations.impact;
+    const targetGolem = targetType === 'earth' && (players?.[1 - casterIndex]?.golemActive ?? targetNode?.dataset.form === 'golem');
+    const targetSheet = targetGolem ? GOLEM_ANIMATION_SHEETS.poses : null;
+    const targetFrames = targetSheet?.animations.hitReaction || targetSheet?.animations.hit;
+    if (frames?.length !== (transforming ? 8 : customCreature ? 7 : 16)
+      || visual.damaging && (projectileFrames?.length !== (customCreature ? 5 : heavyEarth ? 12 : 16) || hitFrames?.length !== 4)
       || customCreature && chargeFrames?.length !== 8
       || customCreature && !['x', 'y'].every(axis => Number.isFinite(sheet?.releaseOffset?.[axis]))) {
       finish(job, { skipped: true });
       return job.promise;
     }
-    const duration = customCreature ? CREATURE_TIMING.duration : visual.damaging ? HIT_END : ACTOR_END;
-    const impactAt = customCreature ? CREATURE_TIMING.impactAt : visual.damaging ? ARRIVAL : 500;
+    const duration = transforming ? 1000 : customCreature ? CREATURE_TIMING.duration : visual.damaging ? HIT_END : ACTOR_END;
+    const impactAt = transforming ? duration : customCreature ? CREATURE_TIMING.impactAt : visual.damaging ? ARRIVAL : 500;
     const mirror = customCreature ? creature.nativeFacing !== (casterIndex === 0 ? 'right' : 'left')
-      : (type === 'fire') !== (casterIndex === 0);
-    const point = FEET[casterIndex], targetPoint = { x: FEET[1 - casterIndex].x, y: 370 };
-    const offset = customCreature ? sheet.releaseOffset : releaseOffsets[job.kind]?.[type] || { x: 0, y: 0 };
-    const launch = job.kind === 'large-cast'
+      : nativeFacing(sheet, type) !== (casterIndex === 0 ? 'right' : 'left');
+    const point = FEET[casterIndex], targetPoint = { x: FEET[1 - casterIndex].x, y: heavyEarth ? FEET[1 - casterIndex].y : 370 };
+    const releaseFrame = frames[12], releaseRect = sheet.frameRects?.[releaseFrame]
+      || { w: sheet.sourceWidth / sheet.columns, h: sheet.sourceHeight / sheet.rows };
+    const releaseAnchor = sheet.frameAnchors?.[releaseFrame] || sheet.anchor || { x: .5, y: .5 };
+    const releaseCore = sheet.launchAnchors?.[type] || sheet.launchAnchor;
+    const offset = customCreature ? sheet.releaseOffset : releaseCore
+      ? { x: (releaseCore.x - releaseAnchor.x) * releaseRect.w * sheet.displayScale,
+        y: (releaseCore.y - releaseAnchor.y) * releaseRect.h * sheet.displayScale }
+      : releaseOffsets[job.kind]?.[type] || { x: 50, y: -50 };
+    const launch = heavyEarth ? { x: casterIndex === 0 ? -180 : 1204, y: point.y } : job.kind === 'large-cast'
       ? type === 'fire' ? { x: casterIndex === 0 ? 160 : 864, y: -150 } : { x: casterIndex === 1 ? 1150 : -126, y: 360 }
       : { x: point.x + (mirror ? -offset.x : offset.x), y: point.y + offset.y };
-    job.caster = root.querySelector(`[data-arena-wizard="${casterIndex === 0 ? 'fire' : 'water'}"]`);
-    job.target = root.querySelector(`[data-arena-wizard="${targetType}"]`);
+    job.caster = casterNode;
+    job.target = targetNode;
     job.casterSprite = job.caster?.querySelector('.wizard-sprite');
     job.targetSprite = job.target?.querySelector('.wizard-sprite');
     Object.assign(element.dataset, { targetIndex: String(1 - casterIndex), element: type, targetElement: targetType,
@@ -203,6 +238,7 @@ export function createSpellAnimator({ root, scene } = {}) {
     root.dataset.spellAnimating = 'true';
     const needed = customCreature ? [sheet, chargeSheet, projectileSheet, hitSheet]
       : visual.damaging ? [sheet, projectileSheet, hitSheet] : [sheet];
+    if (visual.damaging && targetSheet) needed.push(targetSheet);
     const requestGeneration = generation;
     Promise.all(needed.map(preloadAnimationSheet)).then(loaded => {
       if (current !== job || job.done || requestGeneration !== generation) return;
@@ -220,7 +256,12 @@ export function createSpellAnimator({ root, scene } = {}) {
         element.dataset.elapsed = String(Math.round(elapsed));
         if (elapsed >= duration) { finish(job); return; }
 
-        if (customCreature) {
+        if (transforming) {
+          const localFrame = Math.min(frames.length - 1, Math.floor(elapsed / FRAME_MS));
+          paintAnimationFrame(actor, sheet, frames[localFrame], point, { mirror });
+          Object.assign(actor.dataset, { element: type, sequenceFrame: String(localFrame), phase: kind });
+          Object.assign(element.dataset, { phase: 'transforming', stage: kind, frame: String(frames[localFrame]) });
+        } else if (customCreature) {
           const moment = getCreatureMoment(elapsed, { pose: creature.pose });
           Object.assign(element.dataset, { phase: moment.phase, stage: moment.stage,
             creaturePose: moment.creaturePose ? String(moment.creaturePose) : '',
@@ -293,7 +334,7 @@ export function createSpellAnimator({ root, scene } = {}) {
               : elapsed < ARRIVAL + HIT_FLASH_MS ? 'quick-hit' : 'impact-fade';
             // The actor already carries its charged orb. Only large offscreen
             // effects form separately; smaller shots appear on release itself.
-            const projectileVisibleAt = job.kind === 'large-cast' ? 1000 : RELEASE;
+            const projectileVisibleAt = job.kind === 'large-cast' || heavyEarth ? 1000 : RELEASE;
             if (elapsed >= projectileVisibleAt && elapsed < ARRIVAL) {
               const localFrame = elapsed < RELEASE ? Math.floor((elapsed - 1000) / FRAME_MS)
                 : 4 + Math.floor((elapsed - RELEASE) / FRAME_MS);
@@ -311,12 +352,21 @@ export function createSpellAnimator({ root, scene } = {}) {
               const index = Math.min(3, Math.floor(hitTime / HIT_FRAME_MS));
               hitFlash(job, hitTime < HIT_FLASH_MS);
               paintAnimationFrame(impact, hitSheet, hitFrames[index], targetPoint,
-                { size: job.kind === 'large-cast' ? 1.7 : 1 });
+                { size: heavyEarth ? 1 : job.kind === 'large-cast' ? 1.7 : 1 });
               impact.style.filter = type === 'water' ? 'hue-rotate(155deg) saturate(1.25)' : '';
               Object.assign(impact.dataset, { element: type, sequenceFrame: String(index), phase: 'fade' });
               element.dataset.hitFrame = String(hitFrames[index]);
             }
           }
+        }
+        if (visual.damaging && targetSheet && elapsed >= impactAt) {
+          hitFlash(job, false);
+          hideStanding(job, true);
+          const hitIndex = Math.min(3, Math.floor((elapsed - impactAt) / HIT_FRAME_MS));
+          paintAnimationFrame(targetActor, targetSheet, targetFrames[hitIndex], FEET[1 - casterIndex], {
+            mirror: nativeFacing(targetSheet, targetType) !== (casterIndex === 0 ? 'left' : 'right'),
+          });
+          Object.assign(targetActor.dataset, { element: targetType, phase: 'quick-hit', sequenceFrame: String(hitIndex) });
         }
         if (elapsed >= impactAt) deliverImpact(job);
         if (current !== job || job.done || requestGeneration !== generation) return;

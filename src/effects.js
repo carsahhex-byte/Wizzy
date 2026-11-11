@@ -1,4 +1,5 @@
 import { SPELL_CATALOG } from './spells.js';
+import { getPlayerSchool } from './elements.js';
 
 export const MAX_HP = 100;
 export const MAX_MANA = 10;
@@ -6,6 +7,15 @@ export const MAX_SHIELD = 30;
 export const MAX_FLOW = 5;
 export const MAX_EMBERS = 5;
 export const EMBER_DAMAGE_PER_POINT = 5;
+export const GOLEM_SHIELD_THRESHOLD = 20;
+export const GOLEM_END_TURN_DAMAGE = 15;
+
+/** Shield loss never calls this: Golem persists until its owner's actual pass. */
+export function activateGolemFromShield(player) {
+  if (getPlayerSchool(player) !== 'earth' || player.golemActive || player.shield < GOLEM_SHIELD_THRESHOLD) return false;
+  player.golemActive = true;
+  return true;
+}
 
 const rule = (emberSpend = 'none', maxEmbers) => Object.freeze({
   requiresRoll: true, emberSpend,
@@ -15,7 +25,7 @@ const rule = (emberSpend = 'none', maxEmbers) => Object.freeze({
 export const SPELL_RULES = Object.freeze(Object.fromEntries(
   Object.values(SPELL_CATALOG).filter(card => card.category !== 'Fate').map(card => [
     card.spellId,
-    card.spellId === 'Fire-0' ? Object.freeze({ requiresRoll: false, emberSpend: 'none' })
+    ['Fire-0', 'Earth-4', 'Earth-5'].includes(card.spellId) ? Object.freeze({ requiresRoll: false, emberSpend: 'none' })
       : card.spellId === 'Fire-5' ? rule('optional', 1)
       : card.spellId === 'Fire-12' ? rule('optional', 2)
         : card.spellId === 'Fire-7' ? rule('all') : rule(),
@@ -74,8 +84,9 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   const enhancement = caster.enhancement ?? 0;
   const aura = (caster.auraTurns ?? 0) > 0 ? 10 : 0;
   const waterSpell = definition.element === 'Water';
+  const earthSpell = definition.element === 'Earth';
   const flow = waterSpell ? Math.min(MAX_FLOW, caster.element) : 0;
-  caster.element = Math.min(waterSpell ? MAX_FLOW : MAX_EMBERS, caster.element);
+  caster.element = earthSpell ? 0 : Math.min(waterSpell ? MAX_FLOW : MAX_EMBERS, caster.element);
   // Costs were paid at commitment. Snapshot the bank before this spell's rewards.
   const heldEmbers = definition.element === 'Fire' ? caster.element : 0;
   const emberBonus = heldEmbers * EMBER_DAMAGE_PER_POINT;
@@ -103,6 +114,8 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
     const gained = Math.min(amount, Math.max(0, MAX_SHIELD - caster.shield));
     caster.shield += gained;
     record('shield', caster, `${name(caster)} gains ${gained} Shield${caster.shield === MAX_SHIELD ? ` (maximum ${MAX_SHIELD})` : ''}.`, { amount: gained });
+    if (activateGolemFromShield(caster)) record('shield', caster, `${name(caster)} transforms into Golem at ${caster.shield} Shield.`,
+      { golemActive: true, visual: { kind: 'golem-transform', casterIndex } });
   };
   const removeShield = amount => {
     const removed = Math.min(amount, opponent.shield);
@@ -131,6 +144,30 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
     record('heal', caster, `${name(caster)} heals ${restored} HP.`, { amount: restored });
   };
   switch (spellId) {
+    case 'Earth-1':
+      damage(opponent, 5);
+      gainShield(rollTotal >= 7 ? 10 : 5);
+      break;
+    case 'Earth-2':
+      gainShield(10);
+      if (rollTotal >= 6) gainMana(1);
+      break;
+    case 'Earth-3':
+      damage(opponent, 5);
+      if (rollTotal >= 9) gainShield(20);
+      break;
+    case 'Earth-4':
+      gainMana(2);
+      if (caster.golemActive) {
+        caster.golemProtectedUntilTurn = (caster.turnsStarted ?? 0) + 1;
+        record('shield', caster, `${name(caster)} protects Golem through their next turn; the normal Shield check returns at its end.`,
+          { golemProtectedUntilTurn: caster.golemProtectedUntilTurn });
+      }
+      break;
+    case 'Earth-5':
+      if (caster.golemActive) damage(opponent, 15);
+      else record('resolve', caster, `${name(caster)} has no active Golem; Earth-5 deals no damage.`);
+      break;
     case 'Fire-0':
       gainElement(1);
       break;

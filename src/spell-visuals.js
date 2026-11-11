@@ -1,13 +1,16 @@
 import { SPELL_CATALOG, LEGACY_SPELL_NAMES } from './spells.js';
 import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.js';
+import { getPlayerSchool } from './elements.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
 const DAMAGING_SPELLS = new Set([
   'Fire-1', 'Fire-4', 'Fire-5', 'Fire-6', 'Fire-7', 'Fire-8', 'Fire-11', 'Fire-12', 'Fire-13', 'Fire-14',
   'Water-1', 'Water-2', 'Water-4', 'Water-5', 'Water-6', 'Water-7', 'Water-8', 'Water-9', 'Water-11', 'Water-12', 'Water-13', 'Water-14',
+  'Earth-1', 'Earth-3', 'Earth-5',
 ]);
-const SHIELD_SPELLS = new Set(['Fire-3', 'Fire-10', 'Water-3', 'Water-10']);
-const POWER_UP_SPELLS = new Set(['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15', 'Water-0']);
+const SHIELD_SPELLS = new Set(['Fire-3', 'Fire-10', 'Water-3', 'Water-10', 'Earth-2']);
+const POWER_UP_SPELLS = new Set(['Fire-0', 'Fire-2', 'Fire-9', 'Fire-15', 'Water-0', 'Earth-4']);
+const schoolOf = player => getPlayerSchool(player) || '';
 const PRIMARY_SPELLS = Object.values(SPELL_CATALOG).filter(spell => spell.category === 'Elemental');
 const namesFor = spell => [...new Set([spell.name, LEGACY_SPELL_NAMES[spell.spellId]].filter(Boolean))];
 const SPELL_NAMES = new Map(PRIMARY_SPELLS.flatMap(spell => namesFor(spell).map(name => [name, spell.spellId])));
@@ -20,7 +23,8 @@ export function getSpellVisual(spellId) {
   const damaging = DAMAGING_SPELLS.has(spellId);
   const kind = SHIELD_SPELLS.has(spellId) ? 'shield'
     : POWER_UP_SPELLS.has(spellId) ? 'power-up'
-      : damaging ? spell.manaCost <= 3 ? 'basic-attack' : spell.manaCost <= 5 ? 'simple-cast' : 'large-cast'
+      : spellId === 'Earth-5' ? 'large-cast'
+        : damaging ? spell.manaCost <= 3 ? 'basic-attack' : spell.manaCost <= 5 ? 'simple-cast' : 'large-cast'
         : null;
   return kind === null ? null : { kind, element: spell.element, manaCost: spell.manaCost, damaging };
 }
@@ -46,7 +50,7 @@ function newDiscards(previous, next) {
   for (let index = 0; index < 2; index += 1) {
     const before = previous.players[index], after = next.players[index];
     if (!before || !after || before.id !== after.id || before.name !== after.name
-      || before.id !== (index === 0 ? 'fire' : 'water')
+      || schoolOf(before) !== schoolOf(after)
       || !Array.isArray(before.discard) || !Array.isArray(after.discard)
       || after.discard.length < before.discard.length
       || !before.discard.every((card, position) => sameCard(card, after.discard[position]))) return null;
@@ -70,7 +74,7 @@ function castSpellId(entry, player) {
   const printedName = entry.message.slice(prefix.length, separator);
   const spellId = SPELL_NAMES.get(printedName);
   const visual = getSpellVisual(spellId);
-  if (!visual || visual.element.toLowerCase() !== player.id) return null;
+  if (!visual || visual.element.toLowerCase() !== schoolOf(player)) return null;
   // Resumed casts keep their historical payment while using current visuals.
   const previousCost = spellId === 'Fire-11' ? 3 : spellId === 'Water-12' ? 4 : spellId === 'Water-14' ? 8 : null;
   const legacyCost = previousCost !== null && entry.message === `${prefix}${printedName} for ${previousCost} mana.`;
@@ -96,18 +100,23 @@ export function getResolvedSpellVisuals(previous, next) {
   if (!added) return [];
   const commits = [null, null], usedCounts = [new Map(), new Map()], events = [];
   const afterLogId = previous.log.at(-1).id;
+  const golemForms = previous.players.map(player => Boolean(player.golemActive));
   for (const entry of next.log) {
     const casterIndex = next.players.findIndex(player => player.id === entry.playerId);
     if (casterIndex === -1) continue;
+    if (entry.id > afterLogId && entry.visual?.casterIndex === casterIndex) {
+      if (entry.visual.kind === 'golem-transform') golemForms[casterIndex] = true;
+      if (entry.visual.kind === 'golem-revert') golemForms[casterIndex] = false;
+    }
     const spellId = castSpellId(entry, next.players[casterIndex]);
-    if (spellId) { commits[casterIndex] = { spellId, logId: entry.id, round: entry.round }; continue; }
+    if (spellId) { commits[casterIndex] = { spellId, logId: entry.id, round: entry.round, golem: golemForms[casterIndex] }; continue; }
     if (entry.type !== 'resolve') continue;
     const resolvedSpellId = COMPLETIONS.get(entry.message), commit = commits[casterIndex];
     if (!resolvedSpellId || !commit || commit.spellId !== resolvedSpellId || commit.round !== entry.round) continue;
     commits[casterIndex] = null;
     if (entry.id <= afterLogId) continue;
     const visual = getSpellVisual(resolvedSpellId);
-    if (!visual || visual.element.toLowerCase() !== next.players[casterIndex].id) continue;
+    if (!visual || visual.element.toLowerCase() !== schoolOf(next.players[casterIndex])) continue;
     const candidates = added[casterIndex].filter(card => card.spellId === resolvedSpellId);
     const used = usedCounts[casterIndex].get(resolvedSpellId) ?? 0;
     if (used >= candidates.length) continue;
@@ -120,6 +129,7 @@ export function getResolvedSpellVisuals(previous, next) {
     events.push({
       key: `${entry.id}:${commit.logId}:${casterIndex}:${resolvedSpellId}`,
       logId: entry.id, commitLogId: commit.logId, cardId, casterIndex, spellId: resolvedSpellId, ...visual,
+      ...(visual.element === 'Earth' ? { golem: commit.golem } : {}),
     });
   }
   return events;
@@ -165,9 +175,22 @@ export function getResolvedBattleVisuals(previous, next) {
   const events = getResolvedSpellVisuals(previous, next), attempts = [null, null];
   const afterLogId = previous.log.at(-1).id;
   for (const entry of next.log) {
-    const casterIndex = next.players.findIndex(player => player.id === entry.playerId);
+    const effect = entry.visual;
+    const taggedGolem = ['golem-transform', 'golem-revert', 'golem-strike'].includes(effect?.kind)
+      && [0, 1].includes(effect.casterIndex);
+    // Damage entries belong to the player taking damage. The explicit visual
+    // records the Golem's owning seat separately from that log ownership.
+    const casterIndex = taggedGolem ? effect.casterIndex : next.players.findIndex(player => player.id === entry.playerId);
     if (casterIndex === -1) continue;
-    const player = next.players[casterIndex], element = casterIndex === 0 ? 'Fire' : 'Water';
+    const player = next.players[casterIndex], school = schoolOf(player), element = school.charAt(0).toUpperCase() + school.slice(1);
+    if (entry.id > afterLogId && school === 'earth' && effect?.casterIndex === casterIndex
+      && ['golem-transform', 'golem-revert', 'golem-strike'].includes(effect.kind)
+      && (effect.kind === 'golem-strike' ? effect.targetIndex === 1 - casterIndex && effect.amount === 15
+        && entry.playerId === next.players[effect.targetIndex].id : entry.playerId === player.id)) {
+      events.push({ key: `${effect.kind}:${entry.id}:${casterIndex}`, logId: entry.id, casterIndex, element,
+        kind: effect.kind, spellId: null, manaCost: 0, damaging: effect.kind === 'golem-strike',
+        ...(effect.kind === 'golem-strike' ? { targetIndex: effect.targetIndex, amount: effect.amount, golem: true } : {}) });
+    }
     if (entry.type === 'enhancement') {
       if (entry.message === `${player.name} attempts Enhancement for 0 Mana instead of casting a primary spell.`) {
         attempts[casterIndex] = { logId: entry.id, round: entry.round };
@@ -188,5 +211,11 @@ export function getResolvedBattleVisuals(previous, next) {
         kind: 'aura', spellId: null, manaCost: AURA_COST, damaging: false });
     }
   }
-  return events.sort((left, right) => left.logId - right.logId);
+  // Shield gain is logged inside the spell effect. Show its cast and impact
+  // before the resulting transformation, even when the transition log comes first.
+  const order = event => event.kind === 'golem-transform'
+    ? (events.find(primary => primary.spellId && primary.casterIndex === event.casterIndex
+      && primary.commitLogId < event.logId && primary.logId > event.logId)?.logId ?? event.logId) + .1
+    : event.logId;
+  return events.sort((left, right) => order(left) - order(right));
 }

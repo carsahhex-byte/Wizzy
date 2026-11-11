@@ -23,13 +23,20 @@ OUTPUT = ROOT / "public" / "optimized"
 
 
 def optimize_asset(item):
-    key, filename = item
+    key, filename, previous = item
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", key):
         raise ValueError(f"Unsafe asset key: {key!r}")
     if Path(filename).name != filename:
         raise ValueError(f"Source must be an image filename: {filename!r}")
     source = ROOT / "public" / "graphics" / filename
     source_data = source.read_bytes()
+    source_sha = hashlib.sha256(source_data).hexdigest()
+    if previous and previous.get("sourceSha256") == source_sha and previous.get("source") == filename:
+        old_name = previous.get("file", "")
+        old_path = OUTPUT / old_name
+        if Path(old_name).name == old_name and old_name.endswith(".webp") and old_path.is_file():
+            if hashlib.sha256(old_path.read_bytes()).hexdigest() == previous.get("optimizedSha256"):
+                return key, previous
     with Image.open(BytesIO(source_data)) as original:
         image = original.convert("RGBA")
         options = {"format": "WEBP", "lossless": True, "exact": True, "method": 4}
@@ -53,7 +60,7 @@ def optimize_asset(item):
     return key, {
         "file": destination.name,
         "source": filename,
-        "sourceSha256": hashlib.sha256(source_data).hexdigest(),
+        "sourceSha256": source_sha,
         "optimizedSha256": optimized_sha,
         "bytes": len(optimized_data),
         "sourceBytes": len(source_data),
@@ -81,7 +88,8 @@ def main():
         if previous_manifest_path.exists() else {}
     )
     with ThreadPoolExecutor(max_workers=2) as pool:
-        manifest = dict(pool.map(optimize_asset, assets.items()))
+        manifest = dict(pool.map(optimize_asset, ((key, filename, previous_manifest.get(key))
+                                                for key, filename in assets.items())))
     generated_registry = {
         key: {name: item[name] for name in ["file", "sourceSha256", "optimizedSha256"]}
         for key, item in manifest.items()

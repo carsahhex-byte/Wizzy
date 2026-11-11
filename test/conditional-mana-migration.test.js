@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, rollInitiative, selectCard, castSelected, castFateSelected, skipFate, rollDice, resolveSpell,
-  migrateSavedGame, validateSavedGame, SPELL_CATALOG,
+  migrateSavedGame, validateSavedGame, SPELL_CATALOG, SAVE_VERSION,
 } from '../src/game.js';
 import { getResolvedSpellVisuals } from '../src/spell-visuals.js';
 
@@ -198,7 +198,7 @@ test('old Fire-14 text refreshes in every zone and preserves selected cards and 
   const upgraded = migrateSavedGame(old);
   assert.deepEqual(upgraded, selected);
   assert.deepEqual(old, before);
-  assert.equal(upgraded.version, 14);
+  assert.equal(upgraded.version, SAVE_VERSION);
   assert.equal(upgraded.selectedCardId, fireCards[0].id);
   assert.equal(migrateSavedGame(upgraded), upgraded);
 });

@@ -107,22 +107,22 @@ for (const [description, spellId, options, expectedCaster, expectedOpponent] of 
 
 test('the current collection completely replaces old IDs and has no starter composition', () => {
   assert.equal(SPELLBOOK_VERSION, 'nov4-v2.1');
-  assert.equal(Object.keys(SPELL_CATALOG).length, 34);
-  assert.equal(Object.keys(SPELL_RULES).length, 31);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 39);
+  assert.equal(Object.keys(SPELL_RULES).length, 36);
   assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Fire').length, 16);
   assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Water').length, 15);
   assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Fate').length, 3);
   assert.equal(Object.values(SPELL_CATALOG).filter(s => s.type === 'Neutral').length, 0);
   assert.ok(Object.keys(SPELL_CATALOG).every(id => !/^(FIR|WAT|NEU)-/.test(id)));
-  assert.deepEqual(DECK_LISTS, { fire: [], water: [] });
+  assert.deepEqual(DECK_LISTS, { fire: [], water: [], earth: [] });
   for (const spell of Object.values(SPELL_CATALOG).filter(s => s.category !== 'Fate')) {
-    assert.equal(SPELL_RULES[spell.id].requiresRoll, spell.id !== 'Fire-0');
-    assert.ok(cases.some(entry => entry[1] === spell.id), `${spell.id} has independent numerical checks`);
+    assert.equal(SPELL_RULES[spell.id].requiresRoll, !['Fire-0', 'Earth-4', 'Earth-5'].includes(spell.id));
+    assert.ok(spell.element === 'Earth' || cases.some(entry => entry[1] === spell.id), `${spell.id} has independent numerical checks (Earth in earth-engine.test.js)`);
   }
   assert.deepEqual([MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS], [100, 10, 30, 5, 5]);
   assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Fire').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,2,4,6,8,0]);
   assert.deepEqual(Object.values(SPELL_CATALOG).filter(s => s.element === 'Water').map(s => s.manaCost), [0,1,1,2,2,3,5,7,2,2,3,3,3,6,6]);
-  assert.equal(SOURCE_INFO.playableSpellCount, 13);
+  assert.equal(SOURCE_INFO.playableSpellCount, 18);
   assert.deepEqual(SOURCE_INFO.additionalSpells, ['Fire-0', 'Fire-15', 'Water-0']);
   assert.deepEqual([SOURCE_INFO.spellbook.librarySpellCount, SOURCE_INFO.spellbook.importedSpellCount], [31, 31]);
 });

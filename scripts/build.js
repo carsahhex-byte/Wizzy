@@ -8,7 +8,7 @@ const webOnly = process.argv.includes('--web');
 const gameOnly = process.argv.includes('--game-only');
 if (gameOnly && !webOnly) throw new Error('Use --web with --game-only for a production website release.');
 // Dependencies precede their importers in both the hosted and standalone builds.
-const moduleNames = ['optimized-art.js', 'spells.js', 'spellbooks.js', 'decks.js', 'effects.js', 'game.js', 'duel-storage.js', 'asset-url.js', 'pixel-icons.js', 'slab-text.js', 'assets.js', 'spell-visuals.js', 'battle-scene.js', 'animation-sprites.js', 'creature-animation.js', 'xineoph-animation.js', 'spell-animation.js', 'aura-animation.js', 'health-bars.js', 'hub-storage.js', 'districts.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
+const moduleNames = ['elements.js', 'optimized-art.js', 'spells.js', 'spellbooks.js', 'decks.js', 'effects.js', 'game.js', 'duel-storage.js', 'asset-url.js', 'pixel-icons.js', 'slab-text.js', 'assets.js', 'spell-visuals.js', 'animation-sprites.js', 'battle-scene.js', 'creature-animation.js', 'xineoph-animation.js', 'spell-animation.js', 'aura-animation.js', 'health-bars.js', 'hub-storage.js', 'districts.js', 'hub.js', 'multiplayer.js', 'accounts.js', 'main.js'];
 const styleNames = ['style.css', 'hub.css', 'multiplayer.css', 'accounts.css'];
 for (const filename of moduleNames) execFileSync(process.execPath, ['--check', `src/${filename}`], { stdio: 'inherit' });
 await rm('dist', { recursive: true, force: true });
@@ -84,7 +84,7 @@ if (webOnly) {
   // A new pathname avoids reusing a previously cached index document. Both
   // entries live at the project root, so asset paths and hash navigation agree.
   await writeFile(`dist/${launch.slice(2)}`, html);
-  await writeFile('dist/build-info.json', JSON.stringify({ id, launch, distribution: gameOnly ? 'game-only' : 'with-reviews', layout: 'portrait-1024x1536', screens: ['title', 'home', 'storybook', 'character', 'friends', 'decks', 'online', 'account', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
+  await writeFile('dist/build-info.json', JSON.stringify({ id, launch, distribution: gameOnly ? 'game-only' : 'with-reviews', layout: 'portrait-1024x1536', screens: ['title', 'home', 'storybook', 'character', 'friends', 'decks', 'battle-setup', 'online', 'account', 'battle'], entry, stylesheet, stylesheets }, null, 2) + '\n');
   console.log(`Built hosted game ${id} with content-hashed modules, styles, and artwork.`);
   process.exit(0);
 }

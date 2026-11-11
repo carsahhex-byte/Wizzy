@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { SPELL_CATALOG } from '../src/spells.js';
 import { COMPACT_SPELL_TEXT, slabRulesMarkup, slabRulesText } from '../src/slab-text.js';
 
-test('all 34 immutable display definitions retain their canonical roll thresholds', () => {
-  assert.equal(Object.keys(COMPACT_SPELL_TEXT).length, 34);
+test('all 39 immutable display definitions retain their canonical roll thresholds', () => {
+  assert.equal(Object.keys(COMPACT_SPELL_TEXT).length, 39);
   assert.deepEqual(Object.keys(COMPACT_SPELL_TEXT).sort(), Object.keys(SPELL_CATALOG).sort());
   for (const [id, spell] of Object.entries(SPELL_CATALOG)) {
     const lines = COMPACT_SPELL_TEXT[id];

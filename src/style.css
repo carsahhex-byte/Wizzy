@@ -35,6 +35,7 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .opening-players { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin: 20px 0 15px; }
 .opening-player { display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; padding: 15px 8px; border: 2px solid #736a9c; background: #151b30c9; }
 .opening-player.fire { border-color: #e19d62; }.opening-player.water { border-color: #7ac7e4; }
+.opening-player.earth { border-color: #9fc961; }
 .opening-player>strong { font-size: 16px; }.opening-player .secondary-button { padding: 9px 12px; min-height: 42px; width: 100%; }
 .opening-player .secondary-button:disabled { opacity: .55; }
 .opening-die { width: 80px; height: 80px; }
@@ -72,6 +73,7 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .stat-panel { position: relative; width: 320px; min-width: 0; filter: drop-shadow(0 4px 2px #11132699); }
 .stat-panel.fire { height: 307.05px; }
 .stat-panel.water { height: 302.34px; }
+.stat-panel.earth { height: 307.05px; }
 .stat-frame { position: absolute; inset: 0; width: 100%; height: 100%; }
 .stat-panel.is-active { filter: drop-shadow(0 0 5px #ffdc6277) drop-shadow(0 4px 2px #11132699); }
 .stat-heading { position: absolute; inset: 7% 11% auto; height: 20%; display: flex; align-items: center; gap: 10px; text-shadow: 2px 3px #080a1a; }
@@ -90,6 +92,11 @@ button, summary { -webkit-user-select: none; user-select: none; }
 .health-track { height: 10px; border: 2px solid #ffeacb; border-radius: 3px; background: #171325; margin: 5px 0 9px; box-shadow: 0 2px #070d19; overflow: hidden; }
 .health-track>span { display: block; height: 100%; background: linear-gradient(#ff9c59,#f34642); }
 .water .health-track>span { background: linear-gradient(#a5f4ff,#279cfa); }
+.earth .health-track>span { background: linear-gradient(#c6f78f,#61a239); }
+.earth .element-symbol { color: #b6d98b; }
+.golem-resource strong { font-size: 21px; }
+.golem-protected { display: inline-block; margin-left: 5px; color: #c8f59e; font-size: 12px; }
+.handoff-earth-icon { display: grid; place-items: center; width: 100%; height: 100%; font-size: 100px; }
 .resource-grid { display: grid; grid-template-columns: 1fr; gap: 2px; }
 .resource { min-width: 0; display: flex; align-items: center; gap: 10px; font-size: 22px; line-height: 1.1; text-shadow: 2px 2px #090b1c; }
 .resource > .pixel-icon { width: 26px; height: 26px; }
@@ -181,6 +188,7 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .enhance-controls { position: absolute; right: 30px; top: 91px; width: 170px; display: grid; gap: 12px; z-index: 2; }
 .enhance-button { position: relative; display: block; width: 170px; height: 94px; border: 0; padding: 0; background: transparent; color: #fff4d9; cursor: pointer; }
 .enhance-button-art { position: absolute; left: 0; top: 4px; width: 170px; height: 60.5px; }
+.earth-enhance-label { position: absolute; top: 12px; left: 39px; right: 13px; height: 40px; display: grid; place-items: center; color: #f0ffd2; font: 900 22px/1 'Courier New',monospace; letter-spacing: -1px; text-shadow: 2px 2px #13220a,-1px -1px #13220a; }
 .enhance-button-caption { position: absolute; left: 0; right: 0; bottom: 10px; color: #ffe5a5; font: bold 11px/1.2 monospace; letter-spacing: .2px; text-align: center; white-space: nowrap; }
 .enhancement-tier-caption { bottom: 4px; font-size: 10px; }
 .enhancement-tier-caption > span { display: block; }
@@ -197,6 +205,7 @@ button.tower-pile:hover { filter: drop-shadow(0 0 8px #fff2b288); }
 .enhancement-status { position: absolute; left: 30px; top: 110px; width: 170px; display: grid; gap: 16px; pointer-events: none; }
 .enhancement-label { padding: 9px 6px; border: 2px solid #d79052; background: #2d1b2ed9; box-shadow: 2px 2px #151729; text-align: center; color: #ffd68a; }
 .enhancement-label.water { border-color: #71cbdc; background: #182a40e6; color: #b6f3ff; }
+.enhancement-label.earth { border-color: #8cbd66; background: #243621e6; color: #d6f7ae; }
 .enhancement-label small { display: block; font: bold 10px/1.2 monospace; letter-spacing: 2px; }
 .enhancement-label strong { display: block; margin-top: 4px; font: bold 24px/1.2 monospace; white-space: nowrap; }
 .aura-status { display: block; margin-top: 6px; color: #b8efaf; font: bold 10px/1.2 monospace; white-space: nowrap; }

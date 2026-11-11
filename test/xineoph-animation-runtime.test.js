@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createSpellAnimator } from '../src/spell-animation.js';
 import { paintAnimationFrame, createAnimationSprite } from '../src/animation-sprites.js';
 import { XINEOPH_TIMING, getXineophMoment } from '../src/xineoph-animation.js';
-import { CREATURE_ANIMATION_SHEETS } from '../src/assets.js';
+import { CREATURE_ANIMATION_SHEETS, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from '../src/assets.js';
 import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from '../src/creature-animation.js';
 
 class Style {
@@ -18,8 +18,13 @@ class Element {
   append(...children) { this.children.push(...children); }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
   querySelectorAll(selector) {
-    const matches = node => selector.startsWith('.') ? node.className?.split(' ').includes(selector.slice(1))
-      : node.dataset.arenaWizard === selector.match(/^\[data-arena-wizard="(fire|water)"\]$/)?.[1];
+    const matches = node => {
+      if (selector.startsWith('.')) return node.className?.split(' ').includes(selector.slice(1));
+      const seat = selector.match(/^\[data-arena-seat="([01])"\]$/);
+      if (seat) return node.dataset.arenaSeat === seat[1];
+      const wizard = selector.match(/^\[data-arena-wizard="([a-z]+)"\]$/);
+      return Boolean(wizard && node.dataset.arenaWizard === wizard[1]);
+    };
     const found = [];
     for (const child of this.children) {
       if (matches(child)) found.push(child);
@@ -28,7 +33,7 @@ class Element {
     return found;
   }
 }
-function scene({ reduced = false } = {}) {
+function scene({ reduced = false, schools = ['fire', 'water'], forms = [] } = {}) {
   let nextId = 0;
   const pending = new Map();
   const view = {
@@ -38,9 +43,10 @@ function scene({ reduced = false } = {}) {
   };
   const document = { defaultView: view, createElement: () => new Element(document) };
   const root = new Element(document), wizards = [];
-  for (const id of ['fire', 'water']) {
+  for (const [index, id] of schools.entries()) {
     const wizard = new Element(document), sprite = new Element(document);
-    wizard.dataset.arenaWizard = id; sprite.className = 'wizard-sprite';
+    wizard.dataset.arenaWizard = id; wizard.dataset.arenaSeat = String(index);
+    wizard.dataset.element = id; wizard.dataset.form = forms[index] || 'wizard'; sprite.className = 'wizard-sprite';
     sprite.style.visibility = 'visible'; sprite.style.filter = 'contrast(1.05)';
     wizard.append(sprite); root.append(wizard); wizards.push({ wizard, sprite });
   }
@@ -342,4 +348,95 @@ test('generic Water, both creatures and ordinary Fire reuse an animator without 
   assert.equal(state.node('spell-projectile').hidden, false);
   state.tick(2499); assert.equal(impacts.length, 0); state.tick(2500); assert.equal(impacts.length, 1);
   state.tick(2840); await completion; assert.equal(impacts.length, 1);
+});
+
+test('Earth wizard and Golem casts face inward from either seat, including mirror matches', async t => {
+  images(t);
+  for (const casterIndex of [0, 1]) for (const golemActive of [false, true]) {
+    for (const [spellId, kind, actorAsset] of [
+      ['Earth-1', undefined, golemActive ? 'golemPoses' : 'earthBasicAttack'],
+      ['Earth-2', undefined, golemActive ? 'golemPoses' : 'earthShield'],
+      ['Earth-4', undefined, golemActive ? 'golemPoses' : 'earthPowerUp'],
+      [null, 'enhancement', golemActive ? 'golemPoses' : 'earthEnhancement'],
+      ['Earth-5', undefined, golemActive ? 'golemPoses' : 'earthLargeCast'],
+      [null, 'golem-strike', 'golemPoses'],
+    ]) {
+      const activeForm = kind === 'golem-strike' || golemActive;
+      const forms = ['golem', 'golem']; forms[casterIndex] = activeForm ? 'golem' : 'wizard';
+      const state = scene({ schools: ['earth', 'earth'], forms }), impacts = [];
+      const completion = state.animator.play({ key: `${casterIndex}:${golemActive}:${spellId || kind}`, spellId, kind,
+        casterIndex, golem: activeForm, onImpact: event => impacts.push(event) });
+      await ready(); state.tick(0);
+      const actor = state.node('spell-animation-actor');
+      assert.equal(actor.dataset.asset, actorAsset);
+      assert.equal(actor.style.transform.includes('scaleX(-1)'), casterIndex === 1);
+      assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'hidden');
+      assert.equal(state.wizards[1 - casterIndex].sprite.style.visibility, 'visible');
+      const damaging = state.animator.element.dataset.impactAt === '2500';
+      if (damaging) {
+        state.tick(1500);
+        const projectile = state.node('spell-projectile');
+        assert.equal(projectile.hidden, false);
+        assert.equal(projectile.style.transform.includes('scaleX(-1)'), casterIndex === 1);
+        if (spellId === 'Earth-5' || kind === 'golem-strike') assert.equal(projectile.dataset.asset, 'earthHeavyBoulder');
+        state.tick(2499); assert.equal(impacts.length, 0);
+        state.tick(2500); assert.equal(impacts.length, 1);
+        const hitActor = state.node('spell-hit-actor');
+        assert.equal(hitActor.dataset.asset, 'golemPoses');
+        assert.equal(hitActor.dataset.frame, '12');
+        assert.equal(state.wizards[1 - casterIndex].sprite.style.visibility, 'hidden');
+        state.tick(2840);
+      } else { state.tick(500); assert.equal(impacts.length, 1); state.tick(2000); }
+      await completion;
+      assert.equal(impacts.length, 1);
+      assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
+      assert.equal(state.wizards[1 - casterIndex].sprite.style.visibility, 'visible');
+      assert.equal(state.node('spell-hit-actor').hidden, true);
+    }
+  }
+});
+
+test('Golem transformations keep measured feet and per-frame sizes while settling once', async t => {
+  images(t);
+  for (const casterIndex of [0, 1]) for (const kind of ['golem-transform', 'golem-revert']) {
+    const state = scene({ schools: ['earth', 'earth'] }), impacts = [];
+    const completion = state.animator.play({ key: `${kind}:${casterIndex}`, kind, casterIndex,
+      onImpact: event => impacts.push(event) });
+    await ready(); state.tick(0);
+    const sheet = GOLEM_ANIMATION_SHEETS.transform, frames = sheet.animations[kind === 'golem-transform' ? 'transform' : 'revert'];
+    const actor = state.node('spell-animation-actor');
+    for (const [index, frame] of frames.entries()) {
+      state.tick(index * 125);
+      assert.equal(actor.dataset.frame, String(frame));
+      assert.equal(actor.dataset.logicalX, casterIndex === 0 ? '236' : '788');
+      assert.equal(actor.dataset.logicalY, '450');
+      assert.equal(actor.style.width, `${sheet.sourceWidth / sheet.columns * sheet.displayScale * sheet.frameScales[frame]}px`);
+      assert.equal(actor.style.transform.includes('scaleX(-1)'), casterIndex === 1);
+    }
+    assert.equal(impacts.length, 0); state.tick(1000); await completion;
+    assert.equal(impacts.length, 1); assert.equal(state.animator.isPlaying(), false);
+  }
+  const state = scene({ reduced: true, schools: ['earth', 'earth'] }), impacts = [];
+  assert.equal((await state.animator.play({ key: 'reduced-earth', kind: 'golem-transform', casterIndex: 1,
+    onImpact: event => impacts.push(event) })).skipped, true);
+  assert.equal(impacts.length, 1);
+});
+
+test('ordinary Fire and Water actors, releases and hits work from the opposite seat', async t => {
+  images(t);
+  for (const [school, spellId, casterIndex] of [['fire', 'Fire-6', 1], ['water', 'Water-6', 0]]) {
+    const state = scene({ schools: [school, school] }), impacts = [];
+    const completion = state.animator.play({ key: `opposite:${school}`, spellId, casterIndex,
+      onImpact: event => impacts.push(event) });
+    await ready(); state.tick(0); state.tick(1500);
+    assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'hidden');
+    assert.equal(state.node('spell-projectile').style.transform.includes('scaleX(-1)'), true);
+    const releaseX = Number(state.node('spell-projectile').dataset.logicalX);
+    state.tick(2200);
+    assert.ok(casterIndex === 0 ? Number(state.node('spell-projectile').dataset.logicalX) > releaseX
+      : Number(state.node('spell-projectile').dataset.logicalX) < releaseX);
+    state.tick(2500); assert.equal(impacts.length, 1);
+    assert.match(state.wizards[1 - casterIndex].sprite.style.filter, /brightness/);
+    state.tick(2840); await completion;
+  }
 });
