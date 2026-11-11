@@ -1,0 +1,362 @@
+{
+  "group": "ui",
+  "status": "review-only",
+  "liveGameModified": false,
+  "style": "Chunky rough pixel outlines, navy/indigo stone, beige parchment, warm gold/wood trim and blue rivets.",
+  "screens": [
+    {
+      "id": "deck",
+      "name": "Spell Workshop",
+      "file": "art/ui/deck-screen.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "sha256": "f3230928ff333aba47fd361069d4a345dd5878d3f3a665645936def8511c5d68",
+      "bytes": 2268792,
+      "description": "Selected-deck parchment panel above a four-column slab collection, elemental tabs, quantity controls, save actions.",
+      "kind": "concept-screen",
+      "note": "Static visual layout mockup. Embedded sample icons, labels and counts are illustrative; live card faces, text and controls will be overlaid during a later approved integration."
+    },
+    {
+      "id": "character",
+      "name": "Your Wizzy",
+      "file": "art/ui/character-screen.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "sha256": "c2102ad84099cc041e2d9abc6174142910e16e21a3ab5e5d20a06088ef0ca172",
+      "bytes": 2189488,
+      "description": "Deep-red Fire wizard portrait stage, editable name concept, school selectors, starting duel stat panel and deck/account actions.",
+      "kind": "concept-screen",
+      "note": "Static visual layout mockup. Embedded sample icons, labels and counts are illustrative; live card faces, text and controls will be overlaid during a later approved integration."
+    },
+    {
+      "id": "friends",
+      "name": "Your Party",
+      "file": "art/ui/friends-screen.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "sha256": "048ae47eb1aabf81648d523ae75eac2069f2f61b8b92233cf2102f5fa9bac5e5",
+      "bytes": 2302882,
+      "description": "Party illustration, create-room and join-code panels, shared-screen entry and reserved future friends-list strip.",
+      "kind": "concept-screen",
+      "note": "Static visual layout mockup. Embedded sample icons, labels and counts are illustrative; live card faces, text and controls will be overlaid during a later approved integration."
+    },
+    {
+      "id": "battle",
+      "name": "Choose Your Wizards",
+      "file": "art/ui/battle-screen.png",
+      "width": 948,
+      "height": 1659,
+      "mode": "RGB",
+      "sha256": "edf13628b5220513612d659f0f87cd621f4c537c39bc8cdc6998941407b309fc",
+      "bytes": 2367814,
+      "description": "Two inward-facing wizard portrait panels, independent Fire/Water/Earth selectors, saved-deck status and local/room mode actions.",
+      "kind": "concept-screen",
+      "note": "Static visual layout mockup. Embedded sample icons, labels and counts are illustrative; live card faces, text and controls will be overlaid during a later approved integration."
+    }
+  ],
+  "buttons": {
+    "file": "art/ui/navigation-buttons.png",
+    "width": 1254,
+    "height": 1254,
+    "mode": "RGBA",
+    "sha256": "9ac4d6e3d21fd36cdc60fd4f51f99628eba5ed285aedcc37edbea021c6b94c31",
+    "bytes": 1352451,
+    "columns": 4,
+    "rows": 4,
+    "rowOrder": [
+      "Deck",
+      "Character",
+      "Friends",
+      "Battle"
+    ],
+    "columnOrder": [
+      "normal",
+      "hover",
+      "pressed",
+      "disabled"
+    ],
+    "description": "Sixteen transparent rough-pixel parchment navigation buttons. States add brighter gold edges, recessed shade and muted disabled palette. Original PNG is unchanged.",
+    "cells": [
+      {
+        "name": "Deck",
+        "state": "normal",
+        "frame": 0,
+        "cell": [
+          0,
+          0,
+          314,
+          314
+        ],
+        "visibleBounds": [
+          8,
+          156,
+          298,
+          139
+        ]
+      },
+      {
+        "name": "Deck",
+        "state": "hover",
+        "frame": 1,
+        "cell": [
+          314,
+          0,
+          313,
+          314
+        ],
+        "visibleBounds": [
+          321,
+          156,
+          298,
+          139
+        ]
+      },
+      {
+        "name": "Deck",
+        "state": "pressed",
+        "frame": 2,
+        "cell": [
+          627,
+          0,
+          313,
+          314
+        ],
+        "visibleBounds": [
+          634,
+          156,
+          300,
+          139
+        ]
+      },
+      {
+        "name": "Deck",
+        "state": "disabled",
+        "frame": 3,
+        "cell": [
+          940,
+          0,
+          314,
+          314
+        ],
+        "visibleBounds": [
+          948,
+          156,
+          299,
+          139
+        ]
+      },
+      {
+        "name": "Character",
+        "state": "normal",
+        "frame": 4,
+        "cell": [
+          0,
+          314,
+          314,
+          313
+        ],
+        "visibleBounds": [
+          8,
+          444,
+          298,
+          137
+        ]
+      },
+      {
+        "name": "Character",
+        "state": "hover",
+        "frame": 5,
+        "cell": [
+          314,
+          314,
+          313,
+          313
+        ],
+        "visibleBounds": [
+          321,
+          444,
+          299,
+          137
+        ]
+      },
+      {
+        "name": "Character",
+        "state": "pressed",
+        "frame": 6,
+        "cell": [
+          627,
+          314,
+          313,
+          313
+        ],
+        "visibleBounds": [
+          635,
+          444,
+          299,
+          137
+        ]
+      },
+      {
+        "name": "Character",
+        "state": "disabled",
+        "frame": 7,
+        "cell": [
+          940,
+          314,
+          314,
+          313
+        ],
+        "visibleBounds": [
+          948,
+          444,
+          299,
+          137
+        ]
+      },
+      {
+        "name": "Friends",
+        "state": "normal",
+        "frame": 8,
+        "cell": [
+          0,
+          627,
+          314,
+          313
+        ],
+        "visibleBounds": [
+          7,
+          731,
+          299,
+          137
+        ]
+      },
+      {
+        "name": "Friends",
+        "state": "hover",
+        "frame": 9,
+        "cell": [
+          314,
+          627,
+          313,
+          313
+        ],
+        "visibleBounds": [
+          321,
+          731,
+          299,
+          138
+        ]
+      },
+      {
+        "name": "Friends",
+        "state": "pressed",
+        "frame": 10,
+        "cell": [
+          627,
+          627,
+          313,
+          313
+        ],
+        "visibleBounds": [
+          635,
+          731,
+          299,
+          138
+        ]
+      },
+      {
+        "name": "Friends",
+        "state": "disabled",
+        "frame": 11,
+        "cell": [
+          940,
+          627,
+          314,
+          313
+        ],
+        "visibleBounds": [
+          948,
+          731,
+          299,
+          137
+        ]
+      },
+      {
+        "name": "Battle",
+        "state": "normal",
+        "frame": 12,
+        "cell": [
+          0,
+          940,
+          314,
+          314
+        ],
+        "visibleBounds": [
+          7,
+          1019,
+          299,
+          138
+        ]
+      },
+      {
+        "name": "Battle",
+        "state": "hover",
+        "frame": 13,
+        "cell": [
+          314,
+          940,
+          313,
+          314
+        ],
+        "visibleBounds": [
+          321,
+          1018,
+          298,
+          139
+        ]
+      },
+      {
+        "name": "Battle",
+        "state": "pressed",
+        "frame": 14,
+        "cell": [
+          627,
+          940,
+          313,
+          314
+        ],
+        "visibleBounds": [
+          635,
+          1019,
+          299,
+          138
+        ]
+      },
+      {
+        "name": "Battle",
+        "state": "disabled",
+        "frame": 15,
+        "cell": [
+          940,
+          940,
+          314,
+          314
+        ],
+        "visibleBounds": [
+          948,
+          1019,
+          299,
+          138
+        ]
+      }
+    ]
+  },
+  "notes": [
+    "Screen artwork is an aesthetic concept, not executable UI or replacement card data.",
+    "Actual rules and saved-deck identities are preserved outside this isolated review pack.",
+    "Button PNG uses alpha transparency; each equal cell includes padding. Visible bounds are metadata only and the original image bytes are not cropped or altered."
+  ]
+}

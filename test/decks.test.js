@@ -22,7 +22,7 @@ test('the sole active book has the requested names, stable IDs, current effects,
     'Fire-14': ['Sunsetter', 8, 'Deal 55 damage. On an 8+, deal 65 instead.'],
     'Water-2': ['Sea bolt', 1, 'Deal 4 + 2 × Flow damage. On an 8+, gain 1 additional Flow after resolution.'],
     'Water-0': ['Swell', 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.'],
-    'Water-12': ['Coral Crash', 3, 'Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.'],
+    'Water-12': ['Carbonate', 3, 'Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.'],
     'Water-9': ['Pacific', 2, 'Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On a 10+, deal 5 additional damage.'],
     'Water-14': ["Poseidon's Rift", 6, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
   };

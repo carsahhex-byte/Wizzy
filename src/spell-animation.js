@@ -3,6 +3,8 @@ import { getSpellVisual } from './spell-visuals.js';
 import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.js';
 import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from './creature-animation.js';
 import { getPlayerSchool } from './elements.js';
+import { getCustomSpellSheet } from './custom-spell-sheets.js';
+import { createCustomSpellAnimator } from './custom-spell-animation.js';
 
 const FRAME_MS = 125;
 const ACTOR_END = 2000;
@@ -66,6 +68,7 @@ export function createSpellAnimator({ root, scene } = {}) {
   });
   element.append(actor, targetActor, afterimages[1].node, afterimages[0].node, projectile, impact);
   root.append(element);
+  const customAnimator = createCustomSpellAnimator({ root, scene });
   const seen = new Set();
   let current = null, generation = 0, frameRequest = 0;
   const reducedMotion = () => Boolean(view.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -151,10 +154,15 @@ export function createSpellAnimator({ root, scene } = {}) {
   }
   function cancel({ settle = true } = {}) {
     if (current) finish(current, { cancelled: true, settle });
+    customAnimator.cancel({ settle });
   }
 
-  function play({ key, spellId = null, casterIndex, kind, element: requestedElement, players, golem, onImpact, onComplete } = {}) {
+  function play({ key, spellId = null, casterIndex, kind, element: requestedElement, players, golem, modifiedTotal = null, onImpact, onComplete } = {}) {
     key = String(key ?? `${kind || spellId}:${casterIndex}`);
+    if (getCustomSpellSheet(spellId) && kind !== 'enhancement' && !TRANSFORMS.has(kind) && kind !== 'golem-strike') {
+      if (!customAnimator.hasSeen(key) && current) finish(current, { cancelled: true, settle: false });
+      return customAnimator.play({ key, spellId, casterIndex, players, golem, modifiedTotal, onImpact, onComplete });
+    }
     if (current?.key === key) return current.promise;
     if (seen.has(key)) return Promise.resolve({ key, spellId, casterIndex, duplicate: true });
     // Replacement playback must not release the replacement's presentation lock.
@@ -377,5 +385,5 @@ export function createSpellAnimator({ root, scene } = {}) {
     return job.promise;
   }
 
-  return { element, play, cancel, isPlaying: () => current !== null };
+  return { element, customElement: customAnimator.element, play, cancel, isPlaying: () => current !== null || customAnimator.isPlaying() };
 }

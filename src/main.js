@@ -11,6 +11,9 @@ import { fitSlabText } from './slab-text.js';
 import { createBattleScene } from './battle-scene.js';
 import { createSpellAnimator } from './spell-animation.js';
 import { createAuraAnimator } from './aura-animation.js';
+import { createMercifulAnimator } from './merciful-animation.js';
+import { createFateAnimator } from './fate-animation.js';
+import { battlePileMarkup } from './battle-props.js';
 import { getResolvedBattleVisuals } from './spell-visuals.js';
 import { createHealthBars } from './health-bars.js';
 import { pixelIconMarkup } from './pixel-icons.js';
@@ -29,6 +32,8 @@ const handoff = document.querySelector('#handoff');
 const battleScene = createBattleScene();
 const spellAnimator = createSpellAnimator({root:battleScene.element});
 const auraAnimator = createAuraAnimator({root:battleScene.element});
+const mercifulAnimator = createMercifulAnimator({root:battleScene.element});
+const fateAnimator = createFateAnimator({root:app});
 const healthBars = createHealthBars({onSettled:()=>{showPendingVictory();flushPendingHandoff();}});
 let spellVisualQueue = [];
 let activeSpellVisual = null;
@@ -110,7 +115,7 @@ function playerPanel(player, index) {
     activePlayer:visual?.kind==='golem-strike'?visual.casterIndex:state.activePlayer,
     players:state.players.map((entry,seat)=>seat===index?player:entry),
   },index);
-  const exposureTitle=exposed?'Earth-4: all damage received during the next opposing turn hits HP directly, preserving Shield.':'';
+  const exposureTitle=exposed?'Merciful: all damage received during the next opposing turn hits HP directly, preserving Shield.':'';
   const resource=school==='earth'
     ? `<div class="resource element golem-resource ${exposed?'shield-bypass-exposed':''}" data-shield-bypass-status="${exposed?bypassActive?'active':'queued':'none'}" title="${exposureTitle||`Transform at 20 Shield. At your turn's end, unprotected Golem reverts below 20 Shield; otherwise deal 15 damage. Enhancement and Aura do not boost this hit.`}">${pixelIconMarkup('golem')}<span>${exposed?bypassActive?'HP Now':'HP Next':'Form'}</span><strong data-stat="${player.id}-form" data-golem-active="${Boolean(player.golemActive)}">${player.golemActive?'Golem':'Wizard'}${protectedGolem?'<small class="golem-protected">Ward</small>':''}</strong></div>`
     : `<div class="resource element" title="${school==='fire'?`Each held Ember adds 5% Fire damage. Current bonus: ${player.element*5}%. Damaging Fire spells consume stored Embers at resolution, then add new gains for later attacks.`:'Flow strengthens Water effects and increases after resolution.'}">${pixelIconMarkup(school)}<span>${player.elementName}</span><strong data-stat="${player.id}-element" data-current="${player.element}" data-cap="${school==='fire'?MAX_EMBERS:MAX_FLOW}">${player.element}<small class="stat-limit"> / ${school==='fire'?MAX_EMBERS:MAX_FLOW}</small></strong></div>`;
@@ -286,7 +291,7 @@ function render() {
     <div class="battle-hud">${playerPanel(state.players[0],0)}${diceView()}${playerPanel(state.players[1],1)}</div>
     <section class="hand-chamber" aria-labelledby="hand-title">${handFrame()}<h2 class="sr-only" id="hand-title">${displayPlayer.name} wizard’s hand</h2><div class="hand-content"><div class="hand-meta"><span>${isOnlineBattle()?'YOUR ':''}${displayPlayer.name.toUpperCase()} · ${isOnlineBattle()&&!canActOnline()?'WAITING':isFate?(state.fatePlayer===state.activePlayer?'ATTACKING FATE':'DEFENDING FATE'):'SPELLBOOK'}</span><span data-testid="hand-count">${handCount(displayPlayer)} / ${HAND_LIMIT} SLABS</span></div>
     <div class="cards ${getPlayerSchool(displayPlayer)} cards-${displayPlayer.hand.length}" aria-label="${displayPlayer.name} wizard’s spell slabs">${displayPlayer.hand.map(card=>cardView(card,displayPlayer,finished)).join('')||`<div class="empty-hand"><span>✧</span><p>No slabs in hand.<br>${deckCount(displayPlayer)>0?'Refresh or draw on your next turn.':'Your tower is empty; draws stop.<br>Use available actions or End Turn.'}</p></div>`}</div>
-    ${enhancementWidgets()}<div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${art('stoneSign','pile-sign')}<span class="pile-copy">Discard Pile<strong data-testid="discard-count">${displayPlayer.discard.length} <small>${displayPlayer.discard.length===1?'slab':'slabs'}</small></strong></span></div><span class="hand-note">${isOnlineBattle()&&!canActOnline()?'YOUR PRIVATE HAND':state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${art('stoneSign','pile-sign')}<span class="pile-copy">Spell Tower<strong data-testid="deck-count">${deckCount(displayPlayer)} <small>${deckCount(displayPlayer)===1?'slab':'slabs'}</small></strong></span></button></div></div></section>
+    ${enhancementWidgets()}<div class="hand-bottomline"><div class="pile" aria-label="${displayPlayer.name} discard pile">${battlePileMarkup('discard',displayPlayer.discard.length)}</div><span class="hand-note">${isOnlineBattle()&&!canActOnline()?'YOUR PRIVATE HAND':state.phase==='refresh'?'GREY SLABS WILL BE DISCARDED':isFate?'FATE WINDOW':ending?'ENDING YOUR TURN':'CHOOSE YOUR MAGIC'}</span><button class="pile tower-pile" id="view-deck" aria-label="View ${displayPlayer.name} spell slab decklist">${battlePileMarkup('tower',deckCount(displayPlayer))}</button></div></div></section>
     <div class="turn-controls"><div class="phase-hint" role="status">${hintView(active,selected)}${isOnlineBattle()&&state.pendingSpell&&!pendingEnhancement()?'<button class="text-button" id="inspect-pending">Read pending spell</button>':''}</div>
     <div class="action-bar"><div class="round-plaque" aria-label="${opening?'Opening roll':`Round ${state.round}, ${active.name} wizard’s turn`}">${art('round','round-art')}<span class="round-cover"><strong>Round <span data-testid="round-number">${state.round}</span></strong><span>${finished?'Duel complete':opening?'Opening roll':`${active.name}’s Turn`}</span></span></div>
     <button class="art-button cast-button" id="cast-spell" data-focus="cast" aria-label="${castLabel}" ${finished||resolving||!canActOnline()||(isFate?(fateCount>0&&!canCastSelected(state)):!canCastSelected(state))?'disabled':''}>${art(castArt,'button-art')}</button>
@@ -299,8 +304,12 @@ function render() {
   else battleScene.finishEntrance();
   battleScene.setActive(state.phase === 'initiative' ? null : state.activePlayer);
   app.querySelector('[data-battle-scene-slot]').replaceWith(battleScene.element);
+  fateAnimator.mount(app.querySelector('.game-board'));
   healthBars.mount(app,state.players.map((player,index)=>displayedStats(player,index)));
   auraAnimator.sync(state.players.map((player,index)=>displayedStats(player,index)),{
+    visible:!battleView.hidden && (state.status==='playing'||spellVisualBusy()),
+  });
+  mercifulAnimator.sync(state.players.map((player,index)=>displayedStats(player,index)),{
     visible:!battleView.hidden && (state.status==='playing'||spellVisualBusy()),
   });
   app.querySelector('.combat-log').addEventListener('toggle', event=>{logOpen=event.target.open;fitBoard();});
@@ -337,6 +346,8 @@ function cancelSpellPresentation() {
   spellVisualGeneration += 1;
   spellAnimator.cancel({settle:false});
   auraAnimator.reset({settle:false});
+  mercifulAnimator.reset();
+  fateAnimator.reset({settle:false});
   activeSpellVisual=null;
   spellVisualQueue=[];
   presentedPlayers=null;
@@ -386,8 +397,8 @@ function playNextSpellVisual() {
   battleScene.finishEntrance();
   Promise.resolve().then(()=>{
     if(!isCurrent())return {cancelled:true};
-    const options={...event,players:state.players.map((player,index)=>displayedStats(player,index)),onImpact:impact,onComplete:complete};
-    return event.kind==='aura'?auraAnimator.activate(options):spellAnimator.play(options);
+    const options={...event,amount:event.modifier??event.amount,players:state.players.map((player,index)=>displayedStats(player,index)),onImpact:impact,onComplete:complete};
+    return event.kind==='fate'?fateAnimator.play(options):event.kind==='aura'?auraAnimator.activate(options):spellAnimator.play(options);
   }).then(result=>{if(result?.duplicate)complete();}).catch(complete);
 }
 function update(next,message) {
@@ -463,7 +474,7 @@ function flushPendingHandoff(){
   const next=pendingHandoff;
   pendingHandoff=null;
   if(!isOnlineBattle()&&!battleView.hidden&&state.status==='playing'){
-    showHandoff(next.playerIndex);
+    showHandoff(next.playerIndex,next.kind||'turn');
     render();
   }
 }
@@ -480,8 +491,11 @@ function finishFateWindow() {
 function advanceFateWindow(next) {
   const previous=state;
   if(next===state)return;
+  if(next.phase==='fate'&&next.fatePlayer!==previous.fatePlayer){
+    pendingHandoff={playerIndex:next.fatePlayer,previousPlayerIndex:getActingPlayerIndex(previous),kind:'fate'};
+  }
   update(next);
-  if(state.phase==='fate'&&state.fatePlayer!==previous.fatePlayer)showHandoff(state.fatePlayer,'fate');
+  flushPendingHandoff();
 }
 function commitSpell(emberSpend=0) {
   if(isOnlineBattle()){sendOnlineAction('castSpell',{emberSpend});return;}

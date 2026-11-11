@@ -81,7 +81,7 @@ function deepFreeze(value) {
   return value;
 }
 
-test('all 36 primary spells have the specified routes and Fate has no animation', () => {
+test('all 36 primary spells have the specified routes and Fate has no primary animation', () => {
   const mapped = Object.values(EXPECTED).flat();
   assert.equal(mapped.length, 36); assert.equal(new Set(mapped).size, 36);
   assert.equal(Object.keys(SPELL_CATALOG).length, 39);
@@ -192,7 +192,7 @@ test('Water-0 cast Mana has no visual and its completed Flow has one Water power
   assert.deepEqual(events[0], {
     key:`${after.log.at(-1).id}:${commitment.id}:1:Water-0`,
     logId:after.log.at(-1).id,commitLogId:commitment.id,cardId:card.id,
-    casterIndex:1,spellId:'Water-0',kind:'power-up',element:'Water',manaCost:0,damaging:false,
+    casterIndex:1,spellId:'Water-0',kind:'power-up',element:'Water',manaCost:0,damaging:false,modifiedTotal:12,
   });
   assert.deepEqual([after.phase,after.primaryUsed,after.primaryAction,after.pendingSpell],['main',true,'spell',null]);
   assert.equal(after.lastRoll.spellId,'Water-0');
@@ -234,12 +234,14 @@ test('Water-0 Fate changes only its resolved Flow reward, with one completion vi
   assert.equal(linked.lastRoll.total,7);
   for(const pending of [committed,rolled,defend,linked]){
     assert.deepEqual([pending.players[1].mana,pending.players[1].element],[1,0]);
-    assert.deepEqual(getResolvedBattleVisuals(before,pending),[], 'cast Mana and Fate never start the Flow animation early');
+    assert.deepEqual(getResolvedBattleVisuals(before,pending).filter(event=>event.kind!=='fate'),[], 'cast Mana and Fate feedback never start the Flow animation early');
   }
   const after=complete(linked), events=getResolvedBattleVisuals(before,after);
   assert.deepEqual([after.players[1].mana,after.players[1].element],[1,2]);
-  assert.equal(events.length,1);assert.equal(events[0].kind,'power-up');assert.equal(events[0].spellId,'Water-0');
-  for(const viewer of [0,1])assert.deepEqual(getResolvedBattleVisuals(privateView(linked,viewer),privateView(after,viewer)),events);
+  assert.deepEqual(events.map(event=>event.kind),['fate','fate','power-up']);
+  const primary=events.filter(event=>event.kind!=='fate');
+  assert.equal(primary[0].spellId,'Water-0');assert.equal(primary[0].modifiedTotal,7);
+  for(const viewer of [0,1])assert.deepEqual(getResolvedBattleVisuals(privateView(linked,viewer),privateView(after,viewer)),primary);
   const snapshot=structuredClone(after);
   assert.deepEqual(getResolvedBattleVisuals(after,snapshot),[]);
   assert.deepEqual(getResolvedBattleVisuals(null,snapshot),[]);
@@ -296,7 +298,7 @@ test('private online views can collect opposing spell completions without hands,
   }
 });
 
-test('Fate links do not animate and the final resolution produces only the primary visual', () => {
+test('Fate links never masquerade as primaries and final resolution produces one primary visual', () => {
   const before = fresh({ fire: ['Fire-1', 'FAT-001'], water: ['Water-1', 'FAT-002'] });
   const committed = cast(before, 'Fire-1'), rolled = rollDice(committed, () => .5);
   let linked = castFateSelected(selectCard(rolled, rolled.players[1].hand.find(card => card.spellId === 'FAT-002').id));
@@ -439,7 +441,7 @@ test('a batched poll merges primaries, successful Enhancement and Aura in author
   assert.deepEqual(getResolvedBattleVisuals(state, structuredClone(state)), []);
 });
 
-test('failed, capped, legacy flat Enhancement and Fate links never receive an ability animation', () => {
+test('failed, capped and legacy Enhancement have no ability visual; Fate gets dice feedback only', () => {
   const before = fresh(), failed = enhance(before, [2, 3]);
   assert.deepEqual(getResolvedBattleVisuals(before, failed), []);
   const capped = fresh(); capped.players[0].enhancement = 30;
@@ -453,7 +455,7 @@ test('failed, capped, legacy flat Enhancement and Fate links never receive an ab
   const fateBefore = fresh({ fire: ['Fire-1', 'FAT-001'], water: ['Water-1', 'FAT-002'] });
   let linked = rollDice(cast(fateBefore, 'Fire-1'), () => .5);
   linked = castFateSelected(selectCard(linked, linked.players[1].hand.find(card => card.spellId === 'FAT-002').id));
-  assert.deepEqual(getResolvedBattleVisuals(fateBefore, linked), []);
+  assert.deepEqual(getResolvedBattleVisuals(fateBefore, linked).map(event=>event.kind), ['fate']);
 });
 
 test('ability visuals require unchanged history, canonical caster, cost and mathematically valid positive tier rewards', () => {
@@ -521,14 +523,15 @@ test('Enhancement Fate responses change the final award and animate only after t
   assert.equal(resolving.phase, 'resolving');
   for (const state of [pending, rolled, defended, attacked, twisted, countered, resolving]) {
     assert.equal(state.players[0].enhancement, 0);
-    assert.deepEqual(getResolvedBattleVisuals(before, state), [], `${state.phase} never awards an early animation`);
+    assert.deepEqual(getResolvedBattleVisuals(before, state).filter(event=>event.kind!=='fate'), [], `${state.phase} never awards an early Enhancement animation`);
   }
-  const after = resolveSpell(resolving), [event] = getResolvedBattleVisuals(before, after);
+  const after = resolveSpell(resolving), visuals = getResolvedBattleVisuals(before, after), event=visuals.find(visual=>visual.kind==='enhancement');
+  assert.deepEqual(visuals.map(visual=>visual.kind),['fate','fate','fate','fate','enhancement']);
   assert.equal(after.lastRoll.resolved, true); assert.equal(after.lastRoll.total, 10);
   assert.equal(after.players[0].enhancement, 20);
   assert.equal(event.kind, 'enhancement'); assert.equal(event.enhancementGain, 20);
   for (const baseline of [pending, rolled, defended, attacked, twisted, countered, resolving]) {
-    assert.deepEqual(getResolvedBattleVisuals(baseline, after), [event]);
+    assert.deepEqual(getResolvedBattleVisuals(baseline, after).filter(visual=>visual.kind!=='fate'), [event]);
   }
   for (const viewer of [0, 1]) assert.deepEqual(getResolvedBattleVisuals(privateView(countered, viewer), privateView(after, viewer)), [event]);
   assert.deepEqual(getResolvedBattleVisuals(after, structuredClone(after)), []);
@@ -544,7 +547,7 @@ test('Fate can remove an Enhancement tier, while successful final logs must pres
   const failed = complete(linked);
   assert.equal(failed.lastRoll.rawTotal, 6); assert.equal(failed.lastRoll.total, 2);
   assert.equal(failed.players[0].enhancement, 0);
-  assert.deepEqual(getResolvedBattleVisuals(before, failed), []);
+  assert.deepEqual(getResolvedBattleVisuals(before, failed).filter(event=>event.kind!=='fate'), []);
   const success = enhance(fresh(), [3, 6]);
   for (const replacement of [
     'Fire resolves Enhancement at Modified Roll 9 (raw 8; attacking Fate +0; defending Fate +0): tier +20%; gains +20%; 20% Enh.',
@@ -608,4 +611,59 @@ test('real Earth mirror Shield resolution and end turn produce one cast, transfo
   assert.deepEqual([strike.kind, strike.casterIndex, strike.targetIndex, strike.amount], ['golem-strike', 0, 1, 15]);
   assert.deepEqual(getResolvedBattleVisuals(before, ended).map(event => event.kind), ['shield', 'golem-transform', 'golem-strike']);
   assert.deepEqual(getResolvedBattleVisuals(ended, structuredClone(ended)), []);
+});
+
+test('each committed Fate link gets one ordered feedback event with its own modified total', () => {
+  const before=fresh({fire:['Fire-1','FAT-001','FAT-003'],water:['Water-1','FAT-002','FAT-003']});
+  before.players[0].loaded=2;
+  let state=rollDice(cast(before,'Fire-1'),()=>.5);
+  assert.equal(state.lastRoll.total,10);
+  const snapshots=[state];
+  for(const[spellId,direction]of[['FAT-002'],['FAT-001'],['FAT-003',-2],['FAT-003',2]]){
+    const card=state.players[state.fatePlayer].hand.find(card=>card.spellId===spellId);
+    const selected=selectCard(state,card.id);
+    assert.deepEqual(getResolvedBattleVisuals(state,selected),[],'selecting never plays feedback');
+    const next=castFateSelected(selected,direction===undefined?{}:{twistDirections:{[card.id]:direction}});
+    const events=getResolvedBattleVisuals(state,next);
+    assert.equal(events.length,1);assert.equal(events[0].kind,'fate');assert.equal(events[0].cardId,card.id);
+    assert.equal(events[0].modifier,direction??(spellId==='FAT-001'?4:-4));
+    assert.equal(events[0].previousTotal,state.lastRoll.total);assert.equal(events[0].modifiedTotal,next.lastRoll.total);
+    assert.deepEqual(events[0].dice,[4,4]);assert.equal(events[0].primaryCasterIndex,0);
+    for(const viewer of[0,1])assert.deepEqual(getResolvedBattleVisuals(privateView(state,viewer),privateView(next,viewer)),events);
+    assert.deepEqual(getResolvedBattleVisuals(null,next),[]);assert.deepEqual(getResolvedBattleVisuals(next,structuredClone(next)),[]);
+    snapshots.push(next);state=next;
+  }
+  const resolving=skipFate(skipFate(state));
+  assert.deepEqual(getResolvedBattleVisuals(state,resolving),[],'passes never create feedback');
+  const after=resolveSpell(resolving),events=getResolvedBattleVisuals(before,after);
+  assert.deepEqual(events.map(event=>event.kind),['fate','fate','fate','fate','basic-attack']);
+  assert.deepEqual(events.slice(0,4).map(event=>[event.previousTotal,event.modifiedTotal]),[[10,6],[6,10],[10,8],[8,10]]);
+  assert.equal(events.at(-1).modifiedTotal,10);
+  for(const snapshot of snapshots){
+    const incremental=getResolvedBattleVisuals(snapshot,after);
+    assert.ok(incremental.every(event=>event.logId>snapshot.log.at(-1).id));
+    assert.equal(incremental.at(-1).modifiedTotal,10);
+  }
+});
+
+test('Fate feedback rejects missing discards, wrong roles, forged modifiers and changed history', () => {
+  const initial=fresh({fire:['Fire-1','FAT-001'],water:['Water-1','FAT-002']});
+  const before=rollDice(cast(initial,'Fire-1'),()=>.5);
+  const card=before.players[1].hand.find(card=>card.spellId==='FAT-002');
+  const after=castFateSelected(selectCard(before,card.id));
+  assert.equal(getResolvedBattleVisuals(before,after).length,1);
+  const changes=[
+    state=>{state.players[1].discard=[];},
+    state=>{state.log.find(entry=>entry.message==='Water casts Misfortune: -4 to the rolled total.').message='Water casts Misfortune: -8 to the rolled total.';},
+    state=>{state.players[1].discard[0].spellId='FAT-001';state.log.find(entry=>entry.message==='Water casts Misfortune: -4 to the rolled total.').message='Water casts Fortune: +4 to the rolled total.';},
+    state=>{state.log[0].message='Changed duel history.';},
+  ];
+  for(const change of changes){const invalid=structuredClone(after);change(invalid);assert.deepEqual(getResolvedBattleVisuals(before,invalid),[]);}
+});
+
+test('batched primary visual totals come from each committed roll, not the last snapshot roll', () => {
+  const before=fresh({fire:['Fire-1'],water:['Water-1']});
+  const fire=resolveSpell(rollDice(cast(before,'Fire-1'),()=>1/6));
+  const water=resolveSpell(rollDice(cast(pass(fire),'Water-1'),()=>.99));
+  assert.deepEqual(getResolvedSpellVisuals(before,water).map(event=>event.modifiedTotal),[4,12]);
 });

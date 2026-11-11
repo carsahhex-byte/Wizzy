@@ -15,14 +15,14 @@ Stable IDs are retained; Poseidon's Rift now costs 6 Mana. **Each held Ember gra
 | Fire-14 | Sunsetter | 8 | Deal 55 damage. On 8+, deal 65 instead. |
 | Water-2 | Sea bolt | 1 | Deal 4 + 2 × Flow damage. On 8+, gain 1 additional Flow after resolution. |
 | Water-0 | Swell | 0 | Gain 1 Mana on cast. On 7+, gain 1 additional Flow after resolution. |
-| Water-12 | Coral Crash | 3 | Deal 12 + 2 × Flow damage. On 7+, heal 2 HP per Flow. |
+| Water-12 | Carbonate | 3 | Deal 12 + 2 × Flow damage. On 7+, heal 2 HP per Flow. |
 | Water-9 | Pacific | 2 | Deal 6 + 2 × Flow damage. Gain 1 additional Flow after resolution. On 10+, deal 5 additional damage. |
 | Water-14 | Poseidon's Rift | 6 | Deal 15 + 5 × Flow damage. On 8+, deal 12 additional damage. |
-| Earth-1 | Earth-1 | 0 | Deal 5 damage and gain 5 Shield. On 7+, gain 5 additional Shield. |
-| Earth-2 | Earth-2 | 2 | Gain 10 Shield. On 6+, gain 1 Mana. |
-| Earth-3 | Earth-3 | 2 | Deal 5 damage. On 7+, gain 12 Shield. |
-| Earth-4 | Earth-4 | 4 | Gain 3 Shield. On 6+, incoming damage during the next opposing turn bypasses your Shield and hits your HP. |
-| Earth-5 | Earth-5 | 5 | If Golem is active, deal 15 damage. |
+| Earth-1 | OffoDefo | 0 | Deal 5 damage and gain 5 Shield. On 7+, gain 5 additional Shield. |
+| Earth-2 | Bengal Shield | 2 | Gain 10 Shield. On 6+, gain 1 Mana. |
+| Earth-3 | Earthbound | 2 | Deal 5 damage. On 7+, gain 12 Shield. |
+| Earth-4 | Merciful | 4 | Gain 3 Shield. On 6+, incoming damage during the next opposing turn bypasses your Shield and hits your HP. |
+| Earth-5 | Tectonic | 5 | If Golem is active, deal 15 damage. |
 | FAT-001 | Fortune | 0 | +4 to the Modified Roll when attacking. |
 | FAT-002 | Misfortune | 0 | −4 to the Modified Roll when defending. |
 | FAT-003 | Twist | 0 | Choose +2 or −2 to the Modified Roll. |
@@ -35,7 +35,7 @@ The spellbook's original source is **Wizzy Master Spellbook Nov4.pdf**, Master S
 | --- | --- | --- |
 | Elemental development | Heatbox builds Embers. | Sea bolt attacks and helps build Flow. |
 | Mana and elemental setup | Blaze builds an Ember and can gain Mana on 6+. | Swell gains Mana on cast and builds Flow. |
-| Heavy / specialized attack | Charred Blade attacks and rebuilds 2 Embers on 7+. | Coral Crash combines damage with conditional healing. |
+| Heavy / specialized attack | Charred Blade attacks and rebuilds 2 Embers on 7+. | Carbonate combines damage with conditional healing. |
 | Attack while building | Xineoph attacks, gains Embers and can recover Mana. | Pacific attacks and gains two total Flow, subject to the cap. |
 | Finisher | Sunsetter delivers a large base attack boosted by held Embers. | Poseidon's Rift uses established Flow and keeps it afterward. |
 
@@ -70,7 +70,7 @@ Existing current-collection decks are preferred. Fire-5 quantities in earlier te
 
 Old guest and account deck data remains backed up. The old collection is not exposed as an editable or playable second spellbook. Device storage remains scoped to the browser and website origin; moving to another origin requires a deck export/import or account sync.
 
-Compatible saved duels refresh exact old card names without refunding paid Mana, repeating effects, or rewriting completed historical results. Old log entries can retain their historical names; animation lookup recognizes both the former ID names and current names. A former testing duel containing Fire-5 is archived rather than turning an already-committed Fire-5 into Charred Blade. Start a new duel with the reviewed deck in that case.
+Compatible saved duels refresh exact old card names without refunding paid Mana, repeating effects, or rewriting completed historical results. Old log entries can retain their historical names; animation lookup recognizes both the former ID names, Coral Crash and current names. A former testing duel containing Fire-5 is archived rather than turning an already-committed Fire-5 into Charred Blade. Start a new duel with the reviewed deck in that case.
 
 ## Combat and presentation
 
@@ -86,7 +86,9 @@ Enhancement costs 0 Mana and uses the main action. After its Fate chain, 6–8 g
 
 Old completed damage and paid outcomes remain historical; loading a save does not recompute or replay them. Pending casts resolve once under the current rule with paid Mana retained. A pending old Sunsetter restores its previously reserved Embers exactly once before the revised damage consumes them; completed old results receive no refund or recalculation.
 
-Current cards keep their existing frames and most supplied artwork, centered compact rules, bold thresholds and the yellow upper-left Mana cost. The original shared source PNG sheets retain their filenames and pixels. Xineoph displays the approved solid-gold phoenix with flowing light blades, sparkles and a subtle fiery background; the flaming sword remains a separate Charred Blade asset. Existing source and optimized artwork are preserved. Display-name metadata and stable IDs organize the cards independently of their revised effects. Charred Blade is a 5-Mana simple cast; Sea bolt and Coral Crash use the basic attack; Sunsetter and Poseidon's Rift use large casts. Xineoph and Pacific retain their 2-Mana basic-attack classifications with dedicated fiery-phoenix and blue-dolphin animations. Heatbox, Blaze and Swell use power-ups. Fate has no animation. Results appear at impact, and reloading never replays completed actions.
+Current cards keep their existing frames, compact rules, bold thresholds and yellow upper-left Mana cost. All thirteen active elemental spells other than Xineoph and Pacific now use their approved individual effect atlases. The original PNGs remain unchanged. Conditional Mana, Shield, Ember, Flow and healing flourishes use the final Modified Roll; they do not change the resolved rules. Earth spells work in Wizard and Golem forms and from either seat. Tectonic without an active Golem shows a fizzle and no hit.
+
+Fortune, Misfortune and Twist briefly rise, pulse and fade above the already-rolled dice after each actual Fate cast. This 600 ms feedback finishes before a shared-screen Fate handoff or a primary resolution. Skipping Fate has no effect animation, and reconnecting does not replay completed responses. Merciful's qualifying stone fragments loop around Earth until the end of the opponent's next turn, then fade; opening or canceling End Turn does not expire them. The separate Aura ring remains independent.
 
 Xineoph and Pacific use separate transparent creature atlases. Each charges for 500 ms, then loops eight pulse frames twice at 62.5 ms per frame during the 500–1500 ms hold, with fixed feet. Two formation frames start at 1.5 and 1.6 seconds and last 100 ms each. Three wing or tail poses begin at 1.7, 1.825 and 1.95 seconds; flame or wave arcs appear on the third pose, without the former straight light blades. Flight starts at 2.075 seconds and lasts 900 ms. Two faint afterimages follow by 45 and 90 ms during flight only, including mirrored travel, and clear before impact, on cancellation and at completion. Fire normally travels left to right and Water right to left. One combined impact occurs at 2.975 seconds; the defender's red flash lasts 210 ms, and the 340 ms impact window ends at 3.315 seconds. The arena and standing wizards remain the existing scene, with no duplicate full-scene overlay. Card art, costs, printed effects, Ember consumption, Flow gains and Fate timing do not change.
 

@@ -1,0 +1,948 @@
+{
+  "group": "fire",
+  "spells": [
+    {
+      "id": "Fire-2",
+      "name": "Heatbox",
+      "file": "art/fire/heatbox.png",
+      "columns": 4,
+      "rows": 4,
+      "kind": "buff",
+      "target": "caster",
+      "element": "fire",
+      "description": "A faceted firestone pulses and contracts while ember motes gather back into its core.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "durationMs": 2200,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "sha256": "44d6244df7c27ffdb03e77881cfa6e1d9f13d786c7f6552d8f4957a806ce2c1c",
+      "previewPath": "caster-orbit",
+      "stages": [
+        {
+          "name": "form",
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "charge",
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "frameMs": 125,
+          "loops": 2,
+          "durationMs": 1000
+        },
+        {
+          "name": "release",
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "dissipate",
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "frameMs": 100
+        }
+      ],
+      "notes": "Effects-only draft atlas: no wizard/body/hat. Artwork is generated PNG bytes without image processing. Use exact proportional cell boundaries; source size can have half-pixel cell divisions. Keep existing caster source and game rules. One-second charge uses two loops of frames4\u20137. Quick attack impact is320ms. Preview parameters are draft choreography, not runtime integration.",
+      "conditional": {
+        "thresholds": [
+          7,
+          10
+        ],
+        "visual": "Ember count should follow resolved gain1/2/3; atlas orbit particles are decorative only."
+      },
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.5398089171974523
+        },
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5015974440894568,
+          "y": 0.5493630573248408
+        },
+        {
+          "x": 0.47770700636942676,
+          "y": 0.5652866242038217
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.49201277955271566,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.47929936305732485,
+          "y": 0.4968051118210863
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4984076433121019,
+          "y": 0.5
+        }
+      ],
+      "frameBounds": [
+        [
+          0,
+          25,
+          314,
+          289
+        ],
+        [
+          0,
+          9,
+          313,
+          305
+        ],
+        [
+          1,
+          31,
+          312,
+          283
+        ],
+        [
+          0,
+          41,
+          300,
+          273
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          308,
+          313
+        ],
+        [
+          1,
+          0,
+          312,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          301,
+          311
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ]
+      ]
+    },
+    {
+      "id": "Fire-15",
+      "name": "Blaze",
+      "file": "art/fire/blaze.png",
+      "columns": 4,
+      "rows": 4,
+      "kind": "buff",
+      "target": "caster",
+      "element": "fire",
+      "description": "A curling flame opens into a fiery crown; violet-gold Mana glints accompany the empowered result.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "durationMs": 2200,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "sha256": "28a872154db7f2b1bac2bc874c7a2b916d2b20b94f0b48be0d96084b4ca800e7",
+      "previewPath": "caster-rise",
+      "stages": [
+        {
+          "name": "form",
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "charge",
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "frameMs": 125,
+          "loops": 2,
+          "durationMs": 1000
+        },
+        {
+          "name": "release",
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "dissipate",
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "frameMs": 100
+        }
+      ],
+      "notes": "Effects-only draft atlas: no wizard/body/hat. Artwork is generated PNG bytes without image processing. Use exact proportional cell boundaries; source size can have half-pixel cell divisions. Keep existing caster source and game rules. One-second charge uses two loops of frames4\u20137. Quick attack impact is320ms. Preview parameters are draft choreography, not runtime integration.",
+      "conditional": {
+        "threshold": 6,
+        "visual": "Mana glint corresponds to the on-6+ Mana reward; core flame and Ember appear on all casts."
+      },
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4984076433121019,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4840764331210191,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5143769968051118,
+          "y": 0.5
+        },
+        {
+          "x": 0.48089171974522293,
+          "y": 0.5015974440894568
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.47770700636942676,
+          "y": 0.5
+        }
+      ],
+      "frameBounds": [
+        [
+          0,
+          9,
+          314,
+          305
+        ],
+        [
+          0,
+          9,
+          313,
+          305
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          304,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          9,
+          0,
+          304,
+          313
+        ],
+        [
+          0,
+          1,
+          302,
+          312
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          300,
+          314
+        ]
+      ]
+    },
+    {
+      "id": "Fire-6",
+      "name": "Charred Blade",
+      "file": "art/fire/charred-blade.png",
+      "columns": 4,
+      "rows": 4,
+      "kind": "attack",
+      "target": "opponent",
+      "element": "fire",
+      "description": "A burning sword charges, swings through a broad fiery arc, then breaks into impact sparks.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "durationMs": 2120,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "sha256": "87cc0845c40e5f69a3f4140a30b798843d08e26a528a96009be56b384b7ca4b1",
+      "previewPath": "slash-travel",
+      "stages": [
+        {
+          "name": "form",
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "charge",
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "frameMs": 125,
+          "loops": 2,
+          "durationMs": 1000
+        },
+        {
+          "name": "release",
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "impact",
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "frameMs": 80
+        }
+      ],
+      "notes": "Effects-only draft atlas: no wizard/body/hat. Artwork is generated PNG bytes without image processing. Use exact proportional cell boundaries; source size can have half-pixel cell divisions. Keep existing caster source and game rules. One-second charge uses two loops of frames4\u20137. Quick attack impact is320ms. Preview parameters are draft choreography, not runtime integration.",
+      "conditional": {
+        "threshold": 7,
+        "visual": "Add resolved Ember-gain feedback only when7+; attack occurs on every cast."
+      },
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.5366242038216561
+        },
+        {
+          "x": 0.5,
+          "y": 0.5302547770700637
+        },
+        {
+          "x": 0.5,
+          "y": 0.5302547770700637
+        },
+        {
+          "x": 0.49044585987261147,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5015974440894568,
+          "y": 0.5
+        },
+        {
+          "x": 0.48089171974522293,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4840764331210191,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5015974440894568,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        }
+      ],
+      "frameBounds": [
+        [
+          0,
+          23,
+          314,
+          291
+        ],
+        [
+          0,
+          19,
+          313,
+          295
+        ],
+        [
+          0,
+          19,
+          313,
+          295
+        ],
+        [
+          0,
+          9,
+          308,
+          305
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          1,
+          0,
+          312,
+          313
+        ],
+        [
+          0,
+          0,
+          302,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          304,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          1,
+          0,
+          312,
+          314
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ]
+      ]
+    },
+    {
+      "id": "Fire-14",
+      "name": "Sunsetter",
+      "file": "art/fire/sunsetter.png",
+      "columns": 4,
+      "rows": 4,
+      "kind": "attack",
+      "target": "opponent",
+      "element": "fire",
+      "description": "A burning sun charges into a falling meteor, exploding in an orange shockwave and chunky steam.",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "durationMs": 2120,
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "sha256": "20bfc9a8da676fff26c0c8386d0cbef8625ecaf0dedac54fabde4c8b9f2300b4",
+      "previewPath": "meteor-descent",
+      "stages": [
+        {
+          "name": "form",
+          "frames": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "charge",
+          "frames": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "frameMs": 125,
+          "loops": 2,
+          "durationMs": 1000
+        },
+        {
+          "name": "release",
+          "frames": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "frameMs": 100
+        },
+        {
+          "name": "impact",
+          "frames": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "frameMs": 80
+        }
+      ],
+      "notes": "Effects-only draft atlas: no wizard/body/hat. Artwork is generated PNG bytes without image processing. Use exact proportional cell boundaries; source size can have half-pixel cell divisions. Keep existing caster source and game rules. One-second charge uses two loops of frames4\u20137. Quick attack impact is320ms. Preview parameters are draft choreography, not runtime integration.",
+      "frameAnchors": [
+        {
+          "x": 0.5,
+          "y": 0.5159235668789809
+        },
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.5,
+          "y": 0.5143312101910829
+        },
+        {
+          "x": 0.4585987261146497,
+          "y": 0.5366242038216561
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4984076433121019,
+          "y": 0.5
+        },
+        {
+          "x": 0.517515923566879,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.4984076433121019,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.5,
+          "y": 0.5
+        },
+        {
+          "x": 0.47770700636942676,
+          "y": 0.5
+        }
+      ],
+      "frameBounds": [
+        [
+          0,
+          10,
+          314,
+          304
+        ],
+        [
+          0,
+          9,
+          313,
+          305
+        ],
+        [
+          0,
+          9,
+          313,
+          305
+        ],
+        [
+          0,
+          23,
+          288,
+          291
+        ],
+        [
+          0,
+          0,
+          314,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          11,
+          0,
+          303,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          313,
+          313
+        ],
+        [
+          0,
+          0,
+          314,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          313,
+          314
+        ],
+        [
+          0,
+          0,
+          300,
+          314
+        ]
+      ]
+    }
+  ]
+}

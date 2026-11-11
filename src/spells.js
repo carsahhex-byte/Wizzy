@@ -13,11 +13,22 @@ export const SPELL_DISPLAY_NAMES = Object.freeze({
   'Fire-14': 'Sunsetter',
   'Water-2': 'Sea bolt',
   'Water-0': 'Swell',
-  'Water-12': 'Coral Crash',
+  'Water-12': 'Carbonate',
   'Water-9': 'Pacific',
   'Water-14': "Poseidon's Rift",
+  'Earth-1': 'OffoDefo',
+  'Earth-2': 'Bengal Shield',
+  'Earth-3': 'Earthbound',
+  'Earth-4': 'Merciful',
+  'Earth-5': 'Tectonic',
 });
 export const LEGACY_SPELL_NAMES = Object.freeze(Object.fromEntries(Object.keys(SPELL_DISPLAY_NAMES).map(id => [id, id])));
+/** Exact historical labels are presentation aliases, never portable deck IDs. */
+export const SPELL_NAME_ALIASES = Object.freeze(Object.fromEntries(
+  Object.entries(SPELL_DISPLAY_NAMES).map(([id, name]) => [id, Object.freeze([
+    ...new Set([name, id, ...(id === 'Water-12' ? ['Coral Crash'] : [])]),
+  ])]),
+));
 
 const artwork = Object.freeze({ Fire: 'fireCard', Water: 'waterCard', Earth: 'earthCard', Fate: 'fateCard' });
 const spell = (id, element, manaCost, effectText, purpose) => Object.freeze({

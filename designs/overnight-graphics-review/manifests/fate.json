@@ -1,0 +1,99 @@
+{
+  "group": "fate",
+  "previewOnly": true,
+  "spells": [
+    {
+      "id": "FAT-001",
+      "name": "Fortune",
+      "file": "art/fate/fate-effects.png",
+      "columns": 3,
+      "rows": 1,
+      "frames": [
+        0
+      ],
+      "kind": "fate",
+      "target": "dice",
+      "element": "fate",
+      "frameMs": 75,
+      "durationMs": 600,
+      "description": "A gold luck star rises and twinkles above the rolled dice after Fortune is played.",
+      "presentation": {
+        "risePixels": 8,
+        "pulse": true,
+        "fade": true,
+        "position": "above-dice"
+      },
+      "notes": [
+        "One clean pixel glyph per Fate; the review player animates its rise, twinkle and fade over 0.6 seconds.",
+        "Play after this Fate card is used and before the primary spell resolves.",
+        "No wizard animation or change to Fate response priority."
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 260947,
+      "sha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae"
+    },
+    {
+      "id": "FAT-002",
+      "name": "Misfortune",
+      "file": "art/fate/fate-effects.png",
+      "columns": 3,
+      "rows": 1,
+      "frames": [
+        1
+      ],
+      "kind": "fate",
+      "target": "dice",
+      "element": "fate",
+      "frameMs": 75,
+      "durationMs": 600,
+      "description": "A lavender crescent briefly pulses above the rolled dice after Misfortune is played.",
+      "presentation": {
+        "risePixels": 8,
+        "pulse": true,
+        "fade": true,
+        "position": "above-dice"
+      },
+      "notes": [
+        "One clean pixel glyph per Fate; the review player animates its rise, twinkle and fade over 0.6 seconds.",
+        "Play after this Fate card is used and before the primary spell resolves.",
+        "No wizard animation or change to Fate response priority."
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 260947,
+      "sha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae"
+    },
+    {
+      "id": "FAT-003",
+      "name": "Twist",
+      "file": "art/fate/fate-effects.png",
+      "columns": 3,
+      "rows": 1,
+      "frames": [
+        2
+      ],
+      "kind": "fate",
+      "target": "dice",
+      "element": "fate",
+      "frameMs": 75,
+      "durationMs": 600,
+      "description": "Opposing gold and lavender arrows rise and settle above the rolled dice after Twist is played.",
+      "presentation": {
+        "risePixels": 8,
+        "pulse": true,
+        "fade": true,
+        "position": "above-dice"
+      },
+      "notes": [
+        "One clean pixel glyph per Fate; the review player animates its rise, twinkle and fade over 0.6 seconds.",
+        "Play after this Fate card is used and before the primary spell resolves.",
+        "No wizard animation or change to Fate response priority."
+      ],
+      "width": 2172,
+      "height": 724,
+      "bytes": 260947,
+      "sha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae"
+    }
+  ]
+}

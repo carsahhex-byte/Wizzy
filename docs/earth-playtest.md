@@ -15,13 +15,15 @@ Starting stats remain **100 HP, 3 Mana and 0 Shield**. Mana caps at **10**, Shie
 
 | Slab | Mana | Effect |
 | --- | ---: | --- |
-| Earth-1 | 0 | Deal 5 damage and gain 5 Shield. On 7+, gain 5 additional Shield. |
-| Earth-2 | 2 | Gain 10 Shield. On 6+, gain 1 Mana. |
-| Earth-3 | 2 | Deal 5 damage. On 7+, gain 12 Shield. |
-| Earth-4 | 4 | Gain 3 Shield. On 6+, damage received during the opponent’s next turn bypasses your Shield and hits your HP. |
-| Earth-5 | 5 | If Golem is active, deal 15 damage. |
+| OffoDefo (Earth-1) | 0 | Deal 5 damage and gain 5 Shield. On 7+, gain 5 additional Shield. |
+| Bengal Shield (Earth-2) | 2 | Gain 10 Shield. On 6+, gain 1 Mana. |
+| Earthbound (Earth-3) | 2 | Deal 5 damage. On 7+, gain 12 Shield. |
+| Merciful (Earth-4) | 4 | Gain 3 Shield. On 6+, damage received during the opponent’s next turn bypasses your Shield and hits your HP. |
+| Tectonic (Earth-5) | 5 | If Golem is active, deal 15 damage. |
 
 Earth-1 through Earth-4 roll before Fate, and their thresholds use the final Modified Roll after Loaded and Fate. Earth-4 always gains 3 Shield, grants no Mana, and only queues the incoming-damage bypass on 6+. Its gain can reach the Shield cap or trigger Golem at 20. A failed roll grants no new bypass status. Earth-5 resolves without dice or a Fate window. Earth-5 still pays its cost and uses the primary action when no Golem is active, but deals no damage. Read Slab shows the complete wording; Earth-4's shorter card copy is a space-saving summary.
+
+The approved card names retain their numbered internal IDs, so saved Earth decks keep their compositions. Merciful's successful stone fragments remain around the wizard or Golem through the opponent's next turn and dissolve only after that actual turn ends.
 
 ## Golem timing
 

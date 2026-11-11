@@ -1,0 +1,36 @@
+{
+  "group": "frames",
+  "previewOnly": true,
+  "assets": [
+    {
+      "id": "earth-stat-frame",
+      "name": "Earth stat frame",
+      "file": "art/frames/earth-stat-frame.png",
+      "kind": "frame",
+      "description": "The supplied simple green-and-gold stat frame, preserved byte-for-byte. Blank interior for live stats in a later integration.",
+      "notes": [
+        "Original source is public/graphics/Earth Stat Frame.png.",
+        "This review does not replace the active Earth frame."
+      ],
+      "width": 1292,
+      "height": 1218,
+      "bytes": 1067187,
+      "sha256": "c10771a2bd720b5ef151f456ac6f683ce726c83dc555237d703acd379b1a6368"
+    },
+    {
+      "id": "air-stat-frame",
+      "name": "Air stat frame",
+      "file": "art/frames/air-stat-frame.png",
+      "kind": "frame",
+      "description": "Matching restrained gold border and sky-slate interior, without bulky exterior decoration. Air artwork only.",
+      "notes": [
+        "Air is not enabled as a playable class in this review.",
+        "Blank heading and stats for future live text."
+      ],
+      "width": 1292,
+      "height": 1218,
+      "bytes": 1220688,
+      "sha256": "e00ffd2774324ad45a0f950d5845415b2307bd680a3225e188f61633f1047797"
+    }
+  ]
+}

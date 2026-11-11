@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Wizzy · Graphics review</title>
+  <style>__GRAPHICS_REVIEW_STYLE__</style>
+</head>
+<body>
+<main>
+  <header class="page-header">
+    <p class="eyebrow">WIZZY · SEPARATE ART REVIEW</p>
+    <h1>Spellcraft & rough pixel interface</h1>
+    <p>New screen concepts, controls, stat frames, battle props and individual spell effects. Original PNG sheets are included unchanged.</p>
+    <p class="review-only">Graphics only · Nothing installed in the game</p>
+    <nav class="section-links" aria-label="Review sections"><a href="#animation-section">Animations</a><a href="#screens-section">Screens</a><a href="#graphics-section">Buttons, frames & props</a><a href="#source-section">Source sheets</a></nav>
+  </header>
+  <p id="load-error" role="alert" hidden></p>
+  <section id="animation-section" class="panel">
+    <h2>Individual spell animations</h2>
+    <p id="spell-count" class="muted">Loading review metadata…</p>
+    <div class="select-controls">
+      <label>Spell <select id="spell-select" disabled></select></label>
+      <label>Direction <select id="direction" disabled><option value="native">Caster on left</option><option value="mirrored">Caster on right</option></select></label>
+      <label>Earth form <select id="earth-form" disabled><option value="wizard">Earth Wizard</option><option value="golem">Golem</option></select></label>
+      <label>Outcome <select id="outcome" disabled><option value="threshold">Threshold reached</option><option value="base">Base effect</option></select></label>
+      <label>Backdrop <select id="backdrop" disabled><option value="forest">Forest</option><option value="dark">Dark</option><option value="checker">Checker</option><option value="light">Light</option></select></label>
+    </div>
+    <div class="arena-wrap"><canvas id="arena" width="960" height="480" role="img" aria-label="Spell animation review"></canvas></div>
+    <div class="play-controls">
+      <button id="play-toggle" type="button" disabled>Play</button>
+      <button id="restart" type="button" disabled>Restart</button>
+      <button id="step-back" type="button" disabled aria-label="Step backward">← Step</button>
+      <button id="step-forward" type="button" disabled aria-label="Step forward">Step →</button>
+      <label>Speed <select id="speed" disabled><option value="0.25">¼×</option><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+      <label class="scrubber">Time <input id="timeline" type="range" min="0" max="2840" value="0" step="20" disabled><output id="time-label">0.00 s</output></label>
+    </div>
+    <div class="persistent-controls" id="persistent-controls" hidden>
+      <strong>Merciful · next-turn persistence</strong>
+      <p>A successful 6+ keeps the stone fragments through the opponent’s next turn. The preview holds this state until you explicitly end that turn.</p>
+      <button id="next-turn" type="button" disabled>Begin opponent’s next turn</button>
+      <button id="end-next-turn" type="button" disabled>End opponent’s next turn</button>
+      <output id="persistence-status">Fragments not formed yet</output>
+    </div>
+    <div class="spell-details"><h3 id="spell-name">Loading…</h3><p id="spell-description"></p><p id="spell-notes" class="muted"></p><p id="frame-status" aria-live="off"></p><a id="download-current" class="asset-link" download>Download original sheet</a></div>
+    <details class="sheet-details"><summary>Inspect this spell’s complete source sheet</summary><img id="current-sheet" alt="Current spell sprite sheet" loading="lazy"></details>
+    <p class="timing-note">Elemental previews: 0.5 s formation, 1 s particle hold, then travel or release and a quick impact. Fate previews: brief graphic above the rolled dice. This viewer demonstrates presentation; it does not execute combat rules.</p>
+  </section>
+  <section id="screens-section" class="panel"><h2>Screen concepts</h2><p class="muted">Art directions for the existing Deck, Character, Friends and Battle-selection screens. Text in the illustrations is a visual draft; the game’s readable live labels will remain separate when approved.</p><div id="screen-gallery" class="screen-gallery"></div></section>
+  <section id="graphics-section" class="panel"><h2>Buttons, stat frames & battle props</h2><p class="muted">Inspect the clean Earth frame, matching Air frame, navigation states and the new Spell Tower / Discard Pile artwork.</p><div id="graphics-gallery" class="graphics-gallery"></div></section>
+  <section id="source-section" class="panel"><h2>Original spell sheets</h2><p class="muted">Each image opens at full resolution. The package stores every PNG byte unchanged, with dimensions and SHA-256 checksums in manifest.json.</p><div id="source-gallery" class="source-gallery"></div></section>
+  <footer>Offline, separate review package. No accounts, battle saves, network requests or game updates.</footer>
+</main>
+<dialog id="image-dialog"><button id="close-image" type="button">Close image</button><h2 id="image-title"></h2><img id="large-image" alt="Full artwork review"></dialog>
+<script id="graphics-metadata" type="application/json">__GRAPHICS_REVIEW_METADATA__</script>
+<script>__GRAPHICS_REVIEW_VIEWER__</script>
+</body>
+</html>

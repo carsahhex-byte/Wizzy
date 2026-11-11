@@ -1,0 +1,186 @@
+{
+  "group": "earth",
+  "previewOnly": true,
+  "integration": "graphics-review-only",
+  "spells": [
+    {
+      "id": "Earth-1",
+      "name": "OffoDefo",
+      "file": "art/earth/offodefo.png",
+      "kind": "attack",
+      "target": "opponent",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "description": "A small mossy stone coalesces, jabs forward, then returns as protective stone plates.",
+      "notes": [
+        "FX only, with no Wizard or Golem body.",
+        "Formation 0–3; hold 4–7; rightward jab 8–11; returning shield plates 12–15.",
+        "The shield follow-through belongs around the caster; any future scene playback should move that phase from the opponent back to the caster.",
+        "Current rule: deal 5 damage and gain 5 Shield;7+ gives 5 additional Shield. No mechanical changes."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "a367475cda3cbea67af166550a36dc89e65d352f5e3b5a8938a46fb8845c467f",
+      "bytes": 843071,
+      "sourceGeneration": "exec-3f94bdc3-b32a-4e18-b7d1-8d17756610c8.png"
+    },
+    {
+      "id": "Earth-2",
+      "name": "Bengal Shield",
+      "file": "art/earth/bengal-shield.png",
+      "kind": "shield",
+      "target": "caster",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "description": "Layered mossy stone slabs assemble into a broad shield; a tiny violet Mana glint appears before the stone-flake fade.",
+      "notes": [
+        "FX only; compatible with either Wizard or Golem form.",
+        "Formation 0–3; clean shield hold 4–7; optional Mana flourish 8–11; disassembly 12–15.",
+        "Current rule: gain 10 Shield;6+ grants 1 Mana. The violet flourish is conditional in any future implementation."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "990a1583e43461d25f4aa33c0786f5c417188f7fc84167605ffe34a53d9e843b",
+      "bytes": 686042,
+      "sourceGeneration": "exec-06ea0f50-c833-44d0-9dda-6cc62f5f1e8f.png"
+    },
+    {
+      "id": "Earth-3",
+      "name": "Earthbound",
+      "file": "art/earth/earthbound.png",
+      "kind": "attack",
+      "target": "opponent",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.88
+      },
+      "description": "A low ridge charges into a forward stone wave, then rises into a compact three-slab rampart.",
+      "notes": [
+        "FX only, no caster body or fixed landscape.",
+        "Formation 0–3; hold 4–7; rightward ground wave 8–11; conditional rampart 12–15.",
+        "Current rule: deal 5 damage;7+ gains 12 Shield. Future playback attaches the conditional rampart to the caster."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "c430ba93b55adddab0773c31b6e5ab4fe0dacb9a6a86defb54cb30c75ac5e127",
+      "bytes": 607096,
+      "sourceGeneration": "exec-98f564a6-15a0-4c22-bbde-a4c312d5e1f9.png"
+    },
+    {
+      "id": "Earth-4",
+      "name": "Merciful",
+      "file": "art/earth/merciful.png",
+      "kind": "persistent",
+      "target": "caster",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "loopFrames": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "description": "Three mossy stone fragments assemble around an empty caster space, orbit through eight distinct poses, then scatter and fade.",
+      "notes": [
+        "FX only; compatible with both Wizard and Golem bodies.",
+        "Formation 0–3; persistent loop 4–11; fade 12–15.",
+        "Base spell grants 3 Shield. Persistence is eligible only on 6+.",
+        "On the qualifying result, fragments persist until the END OF THE OPPONENT’S NEXT TURN, not the end of the current turn.",
+        "Duration indicator for the current incoming-damage-bypasses-Shield rule, not the former Golem-protection mechanic.",
+        "Review-only animation must simulate expiry; no live-game timing is installed."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "a00e30c037c9899692fd0815aeca6a96ba6ddecb06a3a3528cfaec476e7c948a",
+      "bytes": 888154,
+      "sourceGeneration": "exec-b1a6ac40-1c16-448e-bddd-08bcef5969b5.png"
+    },
+    {
+      "id": "Earth-5",
+      "name": "Tectonic",
+      "file": "art/earth/tectonic.png",
+      "kind": "attack",
+      "target": "opponent",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.83
+      },
+      "description": "A detached stone-fist effect assembles, charges, slams into a travelling crack, then shatters into dust.",
+      "notes": [
+        "FX only, with no complete Golem body.",
+        "Formation 0–3; hold 4–7; slam and travelling crack 8–11; shatter/fade 12–15.",
+        "Valid only while Golem is active; current rule deals 15 damage. This spell is separate from the automatic Golem end-turn strike."
+      ],
+      "sourceWidth": 1254,
+      "sourceHeight": 1254,
+      "columns": 4,
+      "rows": 4,
+      "element": "earth",
+      "frameMs": 100,
+      "holdFrames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "displayScale": 0.75,
+      "sha256": "ee59952368380254d00f3eb6de44da8a1704f0fc91fa6770f6ab671f90c8dec4",
+      "bytes": 1016449,
+      "sourceGeneration": "exec-087db5b1-4b2d-4871-b0e1-d45afacf103a.png"
+    }
+  ]
+}

@@ -344,15 +344,21 @@ test('cancel, replacement, and reduced motion preserve ownership and clean both 
 test('generic Water, both creatures and ordinary Fire reuse an animator without stale hues or custom state', async t => {
   images(t);
   const state = scene(), impacts = [];
-  const water = state.animator.play({ key: 'prior-water', spellId: 'Water-2', casterIndex: 1 });
+  const water = state.animator.play({ key: 'prior-water', spellId: 'Water-4', casterIndex: 1 });
   await ready(); state.tick(0); state.tick(2500); assert.match(state.node('spell-impact').style.filter, /hue-rotate\(155deg\)/);
   state.tick(2840); await water;
+  const named = state.animator.play({ key: 'named-before-creatures', spellId: 'Fire-6', casterIndex: 0, modifiedTotal: 7 });
+  await ready(); state.tick(0); state.tick(1500);
+  assert.equal(state.animator.customElement.dataset.spellId, 'Fire-6');
+  assert.equal(state.node('custom-spell-effect').dataset.asset, 'spellCharredBladeFx');
+  state.tick(2840); await named;
+  assert.equal(state.animator.customElement.hidden, true, 'named spell layer clears before the creature route');
   for (const creature of creatures) {
     const custom = state.animator.play({ key: `after-water-${creature.key}`, spellId: creature.spellId, casterIndex: creature.nativeCaster });
     await ready(); state.tick(0); state.tick(1950); assert.equal(state.animator.element.dataset.creaturePose, '3');
     state.tick(2975); assert.equal(state.node('spell-impact').style.filter, ''); state.tick(3315); await custom;
   }
-  const completion = state.animator.play({ key: 'ordinary-fire', spellId: 'Fire-6', casterIndex: 0,
+  const completion = state.animator.play({ key: 'ordinary-fire', spellId: 'Fire-12', casterIndex: 0,
     onImpact: detail => impacts.push(detail) });
   await ready(); state.tick(0); state.tick(1500);
   for (const key of ['customAnimation', 'creaturePose', 'wingPose', 'tailPose', 'formationPose', 'chargeFrame', 'chargeSequenceFrame']) {
@@ -374,40 +380,46 @@ test('Earth wizard and Golem casts face inward from either seat, including mirro
       ['Earth-2', undefined, golemActive ? 'golemPoses' : 'earthShield'],
       ['Earth-4', undefined, golemActive ? 'golemPoses' : 'earthPowerUp'],
       [null, 'enhancement', golemActive ? 'golemPoses' : 'earthEnhancement'],
-      ['Earth-5', undefined, golemActive ? 'golemPoses' : 'earthLargeCast'],
+      ['Earth-5', undefined, golemActive ? 'golemPoses' : 'earthPowerUp'],
       [null, 'golem-strike', 'golemPoses'],
     ]) {
       const activeForm = kind === 'golem-strike' || golemActive;
       const forms = ['golem', 'golem']; forms[casterIndex] = activeForm ? 'golem' : 'wizard';
       const state = scene({ schools: ['earth', 'earth'], forms }), impacts = [];
       const completion = state.animator.play({ key: `${casterIndex}:${golemActive}:${spellId || kind}`, spellId, kind,
-        casterIndex, golem: activeForm, onImpact: event => impacts.push(event) });
+        casterIndex, golem: activeForm, modifiedTotal: 12, onImpact: event => impacts.push(event) });
       await ready(); state.tick(0);
-      const actor = state.node('spell-animation-actor');
+      const custom = spellId !== null;
+      const layer = custom ? state.animator.customElement : state.animator.element;
+      const actor = state.node(custom ? 'custom-spell-actor' : 'spell-animation-actor');
       assert.equal(actor.dataset.asset, actorAsset);
       assert.equal(actor.style.transform.includes('scaleX(-1)'), casterIndex === 1);
       assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'hidden');
       assert.equal(state.wizards[1 - casterIndex].sprite.style.visibility, 'visible');
-      const damaging = state.animator.element.dataset.impactAt === '2500';
+      const damaging = layer.dataset.impactAt === '2500';
       if (damaging) {
         state.tick(1500);
-        const projectile = state.node('spell-projectile');
+        const projectile = state.node(custom ? 'custom-spell-effect' : 'spell-projectile');
         assert.equal(projectile.hidden, false);
         assert.equal(projectile.style.transform.includes('scaleX(-1)'), casterIndex === 1);
-        if (spellId === 'Earth-5' || kind === 'golem-strike') assert.equal(projectile.dataset.asset, 'earthHeavyBoulder');
+        if (spellId === 'Earth-5') assert.equal(projectile.dataset.asset, 'spellTectonicFx');
+        if (kind === 'golem-strike') assert.equal(projectile.dataset.asset, 'earthHeavyBoulder');
         state.tick(2499); assert.equal(impacts.length, 0);
         state.tick(2500); assert.equal(impacts.length, 1);
-        const hitActor = state.node('spell-hit-actor');
+        const hitActor = state.node(custom ? 'custom-spell-hit-actor' : 'spell-hit-actor');
         assert.equal(hitActor.dataset.asset, 'golemPoses');
         assert.equal(hitActor.dataset.frame, '12');
         assert.equal(state.wizards[1 - casterIndex].sprite.style.visibility, 'hidden');
         state.tick(2840);
-      } else { state.tick(500); assert.equal(impacts.length, 1); state.tick(2000); }
+      } else {
+        if(spellId === 'Earth-5') assert.equal(layer.dataset.inactiveGolem,'true');
+        state.tick(500); assert.equal(impacts.length, 1); state.tick(Number(layer.dataset.duration));
+      }
       await completion;
       assert.equal(impacts.length, 1);
       assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
       assert.equal(state.wizards[1 - casterIndex].sprite.style.visibility, 'visible');
-      assert.equal(state.node('spell-hit-actor').hidden, true);
+      assert.equal(state.node(custom ? 'custom-spell-hit-actor' : 'spell-hit-actor').hidden, true);
     }
   }
 });
@@ -440,7 +452,7 @@ test('Golem transformations keep measured feet and per-frame sizes while settlin
 
 test('ordinary Fire and Water actors, releases and hits work from the opposite seat', async t => {
   images(t);
-  for (const [school, spellId, casterIndex] of [['fire', 'Fire-6', 1], ['water', 'Water-6', 0]]) {
+  for (const [school, spellId, casterIndex] of [['fire', 'Fire-12', 1], ['water', 'Water-6', 0]]) {
     const state = scene({ schools: [school, school] }), impacts = [];
     const completion = state.animator.play({ key: `opposite:${school}`, spellId, casterIndex,
       onImpact: event => impacts.push(event) });

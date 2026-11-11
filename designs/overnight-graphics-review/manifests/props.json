@@ -1,0 +1,48 @@
+{
+  "group": "props",
+  "previewOnly": true,
+  "assets": [
+    {
+      "id": "spell-tower",
+      "name": "Spell Tower",
+      "file": "art/props/tower-discard.png",
+      "kind": "prop",
+      "columns": 2,
+      "rows": 2,
+      "frames": [
+        0,
+        2
+      ],
+      "description": "A compact magical tower visibly storing rectangular spell slabs, with a blank count plaque. Normal and sparkling hover poses.",
+      "stateOrder": [
+        "normal",
+        "hover"
+      ],
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1071781,
+      "sha256": "9bd21ff421f1515ff955360bcd9f43e6629efafc6607c1fe0838d7a266950e52"
+    },
+    {
+      "id": "discard-pile",
+      "name": "Discard Pile",
+      "file": "art/props/tower-discard.png",
+      "kind": "prop",
+      "columns": 2,
+      "rows": 2,
+      "frames": [
+        1,
+        3
+      ],
+      "description": "Spent slabs and cards collected in a wooden tray, with a blank count plaque. Normal and sparkling hover poses.",
+      "stateOrder": [
+        "normal",
+        "hover"
+      ],
+      "width": 1254,
+      "height": 1254,
+      "bytes": 1071781,
+      "sha256": "9bd21ff421f1515ff955360bcd9f43e6629efafc6607c1fe0838d7a266950e52"
+    }
+  ]
+}

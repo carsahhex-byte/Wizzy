@@ -780,14 +780,224 @@
     "height": 1254
   },
   "earthFrame": {
-    "file": "earthFrame-dd609a5498de.webp",
-    "source": "Wizzy Earth Air Stat Frames.png",
-    "sourceSha256": "b2a05694c9897d3eeb39f6c955c5b1558230c23f58e1447dcfbb3a1231ca3406",
-    "optimizedSha256": "dd609a5498de4dcc397f4f358e34f8d99f9519c2e902d5038bc7459cac443035",
-    "bytes": 795800,
-    "sourceBytes": 1241911,
-    "width": 1920,
-    "height": 819
+    "file": "earthFrame-83b6e29c16a1.webp",
+    "source": "Earth Stat Frame.png",
+    "sourceSha256": "c10771a2bd720b5ef151f456ac6f683ce726c83dc555237d703acd379b1a6368",
+    "optimizedSha256": "83b6e29c16a1d98f0432c831662e32a40ecdb11fc7d38bf353f3d53761448834",
+    "bytes": 694166,
+    "sourceBytes": 1067187,
+    "width": 1292,
+    "height": 1218
+  },
+  "airFrame": {
+    "file": "airFrame-bae617f92db2.webp",
+    "source": "Wizzy Air Stat Frame Simple.png",
+    "sourceSha256": "e00ffd2774324ad45a0f950d5845415b2307bd680a3225e188f61633f1047797",
+    "optimizedSha256": "bae617f92db26efed046fc17157b02392af470113b5dfa95aeb3c7c6f60c5e75",
+    "bytes": 686664,
+    "sourceBytes": 1220688,
+    "width": 1292,
+    "height": 1218
+  },
+  "battlePileProps": {
+    "file": "battlePileProps-cb51493a9a22.webp",
+    "source": "Wizzy Spell Tower Discard Props.png",
+    "sourceSha256": "9bd21ff421f1515ff955360bcd9f43e6629efafc6607c1fe0838d7a266950e52",
+    "optimizedSha256": "cb51493a9a220531ab86b5c7f1b678886d57d4377bc8c6b89e982f48c072dcf8",
+    "bytes": 861096,
+    "sourceBytes": 1071781,
+    "width": 1254,
+    "height": 1254
+  },
+  "roughNavButtons": {
+    "file": "roughNavButtons-039c3986bcad.webp",
+    "source": "Wizzy Rough Navigation Buttons.png",
+    "sourceSha256": "9ac4d6e3d21fd36cdc60fd4f51f99628eba5ed285aedcc37edbea021c6b94c31",
+    "optimizedSha256": "039c3986bcad4f93ae0cee53f52b0403c0ed80435cd4ab129e59e549baaa9592",
+    "bytes": 1067178,
+    "sourceBytes": 1352451,
+    "width": 1254,
+    "height": 1254
+  },
+  "roughDeckScreen": {
+    "file": "roughDeckScreen-fd111f5ad467.webp",
+    "source": "Wizzy Rough Deck Screen.png",
+    "sourceSha256": "f3230928ff333aba47fd361069d4a345dd5878d3f3a665645936def8511c5d68",
+    "optimizedSha256": "fd111f5ad467b911aa3becaf26937c627678d613ef10c9ef914505102e7527b1",
+    "bytes": 2029632,
+    "sourceBytes": 2268792,
+    "width": 948,
+    "height": 1659
+  },
+  "roughCharacterScreen": {
+    "file": "roughCharacterScreen-b86c3231b96a.webp",
+    "source": "Wizzy Rough Character Screen.png",
+    "sourceSha256": "c2102ad84099cc041e2d9abc6174142910e16e21a3ab5e5d20a06088ef0ca172",
+    "optimizedSha256": "b86c3231b96ab226314b7c782552c80278adf48b0d24656deed11db0c2b03364",
+    "bytes": 1919034,
+    "sourceBytes": 2189488,
+    "width": 948,
+    "height": 1659
+  },
+  "roughFriendsScreen": {
+    "file": "roughFriendsScreen-ce4831ef7db0.webp",
+    "source": "Wizzy Rough Friends Screen.png",
+    "sourceSha256": "048ae47eb1aabf81648d523ae75eac2069f2f61b8b92233cf2102f5fa9bac5e5",
+    "optimizedSha256": "ce4831ef7db0ec9a5c669177300862d7603bcb5307c9267fc078f6ace9fb4a70",
+    "bytes": 2059002,
+    "sourceBytes": 2302882,
+    "width": 948,
+    "height": 1659
+  },
+  "roughBattleScreen": {
+    "file": "roughBattleScreen-5d22922674ab.webp",
+    "source": "Wizzy Rough Battle Screen.png",
+    "sourceSha256": "edf13628b5220513612d659f0f87cd621f4c537c39bc8cdc6998941407b309fc",
+    "optimizedSha256": "5d22922674abf19c99aa9d4ce01906d5ef246c5594e275d271c90c04d924db49",
+    "bytes": 2127070,
+    "sourceBytes": 2367814,
+    "width": 948,
+    "height": 1659
+  },
+  "spellHeatboxFx": {
+    "file": "spellHeatboxFx-6fdd32d5266c.webp",
+    "source": "Wizzy Heatbox Spell FX.png",
+    "sourceSha256": "44d6244df7c27ffdb03e77881cfa6e1d9f13d786c7f6552d8f4957a806ce2c1c",
+    "optimizedSha256": "6fdd32d5266c3c231fdaf218cb9e8a81185b857a68de2465f64c709507b2e3b0",
+    "bytes": 414224,
+    "sourceBytes": 600826,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellBlazeFx": {
+    "file": "spellBlazeFx-56aadd3eb6b4.webp",
+    "source": "Wizzy Blaze Spell FX.png",
+    "sourceSha256": "28a872154db7f2b1bac2bc874c7a2b916d2b20b94f0b48be0d96084b4ca800e7",
+    "optimizedSha256": "56aadd3eb6b49e8ba6c8e7f085df7dd1151c106939bebfbe5e85e95b4e50e6f7",
+    "bytes": 426790,
+    "sourceBytes": 623211,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellCharredBladeFx": {
+    "file": "spellCharredBladeFx-bc5eb6c11e62.webp",
+    "source": "Wizzy Charred Blade Spell FX.png",
+    "sourceSha256": "87cc0845c40e5f69a3f4140a30b798843d08e26a528a96009be56b384b7ca4b1",
+    "optimizedSha256": "bc5eb6c11e62e2bcc8be988b73b263b12f7cd911e61c0ae53b4cd8669a4cf23c",
+    "bytes": 502130,
+    "sourceBytes": 672486,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellSunsetterFx": {
+    "file": "spellSunsetterFx-2bced4fd00a5.webp",
+    "source": "Wizzy Sunsetter Spell FX.png",
+    "sourceSha256": "20bfc9a8da676fff26c0c8386d0cbef8625ecaf0dedac54fabde4c8b9f2300b4",
+    "optimizedSha256": "2bced4fd00a56c30d3261ae43fa2ffdacbae0fc2022f9b95a5eeddf37bb59688",
+    "bytes": 478420,
+    "sourceBytes": 682967,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellSeaBoltFx": {
+    "file": "spellSeaBoltFx-e1bb993bb3ac.webp",
+    "source": "Wizzy Sea Bolt Spell FX.png",
+    "sourceSha256": "6e9d10c11e1ad9c9fe3c0a5ee261233bacc9ac491e89725082b2f9edf9b2c8b4",
+    "optimizedSha256": "e1bb993bb3acc9d4a66481a95850f77d8d42735f816f152aa2a28c0c48435aad",
+    "bytes": 945652,
+    "sourceBytes": 1389850,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellSwellFx": {
+    "file": "spellSwellFx-ff665924620d.webp",
+    "source": "Wizzy Swell Spell FX.png",
+    "sourceSha256": "048eae43a58791f2fb129a92e7c7dc93f89296a87bdd8ec8ee96a1cf66ffcd9d",
+    "optimizedSha256": "ff665924620da35b81fa41e000b57bcdcc7ee2bb224cd57405a079fe8dcbe303",
+    "bytes": 829502,
+    "sourceBytes": 1045280,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellCarbonateFx": {
+    "file": "spellCarbonateFx-d31ebefabe92.webp",
+    "source": "Wizzy Carbonate Spell FX.png",
+    "sourceSha256": "bcba4f20d0a3ab8fae932c7c1cfe623bb420b36d24b388cd894fa39340b7e75f",
+    "optimizedSha256": "d31ebefabe9289c9774b789ef1dabca9c0ba51e91ccfa0032bdc7d1ca340fcf2",
+    "bytes": 1251964,
+    "sourceBytes": 1531601,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellPoseidonRiftFx": {
+    "file": "spellPoseidonRiftFx-444116c0ff9c.webp",
+    "source": "Wizzy Poseidons Rift Spell FX.png",
+    "sourceSha256": "9d5c9c6021c1b71e9ed546d99e521359fab502d9350c100f567fbb463203ab70",
+    "optimizedSha256": "444116c0ff9c75d40d55dd123233465ae296a9628d35109974a56c234552058a",
+    "bytes": 1115810,
+    "sourceBytes": 1349000,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellOffoDefoFx": {
+    "file": "spellOffoDefoFx-7ba316076491.webp",
+    "source": "Wizzy OffoDefo Spell FX.png",
+    "sourceSha256": "a367475cda3cbea67af166550a36dc89e65d352f5e3b5a8938a46fb8845c467f",
+    "optimizedSha256": "7ba316076491c6b4ea47cadae71b3292743a87a49a0b89a4254f947a7110cdb9",
+    "bytes": 525400,
+    "sourceBytes": 843071,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellBengalShieldFx": {
+    "file": "spellBengalShieldFx-182de2a1f7f5.webp",
+    "source": "Wizzy Bengal Shield Spell FX.png",
+    "sourceSha256": "990a1583e43461d25f4aa33c0786f5c417188f7fc84167605ffe34a53d9e843b",
+    "optimizedSha256": "182de2a1f7f5c0f60d60edd479496147cc609903ea290a841a3f325bc692a30c",
+    "bytes": 502626,
+    "sourceBytes": 686042,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellEarthboundFx": {
+    "file": "spellEarthboundFx-a301ec3b2093.webp",
+    "source": "Wizzy Earthbound Spell FX.png",
+    "sourceSha256": "c430ba93b55adddab0773c31b6e5ab4fe0dacb9a6a86defb54cb30c75ac5e127",
+    "optimizedSha256": "a301ec3b20932c981b29ede22e03ac48781fd313d9e6c569d78e16a73ed2b3f7",
+    "bytes": 435566,
+    "sourceBytes": 607096,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellMercifulFx": {
+    "file": "spellMercifulFx-c86da38cc062.webp",
+    "source": "Wizzy Merciful Spell FX.png",
+    "sourceSha256": "a00e30c037c9899692fd0815aeca6a96ba6ddecb06a3a3528cfaec476e7c948a",
+    "optimizedSha256": "c86da38cc06202424bb842b3cca2ebe716524c5be3a13ddea7b2f5df79f4d08b",
+    "bytes": 597558,
+    "sourceBytes": 888154,
+    "width": 1254,
+    "height": 1254
+  },
+  "spellTectonicFx": {
+    "file": "spellTectonicFx-b93b391a46f7.webp",
+    "source": "Wizzy Tectonic Spell FX.png",
+    "sourceSha256": "ee59952368380254d00f3eb6de44da8a1704f0fc91fa6770f6ab671f90c8dec4",
+    "optimizedSha256": "b93b391a46f7cd2295eee783ed8dc897e9854e13078cee9ef558138a007c4d5b",
+    "bytes": 789608,
+    "sourceBytes": 1016449,
+    "width": 1254,
+    "height": 1254
+  },
+  "fateFeedbackFx": {
+    "file": "fateFeedbackFx-551a7ca9fbf1.webp",
+    "source": "Wizzy Fate Feedback FX.png",
+    "sourceSha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae",
+    "optimizedSha256": "551a7ca9fbf1fa97115d9e16aee704c1685f47ef6f9fd4551d9343a3b7ca00d1",
+    "bytes": 131342,
+    "sourceBytes": 260947,
+    "width": 2172,
+    "height": 724
   },
   "enhanceEarth": {
     "file": "enhanceEarth-eedafcfb4399.webp",

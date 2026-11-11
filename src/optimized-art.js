@@ -391,9 +391,114 @@ export const OPTIMIZED_ART = {
     "optimizedSha256": "09baf00580601f86c5c113f608c0fb28099b7ccb4e3d4b7d6d708130cb2897bd"
   },
   "earthFrame": {
-    "file": "earthFrame-dd609a5498de.webp",
-    "sourceSha256": "b2a05694c9897d3eeb39f6c955c5b1558230c23f58e1447dcfbb3a1231ca3406",
-    "optimizedSha256": "dd609a5498de4dcc397f4f358e34f8d99f9519c2e902d5038bc7459cac443035"
+    "file": "earthFrame-83b6e29c16a1.webp",
+    "sourceSha256": "c10771a2bd720b5ef151f456ac6f683ce726c83dc555237d703acd379b1a6368",
+    "optimizedSha256": "83b6e29c16a1d98f0432c831662e32a40ecdb11fc7d38bf353f3d53761448834"
+  },
+  "airFrame": {
+    "file": "airFrame-bae617f92db2.webp",
+    "sourceSha256": "e00ffd2774324ad45a0f950d5845415b2307bd680a3225e188f61633f1047797",
+    "optimizedSha256": "bae617f92db26efed046fc17157b02392af470113b5dfa95aeb3c7c6f60c5e75"
+  },
+  "battlePileProps": {
+    "file": "battlePileProps-cb51493a9a22.webp",
+    "sourceSha256": "9bd21ff421f1515ff955360bcd9f43e6629efafc6607c1fe0838d7a266950e52",
+    "optimizedSha256": "cb51493a9a220531ab86b5c7f1b678886d57d4377bc8c6b89e982f48c072dcf8"
+  },
+  "roughNavButtons": {
+    "file": "roughNavButtons-039c3986bcad.webp",
+    "sourceSha256": "9ac4d6e3d21fd36cdc60fd4f51f99628eba5ed285aedcc37edbea021c6b94c31",
+    "optimizedSha256": "039c3986bcad4f93ae0cee53f52b0403c0ed80435cd4ab129e59e549baaa9592"
+  },
+  "roughDeckScreen": {
+    "file": "roughDeckScreen-fd111f5ad467.webp",
+    "sourceSha256": "f3230928ff333aba47fd361069d4a345dd5878d3f3a665645936def8511c5d68",
+    "optimizedSha256": "fd111f5ad467b911aa3becaf26937c627678d613ef10c9ef914505102e7527b1"
+  },
+  "roughCharacterScreen": {
+    "file": "roughCharacterScreen-b86c3231b96a.webp",
+    "sourceSha256": "c2102ad84099cc041e2d9abc6174142910e16e21a3ab5e5d20a06088ef0ca172",
+    "optimizedSha256": "b86c3231b96ab226314b7c782552c80278adf48b0d24656deed11db0c2b03364"
+  },
+  "roughFriendsScreen": {
+    "file": "roughFriendsScreen-ce4831ef7db0.webp",
+    "sourceSha256": "048ae47eb1aabf81648d523ae75eac2069f2f61b8b92233cf2102f5fa9bac5e5",
+    "optimizedSha256": "ce4831ef7db0ec9a5c669177300862d7603bcb5307c9267fc078f6ace9fb4a70"
+  },
+  "roughBattleScreen": {
+    "file": "roughBattleScreen-5d22922674ab.webp",
+    "sourceSha256": "edf13628b5220513612d659f0f87cd621f4c537c39bc8cdc6998941407b309fc",
+    "optimizedSha256": "5d22922674abf19c99aa9d4ce01906d5ef246c5594e275d271c90c04d924db49"
+  },
+  "spellHeatboxFx": {
+    "file": "spellHeatboxFx-6fdd32d5266c.webp",
+    "sourceSha256": "44d6244df7c27ffdb03e77881cfa6e1d9f13d786c7f6552d8f4957a806ce2c1c",
+    "optimizedSha256": "6fdd32d5266c3c231fdaf218cb9e8a81185b857a68de2465f64c709507b2e3b0"
+  },
+  "spellBlazeFx": {
+    "file": "spellBlazeFx-56aadd3eb6b4.webp",
+    "sourceSha256": "28a872154db7f2b1bac2bc874c7a2b916d2b20b94f0b48be0d96084b4ca800e7",
+    "optimizedSha256": "56aadd3eb6b49e8ba6c8e7f085df7dd1151c106939bebfbe5e85e95b4e50e6f7"
+  },
+  "spellCharredBladeFx": {
+    "file": "spellCharredBladeFx-bc5eb6c11e62.webp",
+    "sourceSha256": "87cc0845c40e5f69a3f4140a30b798843d08e26a528a96009be56b384b7ca4b1",
+    "optimizedSha256": "bc5eb6c11e62e2bcc8be988b73b263b12f7cd911e61c0ae53b4cd8669a4cf23c"
+  },
+  "spellSunsetterFx": {
+    "file": "spellSunsetterFx-2bced4fd00a5.webp",
+    "sourceSha256": "20bfc9a8da676fff26c0c8386d0cbef8625ecaf0dedac54fabde4c8b9f2300b4",
+    "optimizedSha256": "2bced4fd00a56c30d3261ae43fa2ffdacbae0fc2022f9b95a5eeddf37bb59688"
+  },
+  "spellSeaBoltFx": {
+    "file": "spellSeaBoltFx-e1bb993bb3ac.webp",
+    "sourceSha256": "6e9d10c11e1ad9c9fe3c0a5ee261233bacc9ac491e89725082b2f9edf9b2c8b4",
+    "optimizedSha256": "e1bb993bb3acc9d4a66481a95850f77d8d42735f816f152aa2a28c0c48435aad"
+  },
+  "spellSwellFx": {
+    "file": "spellSwellFx-ff665924620d.webp",
+    "sourceSha256": "048eae43a58791f2fb129a92e7c7dc93f89296a87bdd8ec8ee96a1cf66ffcd9d",
+    "optimizedSha256": "ff665924620da35b81fa41e000b57bcdcc7ee2bb224cd57405a079fe8dcbe303"
+  },
+  "spellCarbonateFx": {
+    "file": "spellCarbonateFx-d31ebefabe92.webp",
+    "sourceSha256": "bcba4f20d0a3ab8fae932c7c1cfe623bb420b36d24b388cd894fa39340b7e75f",
+    "optimizedSha256": "d31ebefabe9289c9774b789ef1dabca9c0ba51e91ccfa0032bdc7d1ca340fcf2"
+  },
+  "spellPoseidonRiftFx": {
+    "file": "spellPoseidonRiftFx-444116c0ff9c.webp",
+    "sourceSha256": "9d5c9c6021c1b71e9ed546d99e521359fab502d9350c100f567fbb463203ab70",
+    "optimizedSha256": "444116c0ff9c75d40d55dd123233465ae296a9628d35109974a56c234552058a"
+  },
+  "spellOffoDefoFx": {
+    "file": "spellOffoDefoFx-7ba316076491.webp",
+    "sourceSha256": "a367475cda3cbea67af166550a36dc89e65d352f5e3b5a8938a46fb8845c467f",
+    "optimizedSha256": "7ba316076491c6b4ea47cadae71b3292743a87a49a0b89a4254f947a7110cdb9"
+  },
+  "spellBengalShieldFx": {
+    "file": "spellBengalShieldFx-182de2a1f7f5.webp",
+    "sourceSha256": "990a1583e43461d25f4aa33c0786f5c417188f7fc84167605ffe34a53d9e843b",
+    "optimizedSha256": "182de2a1f7f5c0f60d60edd479496147cc609903ea290a841a3f325bc692a30c"
+  },
+  "spellEarthboundFx": {
+    "file": "spellEarthboundFx-a301ec3b2093.webp",
+    "sourceSha256": "c430ba93b55adddab0773c31b6e5ab4fe0dacb9a6a86defb54cb30c75ac5e127",
+    "optimizedSha256": "a301ec3b20932c981b29ede22e03ac48781fd313d9e6c569d78e16a73ed2b3f7"
+  },
+  "spellMercifulFx": {
+    "file": "spellMercifulFx-c86da38cc062.webp",
+    "sourceSha256": "a00e30c037c9899692fd0815aeca6a96ba6ddecb06a3a3528cfaec476e7c948a",
+    "optimizedSha256": "c86da38cc06202424bb842b3cca2ebe716524c5be3a13ddea7b2f5df79f4d08b"
+  },
+  "spellTectonicFx": {
+    "file": "spellTectonicFx-b93b391a46f7.webp",
+    "sourceSha256": "ee59952368380254d00f3eb6de44da8a1704f0fc91fa6770f6ab671f90c8dec4",
+    "optimizedSha256": "b93b391a46f7cd2295eee783ed8dc897e9854e13078cee9ef558138a007c4d5b"
+  },
+  "fateFeedbackFx": {
+    "file": "fateFeedbackFx-551a7ca9fbf1.webp",
+    "sourceSha256": "8d486838b1eb06f91855d1fd379314679412bf37913d278dec38ced1e54fcaae",
+    "optimizedSha256": "551a7ca9fbf1fa97115d9e16aee704c1685f47ef6f9fd4551d9343a3b7ca00d1"
   },
   "enhanceEarth": {
     "file": "enhanceEarth-eedafcfb4399.webp",
