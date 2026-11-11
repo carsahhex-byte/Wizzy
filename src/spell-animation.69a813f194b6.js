@@ -4,7 +4,7 @@ import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hide
 import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from './creature-animation.3c4d156c7b44.js';
 import { getPlayerSchool } from './elements.f91c53cdab44.js';
 import { getCustomSpellSheet } from './custom-spell-sheets.41eeef9da694.js';
-import { createCustomSpellAnimator } from './custom-spell-animation.d3d6d95bf74d.js';
+import { createCustomSpellAnimator } from './custom-spell-animation.2623a3b15119.js';
 
 const FRAME_MS = 125;
 const ACTOR_END = 2000;

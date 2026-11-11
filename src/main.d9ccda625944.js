@@ -9,7 +9,7 @@ import { createMultiplayer } from './multiplayer.e24a836bc82b.js';
 import { createAccounts } from './accounts.838068107580.js';
 import { fitSlabText } from './slab-text.ee15d857b9f1.js';
 import { createBattleScene } from './battle-scene.adbbd376aa13.js';
-import { createSpellAnimator } from './spell-animation.6eddc079cc62.js';
+import { createSpellAnimator } from './spell-animation.69a813f194b6.js';
 import { createAuraAnimator } from './aura-animation.efd32da16c5a.js';
 import { createMercifulAnimator } from './merciful-animation.756eeccfbde5.js';
 import { createFateAnimator } from './fate-animation.2588340ad25e.js';
