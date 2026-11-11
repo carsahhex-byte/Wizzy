@@ -1,11 +1,11 @@
-import { ASSETS, ASSET_CROPS, MAP_UI_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.6f8c3204ed9c.js';
-import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.cb887ca4e7f8.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.53136a599e9c.js';
-import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckListForActive, MAX_DECK_FILE_BYTES } from './decks.07eb9f944c13.js';
-import { SPELLBOOK_1, SPELLBOOK_2, SPELLBOOKS, getDeckSpellbook, getSpellbookSpells, ACTIVE_SPELLBOOK_ID, getActiveSpells } from './spellbooks.d41cd54ffe06.js';
-import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.566a616e72e4.js';
+import { ASSETS, ASSET_CROPS, MAP_UI_CROPS, spellArtMarkup, spellSlabMarkup } from './assets.93d24e08d126.js';
+import { SPELL_CATALOG, DECK_SIZE, SPELLBOOK_VERSION } from './spells.6c22cd07d14f.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS } from './effects.7df40a4fbe56.js';
+import { createStarterDeck, getDeckValidation, validateDeck, normalizeDeck, setDeckQuantity, getEligibleSpells, getDeckCount, validateDeckSlot, normalizeDeckSlot, serializeDeck, parseDeckListForActive, MAX_DECK_FILE_BYTES } from './decks.9b3cb776b8f4.js';
+import { SPELLBOOK_1, SPELLBOOK_2, SPELLBOOKS, getDeckSpellbook, getSpellbookSpells, ACTIVE_SPELLBOOK_ID, getActiveSpells } from './spellbooks.2bf61a1f2de3.js';
+import { createHubStorage, restoreHubDraft as restoreDraft } from './hub-storage.c4a85cea6404.js';
 import { ELEMENTS, ELEMENT_INFO } from './elements.f91c53cdab44.js';
-import { fitSlabText } from './slab-text.7ca6f5ea93b4.js';
+import { fitSlabText } from './slab-text.3a3e555bfc3e.js';
 import { DISTRICTS, getDistrict, normalizeDistrictId, parseStorybookRoute } from './districts.41d180c8958a.js';
 
 const HUB_SCREENS = new Set(['title', 'home', 'character', 'friends', 'deck', 'storybook', 'battle-setup']);

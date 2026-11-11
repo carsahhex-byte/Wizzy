@@ -1,6 +1,6 @@
-import { createStarterDeck, validateDeckSlot, normalizeDeckSlot, migrateToActiveDeck } from './decks.07eb9f944c13.js';
-import { SPELLBOOK_VERSION } from './spells.cb887ca4e7f8.js';
-import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook } from './spellbooks.d41cd54ffe06.js';
+import { createStarterDeck, validateDeckSlot, normalizeDeckSlot, migrateToActiveDeck } from './decks.9b3cb776b8f4.js';
+import { SPELLBOOK_VERSION } from './spells.6c22cd07d14f.js';
+import { SPELLBOOK_1, SPELLBOOK_2, getDeckSpellbook } from './spellbooks.2bf61a1f2de3.js';
 import { ELEMENTS, ELEMENT_INFO } from './elements.f91c53cdab44.js';
 
 const ACCOUNT_STORAGE_KEY = 'wizzy.account.v1';

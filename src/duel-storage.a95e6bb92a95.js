@@ -1,6 +1,6 @@
-import { createGame, migrateSavedGame, getGameSpellbook, SAVE_VERSION, validateSavedGame } from './game.d36b5765d121.js';
-import { createStarterDeck } from './decks.07eb9f944c13.js';
-import { SPELLBOOK_1, SPELLBOOK_2, isSpellbookId } from './spellbooks.d41cd54ffe06.js';
+import { createGame, migrateSavedGame, getGameSpellbook, SAVE_VERSION, validateSavedGame } from './game.640b393dafa6.js';
+import { createStarterDeck } from './decks.9b3cb776b8f4.js';
+import { SPELLBOOK_1, SPELLBOOK_2, isSpellbookId } from './spellbooks.2bf61a1f2de3.js';
 
 export const RETIRED_DUEL_ARCHIVE_KEY = `wizzy.duel.v${SAVE_VERSION}.${SPELLBOOK_2}.archived-before-named-spellbook`;
 

@@ -1,5 +1,5 @@
-import { SPELL_CATALOG, LEGACY_SPELL_NAMES } from './spells.cb887ca4e7f8.js';
-import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.d36b5765d121.js';
+import { SPELL_CATALOG, LEGACY_SPELL_NAMES } from './spells.6c22cd07d14f.js';
+import { getEnhancementBonus, MAX_ENHANCEMENT, ENHANCEMENT_STEP, AURA_COST, AURA_DURATION, AURA_BONUS } from './game.640b393dafa6.js';
 import { getPlayerSchool } from './elements.f91c53cdab44.js';
 
 // Stable IDs keep presentation independent of printed wording and roll outcomes.
@@ -76,7 +76,7 @@ function castSpellId(entry, player) {
   const visual = getSpellVisual(spellId);
   if (!visual || visual.element.toLowerCase() !== schoolOf(player)) return null;
   // Resumed casts keep their historical payment while using current visuals.
-  const previousCost = spellId === 'Fire-11' ? 3 : spellId === 'Water-12' ? 4 : spellId === 'Water-14' ? 8 : null;
+  const previousCost = { 'Fire-11': 3, 'Water-12': 4, 'Water-14': 8, 'Earth-3': 3, 'Earth-4': 5 }[spellId] ?? null;
   const legacyCost = previousCost !== null && entry.message === `${prefix}${printedName} for ${previousCost} mana.`;
   return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyCost ? spellId : null;
 }
