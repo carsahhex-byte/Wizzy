@@ -104,3 +104,24 @@ test('version 14 active duels resume through the Earth update without overwritin
     assert.deepEqual(saves.load(bookId),resumed);
   }
 });
+
+
+test('version 15 Earth duels keep their hands and legacy Ward when stored under the old active key', () => {
+  const browser=memory(),saves=createDuelStorage(browser);
+  const earthDeck={element:'earth',spellbookId:SPELLBOOK_2,entries:[{spellId:'Earth-1',quantity:6}]};
+  let old=createGame(93,{players:[{element:'earth',deck:earthDeck},{element:'earth',deck:earthDeck}]});
+  old=rollInitiative(rollInitiative(old,0,()=>.9),1,()=>0);
+  Object.assign(old.players[0],{shield:19,golemActive:true,golemProtectedUntilTurn:2});
+  old.version=15;
+  for(const player of old.players)delete player.shieldBypassUntilOpponentTurn;
+  const original=JSON.stringify(old),key='wizzy.duel.v15.'+SPELLBOOK_2;
+  browser.setItem(key,original);
+  const resumed=saves.load(SPELLBOOK_2);
+  assert.equal(resumed.version,SAVE_VERSION);
+  assert.equal(resumed.players[0].hand.length,5);
+  assert.equal(resumed.players[0].golemProtectedUntilTurn,2);
+  assert.deepEqual(resumed.players.map(player=>player.shieldBypassUntilOpponentTurn),[null,null]);
+  assert.equal(saves.save(resumed),true);
+  assert.equal(browser.getItem(key),original);
+  assert.deepEqual(saves.load(SPELLBOOK_2),resumed);
+});

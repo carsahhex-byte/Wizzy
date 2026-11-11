@@ -21,7 +21,7 @@ Stable IDs are retained; Poseidon's Rift now costs 6 Mana. **Each held Ember gra
 | Earth-1 | Earth-1 | 0 | Deal 5 damage and gain 5 Shield. On 7+, gain 5 additional Shield. |
 | Earth-2 | Earth-2 | 2 | Gain 10 Shield. On 6+, gain 1 Mana. |
 | Earth-3 | Earth-3 | 2 | Deal 5 damage. On 7+, gain 12 Shield. |
-| Earth-4 | Earth-4 | 3 | On 6+, protect an already-active Golem until the normal Shield check at the end of your next Earth turn. No Mana gain. |
+| Earth-4 | Earth-4 | 4 | Gain 3 Shield. On 6+, incoming damage during the next opposing turn bypasses your Shield and hits your HP. |
 | Earth-5 | Earth-5 | 5 | If Golem is active, deal 15 damage. |
 | FAT-001 | Fortune | 0 | +4 to the Modified Roll when attacking. |
 | FAT-002 | Misfortune | 0 | −4 to the Modified Roll when defending. |
@@ -94,4 +94,4 @@ The canonical metadata is in `src/spells.js`; active-pool membership is in `src/
 
 ## Golem timing
 
-Earth transforms at 20 Shield. Shield loss does not immediately revert it. On the final committed Earth turn pass, expire Earth-4 protection if due and then check Shield: an unprotected Golem at 19 or lower reverts before damage. If still active, deal a flat 15 damage through normal Shield; Aura and Enhancement do not change it, and Enhancement is preserved. Earth-5 is a separate damaging spell, so its cast can be followed by the passive strike. Earth-4 rolls before Fate and protects an already-active Golem only on a final 6+; its next-turn end check is not delayed for another turn.
+Earth transforms at 20 Shield. Shield loss does not immediately revert it. On the final committed Earth turn pass, check Shield: a Golem at 19 or lower reverts before damage unless it retains a protection timer from an earlier saved duel. If still active, deal a flat 15 damage through normal Shield; Aura and Enhancement do not change it, and Enhancement is preserved. Earth-5 is a separate damaging spell, so its cast can be followed by the passive strike. Earth-4 rolls before Fate, always gains 3 Shield, and on a final 6+ sends all incoming damage during the next opposing turn straight to its caster’s HP while preserving Shield. This lasts through the opposing turn’s end effects and does not create or extend Golem protection. Previously earned protection timers in saved duels keep their existing expiry.

@@ -1,15 +1,15 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, LEGACY_SPELL_NAMES } from './spells.js';
 import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.js';
 import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, GOLEM_SHIELD_THRESHOLD, GOLEM_END_TURN_DAMAGE, SPELL_RULES, applySpellEffect, applyDamageToPlayer, getEmberSpendRange } from './effects.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, GOLEM_SHIELD_THRESHOLD, GOLEM_END_TURN_DAMAGE, SPELL_RULES, applySpellEffect, applyDamageToPlayer, isShieldBypassActive, getEmberSpendRange } from './effects.js';
 import { ELEMENT_INFO, isElement, getPlayerSchool } from './elements.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
 
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'earth-golem-v2';
+export const COMBAT_RULES_VERSION = 'earth-golem-v3';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -128,6 +128,7 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
       elementName: ELEMENT_INFO[school].resource,
       hp: MAX_HP, maxHp: MAX_HP, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
       golemActive: false, golemProtectedUntilTurn: null,
+      shieldBypassUntilOpponentTurn: null,
       turnsStarted: 0, enhancement: 0, auraTurns: 0, deckDefinition,
       hand: deck.splice(0, OPENING_HAND_SIZE), deck, discard: [],
     };
@@ -547,13 +548,21 @@ export function endTurn(state) {
     if (endingPlayer.golemActive) {
       const targetIndex = 1 - next.activePlayer;
       const opponent = next.players[targetIndex];
-      const damage = applyDamageToPlayer(opponent, GOLEM_END_TURN_DAMAGE);
-      addLog(next, `${endingPlayer.name}'s Golem strikes for ${GOLEM_END_TURN_DAMAGE} damage. ${opponent.name} takes ${damage.hpDamage} HP damage${damage.absorbed ? ` (${damage.absorbed} absorbed by Shield)` : ''}.`, 'damage', opponent.id,
+      const damage = applyDamageToPlayer(opponent, GOLEM_END_TURN_DAMAGE, { bypassShield: isShieldBypassActive(next, targetIndex) });
+      addLog(next, `${endingPlayer.name}'s Golem strikes for ${GOLEM_END_TURN_DAMAGE} damage. ${opponent.name} takes ${damage.hpDamage} HP damage${damage.bypassShield ? ' (bypasses Shield)' : damage.absorbed ? ` (${damage.absorbed} absorbed by Shield)` : ''}.`, 'damage', opponent.id,
         { kind: 'golem-strike', casterIndex: next.activePlayer, targetIndex, amount: GOLEM_END_TURN_DAMAGE });
-      finishDuel(next);
-      if (next.status === 'finished') return next;
     }
   }
+  // The opposing Golem's final strike still belongs to this turn. Expire only
+  // after that hit, and only after a committed pass rather than the End drawer.
+  const bypassTargetIndex = 1 - next.activePlayer;
+  if (isShieldBypassActive(next, bypassTargetIndex)) {
+    const target = next.players[bypassTargetIndex];
+    target.shieldBypassUntilOpponentTurn = null;
+    addLog(next, `${target.name}'s Shield bypass expires as their opponent's turn ends.`, 'shield', target.id);
+  }
+  finishDuel(next);
+  if (next.status === 'finished') return next;
   if (endingPlayer.loaded > 0) addLog(next, `${endingPlayer.name}'s unused Loaded +${endingPlayer.loaded} expires.`, 'loaded', endingPlayer.id);
   endingPlayer.loaded = 0;
   if (endingPlayer.auraTurns > 0 && next.primaryAction !== 'aura') {
@@ -634,11 +643,8 @@ export function applyDamage(state, targetIndex, amount, { selfDamage = false } =
   if (state.status !== 'playing' || ['setup', 'initiative'].includes(state.phase) || ![0, 1].includes(targetIndex) || !Number.isSafeInteger(amount) || amount <= 0) return state;
   const next = structuredClone(state);
   const target = next.players[targetIndex];
-  const absorbed = selfDamage ? 0 : Math.min(target.shield, amount);
-  target.shield -= absorbed;
-  const hpDamage = Math.min(target.hp, amount - absorbed);
-  target.hp -= hpDamage;
-  addLog(next, `${target.name} takes ${hpDamage} damage${absorbed ? ` (${absorbed} absorbed by shield)` : ''}.`, 'damage', target.id);
+  const damage = applyDamageToPlayer(target, amount, { selfDamage, bypassShield: isShieldBypassActive(next, targetIndex) });
+  addLog(next, `${target.name} takes ${damage.hpDamage} damage${damage.bypassShield ? ' (bypasses Shield)' : damage.absorbed ? ` (${damage.absorbed} absorbed by shield)` : ''}.`, 'damage', target.id);
   finishDuel(next);
   return next;
 }
@@ -719,6 +725,11 @@ export function assertGame(state) {
         && player.golemProtectedUntilTurn <= player.turnsStarted + 1), 'Golem state');
     requireValue(school === 'earth' ? player.golemActive || player.golemProtectedUntilTurn === null
       : !player.golemActive && player.golemProtectedUntilTurn === null, 'Golem school');
+    const bypassDeadline = player.shieldBypassUntilOpponentTurn;
+    const opposingTurns = state.players[1 - index]?.turnsStarted;
+    requireValue(bypassDeadline === null || school === 'earth' && !['setup', 'initiative'].includes(state.phase)
+      && Number.isSafeInteger(bypassDeadline) && bypassDeadline > 0
+      && bypassDeadline === opposingTurns + (state.activePlayer === index ? 1 : 0), 'Shield bypass duration');
     for (const zone of ['hand', 'deck', 'discard']) requireValue(Array.isArray(player[zone]), zone);
     requireValue(player.hand.length <= HAND_LIMIT, 'hand limit');
     const cards = [...player.hand, ...player.deck, ...player.discard];
@@ -889,23 +900,35 @@ function refreshCurrentSpellCards(state) {
     'Fire-15': ['Gain 1 Ember and 1 Mana.', 'Gain 1 Ember. On a 7+, gain 1 Mana.'],
     'Water-0': ['Gain 1 Mana.', 'On a 7+, gain 1 Mana.'],
     'Earth-3': ['Deal 5 damage. On a 9+, gain 20 Shield.'],
-    'Earth-4': ['Gain 2 Mana. If Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.'],
   };
-  const previousCosts = { 'Fire-11': 3, 'Water-12': 4, 'Water-14': 8, 'Earth-3': 3, 'Earth-4': 5 };
+  const previousCosts = { 'Fire-11': 3, 'Water-12': 4, 'Water-14': 8, 'Earth-3': 3 };
+  const priorEarthFour = [
+    { cost: 5, text: 'Gain 2 Mana. If Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.' },
+    { cost: 3, text: 'On a 6+, if Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.' },
+  ];
   let changed = false;
   const upgradedWaterCards = new Set();
   const upgradedSunsetterCards = new Set();
-  const upgradedEarthWardCards = new Set();
+  const upgradedImmediateEarthCards = new Set();
   for (const player of state.players) for (const zone of ['hand', 'deck', 'discard']) {
     for (const card of player[zone]) {
+      if (card?.spellId === 'Earth-4' && card.cost === card.manaCost && card.description === card.effectText) {
+        const previous = priorEarthFour.find(prior => card.manaCost === prior.cost
+          && (card.effectText === prior.text || card.effectText === SPELL_CATALOG['Earth-4'].effectText));
+        if (previous) {
+          if (previous.cost === 5) upgradedImmediateEarthCards.add(card.id);
+          card.manaCost = card.cost = SPELL_CATALOG['Earth-4'].manaCost;
+          card.effectText = card.description = SPELL_CATALOG['Earth-4'].effectText;
+          changed = true;
+        }
+      }
       if (Object.hasOwn(previousText, card?.spellId)
         && previousText[card.spellId].includes(card.effectText)
         && card.description === card.effectText
-        && (!['Fire-11', 'Earth-3', 'Earth-4'].includes(card.spellId)
+        && (!['Fire-11', 'Earth-3'].includes(card.spellId)
           || card.manaCost === previousCosts[card.spellId] && card.cost === card.manaCost)) {
         if (card.spellId === 'Water-0') upgradedWaterCards.add(card.id);
         if (card.spellId === 'Fire-14') upgradedSunsetterCards.add(card.id);
-        if (card.spellId === 'Earth-4') upgradedEarthWardCards.add(card.id);
         if (card.spellId === 'Fire-11') card.manaCost = card.cost = SPELL_CATALOG['Fire-11'].manaCost;
         card.effectText = SPELL_CATALOG[card.spellId].effectText;
         card.description = card.effectText;
@@ -916,7 +939,6 @@ function refreshCurrentSpellCards(state) {
         && card.manaCost === previousCosts[card.spellId] && card.cost === card.manaCost
         && card.effectText === SPELL_CATALOG[card.spellId].effectText
         && card.description === card.effectText) {
-        if (card.spellId === 'Earth-4') upgradedEarthWardCards.add(card.id);
         card.manaCost = card.cost = SPELL_CATALOG[card.spellId].manaCost;
         changed = true;
       }
@@ -932,7 +954,7 @@ function refreshCurrentSpellCards(state) {
   }
   // The previous Earth-4 resolved atomically without dice. Only completed casts
   // can carry its prior definition; a pending copy was never a legal old save.
-  if (state.pendingSpell?.spellId === 'Earth-4' && upgradedEarthWardCards.has(state.pendingSpell.cardId)) {
+  if (state.pendingSpell?.spellId === 'Earth-4' && upgradedImmediateEarthCards.has(state.pendingSpell.cardId)) {
     throw new Error('Invalid prior Earth-4 pending cast');
   }
   if (['rolling', 'fate', 'resolving'].includes(state.phase)
@@ -961,7 +983,7 @@ function refreshCurrentSpellCards(state) {
 /** Upgrade current-catalog duels without re-dealing or replaying paid effects. */
 export function migrateSavedGame(value) {
   if (validateSavedGame(value)) return value;
-  if (!value || ![10, 11, 12, 13, 14, SAVE_VERSION].includes(value.version)) return null;
+  if (!value || ![10, 11, 12, 13, 14, 15, SAVE_VERSION].includes(value.version)) return null;
   try {
     if (value.version === 10 && (!Array.isArray(value.players) || value.players.some(player => !Array.isArray(player?.hand) || player.hand.length > 5))) return null;
     const next = structuredClone(value);
@@ -976,10 +998,11 @@ export function migrateSavedGame(value) {
       if (!Object.hasOwn(player, 'school')) player.school = player.deckDefinition?.element;
       if (!Object.hasOwn(player, 'golemActive')) player.golemActive = false;
       if (!Object.hasOwn(player, 'golemProtectedUntilTurn')) player.golemProtectedUntilTurn = null;
+      if (!Object.hasOwn(player, 'shieldBypassUntilOpponentTurn')) player.shieldBypassUntilOpponentTurn = null;
     }
-    // Version 14 already has current Fate/Enhancement timing. Only add seat
+    // Versions 14–15 already have current Fate/Enhancement timing. Add missing
     // metadata; never replay its paid effects, rolls, Mana, or turn counters.
-    if (value.version === 14) {
+    if ([14, 15].includes(value.version)) {
       assertGame(next);
       return next;
     }

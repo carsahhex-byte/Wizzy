@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, rollInitiative, selectCard, castSelected, castFateSelected, rollDice, skipFate, resolveSpell,
+  endTurn, beginRefresh, toggleRefreshCard, activateEnhancement, rollEnhancement,
   migrateSavedGame, validateSavedGame, assertGame, SAVE_VERSION,
 } from '../src/game.js';
 import { SPELL_CATALOG } from '../src/spells.js';
@@ -10,6 +11,10 @@ import { getResolvedSpellVisuals } from '../src/spell-visuals.js';
 const OLD_EARTH = {
   'Earth-3': { manaCost: 3, effectText: 'Deal 5 damage. On a 9+, gain 20 Shield.' },
   'Earth-4': { manaCost: 5, effectText: 'Gain 2 Mana. If Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.' },
+};
+const ROLLED_EARTH_FOUR = {
+  manaCost: 3,
+  effectText: 'On a 6+, if Golem is already active, protect it through your next turn. At the end of that turn, check Shield normally.',
 };
 const cardsOf = player => ['hand', 'deck', 'discard'].flatMap(zone => player[zone]);
 
@@ -31,10 +36,17 @@ function fresh() {
   return state;
 }
 
-function withOldDefinitions(current) {
+function versionFifteen(current) {
   const previous = structuredClone(current);
+  previous.version = 15;
+  for (const player of previous.players) delete player.shieldBypassUntilOpponentTurn;
+  return previous;
+}
+
+function withOldDefinitions(current, definitions = OLD_EARTH) {
+  const previous = versionFifteen(current);
   for (const player of previous.players) for (const card of cardsOf(player)) {
-    const old = OLD_EARTH[card.spellId];
+    const old = definitions[card.spellId];
     if (!old) continue;
     card.manaCost = card.cost = old.manaCost;
     card.effectText = card.description = old.effectText;
@@ -54,9 +66,9 @@ function closeFate(state) {
 
 test('Earth balance refreshes all three live zones while preserving deck IDs, selections and duel progress', () => {
   const current = fresh();
-  assert.equal(SAVE_VERSION, 15);
+  assert.equal(SAVE_VERSION, 16);
   assert.equal(SPELL_CATALOG['Earth-3'].manaCost, 2);
-  assert.equal(SPELL_CATALOG['Earth-4'].manaCost, 3);
+  assert.equal(SPELL_CATALOG['Earth-4'].manaCost, 4);
   for (const player of current.players) Object.assign(player, {
     hp: 82, mana: 7, shield: 15, loaded: 4, loadedPending: 2, enhancement: 20,
     auraTurns: 2, golemActive: true, golemProtectedUntilTurn: player.turnsStarted + 1,
@@ -76,6 +88,79 @@ test('Earth balance refreshes all three live zones while preserving deck IDs, se
       assert.equal(card.cost, SPELL_CATALOG[id].manaCost);
       assert.equal(card.description, SPELL_CATALOG[id].effectText);
     }
+  }
+});
+
+test('v15 rolled Earth-4 definitions refresh in every zone while historical wards and resources stay unchanged', () => {
+  const current = fresh();
+  for (const player of current.players) Object.assign(player, {
+    mana: 7, shield: 10, loaded: 3, loadedPending: 2, enhancement: 20,
+    golemActive: true, golemProtectedUntilTurn: player.turnsStarted + 1,
+  });
+  current.selectedCardId = current.players[0].hand.find(card => card.spellId === 'Earth-4').id;
+  const previous = withOldDefinitions(current, { 'Earth-4': ROLLED_EARTH_FOUR });
+  const before = structuredClone(previous), migrated = migrateSavedGame(previous);
+  assert.ok(migrated);
+  assert.deepEqual(migrated, current);
+  assert.deepEqual(previous, before);
+  assert.equal(migrateSavedGame(migrated), migrated);
+  assert.ok(migrated.players.every(player => player.shieldBypassUntilOpponentTurn === null));
+  for (const player of migrated.players) for (const zone of ['hand', 'deck', 'discard']) {
+    const card = player[zone].find(card => card.spellId === 'Earth-4');
+    assert.equal(card.manaCost, 4); assert.equal(card.cost, 4);
+    assert.equal(card.effectText, SPELL_CATALOG['Earth-4'].effectText);
+  }
+});
+
+test('pending v15 rolled Earth-4 preserves its three-Mana payment and Fate chain before applying only its new effect', () => {
+  let initial = fresh();
+  Object.assign(initial.players[0], { mana: 8, loaded: 3, shield: 10, golemActive: true, golemProtectedUntilTurn: 2 });
+  const card = initial.players[0].hand.find(card => card.spellId === 'Earth-4');
+  const rolling = castSelected(selectCard(initial, card.id));
+  rolling.players[0].mana = 5;
+  rolling.log.findLast(entry => entry.type === 'cast').message = 'Earth casts Earth-4 for 3 mana.';
+  const fate = roll(rolling);
+  const misfortune = fate.players[1].hand.find(card => card.spellId === 'FAT-002');
+  const lowered = castFateSelected(selectCard(fate, misfortune.id));
+  const fortune = lowered.players[0].hand.find(card => card.spellId === 'FAT-001');
+  const raised = castFateSelected(selectCard(lowered, fortune.id));
+  for (const current of [rolling, fate, lowered, raised, closeFate(raised)]) {
+    const previous = withOldDefinitions(current, { 'Earth-4': ROLLED_EARTH_FOUR });
+    const before = structuredClone(previous), migrated = migrateSavedGame(previous);
+    assert.ok(migrated, `${current.phase} with ${current.pendingSpell.fatePlays.length} Fate responses migrates`);
+    assert.deepEqual(migrated, current);
+    assert.deepEqual(previous, before);
+    assert.deepEqual([migrated.players[0].mana, migrated.players[0].loaded, migrated.pendingSpell.loadedBonus], [5, 0, 3]);
+    let ready = migrated.phase === 'rolling' ? roll(migrated) : migrated;
+    ready = closeFate(ready);
+    const completed = resolveSpell(ready);
+    assert.deepEqual([completed.players[0].mana, completed.players[0].shield, completed.players[0].golemProtectedUntilTurn], [5, 13, 2]);
+    assert.equal(completed.players[0].shieldBypassUntilOpponentTurn, ready.lastRoll.total >= 6 ? 1 : null);
+    assert.equal(completed.players[0].discard.filter(entry => entry.id === card.id).length, 1);
+    assert.equal(resolveSpell(completed), completed); assertGame(completed);
+    const visual = getResolvedSpellVisuals(migrated, completed);
+    assert.equal(visual.length, 1, 'the old three-Mana commitment keeps its primary animation');
+    assert.equal(visual[0].spellId, 'Earth-4');
+  }
+});
+
+test('v15 snapshots gain only the new status field across selection, Fate, Enhancement, end and refresh phases', () => {
+  const main = fresh();
+  Object.assign(main.players[0], { mana: 8, shield: 10, loaded: 3, enhancement: 20, golemActive: true, golemProtectedUntilTurn: 2 });
+  const selected = selectCard(main, main.players[0].hand.find(card => card.spellId === 'Earth-3').id);
+  const rolling = castSelected(selected), fate = roll(rolling);
+  const misfortune = fate.players[1].hand.find(card => card.spellId === 'FAT-002');
+  const responded = castFateSelected(selectCard(fate, misfortune.id));
+  const enhancing = activateEnhancement(main), enhancementFate = rollEnhancement(enhancing, () => .5);
+  const end = endTurn(main), refreshing = beginRefresh(end);
+  const markedRefresh = toggleRefreshCard(refreshing, refreshing.players[0].hand[0].id);
+  for (const current of [main, selected, rolling, fate, responded, closeFate(responded), enhancing, enhancementFate, end, refreshing, markedRefresh]) {
+    const previous = versionFifteen(current), before = structuredClone(previous);
+    const migrated = migrateSavedGame(previous);
+    assert.ok(migrated, `${current.phase} migrates`); assertGame(migrated);
+    assert.deepEqual(migrated, current);
+    assert.deepEqual(previous, before);
+    assert.equal(migrateSavedGame(migrated), migrated);
   }
 });
 
@@ -156,6 +241,9 @@ function historicalEarthFour(active) {
 test('historically completed immediate Earth-4 casts retain their Mana gain, Loaded and ward without any new roll', () => {
   for (const active of [false, true]) {
     const current = historicalEarthFour(active); assertGame(current);
+    const visual = getResolvedSpellVisuals(fresh(), current);
+    assert.equal(visual.length, 1, 'the historical five-Mana atomic commitment retains its visual identity');
+    assert.equal(visual[0].spellId, 'Earth-4');
     const previous = withOldDefinitions(current), before = structuredClone(previous);
     const migrated = migrateSavedGame(previous);
     assert.deepEqual(migrated, current);
@@ -166,6 +254,37 @@ test('historically completed immediate Earth-4 casts retain their Mana gain, Loa
     assert.equal(rollDice(migrated, () => { throw new Error('completed casts do not roll'); }), migrated);
     assert.equal(resolveSpell(migrated), migrated);
     assert.equal(migrateSavedGame(migrated), migrated);
+  }
+});
+
+test('completed v15 rolled Earth-4 retains its old ward and gains no retroactive Shield or bypass status', () => {
+  for (const active of [false, true]) {
+    let current = fresh();
+    Object.assign(current.players[0], { mana: 8, loaded: 3, shield: 10, golemActive: active });
+    const card = current.players[0].hand.find(card => card.spellId === 'Earth-4');
+    current = resolveSpell(closeFate(roll(castSelected(selectCard(current, card.id)))));
+    Object.assign(current.players[0], { mana: 5, shield: 10, golemProtectedUntilTurn: active ? 2 : null,
+      shieldBypassUntilOpponentTurn: null });
+    // Keep its historical dice and paid result, replacing only the old effect's
+    // log records so a live-card refresh cannot invent the replacement reward.
+    current.log = current.log.filter(entry => entry.id <= 5);
+    const append = (message, type) => current.log.push({ id: current.log.length + 1, round: current.round,
+      playerId: current.players[0].id, message, type });
+    append('Earth casts Earth-4 for 3 mana.', 'cast');
+    append('Earth rolls 1 + 2 = 3; Loaded +3, attacking Fate +0, defending Fate 0: total 6.', 'dice');
+    if (active) append('Earth protects Golem through their next turn; the normal Shield check returns at its end.', 'shield');
+    append('Earth-4 resolves and moves to discard.', 'resolve');
+    assertGame(current);
+    const visual = getResolvedSpellVisuals(fresh(), current);
+    assert.equal(visual.length, 1, 'the historical three-Mana rolled commitment retains its visual identity');
+    assert.equal(visual[0].spellId, 'Earth-4');
+    const previous = withOldDefinitions(current, { 'Earth-4': ROLLED_EARTH_FOUR }), before = structuredClone(previous);
+    const migrated = migrateSavedGame(previous);
+    assert.deepEqual(migrated, current); assert.deepEqual(previous, before);
+    assert.deepEqual([migrated.players[0].mana, migrated.players[0].shield, migrated.players[0].shieldBypassUntilOpponentTurn], [5, 10, null]);
+    assert.equal(migrated.players[0].golemProtectedUntilTurn, active ? 2 : null);
+    assert.equal(resolveSpell(migrated), migrated);
+    assert.equal(rollDice(migrated, () => { throw new Error('a historical result cannot reroll'); }), migrated);
   }
 });
 

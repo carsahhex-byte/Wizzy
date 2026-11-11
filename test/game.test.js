@@ -74,7 +74,7 @@ function fateFixture() {
 }
 
 test('catalog has 39 spells, 34 rolling primaries, two immediate primaries and no old IDs', () => {
-  assert.equal(SAVE_VERSION, 15); assert.equal(DECK_SIZE, 30);
+  assert.equal(SAVE_VERSION, 16); assert.equal(DECK_SIZE, 30);
   assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
   assert.equal(Object.keys(SPELL_CATALOG).length, 39);
   assert.equal(Object.keys(SPELL_RULES).length, 36);
@@ -738,7 +738,7 @@ test('Fire-0 respects the five-Ember cap and rejects spending before any card is
 
 test('additive Fire-0 preserves current-format duels and cannot be forged into a pending dice spell', () => {
   const previous = fresh(), snapshot = JSON.parse(JSON.stringify(previous));
-  assert.equal(SAVE_VERSION, 15); assert.equal(migrateSavedGame(previous), previous);
+  assert.equal(SAVE_VERSION, 16); assert.equal(migrateSavedGame(previous), previous);
   assert.equal(validateSavedGame(snapshot), true);
   let state = handOf(fresh({ fire: ['Fire-0'] }), 0, ['Fire-0', 'Fire-1']);
   assertGame(state); assert.equal(migrateSavedGame(state), state);
