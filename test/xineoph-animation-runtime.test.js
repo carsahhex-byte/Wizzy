@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { createSpellAnimator } from '../src/spell-animation.js';
 import { paintAnimationFrame, createAnimationSprite } from '../src/animation-sprites.js';
 import { XINEOPH_TIMING, getXineophMoment } from '../src/xineoph-animation.js';
-import { CREATURE_ANIMATION_SHEETS, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from '../src/assets.js';
+import { ASSETS, CREATURE_ANIMATION_SHEETS, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from '../src/assets.js';
 import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from '../src/creature-animation.js';
+import { XINEOPH_FORMATION_SHEET, getXineophFormation } from '../src/creature-animation.js';
+import { IDLE_ANIMATION_SHEETS } from '../src/idle-sprites.js';
 
 class Style {
   getPropertyValue(key) { return this[key] || ''; }
@@ -185,6 +187,7 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
     assert.deepEqual(frames(sheets.projectile).map(frame => sheets.projectile.frameAnchors[frame].x),
       Array(5).fill(creature.nativeFacing === 'right' ? 1 : 0), 'each native leading plane is ahead of every flight pose');
     const expectedActor = creature.key === 'xineoph' ? 'phoenixFireAnimation' : 'pacificDolphinAnimation';
+    const correctedFire = creature.key === 'xineoph';
     const expectedEffects = creature.key === 'xineoph' ? 'phoenixCleanEffects' : expectedActor;
     assert.deepEqual(['actor', 'charge', 'projectile', 'impact'].map(role => sheets[role].asset),
       [expectedActor, expectedActor, expectedEffects, expectedEffects],
@@ -207,8 +210,15 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
         [1950, `${creature.pose}-down`, 14, ''],
       ]) {
         state.tick(time); assert.equal(layer.dataset.stage, stage);
-        assert.equal(actor.dataset.frame, String(sourceFrame));
-        assert.equal(actor.dataset.asset, expectedActor);
+        assert.equal(actor.dataset.frame, String(correctedFire ? 2 : sourceFrame));
+        assert.equal(actor.dataset.asset, correctedFire ? 'wizardIdleClean' : expectedActor);
+        if (correctedFire) {
+          const effect = state.node('spell-creature-formation');
+          assert.equal(effect.dataset.asset, 'xineophOrangeFormation');
+          assert.equal(effect.dataset.frame, String(getXineophFormation(time).frame));
+          assert.equal(effect.dataset.alphaMaskAsset, 'xineophFormationMask');
+          assert.equal(actor.dataset.palette, 'canonical-unfiltered');
+        }
         assert.equal(layer.dataset.formationPose, formationPose);
         assert.equal(actor.dataset.logicalX, casterIndex === 0 ? '236' : '788');
         assert.equal(actor.dataset.logicalY, '450');
@@ -220,12 +230,13 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
       assert.equal(layer.dataset.lightBlades, String(creature.pose === 'wing'));
       assert.equal(layer.dataset.effectArcs, 'true');
       state.tick(2075);
-      assert.equal(actor.hidden, true); assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
+      assert.equal(actor.hidden, !correctedFire);
+      assert.equal(state.wizards[casterIndex].sprite.style.visibility, correctedFire ? 'hidden' : 'visible');
       assert.equal(projectile.hidden, false); assert.equal(projectile.dataset.asset, sheets.projectile.asset);
       const mirror = (creature.nativeFacing === 'right') !== (casterIndex === 0);
       assert.equal(projectile.style.transform.includes('scaleX(-1)'), mirror);
       assert.equal(projectile.dataset.contactPlane, 'leading-edge');
-      const offset = sheets.actor.releaseOffset;
+      const offset = correctedFire ? XINEOPH_FORMATION_SHEET.releaseOffset : sheets.actor.releaseOffset;
       const releaseX = (casterIndex === 0 ? 236 : 788) + (mirror ? -offset.x : offset.x);
       assert.ok(Math.abs(Number(projectile.dataset.contactX) - releaseX) < 1e-9);
       assert.ok(Math.abs(Number(projectile.dataset.contactY) - (450 + offset.y)) < 1e-9);
@@ -279,7 +290,52 @@ test('phoenix and dolphin playback keep feet fixed, converge their trails and hi
       assert.equal(duplicate.duplicate, true); assert.equal(state.pending.size, 0);
     }
   }
-  assert.equal(loaded.length, 3, 'four plays share one deep-red caster atlas, one clean phoenix effects atlas and one Dolphin atlas');
+  const approvedSources = ['wizardIdleClean', 'xineophOrangeFormation', 'xineophFormationMask', 'phoenixCleanEffects', 'pacificDolphinAnimation'].map(key => ASSETS[key]);
+  assert.ok(loaded.length <= approvedSources.length);
+  assert.equal(new Set(loaded).size, loaded.length, 'repeated plays reuse already decoded atlases');
+  assert.ok(loaded.every(source => approvedSources.includes(source)), 'only canonical Fire, masked orange effects, clean flight and unchanged Dolphin sources load');
+});
+
+test('Xineoph preserves canonical Fire pixels, scale and feet above separate masked orange effects in every phase', async t => {
+  images(t);
+  for (const casterIndex of [0, 1]) {
+    const state = scene(), sheet = IDLE_ANIMATION_SHEETS.fire;
+    const done = state.animator.play({ key: `canonical-fire-${casterIndex}`, spellId: 'Fire-11', casterIndex });
+    await ready(); state.tick(0);
+    const actor = state.node('spell-animation-actor'), effect = state.node('spell-creature-formation');
+    for (const elapsed of [0, 249, 250, 500, 1000, 1499, 1500, 1600, 1700, 1825, 1950, 2074, 2075, 2090, 2500, 2975, 3185]) {
+      state.tick(elapsed);
+      const frame = elapsed < 2075 ? elapsed < 250 ? 0 : 2
+        : sheet.animations.idle[Math.floor(elapsed / sheet.frameMs) % sheet.animations.idle.length];
+      assert.equal(actor.hidden, false, `original character remains visible at ${elapsed}ms`);
+      assert.equal(actor.dataset.asset, sheet.asset);
+      assert.equal(actor.dataset.frame, String(frame));
+      assert.equal(actor.dataset.bodyHeight, '144');
+      assert.equal(actor.style.filter, '');
+      assert.equal(actor.style.zIndex, '2', 'the flight tail cannot paint over the canonical hat');
+      assert.deepEqual([actor.dataset.logicalX, actor.dataset.logicalY], [casterIndex === 0 ? '236' : '788', '450']);
+      const width = sheet.sourceWidth / sheet.columns * sheet.displayScale;
+      assert.equal(actor.style.width, `${width}px`);
+      assert.equal(actor.style.transformOrigin, `${sheet.frameAnchors[frame].x * width}px ${sheet.frameAnchors[frame].y * width}px`);
+      assert.equal(actor.style.transform.includes('scaleX(-1)'), casterIndex === 1);
+      assert.equal(state.wizards[casterIndex].sprite.style.filter, 'contrast(1.05)', 'casting never recolors the original model');
+      if (elapsed < 2075) {
+        assert.equal(effect.hidden, false);
+        assert.equal(effect.dataset.asset, XINEOPH_FORMATION_SHEET.asset);
+        assert.equal(effect.dataset.alphaMaskAsset, XINEOPH_FORMATION_SHEET.alphaMaskAsset);
+        assert.equal(effect.style.maskImage, `url("${ASSETS.xineophFormationMask}")`);
+        assert.equal(effect.style.webkitMaskImage, effect.style.maskImage);
+        assert.equal(effect.style.maskSize, effect.style.backgroundSize);
+        assert.equal(effect.style.maskPosition, effect.style.backgroundPosition);
+        assert.equal(effect.style.maskRepeat, 'no-repeat');
+      } else assert.equal(effect.hidden, true);
+    }
+    state.tick(3315); await done;
+    assert.equal(actor.hidden, true); assert.equal(effect.hidden, true);
+    assert.equal(actor.style.zIndex, '');
+    assert.equal(state.wizards[casterIndex].sprite.style.visibility, 'visible');
+    assert.equal(state.wizards[casterIndex].wizard.dataset.spellCasting, undefined);
+  }
 });
 
 test('both charged holds play eight pulse frames twice with unchanged wizard feet and body scale', async t => {
@@ -294,15 +350,19 @@ test('both charged holds play eight pulse frames twice with unchanged wizard fee
     const actor = state.node('spell-animation-actor');
     for (let sequence = 0; sequence < 16; sequence += 1) {
       state.tick(500 + sequence * 62.5);
-      assert.equal(actor.dataset.asset, charge.asset); assert.equal(actor.dataset.frame, String(2 + sequence % 8));
+      const correctedFire = creature.key === 'xineoph';
+      assert.equal(actor.dataset.asset, correctedFire ? 'wizardIdleClean' : charge.asset);
+      assert.equal(actor.dataset.frame, String(correctedFire ? 2 : 2 + sequence % 8));
+      if (correctedFire) assert.equal(state.node('spell-creature-formation').dataset.frame,
+        String(XINEOPH_FORMATION_SHEET.animations.fire[sequence % 8]));
       assert.deepEqual([actor.dataset.logicalX, actor.dataset.logicalY], [creature.nativeCaster === 0 ? '236' : '788', '450']);
       assert.equal(state.animator.element.dataset.chargeFrame, String(sequence % 8));
       assert.equal(state.animator.element.dataset.chargeSequenceFrame, String(sequence));
       assert.equal(state.animator.element.dataset.stage, 'linger'); assert.equal(impacts.length, 0); noAfterimages(state);
     }
     state.tick(1500);
-    assert.equal(actor.dataset.frame, '10'); assert.equal(state.animator.element.dataset.chargeFrame, '');
-    state.tick(1600); assert.equal(actor.dataset.frame, '11');
+    assert.equal(actor.dataset.frame, creature.key === 'xineoph' ? '2' : '10'); assert.equal(state.animator.element.dataset.chargeFrame, '');
+    state.tick(1600); assert.equal(actor.dataset.frame, creature.key === 'xineoph' ? '2' : '11');
     state.tick(3315); await completion; assert.equal(impacts.length, 1); noAfterimages(state);
   }
 });

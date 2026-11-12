@@ -73,12 +73,14 @@ function castSpellId(entry, player) {
   if (separator === -1) return null;
   const printedName = entry.message.slice(prefix.length, separator);
   const spellId = SPELL_NAMES.get(printedName);
-  const visual = getSpellVisual(spellId);
-  if (!visual || visual.element.toLowerCase() !== schoolOf(player)) return null;
+  // Fate feedback still needs a committed primary when that spell has no
+  // animation of its own, as with Anti-Furnace and Metamorphic.
+  const spell = SPELL_CATALOG[spellId];
+  if (!spell || spell.category !== 'Elemental' || spell.element.toLowerCase() !== schoolOf(player)) return null;
   // Resumed casts keep their historical payment while using current visuals.
   const previousCosts = { 'Fire-11': [3], 'Water-12': [4], 'Water-14': [8], 'Earth-3': [3], 'Earth-4': [3, 5] }[spellId] ?? [];
   const legacyCost = previousCosts.some(cost => entry.message === `${prefix}${printedName} for ${cost} mana.`);
-  return entry.message.startsWith(`${prefix}${printedName} for ${visual.manaCost} mana`) || legacyCost ? spellId : null;
+  return entry.message.startsWith(`${prefix}${printedName} for ${spell.manaCost} mana`) || legacyCost ? spellId : null;
 }
 
 function readRoll(entry, player, kind = 'spell') {

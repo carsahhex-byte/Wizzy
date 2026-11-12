@@ -73,11 +73,11 @@ function fateFixture() {
   return state;
 }
 
-test('catalog has 39 spells, 34 rolling primaries, two immediate primaries and no old IDs', () => {
+test('catalog has 41 spells, 36 rolling primaries, two immediate primaries and no old IDs', () => {
   assert.equal(SAVE_VERSION, 16); assert.equal(DECK_SIZE, 30);
   assert.equal(HAND_LIMIT, 6); assert.equal(OPENING_HAND_SIZE, 5);
-  assert.equal(Object.keys(SPELL_CATALOG).length, 39);
-  assert.equal(Object.keys(SPELL_RULES).length, 36);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 41);
+  assert.equal(Object.keys(SPELL_RULES).length, 38);
   for (const element of ['Fire', 'Water']) for (let index = 1; index <= 14; index += 1) {
     assert.ok(SPELL_CATALOG[`${element}-${index}`]);
     assert.equal(SPELL_RULES[`${element}-${index}`].requiresRoll, true);

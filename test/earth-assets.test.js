@@ -17,8 +17,8 @@ const sourceArt = {
   ...Object.fromEntries(Array.from({length:5},(_,i)=>[`Earth-${i+1}`,`designs/earth-spell-drafts/art/earth-${i+1}.png`])),
 };
 
-test('all fifteen new illustrations share the same registry across cards and previews', () => {
-  assert.equal(Object.keys(SPELL_ILLUSTRATIONS).length,15);
+test('all seventeen illustrations share the same registry across cards and previews', () => {
+  assert.equal(Object.keys(SPELL_ILLUSTRATIONS).length,17);
   for (const [id,art] of Object.entries(SPELL_ILLUSTRATIONS)) {
     assert.equal(SPELL_ART[id],art,id);
     const slab = spellSlabMarkup(id), preview = spellArtMarkup(id);
@@ -30,7 +30,7 @@ test('all fifteen new illustrations share the same registry across cards and pre
     const aperture = slab.match(/data-card-illustration="[^"]+" style="position:absolute;left:([\d.]+)%;top:([\d.]+)%;width:([\d.]+)%;height:([\d.]+)%/);
     assert.ok(aperture,id);
     const [,left,top,width,height] = aperture.map(Number);
-    const earth = id.startsWith('Earth-'), paperTop = earth ? 57.4 : id.startsWith('Fire-') ? 49.5 : 50.5;
+    const earth = id.startsWith('Earth-'), classic = id === 'Fire-16', paperTop = earth || classic ? 57.4 : id.startsWith('Fire-') ? 49.5 : 50.5;
     assert.ok(left > 0 && top > 0 && left + width < 100,id);
     assert.ok(top + height < paperTop,`${id} art stays above live paper`);
     if (earth) {

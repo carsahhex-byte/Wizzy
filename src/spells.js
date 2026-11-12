@@ -11,6 +11,7 @@ export const SPELL_DISPLAY_NAMES = Object.freeze({
   'Fire-6': 'Charred Blade',
   'Fire-11': 'Xineoph',
   'Fire-14': 'Sunsetter',
+  'Fire-16': 'Anti-Furnace',
   'Water-2': 'Sea bolt',
   'Water-0': 'Swell',
   'Water-12': 'Carbonate',
@@ -21,6 +22,7 @@ export const SPELL_DISPLAY_NAMES = Object.freeze({
   'Earth-3': 'Earthbound',
   'Earth-4': 'Merciful',
   'Earth-5': 'Tectonic',
+  'Earth-6': 'Metamorphic',
 });
 export const LEGACY_SPELL_NAMES = Object.freeze(Object.fromEntries(Object.keys(SPELL_DISPLAY_NAMES).map(id => [id, id])));
 /** Exact historical labels are presentation aliases, never portable deck IDs. */
@@ -52,6 +54,7 @@ const fire = [
   [13, 6, 'Deal 30 damage. On a 7+, deal 38 instead. On a 10+, deal 45 instead.'],
   [14, 8, 'Deal 55 damage. On an 8+, deal 65 instead.'],
   [15, 0, 'Gain 1 Ember. On a 6+, gain 1 Mana.'],
+  [16, 3, 'Deal 10 damage. On a 7+, automatically damage up to 15 Shield before normal damage. If that Shield damage removes nothing, gain 2 Embers.'],
 ];
 const water = [
   [0, 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.'],
@@ -76,6 +79,7 @@ const earth = [
   [3, 2, 'Deal 5 damage. On a 7+, gain 12 Shield.'],
   [4, 4, 'Gain 3 Shield. On a 6+, damage you receive during your opponent’s next turn bypasses your Shield and hits your HP directly.'],
   [5, 5, 'If Golem is active, deal 15 damage.'],
+  [6, 4, 'On a 5+, gain Shield equal to half the actual Shield and HP damage taken during your opponent’s previous turn, rounded down. If they used no damaging spell that turn, gain 0 Shield.'],
 ];
 const purposes = ['Basic attack', 'Early identity', 'Defensive utility', 'Strategic preparation', 'Specialized damage', 'Heavy attack', 'Signature spell'];
 const fate = (id, name, role, effectText) => Object.freeze({
@@ -85,9 +89,9 @@ const fate = (id, name, role, effectText) => Object.freeze({
   effectText, art: artwork.Fate, role,
 });
 export const SPELL_CATALOG = Object.freeze(Object.fromEntries([
-  ...fire.map(([number, mana, text]) => spell(`Fire-${number}`, 'Fire', mana, text, [0, 15].includes(number) ? 'Resource preparation' : purposes[(number - 1) % 7])),
+  ...fire.map(([number, mana, text]) => spell(`Fire-${number}`, 'Fire', mana, text, number === 16 ? 'Shield disruption' : [0, 15].includes(number) ? 'Resource preparation' : purposes[(number - 1) % 7])),
   ...water.map(([number, mana, text]) => spell(`Water-${number}`, 'Water', mana, text, number === 0 ? 'Resource preparation' : purposes[(number - 1) % 7])),
-  ...earth.map(([number, mana, text]) => spell(`Earth-${number}`, 'Earth', mana, text, number === 4 ? 'Golem protection' : number === 5 ? 'Golem attack' : 'Shield development')),
+  ...earth.map(([number, mana, text]) => spell(`Earth-${number}`, 'Earth', mana, text, number === 6 ? 'Reactive defense' : number === 4 ? 'Golem protection' : number === 5 ? 'Golem attack' : 'Shield development')),
   fate('FAT-001', 'Fortune', 'Attacking', '+4 to the Modified Roll when attacking.'),
   fate('FAT-002', 'Misfortune', 'Defending', '−4 to the Modified Roll when defending.'),
   fate('FAT-003', 'Twist', 'Flexible', 'Choose +2 or −2 to the Modified Roll.'),
@@ -96,8 +100,8 @@ export const SPELL_CATALOG = Object.freeze(Object.fromEntries([
 /** No supplied starter compositions: players build their own current-spellbook decks. */
 export const DECK_LISTS = Object.freeze({ fire: Object.freeze([]), water: Object.freeze([]), earth: Object.freeze([]) });
 export const SOURCE_INFO = Object.freeze({
-  additionalSpells: Object.freeze(['Fire-0', 'Fire-15', 'Water-0']),
-  playableSpellCount: 18,
+  additionalSpells: Object.freeze(['Fire-0', 'Fire-15', 'Water-0', 'Fire-16', 'Earth-6']),
+  playableSpellCount: 20,
   legacyCatalogSpellCount: 34,
   spellbook: Object.freeze({
     file: 'Wizzy Master Spellbook Nov4.pdf', title: 'Wizzy / Master Spellbook V2.1',

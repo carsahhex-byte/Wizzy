@@ -6,7 +6,7 @@ import {createGame,rollInitiative,selectCard,castSelected,rollDice,resolveSpell,
 import {getResolvedSpellVisuals} from '../src/spell-visuals.js';
 
 test('approved Earth and Carbonate display names keep stable spell identities and aliases',()=>{
-  const names={'Earth-1':'OffoDefo','Earth-2':'Bengal Shield','Earth-3':'Earthbound','Earth-4':'Merciful','Earth-5':'Tectonic','Water-12':'Carbonate'};
+  const names={'Earth-1':'OffoDefo','Earth-2':'Bengal Shield','Earth-3':'Earthbound','Earth-4':'Merciful','Earth-5':'Tectonic','Earth-6':'Metamorphic','Fire-16':'Anti-Furnace','Water-12':'Carbonate'};
   for(const[id,name]of Object.entries(names)){
     assert.equal(SPELL_CATALOG[id].name,name);assert.equal(SPELL_CATALOG[id].spellId,id);
     assert.ok(SPELL_NAME_ALIASES[id].includes(id));assert.ok(SPELL_NAME_ALIASES[id].includes(name));

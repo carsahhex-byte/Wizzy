@@ -47,7 +47,7 @@ On each phone, open **Battle → Play on two screens** to reach **Battle Portal*
 
 ## Current named spellbook
 
-New rooms use the sole active collection: **Heatbox, Blaze, Charred Blade, Xineoph, Sunsetter; Sea bolt, Swell, Carbonate, Pacific, Poseidon's Rift; Earth-1 through Earth-5; and Fortune, Misfortune, Twist**. The old Spellbook 1/2 selector is removed. Stable IDs retain the `spellbook-2` storage identity, with Fire-6 replacing Fire-5. Save a legal Fire, Water or Earth deck before creating or joining a room; old-collection rooms cannot be newly created through a stale client.
+New rooms use the sole active collection: **Heatbox, Blaze, Charred Blade, Xineoph, Sunsetter, Anti-Furnace; Sea bolt, Swell, Carbonate, Pacific, Poseidon's Rift; OffoDefo, Bengal Shield, Earthbound, Merciful, Tectonic, Metamorphic; and Fortune, Misfortune, Twist**. The old Spellbook 1/2 selector is removed. Stable IDs retain the `spellbook-2` storage identity, with Fire-6 replacing Fire-5. Save a legal Fire, Water or Earth deck before creating or joining a room; old-collection rooms cannot be newly created through a stale client.
 
 Guest and account saved data from earlier collections remains backed up. Existing current-book decks are preferred; former Fire-5 copies are replaced with Charred Blade for deck review. Retired cards are reported instead of silently becoming new spells. Historical paid casts and completed results are not replayed. An unsafe old testing duel containing Fire-5 is archived, and a new duel uses the reviewed saved deck.
 
@@ -162,3 +162,5 @@ Storybook shows only numbered **Mainquest** labels and assigned boss names per d
 | A move was stale | Let the client refresh the room, then choose the intended action again. |
 
 Resources: [Node.js downloads](https://nodejs.org/en/download), [Render Node hosting](https://render.com/docs/deploy-node-express-app), [Render persistent disks](https://render.com/docs/disks), and [Docker installation](https://docs.docker.com/get-started/get-docker/). TestFlight can connect to the same service later.
+
+Anti-Furnace and Metamorphic are additive current-book cards; existing deck storage keys and portable deck versions remain compatible. Metamorphic uses public, server-owned prior-turn damage totals and rounds half damage down. Deploy the updated room server together with the client: the combat-rules handshake rejects older server builds instead of resolving these spells with old rules.

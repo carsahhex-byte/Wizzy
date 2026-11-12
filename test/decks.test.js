@@ -20,6 +20,7 @@ test('the sole active book has the requested names, stable IDs, current effects,
     'Fire-6': ['Charred Blade', 5, 'Deal 20 damage. On a 7+, deal 30 instead and gain 2 Embers.'],
     'Fire-11': ['Xineoph', 2, 'Deal 10 damage and gain 2 Embers. On a 7+, gain 1 Mana.'],
     'Fire-14': ['Sunsetter', 8, 'Deal 55 damage. On an 8+, deal 65 instead.'],
+    'Fire-16': ['Anti-Furnace', 3, 'Deal 10 damage. On a 7+, automatically damage up to 15 Shield before normal damage. If that Shield damage removes nothing, gain 2 Embers.'],
     'Water-2': ['Sea bolt', 1, 'Deal 4 + 2 × Flow damage. On an 8+, gain 1 additional Flow after resolution.'],
     'Water-0': ['Swell', 0, 'Gain 1 Mana on cast. On a 7+, gain 1 additional Flow after resolution.'],
     'Water-12': ['Carbonate', 3, 'Deal 12 + 2 × Flow damage. On a 7+, heal 2 HP per Flow.'],
@@ -27,7 +28,7 @@ test('the sole active book has the requested names, stable IDs, current effects,
     'Water-14': ["Poseidon's Rift", 6, 'Deal 15 + 5 × Flow damage. On an 8+, deal 12 additional damage.'],
   };
   assert.equal(ACTIVE_SPELLBOOK_ID, SPELLBOOK_2);
-  assert.equal(getActiveSpells().length, 18);
+  assert.equal(getActiveSpells().length, 20);
   assert.deepEqual(ACTIVE_SPELL_IDS.filter(id => !id.startsWith('FAT-') && !id.startsWith('Earth-')), Object.keys(expected));
   assert.equal(ACTIVE_SPELL_IDS.includes('Fire-5'), false);
   assert.equal(getActiveSpells().filter(card => card.category === 'Fate').length, 3);
@@ -80,17 +81,17 @@ test('active imports review old test files and keep names outside portable deck 
 });
 
 test('Spellbook 2 contains exactly the paired test spells and Fate with unchanged definitions', () => {
-  const expected = ['Fire-2', 'Fire-15', 'Fire-6', 'Fire-11', 'Fire-14',
+  const expected = ['Fire-2', 'Fire-15', 'Fire-6', 'Fire-11', 'Fire-14', 'Fire-16',
     'Water-2', 'Water-0', 'Water-12', 'Water-9', 'Water-14',
-    'Earth-1', 'Earth-2', 'Earth-3', 'Earth-4', 'Earth-5', 'FAT-001', 'FAT-002', 'FAT-003'];
+    'Earth-1', 'Earth-2', 'Earth-3', 'Earth-4', 'Earth-5', 'Earth-6', 'FAT-001', 'FAT-002', 'FAT-003'];
   assert.deepEqual(SPELLBOOKS[SPELLBOOK_2].spellIds, expected);
   assert.equal(SPELLBOOK_ROLE_PAIRS.length, 5);
-  assert.equal(getSpellbookSpells(SPELLBOOK_1).length, 39);
-  assert.equal(getSpellbookSpells(SPELLBOOK_2).length, 18);
+  assert.equal(getSpellbookSpells(SPELLBOOK_1).length, 41);
+  assert.equal(getSpellbookSpells(SPELLBOOK_2).length, 20);
   for (const spell of getSpellbookSpells(SPELLBOOK_2)) assert.equal(spell, SPELL_CATALOG[spell.spellId], 'book copies retain identical cost, effect, name and artwork');
   for (const element of ['fire', 'water']) {
     const eligible = getEligibleSpells(element, SPELLBOOK_2);
-    assert.equal(eligible.length, 8); assert.equal(eligible.filter(card => card.category === 'Fate').length, 3);
+    assert.equal(eligible.length, element === 'fire' ? 9 : 8); assert.equal(eligible.filter(card => card.category === 'Fate').length, 3);
     assert.ok(eligible.every(card => card.category === 'Fate' || card.element.toLowerCase() === element));
   }
   for (const value of [null, '', 'unknown', '__proto__', 'constructor', 2]) {
@@ -146,8 +147,8 @@ test('book restrictions reject excluded spells, cross-element cards and unknown 
 });
 
 test('new spellbook starts with empty independent deck slots and no old cards', () => {
-  assert.equal(Object.keys(SPELL_CATALOG).length, 39);
-  assert.equal(Object.values(SPELL_CATALOG).filter(card => card.element === 'Fire').length, 16);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 41);
+  assert.equal(Object.values(SPELL_CATALOG).filter(card => card.element === 'Fire').length, 17);
   assert.equal(Object.values(SPELL_CATALOG).filter(card => card.element === 'Water').length, 15);
   for (const element of ['fire', 'water']) {
     const empty = createStarterDeck(element);
@@ -158,7 +159,7 @@ test('new spellbook starts with empty independent deck slots and no old cards', 
     empty.entries.push({ spellId: 'old-card', quantity: 1 });
     assert.equal(createStarterDeck(element).entries.length, 0);
     const eligible = getEligibleSpells(element);
-    assert.equal(eligible.length, element === 'fire' ? 19 : 18);
+    assert.equal(eligible.length, element === 'fire' ? 20 : 18);
     assert.equal(eligible.filter(card => card.category === 'Fate').length, 3);
     assert.equal(eligible.filter(card => card.category === 'Neutral').length, 0);
     assert.ok(eligible.every(card => card.category === 'Fate' || card.element.toLowerCase() === element));
@@ -407,6 +408,37 @@ test('Water-0 is Water-only and round-trips unrestricted copies without changing
   assert.deepEqual(restored, normalizeDeck(old));
   assert.equal(getDeckCount(restored, 'Water-0'), 0, 'adding Water-0 never inserts it into an older deck');
   assert.deepEqual(old.entries, [{ spellId: 'Water-1', quantity: 27 }, { spellId: 'FAT-003', quantity: 3 }]);
+});
+
+test('Anti-Furnace and Metamorphic are additive element-only slabs that survive deck export and reload', () => {
+  assert.equal(SPELLBOOK_VERSION, 'nov4-v2.1', 'adding slabs never invalidates existing deck files');
+  for (const [element, spellId, name] of [['fire', 'Fire-16', 'Anti-Furnace'], ['earth', 'Earth-6', 'Metamorphic']]) {
+    assert.equal(SPELL_CATALOG[spellId].name, name);
+    for (const bookId of [SPELLBOOK_1, SPELLBOOK_2]) {
+      assert.ok(getEligibleSpells(element, bookId).some(card => card.spellId === spellId));
+      for (const other of ['fire', 'water', 'earth'].filter(value => value !== element)) {
+        assert.equal(getEligibleSpells(other, bookId).some(card => card.spellId === spellId), false);
+        assert.throws(() => setDeckQuantity(createStarterDeck(other, bookId), spellId, 1), /other main element/);
+      }
+      for (const quantity of [1, 4, 30]) {
+        const saved = setDeckQuantity(createStarterDeck(element, bookId), spellId, quantity);
+        const file = serializeDeck(saved), reloaded = parseDeckList(file);
+        assert.deepEqual(reloaded, saved);
+        assert.equal(getDeckCount(reloaded, spellId), quantity);
+        assert.doesNotMatch(file, new RegExp(name), 'portable identities remain stable spell IDs');
+        assert.throws(() => setDeckQuantity(saved, spellId, 31), /more than 30/);
+      }
+    }
+  }
+  for (const [element, spellId] of [['fire', 'Fire-11'], ['water', 'Water-9'], ['earth', 'Earth-3']]) {
+    const prior = { element, spellbookId: SPELLBOOK_2, entries: [{ spellId, quantity: 27 }, { spellId: 'FAT-003', quantity: 3 }] };
+    const before = structuredClone(prior), serialized = serializeDeck(prior);
+    assert.deepEqual(parseDeckList(serialized), normalizeDeck(prior));
+    assert.deepEqual(migrateToActiveDeck(prior).deck, normalizeDeck(prior));
+    assert.deepEqual(prior, before, 'existing decks are not rebuilt or given new cards');
+    assert.equal(getDeckCount(prior, 'Fire-16'), 0);
+    assert.equal(getDeckCount(prior, 'Earth-6'), 0);
+  }
 });
 
 test('existing Fire-15 and Water-0 deck files retain their composition after the roll-rule revision', () => {

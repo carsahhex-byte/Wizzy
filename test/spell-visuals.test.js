@@ -81,17 +81,18 @@ function deepFreeze(value) {
   return value;
 }
 
-test('all 36 primary spells have the specified routes and Fate has no primary animation', () => {
+test('the original 36 primary spells keep their routes while Fate and the two new slabs have no primary animation', () => {
   const mapped = Object.values(EXPECTED).flat();
   assert.equal(mapped.length, 36); assert.equal(new Set(mapped).size, 36);
-  assert.equal(Object.keys(SPELL_CATALOG).length, 39);
+  assert.equal(Object.keys(SPELL_CATALOG).length, 41);
   for (const [kind, spellIds] of Object.entries(EXPECTED)) for (const spellId of spellIds) {
     const spell = SPELL_CATALOG[spellId], damaging = !['shield', 'power-up'].includes(kind);
     assert.deepEqual(getSpellVisual(spellId), { kind, element: spell.element, manaCost: spell.manaCost, damaging }, spellId);
   }
   for (const spell of Object.values(SPELL_CATALOG)) {
-    assert.equal(mapped.includes(spell.spellId), spell.category !== 'Fate');
-    if (spell.category === 'Fate') assert.equal(getSpellVisual(spell.spellId), null);
+    const animated = spell.category !== 'Fate' && !['Fire-16', 'Earth-6'].includes(spell.spellId);
+    assert.equal(mapped.includes(spell.spellId), animated);
+    if (!animated) assert.equal(getSpellVisual(spell.spellId), null);
   }
 });
 
@@ -135,11 +136,58 @@ test('resumed casts at prior prices animate once without changing paid costs', (
 });
 
 test('unknown, retired, malformed and prototype names never produce an animation', () => {
-  for (const value of [null, undefined, 1, {}, [], 'Fire-16', 'Fire--1', 'FIR-001', 'Earth-6', 'fire-1', '__proto__', 'constructor']) {
+  for (const value of [null, undefined, 1, {}, [], 'Fire-17', 'Fire--1', 'FIR-001', 'Earth-7', 'fire-1', '__proto__', 'constructor']) {
     assert.equal(getSpellVisual(value), null);
   }
   const visual = getSpellVisual('Fire-1'); visual.kind = 'changed';
   assert.equal(getSpellVisual('Fire-1').kind, 'basic-attack');
+});
+
+test('new Anti-Furnace and Metamorphic casts resolve without primary animation events', () => {
+  const configs = [
+    { element: 'fire', spellId: 'Fire-16' },
+    { element: 'earth', spellId: 'Earth-6' },
+  ];
+  for (const { element, spellId } of configs) {
+    const ownDeck = { element, spellbookId: 'spellbook-2', entries: [{ spellId, quantity: 6 }] };
+    const opponentDeck = { element: 'water', spellbookId: 'spellbook-2', entries: [{ spellId: 'Water-0', quantity: 6 }] };
+    let before = createGame(49, { players: [{ element, deck: ownDeck }, { element: 'water', deck: opponentDeck }] });
+    before = rollInitiative(rollInitiative(before, 0, () => .9), 1, () => 0);
+    before.players[0].mana = 10;
+    const committed = cast(before, spellId), after = complete(committed);
+    assert.equal(after.phase, 'main');
+    assert.equal(after.primaryUsed, true);
+    assert.equal(after.players[0].discard.filter(card => card.spellId === spellId).length, 1);
+    assert.equal(getSpellVisual(spellId), null);
+    assert.deepEqual(getResolvedSpellVisuals(before, after), []);
+    assert.equal(getResolvedBattleVisuals(before, after).some(event => event.spellId === spellId), false);
+  }
+});
+
+test('Fate retains dice feedback for new unanimated primary spells on shared and private views', () => {
+  for (const [element, spellId] of [['fire', 'Fire-16'], ['earth', 'Earth-6']]) {
+    const own = { element, spellbookId: 'spellbook-2', entries: [{ spellId, quantity: 3 }, { spellId: 'FAT-001', quantity: 1 }] };
+    const opponent = { element: 'water', spellbookId: 'spellbook-2', entries: [{ spellId: 'Water-0', quantity: 3 }, { spellId: 'FAT-002', quantity: 1 }] };
+    let before = createGame(13, { players: [{ element, deck: own }, { element: 'water', deck: opponent }] });
+    before = rollInitiative(rollInitiative(before, 0, () => .9), 1, () => 0);
+    before.players[0].mana = 10;
+    let linked = rollDice(cast(before, spellId), () => .5);
+    assert.equal(linked.fatePlayer, 1);
+    linked = castFateSelected(selectCard(linked, linked.players[1].hand.find(card => card.spellId === 'FAT-002').id));
+    assert.equal(linked.lastRoll.total, 4);
+    linked = castFateSelected(selectCard(linked, linked.players[0].hand.find(card => card.spellId === 'FAT-001').id));
+    const after = complete(linked), events = getResolvedBattleVisuals(before, after);
+    assert.equal(after.lastRoll.total, 8);
+    assert.deepEqual(events.map(event => [event.kind, event.spellId, event.casterIndex]), [
+      ['fate', 'FAT-002', 1], ['fate', 'FAT-001', 0],
+    ]);
+    assert.deepEqual(getResolvedSpellVisuals(before, after), []);
+    assert.equal(events.some(event => event.spellId === spellId), false);
+    for (const viewer of [0, 1]) {
+      assert.deepEqual(getResolvedBattleVisuals(privateView(before, viewer), privateView(after, viewer)), events);
+    }
+    assert.deepEqual(getResolvedBattleVisuals(after, after), []);
+  }
 });
 
 test('an immediate Fire-0 completion produces exactly one keyed primary event', () => {

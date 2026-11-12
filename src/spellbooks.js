@@ -16,8 +16,9 @@ export const SPELLBOOK_ROLE_PAIRS = Object.freeze([
 const fateIds = Object.values(SPELL_CATALOG).filter(spell => spell.category === 'Fate').map(spell => spell.spellId);
 const selectedIds = [
   ...SPELLBOOK_ROLE_PAIRS.map(pair => pair.fire),
+  'Fire-16',
   ...SPELLBOOK_ROLE_PAIRS.map(pair => pair.water),
-  ...['Earth-1', 'Earth-2', 'Earth-3', 'Earth-4', 'Earth-5'],
+  ...['Earth-1', 'Earth-2', 'Earth-3', 'Earth-4', 'Earth-5', 'Earth-6'],
   ...fateIds,
 ];
 
@@ -29,7 +30,7 @@ export const SPELLBOOKS = Object.freeze({
   }),
   [SPELLBOOK_2]: Object.freeze({
     id: SPELLBOOK_2, label: 'Spellbook',
-    description: 'Five spells each for Fire, Water, and Earth, plus Fate.',
+    description: 'Six Fire spells, five Water spells, six Earth spells, plus Fate.',
     spellIds: Object.freeze(selectedIds),
   }),
 });

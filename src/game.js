@@ -1,7 +1,7 @@
 import { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_NAME_ALIASES } from './spells.js';
 import { normalizeDeck, validateDeck, normalizeDeckSlot, validateDeckSlot } from './decks.js';
 import { SPELLBOOK_1, getDeckSpellbook, isSpellbookId } from './spellbooks.js';
-import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, GOLEM_SHIELD_THRESHOLD, GOLEM_END_TURN_DAMAGE, SPELL_RULES, applySpellEffect, applyDamageToPlayer, isShieldBypassActive, getEmberSpendRange } from './effects.js';
+import { MAX_HP, MAX_MANA, MAX_SHIELD, MAX_FLOW, MAX_EMBERS, GOLEM_SHIELD_THRESHOLD, GOLEM_END_TURN_DAMAGE, SPELL_RULES, applySpellEffect, applyDamageToPlayer, isShieldBypassActive, getEmberSpendRange, resetOpponentTurnDamage, recordOpponentTurnDamage } from './effects.js';
 import { ELEMENT_INFO, isElement, getPlayerSchool } from './elements.js';
 
 export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange };
@@ -9,7 +9,7 @@ export { SPELL_CATALOG, DECK_LISTS, DECK_SIZE, SPELL_RULES, getEmberSpendRange }
 /** A committed slab stays in hand through its roll and post-roll Fate responses. */
 export const SAVE_VERSION = 16;
 // Network rules can change while deck IDs and local save formats stay compatible.
-export const COMBAT_RULES_VERSION = 'earth-golem-v3';
+export const COMBAT_RULES_VERSION = 'anti-furnace-metamorphic-v1';
 export const MAX_ENHANCEMENT = 30;
 export const ENHANCEMENT_STEP = 10;
 export const ENHANCEMENT_THRESHOLD = 6;
@@ -129,6 +129,7 @@ export function createGame(seed = Date.now(), deckConfigs = {}) {
       hp: MAX_HP, maxHp: MAX_HP, mana: 3, shield: 0, element: 0, loaded: 0, loadedPending: 0,
       golemActive: false, golemProtectedUntilTurn: null,
       shieldBypassUntilOpponentTurn: null,
+      opponentTurnDamage: { turn: 0, shield: 0, hp: 0, damagingSpell: false },
       turnsStarted: 0, enhancement: 0, auraTurns: 0, deckDefinition,
       hand: deck.splice(0, OPENING_HAND_SIZE), deck, discard: [],
     };
@@ -173,6 +174,7 @@ export function rollInitiative(state, playerIndex, random = Math.random) {
   next.activePlayer = winner;
   next.initiative.winner = winner;
   next.players[winner].turnsStarted = 1;
+  resetOpponentTurnDamage(next);
   next.phase = 'main';
   addLog(next, `${next.players[winner].name} wins the opening roll and takes the first turn.`, 'turn', next.players[winner].id);
   return next;
@@ -549,6 +551,7 @@ export function endTurn(state) {
       const targetIndex = 1 - next.activePlayer;
       const opponent = next.players[targetIndex];
       const damage = applyDamageToPlayer(opponent, GOLEM_END_TURN_DAMAGE, { bypassShield: isShieldBypassActive(next, targetIndex) });
+      recordOpponentTurnDamage(next, targetIndex, damage);
       addLog(next, `${endingPlayer.name}'s Golem strikes for ${GOLEM_END_TURN_DAMAGE} damage. ${opponent.name} takes ${damage.hpDamage} HP damage${damage.bypassShield ? ' (bypasses Shield)' : damage.absorbed ? ` (${damage.absorbed} absorbed by Shield)` : ''}.`, 'damage', opponent.id,
         { kind: 'golem-strike', casterIndex: next.activePlayer, targetIndex, amount: GOLEM_END_TURN_DAMAGE });
     }
@@ -584,6 +587,7 @@ export function endTurn(state) {
   const player = next.players[next.activePlayer];
   const isOpeningTurn = player.turnsStarted === 0;
   player.turnsStarted += 1;
+  resetOpponentTurnDamage(next);
   player.loaded = player.loadedPending;
   player.loadedPending = 0;
   if (isOpeningTurn) {
@@ -644,6 +648,7 @@ export function applyDamage(state, targetIndex, amount, { selfDamage = false } =
   const next = structuredClone(state);
   const target = next.players[targetIndex];
   const damage = applyDamageToPlayer(target, amount, { selfDamage, bypassShield: isShieldBypassActive(next, targetIndex) });
+  if (!selfDamage) recordOpponentTurnDamage(next, targetIndex, damage);
   addLog(next, `${target.name} takes ${damage.hpDamage} damage${damage.bypassShield ? ' (bypasses Shield)' : damage.absorbed ? ` (${damage.absorbed} absorbed by shield)` : ''}.`, 'damage', target.id);
   finishDuel(next);
   return next;
@@ -715,6 +720,15 @@ export function assertGame(state) {
     requireValue(player.maxHp === MAX_HP && Number.isSafeInteger(player.hp) && player.hp >= 0 && player.hp <= MAX_HP, 'HP');
     for (const key of ['mana', 'shield', 'element', 'loaded', 'loadedPending', 'turnsStarted']) {
       requireValue(Number.isSafeInteger(player[key]) && player[key] >= 0, key);
+    }
+    if (Object.hasOwn(player, 'opponentTurnDamage')) {
+      const window = player.opponentTurnDamage;
+      requireValue(window && typeof window === 'object' && !Array.isArray(window)
+        && Object.keys(window).length === 4 && Object.keys(window).every(key => ['turn', 'shield', 'hp', 'damagingSpell'].includes(key))
+        && Number.isSafeInteger(window.turn) && window.turn >= 0 && window.turn <= state.players[1 - index]?.turnsStarted
+        && Number.isSafeInteger(window.shield) && window.shield >= 0 && window.shield <= MAX_SHIELD
+        && Number.isSafeInteger(window.hp) && window.hp >= 0 && window.hp <= MAX_HP
+        && typeof window.damagingSpell === 'boolean', 'previous opponent turn damage');
     }
     requireValue(Number.isSafeInteger(player.enhancement) && player.enhancement >= 0 && player.enhancement <= MAX_ENHANCEMENT && player.enhancement % ENHANCEMENT_STEP === 0, 'Enhancement cap');
     requireValue(Number.isSafeInteger(player.auraTurns) && player.auraTurns >= 0 && player.auraTurns <= AURA_DURATION, 'Aura duration');

@@ -10,6 +10,30 @@ export const EMBER_DAMAGE_PER_POINT = 5;
 export const GOLEM_SHIELD_THRESHOLD = 20;
 export const GOLEM_END_TURN_DAMAGE = 15;
 
+/**
+ * A defender keeps the immediately preceding enemy turn through their own turn.
+ * The new incoming window opens only when the opponent actually starts again.
+ * Older saves may omit it; never infer damage from current Shield/HP totals.
+ */
+export function resetOpponentTurnDamage(state, attackerIndex = state.activePlayer) {
+  if (![0, 1].includes(attackerIndex) || !state.players?.[attackerIndex] || !state.players[1 - attackerIndex]) return;
+  state.players[1 - attackerIndex].opponentTurnDamage = {
+    turn: state.players[attackerIndex].turnsStarted ?? 0, shield: 0, hp: 0, damagingSpell: false,
+  };
+}
+
+/** Count applied losses, not nominal damage, bonuses or remaining Shield. */
+export function recordOpponentTurnDamage(state, targetIndex, { absorbed = 0, hpDamage = 0 } = {}, { damagingSpell = false } = {}) {
+  if (![0, 1].includes(targetIndex) || state.activePlayer !== 1 - targetIndex) return;
+  const attacker = state.players?.[state.activePlayer], target = state.players?.[targetIndex];
+  if (!target || !Number.isSafeInteger(attacker?.turnsStarted) || attacker.turnsStarted < 1) return;
+  if (!target.opponentTurnDamage || target.opponentTurnDamage.turn !== attacker.turnsStarted) resetOpponentTurnDamage(state);
+  const window = target.opponentTurnDamage;
+  window.shield = Math.min(MAX_SHIELD, window.shield + absorbed);
+  window.hp = Math.min(MAX_HP, window.hp + hpDamage);
+  window.damagingSpell ||= damagingSpell;
+}
+
 /** Shield loss never calls this: Golem persists until its owner's actual pass. */
 export function activateGolemFromShield(player) {
   if (getPlayerSchool(player) !== 'earth' || player.golemActive || player.shield < GOLEM_SHIELD_THRESHOLD) return false;
@@ -111,6 +135,7 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
     const detail = applyDamageToPlayer(player, calculation.totalDamage, {
       selfDamage, bypassShield: isShieldBypassActive(state, player === caster ? casterIndex : 1 - casterIndex),
     });
+    if (!selfDamage) recordOpponentTurnDamage(state, 1 - casterIndex, detail, { damagingSpell: amount > 0 });
     if (!selfDamage && amount > 0) dealtOutgoingDamage = true;
     const formula = `Base ${calculation.baseDamage} + ${calculation.enhancement}% Enhancement + ${calculation.aura}% Aura${calculation.emberBonus ? ` + ${calculation.emberBonus}% Embers` : ''} = ${calculation.totalDamage} damage`;
     record('damage', player, `${formula}. ${name(player)} takes ${detail.amount} damage${detail.bypassShield ? ' (bypasses Shield)' : detail.absorbed ? ` (${detail.absorbed} absorbed by Shield)` : ''}; ${detail.hpDamage} HP damage.`, { ...calculation, ...detail });
@@ -131,7 +156,9 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
   const removeShield = amount => {
     const removed = Math.min(amount, opponent.shield);
     opponent.shield -= removed;
+    recordOpponentTurnDamage(state, 1 - casterIndex, { absorbed: removed });
     record('shield', opponent, `${name(opponent)} loses ${removed} Shield before damage.`, { amount: -removed, removed });
+    return removed;
   };
   const gainElement = amount => {
     const maximum = waterSpell ? MAX_FLOW : MAX_EMBERS;
@@ -179,6 +206,16 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       if (caster.golemActive) damage(opponent, 15);
       else record('resolve', caster, `${name(caster)} has no active Golem; Earth-5 deals no damage.`);
       break;
+    case 'Earth-6': {
+      const previous = caster.opponentTurnDamage;
+      const eligible = previous?.damagingSpell === true && previous.turn === opponent.turnsStarted;
+      const appliedDamage = eligible ? previous.shield + previous.hp : 0;
+      const recovered = rollTotal >= 5 ? Math.floor(appliedDamage / 2) : 0;
+      gainShield(recovered);
+      record('resolve', caster, `${name(caster)} uses ${appliedDamage} damage from the opponent's most recent turn for Metamorphic${rollTotal < 5 ? '; Modified Roll below 5 grants no Shield' : '; half rounds down'}.`,
+        { previousTurnDamage: appliedDamage, shieldRecovery: recovered });
+      break;
+    }
     case 'Fire-0':
       gainElement(1);
       break;
@@ -240,6 +277,13 @@ export function applySpellEffect(state, { casterIndex, spellId, rollTotal = null
       gainElement(1);
       if (rollTotal >= 6) gainMana(1);
       break;
+    case 'Fire-16': {
+      const shieldDamage = rollTotal >= 7 ? removeShield(15) : null;
+      damage(opponent, 10);
+      // Damage consumes the old bank before a new reward is granted.
+      if (shieldDamage === 0) gainElement(2);
+      break;
+    }
     case 'Water-0':
       if (rollTotal >= 7) flowGain += 1;
       break;

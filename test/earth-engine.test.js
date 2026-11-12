@@ -51,12 +51,12 @@ function effect(id, total, overrides = {}) {
 }
 const strikes = state => state.log.filter(entry => entry.visual?.kind === 'golem-strike');
 
-test('Earth joins the active book with five cards, correct costs, no starter deck and unlimited copies', () => {
-  assert.equal(getActiveSpells().length, 18);
+test('Earth keeps its original cards and adds Metamorphic with no starter deck or copy limit', () => {
+  assert.equal(getActiveSpells().length, 20);
   assert.deepEqual(getActiveSpells().filter(card => card.element === 'Earth').map(card => [card.spellId, card.manaCost]), [
-    ['Earth-1', 0], ['Earth-2', 2], ['Earth-3', 2], ['Earth-4', 4], ['Earth-5', 5],
+    ['Earth-1', 0], ['Earth-2', 2], ['Earth-3', 2], ['Earth-4', 4], ['Earth-5', 5], ['Earth-6', 4],
   ]);
-  assert.equal(getEligibleSpells('earth', ACTIVE_SPELLBOOK_ID).length, 8);
+  assert.equal(getEligibleSpells('earth', ACTIVE_SPELLBOOK_ID).length, 9);
   assert.deepEqual(createStarterDeck('earth'), { element: 'earth', entries: [] });
   const empty = createStarterDeck('earth', ACTIVE_SPELLBOOK_ID);
   const filled = setDeckQuantity(empty, 'Earth-1', 30);
