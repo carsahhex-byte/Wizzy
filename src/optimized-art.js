@@ -624,5 +624,25 @@ export const OPTIMIZED_ART = {
     "file": "earth5Art-ff9658367f44.webp",
     "sourceSha256": "ff8083a2c0e13b444e6378ec421baab7d09b35471ab4a275fa762f4a44a40092",
     "optimizedSha256": "ff9658367f444878bd5b12a33527bdc1c6788fa841e84be5a1ecd6a272d71ae1"
+  },
+  "antiFurnaceArt": {
+    "file": "antiFurnaceArt-3d7a788ae1b8.webp",
+    "sourceSha256": "9e40594e29328fc70b94a73a4c29ce53afda61405c3ed787a267881858be4881",
+    "optimizedSha256": "3d7a788ae1b839e971ae40f8f09b944b309515af65323f61c8c66c6cc358cf0f"
+  },
+  "metamorphicArt": {
+    "file": "metamorphicArt-56e3f4207aff.webp",
+    "sourceSha256": "74b2f1aaee83cdf700e7d4bc5e12c0114af030d0604a7fb540273cca585d1df2",
+    "optimizedSha256": "56e3f4207aff94242da13e2c1ca26286a8f29e216b7a86125d88c25c70ab2671"
+  },
+  "xineophOrangeFormation": {
+    "file": "xineophOrangeFormation-bea4d44cbfd8.webp",
+    "sourceSha256": "210a427126f8aea3e41179434c149af3af3a11c61472233493be88395d56a40e",
+    "optimizedSha256": "bea4d44cbfd81a3ae4aeca18904b19aad9197ffccd09fe2ffe11365f1301ca1c"
+  },
+  "xineophFormationMask": {
+    "file": "xineophFormationMask-61ee3fe606d4.webp",
+    "sourceSha256": "5e24317b3986a624367e77ecaafc289e7ac90896c070347aec765b2053d5bd7c",
+    "optimizedSha256": "61ee3fe606d40bbe98fab7407e6ff43eaf3df5ed5d1fb48a8cad021146c7ff04"
   }
 };

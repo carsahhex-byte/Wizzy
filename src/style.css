@@ -323,3 +323,9 @@ button.tower-pile { border: 0; padding: 0; background: none; pointer-events: aut
 @media(max-aspect-ratio:2/3) { .view-toggle { display: none; } }
 @media(max-width:400px) { .game-dialog { padding: 24px; }.rules-dialog h2 { font-size: 24px; } }
 @media(prefers-reduced-motion:reduce) { *,*:before,*:after { animation:none!important;transition:none!important;scroll-behavior:auto!important; } }
+
+/* Approved classic frame for Anti-Furnace and Metamorphic only. */
+.spell-slab-art[data-card-template="classic"] .slab-live-paper { background: transparent; }
+.spell-slab-art[data-card-template="classic"] .slab-rule-line { white-space: nowrap; }
+.spell-slab-art[data-card-template="classic"] .slab-rule-threshold { background: none; padding: 0; }
+.spell-slab-art[data-spell-slab="Fire-16"] .slab-rule-line:last-child { word-spacing: -.13em; }

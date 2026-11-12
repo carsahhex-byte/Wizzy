@@ -130,6 +130,10 @@ export const ASSET_FILES = Object.freeze({
   earth3Art: "Wizzy Earth-3 Illustration.png",
   earth4Art: "Wizzy Earth-4 Illustration.png",
   earth5Art: "Wizzy Earth-5 Illustration.png",
+  antiFurnaceArt: 'Wizzy Anti-Furnace Illustration.png',
+  metamorphicArt: 'Wizzy Metamorphic Illustration.png',
+  xineophOrangeFormation: 'Wizzy Xineoph Orange Formation.png',
+  xineophFormationMask: 'Wizzy Xineoph Formation Mask.png',
 
 });
 
@@ -565,11 +569,12 @@ const slab = (asset, width, height, crop, label) => Object.freeze({
 export const SPELL_SLABS = Object.freeze(Object.fromEntries([
   ['Fire-0', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-0')],
   ['Fire-15', slab('fireZeroSlab',1103,1426,[4,5,1095,1415],'Fire-15')],
+  ['Fire-16', slab('fireCard',1086,1448,[68,70,951,1254],'Fire-16')],
   // Xineoph inherits Charred Blade's original phoenix; source sheet stays intact.
   ...fireSlabCrops.map((crop,index) => [`Fire-${index+1}`, slab('fireSlabSheet',2037,772,index === 10 ? fireSlabCrops[5] : crop,`Fire-${index+1}`)]),
   ['Water-0', slab('waterSlabSheet',2037,772,waterSlabCrops[9],'Water-0')],
   ...waterSlabCrops.map((crop,index) => [`Water-${index+1}`, slab('waterSlabSheet',2037,772,crop,`Water-${index+1}`)]),
-  ...Array.from({ length: 5 }, (_, index) => [`Earth-${index+1}`, slab('earthCard',1086,1448,[68,70,951,1254],`Earth-${index+1}`)]),
+  ...Array.from({ length: 6 }, (_, index) => [`Earth-${index+1}`, slab('earthCard',1086,1448,[68,70,951,1254],`Earth-${index+1}`)]),
   ['FAT-001', slab('fateSlabSheet',2172,724,[153,17,517,687],'Fortune')],
   ['FAT-002', slab('fateSlabSheet',2172,724,[827,17,518,687],'Misfortune')],
   ['FAT-003', slab('fateSlabSheet',2172,724,[1502,17,517,687],'Twist')],
@@ -587,20 +592,21 @@ export function spellSlabMarkup(spellId, className = '') {
   const density = length>60?'long':length<35&&lines.length<3?'short':'normal';
   const illustration = SPELL_ILLUSTRATIONS[spellId];
   const earth = definition.type === 'Earth';
+  const classicTemplate = spellId === 'Fire-16' || spellId === 'Earth-6';
   // Every illustration lives in its own viewport. The angled mask stays inside
   // the upper frame aperture and never enters the live beige rules panel.
   const slabScale = crop.asset === 'fireZeroSlab' ? crop.w / 282 : 1;
-  const aperture = earth
+  const aperture = earth || classicTemplate
     ? { x: 79, y: 86, w: 793, h: 617, clip: 'polygon(6% 0,94% 0,100% 8%,100% 95%,96% 100%,4% 100%,0 95%,0 8%)' }
     : { x: 13 * slabScale, y: 17 * slabScale, w: crop.w - 26 * slabScale, h: Math.min(164 * slabScale, crop.h * .495 - 18 * slabScale), clip: 'polygon(4% 0,96% 0,100% 6%,100% 96%,96% 100%,4% 100%,0 96%,0 6%)' };
   const art = illustration
     ? `<span data-card-illustration="${illustration.asset}" style="position:absolute;left:${aperture.x/crop.w*100}%;top:${aperture.y/crop.h*100}%;width:${aperture.w/crop.w*100}%;height:${aperture.h/crop.h*100}%;display:block;overflow:hidden;clip-path:${aperture.clip};background:#07100b"><img alt="" draggable="false" src="${ASSETS[illustration.asset]}" style="display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated" /></span>`
     : '';
-  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" data-copy-density="${density}" data-copy-type="${definition.type}" style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:${earth?'transparent':'#030308'}">${cropImage(crop)}${art}<span class="slab-live-paper"${earth?' style="top:57.4%;left:8.1%;right:8.1%;bottom:7.5%"':''}><strong class="slab-live-title">${definition.name}</strong><span class="slab-live-rules" data-slab-rules="${spellId}">${slabRulesMarkup(spellId)}</span></span></span>`;
+  return `<span aria-hidden="true" class="spell-slab-art ${className}" data-spell-slab="${spellId}" data-slab-label="${crop.label}" data-copy-density="${density}" data-copy-type="${definition.type}"${classicTemplate?' data-card-template="classic"':''} style="position:absolute;inset:0;display:block;overflow:hidden;pointer-events:none;background:${earth || classicTemplate?'transparent':'#030308'}">${cropImage(crop)}${art}<span class="slab-live-paper"${earth || classicTemplate?' style="top:57.4%;left:8.1%;right:8.1%;bottom:7.5%"':''}><strong class="slab-live-title">${definition.name}</strong><span class="slab-live-rules" data-slab-rules="${spellId}">${slabRulesMarkup(spellId)}</span></span></span>`;
 }
 
 /** Stable illustration mapping shared by cards, previews and the deck builder. */
-export const SPELL_ILLUSTRATIONS = freezeMetadata({"Fire-2":{"asset":"heatboxArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-2"},"Fire-15":{"asset":"blazeArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-15"},"Fire-6":{"asset":"charredBladeArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-6"},"Fire-11":{"asset":"xineophReimaginedArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-11"},"Fire-14":{"asset":"sunsetterArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-14"},"Water-2":{"asset":"seaBoltArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-2"},"Water-0":{"asset":"swellArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-0"},"Water-12":{"asset":"coralCrashArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-12"},"Water-9":{"asset":"pacificArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-9"},"Water-14":{"asset":"poseidonRiftArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-14"},"Earth-1":{"asset":"earth1Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-1"},"Earth-2":{"asset":"earth2Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-2"},"Earth-3":{"asset":"earth3Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-3"},"Earth-4":{"asset":"earth4Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-4"},"Earth-5":{"asset":"earth5Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-5"}});
+export const SPELL_ILLUSTRATIONS = freezeMetadata({"Fire-2":{"asset":"heatboxArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-2"},"Fire-15":{"asset":"blazeArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-15"},"Fire-6":{"asset":"charredBladeArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-6"},"Fire-11":{"asset":"xineophReimaginedArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-11"},"Fire-14":{"asset":"sunsetterArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-14"},"Water-2":{"asset":"seaBoltArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-2"},"Water-0":{"asset":"swellArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-0"},"Water-12":{"asset":"coralCrashArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-12"},"Water-9":{"asset":"pacificArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-9"},"Water-14":{"asset":"poseidonRiftArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Water-14"},"Earth-1":{"asset":"earth1Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-1"},"Earth-2":{"asset":"earth2Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-2"},"Earth-3":{"asset":"earth3Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-3"},"Earth-4":{"asset":"earth4Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-4"},"Earth-5":{"asset":"earth5Art","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-5"},"Fire-16":{"asset":"antiFurnaceArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Fire-16"},"Earth-6":{"asset":"metamorphicArt","width":1536,"height":1024,"x":0,"y":0,"w":1536,"h":1024,"label":"Earth-6"}});
 
 /** Art-only viewports are available where a smaller illustration is needed. */
 export const SPELL_ART = Object.freeze(Object.fromEntries(Object.entries(SPELL_SLABS).map(([id,crop]) => {

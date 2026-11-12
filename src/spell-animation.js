@@ -1,7 +1,8 @@
-import { COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS, CREATURE_ANIMATION_SHEETS, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from './assets.js';
+import { ASSETS, COMBAT_ANIMATION_SHEETS, SPELL_ANIMATION_SHEETS, CREATURE_ANIMATION_SHEETS, EARTH_ANIMATION_SHEETS, GOLEM_ANIMATION_SHEETS } from './assets.js';
 import { getSpellVisual } from './spell-visuals.js';
 import { preloadAnimationSheet, createAnimationSprite, paintAnimationFrame, hideAnimationSprite } from './animation-sprites.js';
-import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation } from './creature-animation.js';
+import { CREATURE_TIMING, getCreatureMoment, getCreatureAnimation, XINEOPH_FORMATION_SHEET, getXineophFormation } from './creature-animation.js';
+import { IDLE_ANIMATION_SHEETS } from './idle-sprites.js';
 import { getPlayerSchool } from './elements.js';
 import { getCustomSpellSheet } from './custom-spell-sheets.js';
 import { createCustomSpellAnimator } from './custom-spell-animation.js';
@@ -58,6 +59,7 @@ export function createSpellAnimator({ root, scene } = {}) {
   Object.assign(element.style, { position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '4', display: 'none' });
   element.hidden = true;
   const actor = createAnimationSprite(document, 'spell-animation-actor');
+  const formation = createAnimationSprite(document, 'spell-creature-formation');
   const projectile = createAnimationSprite(document, 'spell-projectile');
   const impact = createAnimationSprite(document, 'spell-impact');
   const targetActor = createAnimationSprite(document, 'spell-hit-actor');
@@ -67,7 +69,7 @@ export function createSpellAnimator({ root, scene } = {}) {
     node.style.opacity = '0';
     return { node, lagMs, opacity: index === 0 ? .22 : .1 };
   });
-  element.append(actor, targetActor, afterimages[1].node, afterimages[0].node, projectile, impact);
+  element.append(formation, actor, targetActor, afterimages[1].node, afterimages[0].node, projectile, impact);
   const enhancementFlourish = createEnhancementFlourish({root:element});
   root.append(element);
   const customAnimator = createCustomSpellAnimator({ root, scene });
@@ -143,7 +145,8 @@ export function createSpellAnimator({ root, scene } = {}) {
       hitFlash(job, false);
       hideAfterimages();
       enhancementFlourish.reset();
-      for (const node of [actor, targetActor, projectile, impact]) hideAnimationSprite(node);
+      for (const node of [formation, actor, targetActor, projectile, impact]) hideAnimationSprite(node);
+      actor.style.zIndex = '';
       element.dataset.phase = cancelled ? 'cancelled' : 'complete';
       element.dataset.stage = cancelled ? 'cancelled' : 'complete';
       element.hidden = true;
@@ -183,10 +186,14 @@ export function createSpellAnimator({ root, scene } = {}) {
       done: false, impacted: false, casterHidden: false, flash: false };
     const creature = kind === 'enhancement' || transforming || striking ? null : getCreatureAnimation(spellId);
     const customCreature = creature !== null;
+    const correctedFire = customCreature && creature.key === 'xineoph';
     const creatureSheets = customCreature ? CREATURE_ANIMATION_SHEETS[creature.key] : null;
     job.promise = new Promise(resolve => { job.resolve = resolve; });
     current = job;
     hideAfterimages();
+    hideAnimationSprite(formation);
+    actor.style.zIndex = correctedFire ? '2' : '';
+    actor.style.filter = '';
     enhancementFlourish.reset();
     Object.assign(element.dataset, { animationKey: key, spellAnimation: job.kind, kind: job.kind,
       spellId: String(spellId ?? ''), casterIndex: String(casterIndex ?? ''), phase: 'loading', stage: 'loading',
@@ -201,11 +208,12 @@ export function createSpellAnimator({ root, scene } = {}) {
     const isGolem = type === 'earth' && (golem ?? players?.[casterIndex]?.golemActive ?? casterNode?.dataset.form === 'golem');
     const isEarth = type === 'earth' || type === 'air';
     const actionName = striking ? 'largeCast' : actorSheets[job.kind];
-    const sheet = transforming ? GOLEM_ANIMATION_SHEETS.transform : customCreature ? creatureSheets?.actor
+    const sheet = transforming ? GOLEM_ANIMATION_SHEETS.transform : correctedFire ? IDLE_ANIMATION_SHEETS.fire : customCreature ? creatureSheets?.actor
       : isGolem ? GOLEM_ANIMATION_SHEETS.poses : (isEarth ? EARTH_ANIMATION_SHEETS : COMBAT_ANIMATION_SHEETS)[actionName];
     const frames = transforming ? sheet?.animations[kind === 'golem-transform' ? 'transform' : 'revert']
+      : correctedFire ? [0, 2, 2, 2, 2, 2, 2]
       : framesFor(sheet, type, isGolem && actionName === 'shield' ? 'powerUp' : actionName);
-    const chargeSheet = customCreature ? creatureSheets?.charge : null;
+    const chargeSheet = correctedFire ? XINEOPH_FORMATION_SHEET : customCreature ? creatureSheets?.charge : null;
     const chargeFrames = chargeSheet?.animations[type];
     const heavyEarth = type === 'earth' && (job.kind === 'large-cast' || striking);
     const projectileSheet = customCreature ? creatureSheets?.projectile : heavyEarth ? GOLEM_ANIMATION_SHEETS.heavyBoulder
@@ -220,7 +228,7 @@ export function createSpellAnimator({ root, scene } = {}) {
     if (frames?.length !== (transforming ? 8 : customCreature ? 7 : 16)
       || visual.damaging && (projectileFrames?.length !== (customCreature ? 5 : heavyEarth ? 12 : 16) || hitFrames?.length !== 4)
       || customCreature && chargeFrames?.length !== 8
-      || customCreature && !['x', 'y'].every(axis => Number.isFinite(sheet?.releaseOffset?.[axis]))) {
+      || customCreature && !['x', 'y'].every(axis => Number.isFinite((correctedFire ? chargeSheet : sheet)?.releaseOffset?.[axis]))) {
       finish(job, { skipped: true });
       return job.promise;
     }
@@ -233,7 +241,7 @@ export function createSpellAnimator({ root, scene } = {}) {
       || { w: sheet.sourceWidth / sheet.columns, h: sheet.sourceHeight / sheet.rows };
     const releaseAnchor = sheet.frameAnchors?.[releaseFrame] || sheet.anchor || { x: .5, y: .5 };
     const releaseCore = sheet.launchAnchors?.[type] || sheet.launchAnchor;
-    const offset = customCreature ? sheet.releaseOffset : releaseCore
+    const offset = correctedFire ? chargeSheet.releaseOffset : customCreature ? sheet.releaseOffset : releaseCore
       ? { x: (releaseCore.x - releaseAnchor.x) * releaseRect.w * sheet.displayScale,
         y: (releaseCore.y - releaseAnchor.y) * releaseRect.h * sheet.displayScale }
       : releaseOffsets[job.kind]?.[type] || { x: 50, y: -50 };
@@ -251,6 +259,7 @@ export function createSpellAnimator({ root, scene } = {}) {
     const needed = customCreature ? [sheet, chargeSheet, projectileSheet, hitSheet]
       : visual.damaging ? [sheet, projectileSheet, hitSheet] : [sheet];
     if (visual.damaging && targetSheet) needed.push(targetSheet);
+    if (correctedFire) needed.push({ asset: XINEOPH_FORMATION_SHEET.alphaMaskAsset });
     const requestGeneration = generation;
     Promise.all(needed.map(preloadAnimationSheet)).then(loaded => {
       if (current !== job || job.done || requestGeneration !== generation) return;
@@ -284,7 +293,33 @@ export function createSpellAnimator({ root, scene } = {}) {
             formationPose: moment.formationPose ? String(moment.formationPose) : '', effectArcs: String(moment.effectArcs), lightBlades: String(moment.lightBlades),
             chargeFrame: moment.chargeFrame === undefined ? '' : String(moment.chargeFrame),
             chargeSequenceFrame: moment.chargeSequenceFrame === undefined ? '' : String(moment.chargeSequenceFrame) });
-          if (moment.actorFrame !== null) {
+          if (correctedFire) {
+            // Render the exact canonical character above the separate effects
+            // throughout casting and flight; neither glow nor flame recolors
+            // the robe or adds the old baked caster's larger silhouette.
+            const bodyFrame = elapsed < CREATURE_TIMING.flightAt ? elapsed < 250 ? 0 : 2
+              : sheet.animations.idle[Math.floor(elapsed / sheet.frameMs) % sheet.animations.idle.length];
+            paintAnimationFrame(actor, sheet, bodyFrame, point, { mirror });
+            Object.assign(actor.dataset, { element: type, sequenceFrame: String(bodyFrame), phase: moment.stage,
+              bodyHeight: String(sheet.targetBodyHeight), palette: 'canonical-unfiltered' });
+            if (moment.actorFrame !== null) {
+              const effect = getXineophFormation(elapsed);
+              paintAnimationFrame(formation, chargeSheet, effect.frame,
+                { x: point.x + (mirror ? -effect.offset.x : effect.offset.x), y: point.y + effect.offset.y },
+                { mirror, size: effect.size / (chargeSheet.sourceWidth / chargeSheet.columns) });
+              // CSS alpha masking is the same destination-in compositing used
+              // in the approved viewer, with no edited source raster.
+              const mask = `url("${ASSETS[chargeSheet.alphaMaskAsset]}")`;
+              Object.assign(formation.style, { maskImage: mask, webkitMaskImage: mask,
+                maskSize: formation.style.backgroundSize, webkitMaskSize: formation.style.backgroundSize,
+                maskPosition: formation.style.backgroundPosition, webkitMaskPosition: formation.style.backgroundPosition,
+                maskRepeat: 'no-repeat', webkitMaskRepeat: 'no-repeat', maskMode: 'alpha' });
+              Object.assign(formation.dataset, { phase: moment.stage, alphaMaskAsset: chargeSheet.alphaMaskAsset });
+              element.dataset.frame = String(effect.frame);
+              hideAfterimages(); hideAnimationSprite(projectile); hideAnimationSprite(impact);
+            } else hideAnimationSprite(formation);
+          }
+          if (moment.actorFrame !== null && !correctedFire) {
             const charge = moment.chargeFrame !== undefined;
             const actorSheet = charge ? chargeSheet : sheet;
             const actorFrame = charge ? chargeFrames[moment.chargeFrame] : frames[moment.actorFrame];
@@ -294,9 +329,8 @@ export function createSpellAnimator({ root, scene } = {}) {
             hideAfterimages();
             hideAnimationSprite(projectile);
             hideAnimationSprite(impact);
-          } else {
-            hideAnimationSprite(actor);
-            restoreStanding(job);
+          } else if (moment.actorFrame === null) {
+            if (!correctedFire) { hideAnimationSprite(actor); restoreStanding(job); }
             if (moment.phase === 'projectile') {
               const control = { x: lerp(launch.x, targetPoint.x, .65), y: targetPoint.y + 50 };
               const position = curve(launch, control, targetPoint, moment.progress);
